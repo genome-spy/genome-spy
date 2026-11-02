@@ -5,7 +5,6 @@ import {
     isExprDef,
     isFieldDef,
     isValueDef,
-    isColorChannel,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -17,9 +16,15 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef | import("../spec/channel.js").Conditional<import("../spec/channel.js").ChannelDef>} channelDef
  * @param {Pick<import("../paramRuntime/viewParamRuntime.js").default, "createExpression"> & Partial<Pick<import("../paramRuntime/viewParamRuntime.js").default, "getSpecLocation">>} paramRuntime
+ * @param {import("../spec/channel.js").Type} [resolvedType] Inherited type for secondary positions.
  * @returns {import("../types/encoder.js").Accessor}
  */
-export function createAccessor(channel, channelDef, paramRuntime) {
+export function createAccessor(
+    channel,
+    channelDef,
+    paramRuntime,
+    resolvedType
+) {
     /**
      * @typedef {import("../data/flowNode.js").Datum} Datum
      * @typedef {import("../spec/channel.js").Scalar} Scalar
@@ -103,12 +108,10 @@ export function createAccessor(channel, channelDef, paramRuntime) {
                 undefined,
                 paramRuntime?.getSpecLocation?.(channelDef, ["field"])
             );
-            if (
-                isColorChannel(channel) &&
-                "type" in channelDef &&
-                channelDef.type === "quantitative"
-            ) {
-                // Preserve missing/nonfinite numeric inputs in retained GPU attributes.
+            const type = "type" in channelDef ? channelDef.type : resolvedType;
+            if (type === "quantitative") {
+                // All quantitative channels share the same raw numeric contract.
+                // This also keeps same-field GPU attribute aliases equivalent.
                 // Typed arrays would otherwise coerce a missing null score to zero.
                 return asAccessor(
                     Object.assign(

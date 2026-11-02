@@ -116,7 +116,8 @@ export function resolveLegendBindings(viewRoot) {
                         !deepEqual(
                             gradient ? previous.select : previous.select.clear,
                             gradient ? select : select.clear
-                        )
+                        ) ||
+                        (gradient && !sameBrushBindings(previous, binding))
                     ) {
                         throw new Error(
                             `Shared legend binding "${param.name}" has conflicting ${gradient ? "interaction" : "clear"} settings.`
@@ -131,6 +132,27 @@ export function resolveLegendBindings(viewRoot) {
             }
         }
     }
+}
+
+/** Equal expression text can refer to different parameters in sibling scopes.
+ * @param {LegendBinding} a
+ * @param {LegendBinding} b
+ */
+function sameBrushBindings(a, b) {
+    const select =
+        /** @type {import("../../spec/parameter.js").IntervalSelectionConfig} */ (
+            a.select
+        );
+    return Object.values(select.mark ?? {})
+        .filter(isExprRef)
+        .every((value) => {
+            const left = a.runtime.createExpression(value.expr).dependencies;
+            const right = b.runtime.createExpression(value.expr).dependencies;
+            return (
+                left.length === right.length &&
+                left.every((ref, index) => ref === right[index])
+            );
+        });
 }
 
 /** Reset legend bindings after ordinary view interaction bookkeeping.

@@ -492,6 +492,112 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
             renderer + ": retained 100,000-row range updates"
         );
 
+    const mapped = await page.evaluate(async (renderer) => {
+        const { embed, intervalSelection } = await import("/index.js");
+        const host = globalThis.__gradient.host;
+        const api = await embed(
+            host,
+            {
+                params: [{ name: "range" }],
+                hconcat: [
+                    {
+                        name: "source",
+                        width: 200,
+                        height: 200,
+                        params: [
+                            {
+                                name: "range",
+                                push: "outer",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["color"],
+                                },
+                                bind: "legend",
+                            },
+                        ],
+                        data: { values: [{ score: 0.5 }] },
+                        mark: { type: "point", size: 150 },
+                        encoding: {
+                            color: {
+                                field: "score",
+                                type: "quantitative",
+                                scale: { domain: [0, 1] },
+                            },
+                        },
+                    },
+                    {
+                        name: "consumer",
+                        width: 200,
+                        height: 200,
+                        data: { values: [{ activation: 0.5 }] },
+                        mark: { type: "point", size: 150 },
+                        encoding: {
+                            fill: {
+                                field: "activation",
+                                type: "quantitative",
+                                scale: { domain: [0, 1] },
+                                legend: null,
+                            },
+                            opacity: {
+                                condition: {
+                                    param: "range",
+                                    project: { color: "fill" },
+                                    value: 1,
+                                },
+                                value: 0.15,
+                            },
+                        },
+                    },
+                ],
+            },
+            { renderer }
+        );
+        const unit = api.debug
+            .getViewRoot()
+            .getDescendants()
+            .find((v) => v.name === "consumer");
+        const row = Array.from(unit.getCollector().getData())[0];
+        const point = unit.coords.denormalizePoint(
+            unit.mark.encoders.x(row),
+            unit.mark.encoders.y(row),
+            true
+        );
+        const alpha = async () => {
+            const { blob } = await api.imageExport.raster({
+                background: null,
+                pixelRatio: 1,
+            });
+            const bitmap = await createImageBitmap(blob),
+                canvas = document.createElement("canvas");
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const context = canvas.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            return context.getImageData(
+                Math.floor(point.x),
+                Math.floor(point.y),
+                1,
+                1
+            ).data[3];
+        };
+        try {
+            api.params
+                .get("range")
+                .setValue(intervalSelection({ color: [0.25, 0.75] }));
+            const inside = await alpha();
+            api.params
+                .get("range")
+                .setValue(intervalSelection({ color: [0.7, Infinity] }));
+            return [inside, await alpha()];
+        } finally {
+            api.finalize();
+        }
+    }, renderer);
+    assert.ok(
+        mapped[0] > 200 && mapped[1] < 80,
+        renderer + ": mapped numeric consumer pixels " + mapped
+    );
     console.log(
         renderer + ": gradient gestures, cursor, cancellation and SVG passed"
     );

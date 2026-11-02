@@ -573,3 +573,23 @@ horizontal and vertical interaction covers the contract. The precise glyph form
 is replaced by the ASCII labels explained above. No issue comment is required
 for delivery: the decisions are recorded in the committed plan and grammar docs.
 Keep this reconciled plan on the feature branch until pre-merge retirement.
+
+## Independent implementation review
+
+A fresh Codex subagent reviewed the complete implementation and its downstream
+consumers after milestone 3. Four actionable findings were corrected: mapped
+WebGL consumers no longer require a scale for the logical source component;
+quantitative accessors, including inherited secondary-position types, preserve
+missing values consistently when GPU attributes share a field; numeric filters
+use the standard nested/escaped field-path parser; and collected brush style
+expressions must resolve the same native parameter refs. Separate compatible
+hosts can still use their own local styles.
+
+The reviewer inspected the follow-up fixes and reported no remaining actionable
+findings. The fixes reuse existing field attributes and selection state. Focused
+regressions verify actual Core encoders through WebGL vertex construction and
+WebGPU packing, nested filter parity, and scoped style collection. The browser
+probe additionally verifies mapped color-to-fill consumer pixels on all three
+renderers. Final validation: 574 test files and 5,477 tests passed, Core TypeScript
+and lint passed, and Canvas/WebGL/WebGPU probes passed. The previously recorded
+embed-examples dependency/type limitation remains unrelated to this feature.

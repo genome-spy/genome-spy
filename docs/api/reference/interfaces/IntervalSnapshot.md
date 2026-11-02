@@ -17,7 +17,7 @@ channels, while numeric channels retain numeric endpoints.
 
 Discriminator for interval selection snapshots.
 
----
+***
 
 ### active
 
@@ -25,7 +25,7 @@ Discriminator for interval selection snapshots.
 
 Whether at least one interval is currently set.
 
----
+***
 
 ### intervals
 
@@ -33,7 +33,7 @@ Whether at least one interval is currently set.
 
 Selected range for each configured positional channel, or `null`.
 
----
+***
 
 ### complexIntervals
 

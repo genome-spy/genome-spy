@@ -156,24 +156,24 @@ test("numeric filters, consumer mapping, and sampling use the same range", async
                 name: "other",
                 data: {
                     values: [
-                        { activation: 3 },
-                        { activation: 100 },
-                        { activation: 120 },
-                        { activation: null },
-                        { activation: Infinity },
+                        { metrics: { activation: 3 } },
+                        { metrics: { activation: 100 } },
+                        { metrics: { activation: 120 } },
+                        { metrics: { activation: null } },
+                        { metrics: { activation: Infinity } },
                     ],
                 },
                 transform: [
                     {
                         type: "filter",
                         param: "scores",
-                        fields: { color: "activation" },
+                        fields: { color: "metrics.activation" },
                     },
                 ],
                 mark: "point",
                 encoding: {
                     fill: {
-                        field: "activation",
+                        field: "metrics.activation",
                         type: "quantitative",
                         scale: { domain: [1, 120] },
                     },
@@ -198,7 +198,7 @@ test("numeric filters, consumer mapping, and sampling use the same range", async
         root.getDescendants().find((v) => v.name === "other")
     );
     const rows = Array.from(other.getCollector().getData());
-    expect(rows.map((row) => row.activation)).toEqual([3]);
+    expect(rows.map((row) => row.metrics.activation)).toEqual([3]);
     expect(other.mark.encoders.fillOpacity(rows[0])).toBe(1);
     expect(
         /** @type {import("../marks/point.js").default} */ (
@@ -211,7 +211,10 @@ test("numeric filters, consumer mapping, and sampling use the same range", async
         .setValue(intervalSelection({ color: [100, Infinity] }));
     await root.paramRuntime.whenPropagated();
     expect(
-        Array.from(other.getCollector().getData(), (row) => row.activation)
+        Array.from(
+            other.getCollector().getData(),
+            (row) => row.metrics.activation
+        )
     ).toEqual([100, 120]);
 });
 
@@ -491,5 +494,81 @@ test("collected gradients reject conflicting interaction settings and noninverti
     delete invalid.params[0].bind;
     await expect(createTestEmbed(invalid)).rejects.toThrow(
         /requires one legend-bound/
+    );
+});
+
+test("shared quantitative color/secondary-position fields retain missing values in one GPU attribute", async () => {
+    const input = /** @type {any} */ (spec());
+    input.mark = "rect";
+    input.data.values = input.data.values.map((/** @type {object} */ row) => ({
+        ...row,
+        start: 0,
+    }));
+    input.encoding.x = {
+        field: "start",
+        type: "quantitative",
+        scale: { domain: [0, 120] },
+    };
+    input.encoding.x2 = { field: "score" };
+    const { root } = await createTestEmbed(input, {
+        contextOptions: { baseConfig, viewFactoryOptions: { wrapRoot: true } },
+    });
+    renderToLayout(root);
+    const unit = /** @type {import("./unitView.js").default} */ (
+        root.getDescendants().find((view) => view.name === "cells")
+    );
+    const rows = Array.from(unit.getCollector().getData());
+    const { RectVertexBuilder } =
+        await import("../rendering/webgl/gl/dataToVertices.js");
+    const builder = new RectVertexBuilder({
+        encoders: unit.mark.encoders,
+        attributes: ["x", "x2", "fill"],
+        numItems: rows.length,
+    });
+    builder.addBatch(null, rows);
+    const arrays = builder.toArrays().arrays;
+    expect(Object.keys(arrays).filter((key) => key.includes("fill"))).toEqual([
+        "attr_fill_x2",
+    ]);
+    expect(
+        Array.from(arrays.attr_fill_x2.data).slice(-18).every(Number.isNaN)
+    ).toBe(true);
+    const { createWebGpuMarkConfig } =
+        await import("../rendering/webgpu/webGpuMarkAdapter.js");
+    const { config } = createWebGpuMarkConfig(unit.mark, {}, unit.coords);
+    const channels = /** @type {any} */ (config).channels;
+    expect(channels.fill.data).toEqual(channels.x2.data);
+    expect(Array.from(channels.fill.data).slice(-3).every(Number.isNaN)).toBe(
+        true
+    );
+});
+
+test("collected brush expressions must resolve the same bindings", async () => {
+    const children = [0.2, 0.8].map((opacity, index) => {
+        const child = /** @type {any} */ (spec());
+        child.name = "source" + index;
+        child.params[0].push = "outer";
+        child.params[0].select.mark = { fillOpacity: { expr: "localOpacity" } };
+        child.params.push({ name: "localOpacity", value: opacity });
+        return child;
+    });
+    const input = {
+        params: [{ name: "scores" }],
+        resolve: { scale: { color: "shared" }, legend: { color: "shared" } },
+        hconcat: children,
+    };
+    await expect(
+        createTestEmbed(/** @type {any} */ (input), {
+            contextOptions: { baseConfig },
+        })
+    ).rejects.toThrow(/conflicting interaction settings/);
+    // Equal source text is compatible when both aliases actually read the same outer ref.
+    for (const child of children) child.params.pop();
+    await createTestEmbed(
+        /** @type {any} */ ({
+            ...input,
+            params: [...input.params, { name: "localOpacity", value: 0.5 }],
+        }),
+        { contextOptions: { baseConfig } }
     );
 });

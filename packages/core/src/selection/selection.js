@@ -213,7 +213,11 @@ export function makeSelectionTestExpression(params, selection) {
                 throw new Error(
                     `Numeric filter fields must map "${component}".`
                 );
-            const input = `datum[${JSON.stringify(fields[component])}]`;
+            const input =
+                "datum" +
+                splitAccessPath(fields[component])
+                    .map((part) => `[${JSON.stringify(part)}]`)
+                    .join("");
             const bounds = `${paramName}.intervals.${component}`;
             return `${bounds} ? (isNumber(${input}) && isFinite(${input}) && ${bounds}[0] < ${bounds}[1] && ${bounds}[0] <= ${input} && ${input} < ${bounds}[1]) : ${empty}`;
         }
