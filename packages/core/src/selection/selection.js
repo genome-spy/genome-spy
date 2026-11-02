@@ -396,9 +396,10 @@ export function selectionBounds(selection, component) {
 
 /**
  * @param {import("../spec/parameter.js").SelectionTypeOrConfig} typeOrConfig
+ * @param {"legend"} [bind]
  * @returns {import("../spec/parameter.js").SelectionConfig}
  */
-export function asSelectionConfig(typeOrConfig) {
+export function asSelectionConfig(typeOrConfig, bind) {
     /** @type {import("../spec/parameter.js").SelectionConfig} */
     const config =
         typeof typeOrConfig === "string"
@@ -412,7 +413,7 @@ export function asSelectionConfig(typeOrConfig) {
           : undefined;
 
     config.clear =
-        config.clear === false
+        config.clear === false || (bind === "legend" && config.clear == null)
             ? undefined
             : config.clear === true || config.clear == null
               ? { type: "dblclick" }

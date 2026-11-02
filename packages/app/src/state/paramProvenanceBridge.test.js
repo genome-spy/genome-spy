@@ -181,6 +181,7 @@ describe("ParamProvenanceBridge", () => {
     it("captures shared raw categories and replays URL state, clear, undo, and redo without data lookup", async () => {
         vi.useFakeTimers();
         const { root, views } = await createTestEmbed({
+            config: { legend: { disable: false } },
             params: [
                 {
                     name: "focus",
@@ -195,6 +196,7 @@ describe("ParamProvenanceBridge", () => {
                             name: "focus",
                             select: { type: "point", encodings: ["color"] },
                             push: "outer",
+                            bind: "legend",
                         },
                     ],
                     mark: "point",
@@ -203,7 +205,6 @@ describe("ParamProvenanceBridge", () => {
                         color: {
                             field: "state",
                             type: "ordinal",
-                            legend: null,
                             scale: { domain: [1, "1", false] },
                         },
                     },

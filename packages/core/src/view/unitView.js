@@ -29,6 +29,7 @@ import {
 } from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
+import { hasPlotSelectionInput } from "../paramRuntime/paramUtils.js";
 
 /**
  *
@@ -137,13 +138,16 @@ export default class UnitView extends View {
 
     #setupPointSelection() {
         for (const [name, param] of this.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
+            if (!("select" in param) || !hasPlotSelectionInput(param)) {
                 continue;
             }
 
             const source =
                 typeof param.select === "object" ? param.select : undefined;
-            const select = asSelectionConfig(param.select);
+            const select = asSelectionConfig(
+                param.select,
+                "bind" in param ? param.bind : undefined
+            );
             // Normalized config has eventConfig in "on"
             const eventConfig =
                 /** @type {import("../spec/parameter.js").EventConfig} */ (
@@ -172,8 +176,13 @@ export default class UnitView extends View {
                     this.paramRuntime.setValue(name, selection);
                 };
 
-                const getHoveredDatum = () => {
-                    const h = this.context.getCurrentHover();
+                const getHoveredDatum = (
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) => {
+                    const h =
+                        event.markHit === undefined
+                            ? this.context.getCurrentHover()
+                            : event.markHit;
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
@@ -196,7 +205,7 @@ export default class UnitView extends View {
                     if (!eventPredicate(event.proxiedMouseEvent)) {
                         return;
                     }
-                    const datum = getHoveredDatum();
+                    const datum = getHoveredDatum(event);
                     // Other layers may receive this move after the picked mark.
                     if (
                         hoverSelection &&

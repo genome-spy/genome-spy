@@ -181,6 +181,9 @@ Category selections can link plots with different scales, for example a
 categorical x axis and a shape encoding. Map the selected component to the other
 plot's input with [`project`](conditional-encoding.md#matching-categories-across-views).
 
+Add [`bind: "legend"`](legend.md#interactive-legends) to select categories
+through a symbol legend. Plot input then requires an explicit `select.on`.
+
 Initial values use channel-keyed objects such as `value: [{"color": "activated"}]`.
 See the [selection API](../api/runtime-state.md#setting-categorical-point-selections)
 for value rules and programmatic updates, and

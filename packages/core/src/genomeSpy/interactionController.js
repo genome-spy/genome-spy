@@ -323,12 +323,14 @@ export default class InteractionController {
         /**
          * @param {Point} point
          * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
+         * @param {InternalMarkHit | null} [markHit]
          * @returns {import("../utils/interaction.js").default}
          */
-        const dispatchInteraction = (point, uiEvent) => {
+        const dispatchInteraction = (point, uiEvent, markHit) => {
             const interaction = this.#interactionDispatcher.dispatch(
                 point,
-                uiEvent
+                uiEvent,
+                markHit
             );
 
             if (!this.#tooltipUpdateRequested && !this.#longPressPending) {
@@ -364,14 +366,19 @@ export default class InteractionController {
         const startHoverPick = (point, event) => {
             const request = {};
             activeHoverPick = request;
+            /** @type {InternalMarkHit | null | undefined} */
+            let eventHit;
             const promise = this.#handlePicking(
                 point.x,
                 point.y,
-                () => activeHoverPick === request && !queuedMouseMove
+                () => activeHoverPick === request && !queuedMouseMove,
+                (hit) => {
+                    eventHit = hit ?? null;
+                }
             );
             if (!promise) {
                 activeHoverPick = undefined;
-                dispatchInteraction(point, event);
+                dispatchInteraction(point, event, eventHit);
                 return;
             }
 
@@ -381,7 +388,7 @@ export default class InteractionController {
                 }
                 activeHoverPick = undefined;
                 if (applied) {
-                    dispatchInteraction(point, event);
+                    dispatchInteraction(point, event, eventHit);
                 }
                 const queued = queuedMouseMove;
                 queuedMouseMove = undefined;
@@ -389,6 +396,17 @@ export default class InteractionController {
                     startHoverPick(queued.point, queued.event);
                 }
             });
+        };
+
+        /** @type {Promise<void> | undefined} */
+        let pendingDiscrete;
+        /** @param {Promise<boolean>} pick @param {() => void} dispatch */
+        const dispatchPicked = (pick, dispatch) => {
+            const task = pick.then((applied) => {
+                if (pendingDiscrete === task) pendingDiscrete = undefined;
+                if (applied) dispatch();
+            });
+            pendingDiscrete = task;
         };
 
         /** @param {Event} event */
@@ -419,12 +437,18 @@ export default class InteractionController {
 
                 /** @type {Promise<boolean> | undefined} */
                 let markPickPromise;
+                /** @type {InternalMarkHit | null | undefined} */
+                let eventHit;
                 if (["click", "dblclick", "contextmenu"].includes(event.type)) {
                     markPickPromise = this.#handlePicking(
                         point.x,
                         point.y,
                         undefined,
-                        (hit) => this.#emitMarkEvent(event, point, hit)
+                        (hit) => {
+                            eventHit = hit ?? null;
+                            this.#emitMarkEvent(event, point, hit);
+                        },
+                        pendingDiscrete
                     );
                 }
 
@@ -616,33 +640,38 @@ export default class InteractionController {
                         this.#emitEvent("click", e);
 
                         if (!clickWasDrag) {
-                            return dispatchInteraction(point, event);
+                            return dispatchInteraction(point, event, eventHit);
                         }
                     };
 
                     if (markPickPromise) {
-                        void markPickPromise.then((applied) => {
-                            if (applied) {
-                                dispatchClick();
-                            }
-                        });
+                        dispatchPicked(markPickPromise, dispatchClick);
                         return;
                     }
 
                     return dispatchClick();
                 }
 
-                const interaction = dispatchInteraction(point, event);
-
-                if (
-                    event.type == "dblclick" &&
-                    this.#hoverTrackingSuspensionCount === 0 &&
-                    this.#isInsideCanvas(point)
-                ) {
-                    this.#scheduleHoverRefreshAfterRender();
+                const dispatch = () => {
+                    const interaction = dispatchInteraction(
+                        point,
+                        event,
+                        eventHit
+                    );
+                    if (
+                        event.type === "dblclick" &&
+                        this.#hoverTrackingSuspensionCount === 0 &&
+                        this.#isInsideCanvas(point)
+                    ) {
+                        this.#scheduleHoverRefreshAfterRender();
+                    }
+                    return interaction;
+                };
+                if (markPickPromise) {
+                    dispatchPicked(markPickPromise, dispatch);
+                    return;
                 }
-
-                return interaction;
+                return dispatch();
             }
         };
 
@@ -1026,9 +1055,10 @@ export default class InteractionController {
      * @param {number} y
      * @param {() => boolean} [shouldApply]
      * @param {(hit: InternalMarkHit | undefined) => void} [onApplied]
+     * @param {Promise<void>} [after] Prior discrete interaction must finish before publishing this pick.
      * @returns {Promise<boolean> | undefined}
      */
-    #handlePicking(x, y, shouldApply = () => true, onApplied) {
+    #handlePicking(x, y, shouldApply = () => true, onApplied, after) {
         const requestId = this.#pickingRequestId;
         this.#renderPickingFramebuffer();
         const result = this.#readPickingId?.(x, y) ?? 0;
@@ -1046,8 +1076,11 @@ export default class InteractionController {
             return true;
         };
 
-        if (result instanceof Promise) {
-            return result.then(applyResult, (error) => {
+        if (result instanceof Promise || after) {
+            const ready = after
+                ? Promise.all([after, result]).then(([, id]) => id)
+                : Promise.resolve(result);
+            return ready.then(applyResult, (error) => {
                 console.error("Picking failed.", error);
                 return false;
             });

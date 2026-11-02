@@ -78,6 +78,7 @@ describe("generated core schema", () => {
         const param = {
             name: "focus",
             select: { type: "point", encodings: ["color"] },
+            bind: "legend",
             value: [{ color: "A" }],
         };
         const spec = { mark: "point", params: [param] };
@@ -136,6 +137,13 @@ describe("generated core schema", () => {
             ).toBe(false);
         }
         for (const invalid of [
+            { ...param, bind: { legend: "color" } },
+            { name: "focus", select: "point", bind: "legend" },
+            {
+                name: "focus",
+                select: { type: "interval", encodings: ["x"] },
+                bind: "legend",
+            },
             { ...param, select: { type: "point", encodings: [] } },
             {
                 ...param,

@@ -190,6 +190,14 @@ export default class WebGLMark {
         throw new Error("Not implemented.");
     }
 
+    /** @returns {Channel[]} */
+    getEncodingAttributes() {
+        return [
+            ...this.getAttributes(),
+            .../** @type {Channel[]} */ (Array.from(this.mark.nonvisualInputs)),
+        ];
+    }
+
     initializeGraphics() {
         this.#assertActive();
     }
@@ -218,7 +226,7 @@ export default class WebGLMark {
                 extraHeaders.push("#define CLAMP_" + axis.toUpperCase());
             }
         }
-        const shaderChannels = this.getAttributes();
+        const shaderChannels = this.getEncodingAttributes();
         const encoders = this.encoders;
         const order = this.mark.getOrder();
         const sampleFacetMode = this.getSampleFacetMode();
@@ -715,6 +723,8 @@ export default class WebGLMark {
             for (let i = 0; i < branches.length; i++) {
                 addAccessor(channel, branches[i].accessor, i, scale);
             }
+
+            if (this.mark.nonvisualInputs.has(channel)) continue;
 
             // Generate scale if needed -------------------------------
 
