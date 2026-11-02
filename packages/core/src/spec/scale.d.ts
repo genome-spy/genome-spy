@@ -66,7 +66,7 @@ export interface Scale {
      * index, or locus scales. For band/point scales, list domain category values;
      * numeric categories are values, not ranks. Missing or first categories add
      * no gap. Index/locus cuts use numeric coordinates: 10 separates bands 9
-     * and 10. `"chromosomes"` uses the locus assembly's internal boundaries.
+     * and 10. `"chromosomes"` inserts gaps between the assembly's chromosomes.
      * Positions are deduplicated in domain order. An expression may return an
      * array or null.
      *
@@ -81,9 +81,10 @@ export interface Scale {
      * ratio. An expression may return a nonnegative number or null. Constant
      * zero or null completely disables grouping gaps.
      * With step-based sizing, gaps add to plot size while the base step stays
-     * fixed. Band/point gaps do not support `round: true` or automatically fitted
-     * categorical offset scales. Gap expressions on a step-sized axis must be
-     * independent of that axis's allocated size.
+     * fixed. Band/point gaps do not support `round: true`. Nested categorical
+     * offsets under a gapped band require an explicit offset range. On a
+     * step-sized axis, gap expressions must be independent of the resulting
+     * plot width or height.
      * __Default value:__ 6 when gapPositions is supplied, otherwise 0.
      */
     gapWidth?: number | ExprRef | null;

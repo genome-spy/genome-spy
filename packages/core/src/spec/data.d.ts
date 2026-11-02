@@ -362,9 +362,9 @@ export interface ScaleGroupsData {
      * One or both positional channels, without duplicates. Each contributes
      * `xGroup`, `xStart`, `xEnd` or the corresponding `y` fields. Two channels
      * produce their Cartesian product. Index/locus endpoints are half-open
-     * numeric intervals. Band/point endpoints are inclusive category values at
-     * the lower and higher projected edges, respectively. Use `band: 0` for
-     * Start and `band: 1` for End; point endpoints have zero bandwidth.
+     * numeric intervals. Band/point endpoints are category values at the outer
+     * edges of each group. Reversing the range swaps these categories. Use
+     * `band: 0` for Start and `band: 1` for End. Point groups span their centers.
      * Guide views should share the data-bearing view's scales and set
      * `domainInert: true`.
      */

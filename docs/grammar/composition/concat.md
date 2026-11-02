@@ -90,8 +90,6 @@ step. The step may also be an expression reference.
 }
 ```
 
-SCHEMA Step
-
 Scale padding determines the cell width within each step. For example, a
 20 px band step with `paddingInner: 0.2` has a 16 px cell width.
 [Grouping gaps](../scale.md#grouping-gaps) add their pixel widths to the plot
@@ -100,15 +98,10 @@ step with one 8 px grouping gap need an 88 px plot width, excluding guides and
 view padding. Four unpadded point categories have three intervals and need
 68 px with the same step and gap.
 
-Fixed or container-sized dimensions instead reserve gaps by reducing cell
-widths or point spacing. When a step-sized view has a fixed scrollable viewport,
-the gaps contribute to its full content size; the viewport size stays fixed.
-Gap expressions must not depend on that step-sized axis's allocated width or
-height, directly or through another parameter.
+For nested categories, `for` chooses between
+[primary and offset steps](../scale.md#nested-offset-scales).
 
-Discrete [offset channels](../scale.md#nested-offset-scales) can introduce
-a second scale whose steps determine the view size. Automatically fitted
-categorical offsets are not supported under a gapped primary band scale.
+SCHEMA Step
 
 ### Scrollable viewports
 
@@ -119,6 +112,10 @@ properties. They accept the same values as `width` and `height` properties excep
 for the step size. Scrollable viewports are particularly useful for categorical
 data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
 do not support zooming and panning.
+
+Step-based `width` and `height` determine the full content size, including any
+grouping gaps. The viewport dimensions control how much of that content is
+visible at once.
 
 Besides using the scrollbars, you can scroll a viewport by dragging its content.
 Scrolling differs from panning: panning changes a zoomable scale's domain, such

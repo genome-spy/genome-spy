@@ -208,10 +208,10 @@ EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 
 ## Grouping gaps
 
-Band, point, index, and locus scales can separate selected groups with extra
-spacing. `gapWidth` specifies this spacing in CSS pixels, independent of device
-pixel ratio. Gap widths stay fixed when the view resizes. Ordinary scale padding
-continues to apply between neighboring categories or indices.
+Grouping gaps separate selected rows or columns in heatmaps and other grouped
+plots. They are available on positional band, point, index, and locus scales.
+`gapWidth` specifies the extra spacing in CSS pixels and stays fixed when the
+view resizes. Ordinary scale padding continues to apply.
 
 Gaps can be configured in an encoding's `scale` or a view's `scales` declaration,
 including shared scales. Axis domain lines split into groups automatically. The
@@ -225,30 +225,22 @@ appear. For example, `gapPositions: ["C"]` inserts a gap between B and C in the
 domain `["A", "B", "C", "D"]`. Numeric categories are values, not ranks:
 `gapPositions: [20]` cuts before category 20 in the domain `[10, 20, 30]`.
 
-The domain determines category order. Duplicate positions, absent categories,
-and the first category add no extra gap. Filtering out a boundary category
-removes its gap; restoring the category restores the gap.
-
 This heatmap separates named rows and columns independently:
 
 EXAMPLE examples/docs/grammar/scale/band-grouping-gaps.json height=260
 
 With band scales, `paddingInner` controls proportional spacing between every
-pair of cells, while grouping gaps add pixels at selected boundaries. Band
-centers and cell widths remain independent of the following gap. Point scales
-use the same category cuts with zero bandwidth; symbols can extend into the
-added spacing.
-Scale inversion within a grouping gap returns no category.
+pair of cells, while grouping gaps add pixels at selected boundaries. On point
+scales, gaps increase the spacing between point centers; large symbols may
+extend into that spacing.
 
-With a fixed view width or height, gaps reserve space by reducing cell widths
-or point spacing. With [step-based sizing](composition/concat.md#step-sizing),
-gaps increase the plot size while preserving the base step.
+The domain determines category order. Duplicate positions, absent categories,
+and the first category add no extra gap. Filtering out a boundary category
+removes its gap; restoring the category restores the gap.
 
-Grouping gaps apply to primary `x`/`y` scales. Band and point gaps do not
-support `round: true`. Automatically fitted categorical offset scales cannot
-be combined with a gapped primary band. Band and point scales retain their
-usual interaction behavior; adding gaps does not enable zooming or interval
-brushing.
+Band and point gaps do not support `round: true`. Nested categorical offsets
+under a gapped band require an [explicit offset range](#nested-offset-scales).
+Adding gaps does not enable zooming or interval brushing on these scales.
 
 ### Index and locus scales
 
@@ -273,18 +265,17 @@ Inverting a pointer anywhere in a gap returns its boundary coordinate. A brush
 entirely within one gap is an active, zero-span selection that matches no data;
 linked scales keep their last valid domain until the brush has a nonzero span.
 
-Pointer inversion and navigation use the ordinary domain mapping if visible
-gaps consume the whole axis extent and the affected marks are hidden.
+### Sizing and expressions
 
-### Reactive gaps
+With a fixed view width or height, gaps reserve space by reducing cell widths
+or point spacing. With [step-based sizing](composition/concat.md#step-sizing),
+gaps increase the plot size while preserving the base step. If gaps consume
+the whole axis extent, affected marks are hidden until space is available again.
 
 `gapWidth` and `gapPositions` accept expressions. Constant zero/null width or
-constant empty/null positions completely disables grouping gaps. On a
-step-sized axis, gap expressions must be independent of that axis's allocated
-width or height; external parameters can control the gaps.
-
-If gaps consume the whole axis extent, affected marks are hidden until space
-is available again.
+constant empty/null positions disable grouping gaps. On a step-sized axis,
+gap expressions must be independent of the resulting plot width or height;
+external parameters can control the gaps.
 
 ## Nested offset scales
 
@@ -319,7 +310,8 @@ width or height normally describes a positional scale step. When a discrete
 offset scale is present, it describes each offset step by default. Use
 `{ "step": 12, "for": "position" }` to make the step describe each primary
 category instead. An explicit offset-scale `range` remains a pixel range and is
-not replaced by nested-band inference.
+not replaced by nested-band inference. For a primary band with grouping gaps,
+an explicit offset range is required.
 
 See the [grouped bar example](mark/rect.md#grouped-bars).
 

@@ -101,7 +101,7 @@ export interface Step {
     /**
      * Base step size in CSS pixels. Scale padding determines the cell width
      * within a step. Grouping gaps add their pixel widths to the plot size
-     * without reducing the base step. Point scales have zero-width bands.
+     * without reducing the base step. Point steps separate point centers.
      */
     step: number | ExprRef;
 
