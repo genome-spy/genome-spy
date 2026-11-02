@@ -133,13 +133,6 @@ export default class ScaleGroupsSource extends DataSource {
                     ),
                 };
             } else {
-                if (
-                    mapping.scale.type !== "index" &&
-                    mapping.scale.type !== "locus"
-                )
-                    throw new Error(
-                        "scaleGroups requires index, locus, band, or point scales."
-                    );
                 const { extent, ready } = axis.extent.get();
                 return {
                     ready,

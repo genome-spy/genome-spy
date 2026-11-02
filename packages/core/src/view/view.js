@@ -143,8 +143,6 @@ export default class View {
 
     #postScaleParamsConfigured = false;
 
-    #stepSizeInvalidationRegistered = false;
-
     /** @type {string[]} */
     #scaleDependentParams = [];
 
@@ -646,6 +644,7 @@ export default class View {
                 const paddingInner =
                     scale.type === "point" ? 1 : _scale.paddingInner();
                 const paddingOuter = _scale.paddingOuter();
+                let space = bandSpace(steps, paddingInner, paddingOuter);
                 let gapPixels = 0;
 
                 if (hasGroupingGaps(scale.props)) {
@@ -669,18 +668,13 @@ export default class View {
                             ranks?.[1] ?? gapRank(cuts, domain[1], true);
                         gapPixels =
                             gapScale.gapWidth() * (lastRank - firstRank);
-                        steps = Math.max(
+                        space = Math.max(
                             ranks ? Number.EPSILON : 1,
                             steps - paddingInner + 2 * paddingOuter
                         );
                     } else {
-                        gapPixels = steps
-                            ? gapScale.gapWidth() * cuts.length
-                            : 0;
-                        steps = bandSpace(steps, paddingInner, paddingOuter);
+                        gapPixels = gapScale.gapWidth() * cuts.length;
                     }
-                } else {
-                    steps = bandSpace(steps, paddingInner, paddingOuter);
                 }
 
                 const offsetChannel =
@@ -722,7 +716,7 @@ export default class View {
                     effectiveStepSize *= offsetSteps / (1 - paddingInner);
                 }
 
-                return { px: steps * effectiveStepSize + gapPixels, grow: 0 };
+                return { px: space * effectiveStepSize + gapPixels, grow: 0 };
             } else if (implicit) {
                 // Vega-Lite treats a missing positional channel as one
                 // discrete step. Keep explicit step sizes strict.
@@ -1321,17 +1315,16 @@ export default class View {
      * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
-        if (!this.#stepSizeInvalidationRegistered) {
-            // Mapping observation materializes scales; guides and assemblies must
-            // already be configured before these subscriptions are installed.
-            this.#stepSizeInvalidationRegistered = true;
-            this.#registerStepSizeInvalidationFor("width", "x");
-            this.#registerStepSizeInvalidationFor("height", "y");
-        }
+        if (this.#postScaleParamsConfigured) return;
+        this.#postScaleParamsConfigured = true;
+
+        // Mapping observation materializes scales; guides and assemblies must
+        // already be configured before these subscriptions are installed.
+        this.#registerStepSizeInvalidationFor("width", "x");
+        this.#registerStepSizeInvalidationFor("height", "y");
 
         const postScaleParams = this.#scaleDependentParams;
-        if (postScaleParams.length && !this.#postScaleParamsConfigured) {
-            this.#postScaleParamsConfigured = true;
+        if (postScaleParams.length) {
             this.#postScaleParamDataReady = false;
 
             for (const name of postScaleParams) {

@@ -19,11 +19,10 @@ import {
  * Adds grouping gaps while delegating native band/point semantics to Vega.
  * Numeric cuts address the active domain's dense ranks, not categorical IDs.
  *
- * @param {() => import("./scaleBand.js").NativeCategoricalScale} createNativeScale
+ * @param {import("./scaleBand.js").NativeCategoricalScale} native
  * @returns {import("./scaleBand.js").CategoricalGapScale}
  */
-export default function scaleBand(createNativeScale) {
-    const native = createNativeScale();
+export default function scaleBand(native) {
     let ranks = new InternMap(native.domain().map((value, i) => [value, i]));
 
     /** @type {readonly number[]} */
@@ -187,10 +186,9 @@ export default function scaleBand(createNativeScale) {
 
     scale.copy = () => {
         const copy = scaleBand(
-            () =>
-                /** @type {import("./scaleBand.js").NativeCategoricalScale} */ (
-                    native.copy()
-                )
+            /** @type {import("./scaleBand.js").NativeCategoricalScale} */ (
+                native.copy()
+            )
         );
         copy.type = scale.type;
         copy.gapPositions(cuts).gapWidth(width).axisLength(axisLength);

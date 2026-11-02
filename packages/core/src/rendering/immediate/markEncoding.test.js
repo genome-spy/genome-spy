@@ -3,8 +3,10 @@ import Rectangle from "../../view/layout/rectangle.js";
 import * as colorUtils from "../color.js";
 import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import { createAccessor } from "../../encoder/accessor.js";
-import { createEncoder as buildEncoder } from "../../encoder/encoder.js";
-import { createSimpleOrConditionalEncoder } from "../../encoder/encoder.js";
+import {
+    createEncoder as buildEncoder,
+    createSimpleOrConditionalEncoder,
+} from "../../encoder/encoder.js";
 import { scale as vegaScale } from "vega-scale";
 import scaleBand from "../../scales/scaleBand.js";
 import {
@@ -81,11 +83,7 @@ test("caches parsed alpha across alternating paints and repaints", () => {
 describe("prepareRangeProjection", () => {
     test("gapped categorical positions preserve conditional unscaled values", () => {
         const runtime = new ViewParamRuntime();
-        const scale = scaleBand(
-            /** @type {() => import("../../scales/scaleBand.js").NativeCategoricalScale} */ (
-                /** @type {any} */ (vegaScale)("band")
-            )
-        )
+        const scale = scaleBand(/** @type {any} */ (vegaScale)("band")())
             .domain(["A", "B", "C", "D"])
             .gapPositions([2])
             .gapWidth(8)
@@ -98,9 +96,7 @@ describe("prepareRangeProjection", () => {
                         (
                             /** @type {import("../../data/flowNode.js").Datum} */ datum
                         ) => datum.selected,
-                        {
-                            constant: false,
-                        }
+                        { constant: false }
                     ),
                 },
                 {

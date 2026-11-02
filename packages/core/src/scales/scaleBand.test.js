@@ -4,7 +4,7 @@ import scaleBand from "./scaleBand.js";
 
 /** @param {"band" | "point"} [type] */
 const create = (type = "band") =>
-    scaleBand(/** @type {any} */ (vegaScale)(type));
+    scaleBand(/** @type {any} */ (vegaScale)(type)());
 
 test("categorical gaps preserve equal cells, inverse membership, and copied state", () => {
     const scale = create()

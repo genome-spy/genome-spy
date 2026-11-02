@@ -17,7 +17,7 @@ test.each([
                 params: [
                     { name: "order", value: ["A", "B", "C", "D"] },
                     { name: "cuts", value: ["C"] },
-                    { name: "gap", value: 8 },
+                    { name: "width", value: 8 },
                 ],
                 width: { step: 20 },
                 height: 20,
@@ -37,7 +37,7 @@ test.each([
                             paddingInner: type === "band" ? 0.2 : undefined,
                             paddingOuter: type === "band" ? 0.3 : 0,
                             gapPositions: { expr: "cuts" },
-                            gapWidth: { expr: "gap" },
+                            gapWidth: { expr: "width" },
                         },
                     },
                 },
@@ -56,10 +56,11 @@ test.each([
             type === "band" ? 16 : 0
         );
 
+        // An authored width parameter is an external gap input, independent of layout.
         // Repeated post-scale configuration must not multiply mapping subscriptions.
         view.configurePostScaleParams();
         requestLayoutReflow.mockClear();
-        view.paramRuntime.setValue("gap", 12);
+        view.paramRuntime.setValue("width", 12);
         expect(view.getSize().width.px).toBeCloseTo(width + 4);
         expect(view.getViewportSize().width.px).toBe(60);
         expect(requestLayoutReflow).toHaveBeenCalledOnce();

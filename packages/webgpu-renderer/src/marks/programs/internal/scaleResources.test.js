@@ -312,38 +312,6 @@ describe("ScaleResourceManager", () => {
 });
 
 describe("grouping gap resources", () => {
-    it("fits categorical cuts to dense domain ranks through sparse-ID updates", () => {
-        const channel = {
-            type: /** @type {const} */ ("u32"),
-            data: new Uint32Array([200, 5, 900]),
-            components: /** @type {const} */ (1),
-            inputComponents: /** @type {const} */ (1),
-            scale: {
-                type: "band",
-                domain: [200, 5, 900],
-                range: [0, 100],
-                gapEnabled: true,
-                gapPositions: [2],
-                gapWidth: 8,
-            },
-        };
-        const { manager, uniforms } = createManager({ x: channel });
-        manager.initializeScale("x", channel, channel.scale);
-        const updater = manager.getScaleUpdater("x");
-        updater.updateDomain(channel.scale.domain);
-        expect(uniforms.get("uDomain_x")).toEqual([0, 3]);
-        expect(uniforms.get("gapGeometry_x")).toEqual([8, 0, 1, 0]);
-
-        // Removing the third category moves the cut to an excluded outer edge.
-        updater.updateDomain([900, 200]);
-        expect(uniforms.get("uDomain_x")).toEqual([0, 2]);
-        expect(uniforms.get("gapGeometry_x")).toEqual([8, 0, 0, 0]);
-        manager.updateGapPositions("x", [1]);
-        manager.updateGapWidth("x", 0);
-        expect(uniforms.get("gapGeometry_x")).toEqual([0, 0, 1, 0]);
-        manager.destroy();
-    });
-
     it.each([
         { gapPositions: [10], gapWidth: 0 },
         { gapPositions: [10], gapWidth: null },

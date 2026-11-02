@@ -99,7 +99,11 @@ test("categorical gaps retain picking across sparse-domain updates and unequal p
             mark.scales[axis].setGapWidth(60);
         }
         draw();
-        const exhausted = await renderer.pick(125, 75);
+        // Only the narrower placement is exhausted; sample a formerly filled cell.
+        const exhausted = await Promise.all([
+            renderer.pick(5, 25),
+            renderer.pick(119, 75),
+        ]);
         for (const axis of ["x", "x2"]) mark.scales[axis].setGapWidth(8);
         draw();
         const recovered = await sample();
@@ -123,7 +127,7 @@ test("categorical gaps retain picking across sparse-domain updates and unequal p
         reversed: [3, null, 2, 3, null, 2],
         reordered: [2, null, 3, 2, null, 3],
         filtered: [1, 3],
-        exhausted: null,
+        exhausted: [1, null],
         recovered: [2, null, 3, 2, null, 3],
         closed: 3,
     });

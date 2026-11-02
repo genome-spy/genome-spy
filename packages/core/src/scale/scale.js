@@ -230,7 +230,7 @@ export default function createScale(_, logger) {
     }
 
     const scaleInstance =
-        key === Band || key === Point ? scaleBand(scale) : scale();
+        key === Band || key === Point ? scaleBand(scale()) : scale();
 
     configureScale(
         scaleProps,

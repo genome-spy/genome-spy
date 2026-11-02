@@ -37,5 +37,5 @@ export type CategoricalGapScale = NativeCategoricalScale & {
 };
 
 export default function scaleBand(
-    createNativeScale: () => NativeCategoricalScale
+    native: NativeCategoricalScale
 ): CategoricalGapScale;
