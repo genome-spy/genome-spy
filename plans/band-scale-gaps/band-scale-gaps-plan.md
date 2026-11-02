@@ -1,7 +1,8 @@
 # Grouping gaps for band scales
 
-Status: proposed; investigation and planning only. No runtime changes are part
-of this branch. Implementation milestones below are intentionally pending.
+Status: proposed; investigation and planning only. Updated on 2026-11-02 against
+`master` at `be31682a6` in a dedicated worktree. No runtime changes are part of
+this branch. Implementation milestones below are intentionally pending.
 
 ## Motivation and scope
 
@@ -14,14 +15,16 @@ express larger separators at selected group boundaries.
 Extend positional `band` scales with fixed CSS-pixel grouping gaps. Keep equal
 cell bandwidths, category identities, explicit domain ordering, aligned axes,
 shared annotation tracks, picking, and export consistent. Support gaps on both
-heat-map axes, fixed/stretch dimensions, and step-based dimensions. Nested
-categorical offsets in unequal shared placements require the explicit contract
-decision below; ordinary heat-map cells do not depend on that extension.
+heat-map axes, fixed/stretch dimensions, and step-based dimensions. Initially
+reject automatically fitted categorical offset scales under a statically gapped
+primary band. Supporting those across unequal placements requires a separate
+renderer contract; ordinary heat-map cells do not need it.
 
 Non-goals: categorical zoom/pan or interval brushing; grouping gaps on `point`,
 `ordinal`, color, or offset scales; automatic clustering/group discovery; group
 labels, dendrogram splitting, variable widths per cut, and new App sample-layout
-behavior. Existing index/locus behavior must remain unchanged.
+behavior. Preserve index/locus mapping and navigation. Correct their step-sized
+view extent to reserve gaps using the same accounting as their existing mapping.
 
 ## Current implementation and constraints
 
@@ -45,15 +48,16 @@ behavior. Existing index/locus behavior must remain unchanged.
   dense active-domain ranks. WebGL and WebGPU already map retained IDs to current
   slots. Reordering must update mapping tables, never renumber encoded data.
 - `src/rendering/immediate/markEncoding.js` assumes any `gapMapping` belongs to
-  an index-like scale and coerces datum values to numbers. Other consumers make
-  similar assumptions, including `scalePosition.js`, interval selection, and
-  `utils/expression.js::bandstep`. Do not make a categorical band pretend to
-  implement the index navigation contract.
+  an index-like scale and coerces datum values to numbers. Generalize its forward
+  projection, while explicitly guarding index-only inversion/navigation in
+  `scalePosition.js` and interaction consumers. `bandstep` already consumes only
+  forward step metadata and can share that capability.
 - `src/view/view.js::getDimensionSize` currently calculates step-based size as
   `bandSpace(count, paddingInner, paddingOuter) * effectiveStep`. Its size-cache
-  invalidation observes domain changes only. Gap changes also affect desired
-  dimensions. Nested offsets derive ranges from primary `bandwidth()` in
-  `scalePropsResolver.js` and must receive the reduced cell width.
+  invalidation observes primary and eligible offset-domain changes only. Gap
+  changes also affect desired dimensions. Nested offsets derive ranges from
+  primary `bandwidth()` in `scalePropsResolver.js`; that resolution-wide value
+  cannot fit unequal gapped occurrences.
 - `src/view/axisView.js` installs `scaleGroups` for any statically enabled gaps,
   but `src/data/sources/lazy/scaleGroupsSource.js` accepts only numeric index/locus
   intervals. Merely loosening the band-scale validation would break axes.
@@ -136,17 +140,20 @@ domain normalization, and disabled-gap behavior. Preserve the public type `band`
 and discrete traits. Do not build a general discontinuous-scale framework or
 refactor the index navigation machinery as a prerequisite.
 
-Expose a distinct internal `bandGapMapping(extent)` capability, not index
-`gapMapping()`. It provides positive base step/bandwidth, categorical and dense
-rank positioning, and `fits`. Keep canonical domain/cut state on the scale and
-cache placement-local geometry by CSS extent; invalidate on relevant setters.
+Extend existing `gapMapping(extent)` with a shared forward contract: `position`,
+`step`, and `fits`. `position` accepts the scale's domain value and includes the
+within-band anchor; band projection performs category lookup internally. Keep
+index-only `invertPoint`, `navigate`, interpolation, and fractional camera ranks
+on the index implementation. Guard those operations by scale kind, rather than
+the presence of `gapMapping`. Do not add a parallel `bandGapMapping` API and
+repeated dispatch in each renderer. Keep canonical domain/cut state on the scale
+and reuse the existing placement-local geometry caching pattern by CSS extent.
 Rendering uses the actual occurrence extent, including repeated/faceted and
 export-sized placements, without mutating a shared scale for each draw. Ordinary
 scale calls and metadata use the resolution's existing default extent contract.
-That default is insufficient for automatically derived nested offset ranges:
-their pixel widths must be resolved per occurrence or the unsupported combination
-must be rejected explicitly. Do not claim arbitrary `scale()`/`bandwidth()`
-expressions become occurrence-local merely by updating renderer projection.
+That default is insufficient for automatically derived nested offset ranges,
+which are excluded initially. Do not claim arbitrary `scale()`/`bandwidth()`
+expressions become occurrence-local by updating renderer projection.
 
 For a nonempty domain of `n` categories, `m` effective internal cuts, pixel extent
 `E`, and normalized output span `R`:
@@ -177,7 +184,7 @@ and renderer-owned cut tables where their contracts match. Keep index fractional
 edge ranks, continuous inversion, and half-open peer endpoint rules index-specific.
 Use narrow capability types instead of casting a band scale to `ScaleIndex`.
 
-### Publication, layout, and expressions
+### Publication and step-based view sizing
 
 Resolve category values to dense numeric cuts from `DomainState.visibleDomain`
 inside completed mapping publication. Recompute when either domain membership/
@@ -185,21 +192,100 @@ order or gap input changes, even if the gap input array has the same identity.
 Publish immutable numeric cuts and width together with domain mapping; preserve
 stable category IDs. Avoid per-row or per-frame sorting and allocations.
 
-For step-sized band dimensions add `m * gapWidth` after the existing effective
-step calculation, including `step.for = "offset"`. Observe the gap inputs and
-domain needed for this desired size, without causing size/range feedback loops
-or reflow on every mapping notification. Fixed/stretch dimensions instead reduce
-cell bandwidth. Verify that supported offset-scale ranges and `bandwidth()`
-dependencies settle after gap or layout changes. When a primary band is shared
-across unequal extents, its normalized bandwidth depends on the occurrence:
-`bandwidth(E) = (abs(R) - m * gapWidth / E) / space * (1 - paddingInner)`.
-Thus the current `bandwidth('x') * width` derived offset range cannot be reused
-unchanged. A correct extension must derive the nested range from the parent
-mapping at the same extent, consistently on every backend, without mutating
-shared scales. Keep this design gate open rather than hide the problem behind
-invalidation tests. Extend `bandstep(channel, extent)` explicitly for band
-geometry; retain its signed base-step meaning and required extent for gapped
-scales. It cannot represent category-specific displacement across a cut.
+`width: {step: S}` and `height: {step: S}` describe the ordinary base step in CSS
+pixels, excluding extra grouping gaps. At the preferred plot extent, keep that
+step constant and grow the view by the displayed gap footprint. Padding still
+changes cell bandwidth: `S * (1 - paddingInner)`. Axes, view padding, and structural
+spacing remain outside this plot-size calculation.
+
+For the canonical positional unit range, solve the same equation used by
+forward mapping, without asking a placement-dependent mapping for its own size:
+
+```text
+E = S * D + gapWidth * M
+```
+
+`D` is the scale's data-space denominator; `M` is its displayed gap span:
+
+| Scale                 | D                                                                      | M                                                             |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Band                  | Vega `bandSpace(n, paddingInner, paddingOuter)`                        | Number of resolved internal cuts in the active ordered domain |
+| Index/locus with gaps | `max(gapDomain ? EPSILON : 1, span - paddingInner + 2 * paddingOuter)` | `lastRank - firstRank` from the existing index mapping rules  |
+
+For index/locus, use the current internal half-open displayed domain, not the
+full data extent. If fractional `gapDomain` ranks exist, use them as the first
+and last ranks. Otherwise compute `firstRank = gapRank(cuts, domain[0])` and
+`lastRank = gapRank(cuts, domain[1], true)`. This excludes cuts outside the
+displayed domain and includes fractional edge gaps during navigation. Do not
+add one again to a domain already converted by `indexLikeDomainUtils.js`.
+Reversal and alignment change placement, not desired size.
+
+Representative preferred plot extents (all use `S = 20`, `gapWidth = 8`):
+
+| Case                                                                    | E                                          |
+| ----------------------------------------------------------------------- | ------------------------------------------ |
+| Four unpadded band categories, one internal gap                         | `4 * 20 + 8 = 88 px`                       |
+| Same, inner padding .2 and outer padding .1                             | `4 * 20 + 8 = 88 px`; cells are 16 px wide |
+| Same, inner padding .2 and outer padding .3                             | `4.4 * 20 + 8 = 96 px`                     |
+| Index internal domain `[10, 10.5]`, cut 10, ranks `[.5, 1]`, no padding | `.5 * 20 + .5 * 8 = 14 px`                 |
+
+Empty band domains and uninitialized index `[0, 0]` without camera ranks keep
+zero content size; handle them before counting cuts. A legitimate index camera
+wholly inside a gap reserves only its fractional gap footprint plus genuine
+padding. Do not turn a numerical `EPSILON` floor into a phantom full band or
+require exact step recovery where there is no data span. Preserve finite layout
+and existing no-mark behavior. Only constant-disabled settings use the existing
+non-gapped sizing path. A reactive zero width or empty cut array retains the
+gap-aware denominator, matching static shader/mapping specialization. Otherwise
+a padded index singleton with inner padding .8 would jump between a 20 px
+gap-aware extent and a 4 px legacy extent when a reactive gap is disabled.
+Do not replace Vega's padded-singleton divisor with index's minimum divisor, or
+rewrite unrelated constant-disabled/non-gapped index sizing in this feature.
+
+This changes preferred content size, including implicit `config.view.step`.
+For a fixed/stretch dimension, keep its size and shrink cells to reserve gaps.
+For a scrollable view, calculate the full content size from its domain; the
+fixed viewport does not change gap counting when scrolled. Step-based viewport
+sizes remain unsupported. If a composition allocates a different plot extent,
+map using that actual extent as today; the preferred size is not a new hard
+constraint. Do not add another `rangeStep` grammar or a sizing solver.
+
+Reuse `ScaleResolution.observeMapping()` for settled domain, fractional ranks,
+cuts, width, and property updates. Defer this hookup to existing post-guide/
+post-scale configuration (`configurePostScaleParams` after
+`configureViewsAfterScaleResolution` initializes scales); keep construction-time
+size-expression registration intact. `ViewFactory` calls `registerSizeInvalidation`
+before guides/assemblies are configured, and `observeMapping` eagerly initializes
+the scale, so subscribing there would be too early for inherited view-level
+properties or URL-backed locus assemblies. Preserve existing subscription
+disposal/idempotence, including dynamically added views, without a new lifecycle
+or event family.
+
+Retain old/new `SizeDef` comparison before `requestLayoutReflow()` and existing
+ancestor cache invalidation. A cut moving with unchanged gap span must repaint
+without reflow; width, gap span, domain, or padding updates reflow only when
+preferred size changes. Range/extent notifications from layout must settle with
+the same preferred size. Do not create a second sizing snapshot. On a step-sized
+axis, gap width/cut expressions must be independent of that axis's allocated
+extent, directly or indirectly. External parameter-driven gaps remain supported.
+The existing parameter graph does not reliably detect a cycle crossing imperative
+arrangement and its width/height setters. No iterative layout solver or general
+dependency-validation framework is part of this feature; see the bounded open
+enforcement question below.
+
+`step.for = "offset"` keeps its existing behavior on non-gapped primary scales.
+For a hypothetical supported nested case, the algebra is
+`primaryStep = offsetStep * offsetBandSpace / (1 - primaryPaddingInner)`, then
+add the primary gap footprint once. That equation alone does not make a shared
+offset scale occurrence-local: its current `bandwidth('x') * width` range is
+wrong when gapped parents have different extents. Initially reject inferred
+categorical offsets under a statically gapped primary band for either step target
+(and the default offset target). Numeric pixel offsets retain existing semantics.
+Do not use this feature to introduce dependent renderer scale composition.
+
+Share `bandstep(channel, extent)` through the forward mapping contract. Retain
+its signed base-step meaning and required extent for gapped scales; it cannot
+represent category-specific displacement across a cut.
 
 Categorical dendrograms retain their existing dense-rank midpoint semantics:
 leaves align with cells and shared-node endpoints join, but internal branches
@@ -224,7 +310,7 @@ lazy-source docs together. Depend on active domain, effective cuts, and range
 direction; keep guides domain-inert. Test mixed band/index axes and the Cartesian
 product. Ordinary ticks, labels, and grid lines use category encodings. Update
 `axisLabelLayout.js` both to use the actual axis occurrence's extent and
-`bandGapMapping(extent)` for CPU positions, and to invalidate on reactive gap
+`gapMapping(extent)` for CPU positions, and to invalidate on reactive gap
 changes. Using `resolution.getAxisLength()` (the smallest shared member) and
 resolution-default `scale(value)` would check different label positions from
 those rendered in a larger occurrence. Overlap/flush decisions must update even
@@ -242,7 +328,7 @@ large shared members, including aligned annotation axes.
 - **Canvas2D/SVG:** add categorical placement-local projection to
   `immediate/markEncoding.js` and exhausted-occurrence handling in `markData.js`.
   Preserve conditional encodings, datum/expression positions, secondary band
-  endpoints, nested offsets, and export-size behavior. Do not coerce categories
+  endpoints, supported pixel offsets, and export-size behavior. Do not coerce categories
   with `Number()` or use index peer endpoint corrections.
 - **WebGPU:** extend the renderer-generic public band scale API with numeric dense
   cuts/width and live updates. Update Core's `webGpuMarkAdapter.js` band config
@@ -253,6 +339,30 @@ large shared members, including aligned annotation axes.
   Share table/fit infrastructure without imposing index `gapDomain` navigation
   state. Keep renderer examples generic and typed-array based.
 
+### KISS/DRY boundary and production size
+
+Share the existing numeric cut normalization, `gapRank`, static enablement,
+completed mapping publication, cut tables/uploads, and forward projection/fit
+consumers. Category-to-rank resolution is a thin band-specific boundary. Keep
+the denominator floors, reversed within-band anchors, and inversion/navigation
+semantics explicit in their scale implementations; similar arithmetic does not
+justify making them one scale model.
+
+Keep the additive preferred-size calculation in `View` and reuse index rank
+accounting. Extract a tiny pure helper only when its call sites remove repeated
+logic overall; a few local arithmetic lines are preferable to strategy objects,
+base classes, option matrices, or separate band/index sizing services. Do not
+copy `indexGapMapping.js` and its navigation code into a band variant. Do not
+copy Vega's entire band implementation merely to add gap offsets if composition
+preserves its contract with less code.
+
+Before implementing, measure the touched production areas. At `be31682a6`,
+`scaleIndex.js` is 281 lines, `indexGapMapping.js` 228, `scalePosition.js` 44,
+WebGL `gl/indexGaps.js` 53, and `view.js` 1,894 (`wc -l`, including comments).
+Compare their diff plus any new shared/band modules after implementation.
+Feature code may grow, but an abstraction must earn its cost through removed
+duplication or a concrete correctness benefit; moving lines is not a reduction.
+
 ## Established designs and alternatives
 
 - [D3 band scales](https://d3js.org/d3-scale/band) establish categorical band
@@ -261,6 +371,9 @@ large shared members, including aligned annotation axes.
 - [Vega band scales](https://vega.github.io/vega/docs/scales/#band-scales) distinguish
   fixed extent and fixed step. Follow the installed Vega implementation's exact
   geometry/inversion behavior rather than assuming all D3 formulas match.
+- [Vega-Lite step-based sizing](https://vega.github.io/vega-lite/docs/size.html#step)
+  preserves per-step sizing, including the choice of positional or offset steps.
+  Keep GenomeSpy's existing view-size contract and add only the gap footprint.
 - [ComplexHeatmap slice gaps](https://jokergoo.github.io/ComplexHeatmap-reference/book/a-single-heatmap.html#gaps-between-slices)
   demonstrate independent physical row/column separators. Borrow the visual
   convention, without adding clustering/slice ownership to a scale.
@@ -300,20 +413,31 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 ### 2. Heat-map rendering, guides, and sizing across backends
 
 - [ ] Integrate WebGL, immediate/SVG, and generic WebGPU band mapping/resources;
-      update fit checks, picking, scaleGroups/axes, desired dimensions, nested offset
-      bandwidth for the supported contract, occurrence-local label layout, and
-      `bandstep` together. Resolve the nested-offset gate or explicitly exclude
-      unsupported combinations before asserting parity.
+      reuse forward projection and fit consumers; update picking, scaleGroups/axes,
+      desired dimensions, occurrence-local label layout, and `bandstep` together.
+      Reject automatically fitted categorical offsets on statically gapped primary
+      bands while preserving existing non-gapped offset behavior.
 - [ ] Bind expressions, normalize category cuts against completed domain state,
       update public specification types/JSDoc, and enable positional band-gap
-      validation only once the renderers and ordinary axes work together. Add one
-      Core minor changeset for the feature and reuse it through integration.
+      validation only once the renderers and ordinary axes work together. Correct
+      step-based sizing for band/index/locus using the bounded rules above. Add
+      one Core minor changeset covering band gaps and the step-sizing correction.
 - [ ] Extend existing focused tests in `scaleResolution.categorical.test.js`,
       `offsetScale.test.js`, `scaleGroupsSource.test.js`, SVG gap/axis suites, WebGL
-      shader/resource suites, and WebGPU adapter/surface suites. Add structured SVG
-      and layout tests using `test-genomespy-views`, including unequal shared-scale
-      placements and reactive step sizing. Assert pixels/geometry and source rows,
-      not only generated strings.
+      shader/resource suites, and WebGPU adapter/surface suites as needed for distinct
+      failure modes. Use a representative headless layout/structured SVG test for
+      preferred extent, cell step, gaps, and rendered guides together; reserve GPU
+      cases for shader lookup/fit behavior. Do not repeat the same sizing matrix
+      per backend or mirror the geometry formula in standalone tests.
+- [ ] Extend `view.test.js` step regressions with band padding/gaps and mapping-only
+      updates, then an index partial-gap case where fractional ranks change without
+      numeric endpoints changing. Include no-reflow when the gap footprint is
+      unchanged, startup-empty/zero-span behavior, static-disabled compatibility
+      versus reactive zero/empty specialization, and categorical-offset rejection.
+      Verify subscription setup after inherited view-level scale/assembly config
+      and disposal on dynamic removal. Reuse existing grouped-bar tests for the
+      unchanged non-gapped offset contract. Cover scrollable content with fixed
+      viewport size using an existing layout test rather than a new harness.
 - [ ] Exercise real headless gapped specs through reorder/remove/reinsert,
       unchanged stable IDs, constant-disabled expressions, reactive enable/disable,
       and completed mapping observers. Review related tests for overlapping coverage.
@@ -331,8 +455,10 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 
 - [ ] Add a small two-axis categorical heat-map example and explain value-based
       cuts, ordinary padding, fixed pixel widths, filtering, and numeric categories
-      in `docs/grammar/scale.md`. Follow `examples/README.md` and documentation skills;
-      regenerate schema/doc types instead of editing generated output manually.
+      in `docs/grammar/scale.md`. Update step-size JSDoc and
+      `docs/grammar/composition/concat.md` to distinguish base step, cell bandwidth,
+      and added gap pixels. Follow `examples/README.md` and documentation skills;
+      regenerate affected schema/doc types instead of editing generated output manually.
 - [ ] Browser-check the new example on WebGL, Canvas2D, and WebGPU: resize, reverse
       Y, change cuts/width/order, hover and point-select cells beside gaps, confirm
       empty gaps have no hit, then export SVG and raster at a different size/DPR.
@@ -345,11 +471,11 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
       Index navigation and half-open interval rendering must retain current behavior.
       This does not add automatic dendrogram group cuts.
 - [ ] Run relevant Vitest suites with the agent reporter, workspace type checks,
-      lint, relevant GPU tests, docs/schema checks, and release checks. Broaden to the
-      full unit suite because shared scale/rendering contracts cross packages.
+      applicable lint, GPU, docs/schema, and release checks. Stop when relevant
+      checks pass; broaden only for concrete unresolved integration risks.
 - [ ] Obtain final integration review, resolve worthwhile findings, and reconcile
       every pending task before committing the plan's final state. Delete the plan
-      in a later commit before creating a PR or merging.
+      in a later commit before merge; retain the active plan in draft PR discussion.
 - Tentative commit: `docs(core): demonstrate grouping gaps on categorical heat maps`
 
 ## Acceptance criteria
@@ -357,30 +483,27 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 1. Named rows/columns display independent fixed CSS-pixel gaps with equal cell
    bandwidths, correct categorical labels, and aligned annotation tracks.
 2. Forward/reversed ranges, padding, explicit band anchors, singleton groups,
-   and full-cell rectangular coverage agree across CPU/GPU. Nested offsets have
-   either an agreed occurrence-local contract with matching tests or a clear
-   unsupported boundary; no silently incorrect sub-band widths are accepted.
+   and full-cell rectangular coverage agree across CPU/GPU. Automatically fitted
+   categorical offsets on gapped primary bands fail clearly; non-gapped grouped
+   bars and supported numeric pixel offsets keep their existing behavior.
 3. Resize, reactive cuts/width, and domain reorder/filtering publish settled
    geometry, size, and guides while preserving domain values and stable IDs.
 4. Picking and point selection identify cells beside gaps and no cell in a gap;
    CPU inversion reports no category for empty gap space.
-5. Step-sized dimensions grow by total gap width; fixed dimensions reserve space
-   by shrinking cells. Unequal shared placements and exports use their own extent.
+5. At preferred extent, `step * dataSpace + displayedGapPixels` recovers the
+   requested base step for band and gapped index/locus views. Fractional index
+   gaps contribute fractional width, and same-footprint updates do not reflow.
+   Fixed dimensions shrink cells; scrolling keeps viewport size fixed. Unequal
+   shared placements and exports use their own allocated extent.
 6. Disabled gaps follow existing band behavior without gap shader/resources;
    exhausted placements recover cleanly. Index/locus regression suites pass.
 
 ## Risks and questions to confirm before implementation
 
-- **Nested offsets in shared placements:** choose between introducing a
-  renderer-neutral per-occurrence parent-bandwidth contract and explicitly
-  rejecting nested categorical offsets where the parent extent differs from
-  its resolution default. This also affects export-sized layouts. The current
-  `bandwidth('x') * width` expression does not solve it. No general solution for
-  arbitrary extent-sensitive expressions is proposed by this plan. The smallest
-  initial scope would reject all automatically inferred categorical offset ranges
-  on statically gapped primary bands, keeping explicit numeric pixel offsets under
-  their existing owner-size semantics. Adding an extent argument to `bandwidth()`
-  alone cannot make a shared offset scale placement-aware.
+- **Nested offsets:** initially excluded as described above. Future automatic
+  fitting needs occurrence-local renderer composition, not just an extra extent
+  argument to `bandwidth()`. No solution for arbitrary extent-sensitive expressions
+  is proposed by this feature.
 - **Boundary ownership:** category-anchored cuts disappear when the named category
   is filtered out. The proposal deliberately chooses this simple rule. Confirm
   whether heat maps instead need persistent group membership through filtering;
@@ -392,6 +515,11 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
 - **Rounding:** the initial explicit rejection keeps scope bounded. Supporting
   rounded band cells while preserving exact gaps and backend parity needs a
   separate pixel-space rounding design, especially at fractional DPR/export size.
+- **Size-dependent expressions:** step-sized gap inputs must not read the same
+  axis's allocated extent. Use existing expression/ref metadata for a narrow
+  rejection where possible. Enforcement of indirect layout dependencies remains
+  open if that metadata cannot describe them cheaply; do not claim current graph
+  cycle checks cover imperative layout or expand this feature into a new solver.
 - **Performance:** normalize category cuts on domain/mapping changes, retain
   immutable cut tables, and avoid allocations during drawing. Measure focused
   code size and representative heat-map update behavior before and after any
@@ -405,12 +533,20 @@ D3 code adaptation requires its ISC notice. Do not copy ComplexHeatmap code.
   CPU axis-label overlap/flush calculations. Addressed above with explicit
   geometry, invalidation, and unequal-member verification requirements.
 - The review also identified the nested-offset bandwidth mismatch across unequal
-  shared placements. Recorded as an unresolved contract decision, with the
-  incorrect existing expression and two possible scope choices stated above.
-  The initial unconditional nested-offset acceptance promise has been removed.
+  shared placements. The 2026-11-02 revision resolves initial scope by excluding
+  automatically fitted categorical offsets rather than adding renderer machinery.
 - Public enablement originally preceded working renderer/axis consumers.
   Corrected the milestones to keep preparation internal and defer public types,
   validation, expression wiring, and release notes until integrated support.
 - Follow-up investigation clarified dendrogram scope: preserve rank-space
   internal-node centering, leaf alignment, and branch connectivity. Pixel-space
   recentering is separate work rather than an implied promise of band gaps.
+- The 2026-11-02 revision derives preferred extent from the existing forward
+  mapping, including index fractional gap ranks, and replaces the proposed
+  parallel band-mapping API with the shared forward capability. No runtime
+  abstraction or production code is added by this plan revision.
+- The sizing/KISS/DRY review identified premature subscription initialization
+  and reactive-zero denominator switching. Corrected both: connect mapping
+  observers after scale configuration and keep static specialization stable.
+  Extent-dependent gap expressions are explicitly outside the supported sizing
+  contract; cheap enforcement of indirect dependencies remains an open question.
