@@ -1,7 +1,7 @@
 {
   "description": [
     "Grouped categorical heatmap",
-    "Named rows and columns use independent grouping gaps while preserving a 20 px base step."
+    "Named rows and columns use independent grouping gaps while preserving a 30 px base step."
   ],
 
   "data": {
@@ -25,8 +25,8 @@
     ]
   },
 
-  "width": { "step": 20 },
-  "height": { "step": 20 },
+  "width": { "step": 30 },
+  "height": { "step": 30 },
 
   "mark": "rect",
 

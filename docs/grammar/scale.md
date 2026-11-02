@@ -227,7 +227,7 @@ domain `["A", "B", "C", "D"]`. Numeric categories are values, not ranks:
 
 This heatmap separates named rows and columns independently:
 
-EXAMPLE examples/docs/grammar/scale/band-grouping-gaps.json height=260
+EXAMPLE examples/docs/grammar/scale/band-grouping-gaps.json height=200
 
 With band scales, `paddingInner` controls proportional spacing between every
 pair of cells, while grouping gaps add pixels at selected boundaries. On point
