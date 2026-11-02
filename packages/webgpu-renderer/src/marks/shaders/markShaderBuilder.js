@@ -457,6 +457,8 @@ ${clauses.join("\n")}
     for (const name of Object.keys(channels)) {
         definedSymbols.add(`${name}_DEFINED`);
     }
+    if (gapChannels.some(({ channel }) => channel.scale.type === "band"))
+        definedSymbols.add("BAND_GAPS_ENABLED");
     if (placementIndex) {
         definedSymbols.add("PLACEMENT_ENABLED");
         if (drawPlacement) {

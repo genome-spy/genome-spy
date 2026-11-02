@@ -1,9 +1,10 @@
 import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
+import { bandSpace } from "vega-scale";
 import {
     createIndexGapMapping,
-    hasGroupingGaps,
-    normalizeGapPositions,
+    gapRank,
+    installGroupingGapProperties,
 } from "./indexGapMapping.js";
 
 const minimumDomainSpan = 1;
@@ -23,18 +24,6 @@ export default function scaleIndex() {
     let paddingOuter = 0;
     let align = 0.5;
 
-    /** @type {readonly number[]} */
-    let gapPositions = [];
-
-    let gapWidth = 0;
-
-    /**
-     * Pixel extent for converting gap widths to GenomeSpy's unit ranges.
-     * TODO: This should become unnecessary once GenomeSpy uses pixel ranges.
-     * @type {() => number}
-     */
-    let axisLength = () => 1;
-
     /** @type {readonly number[] | undefined} */
     let gapDomain;
 
@@ -42,18 +31,15 @@ export default function scaleIndex() {
     const gapMappings = new Map();
 
     /** @param {number} [extent] */
-    const getGapMapping = (extent = axisLength()) => {
-        const enabled = scale.props
-            ? hasGroupingGaps(scale.props)
-            : gapWidth > 0 && gapPositions.length > 0;
-        if (!enabled || extent <= 0) return;
+    const getGapMapping = (extent = gaps.axisLength()) => {
+        if (!gaps.enabled() || extent <= 0) return;
         let mapping = gapMappings.get(extent);
         if (!mapping) {
             mapping = createIndexGapMapping({
                 domain,
                 range,
-                cuts: gapPositions,
-                width: gapWidth / extent,
+                cuts: gaps.positions,
+                width: gaps.width / extent,
                 ranks: gapDomain,
                 paddingInner,
                 paddingOuter,
@@ -96,6 +82,7 @@ export default function scaleIndex() {
      * @type {import("./scaleIndex.js").ScaleIndex}
      */
     const scale = /** @type {any} */ (scaleFunction);
+    const gaps = installGroupingGapProperties(scale, () => gapMappings.clear());
 
     scale.invert = (y) =>
         getGapMapping()?.invertPoint(y).value ??
@@ -103,31 +90,20 @@ export default function scaleIndex() {
 
     scale.gapMapping = getGapMapping;
 
-    // @ts-expect-error Getter/setter overloads.
-    scale.gapPositions = function (_) {
-        if (!arguments.length) return gapPositions;
-        gapPositions = normalizeGapPositions(_);
-        gapMappings.clear();
-        return scale;
-    };
-
-    // @ts-expect-error Getter/setter overloads.
-    scale.gapWidth = function (_) {
-        if (!arguments.length) return gapWidth;
-        if (_ != null && (!Number.isFinite(_) || _ < 0)) {
-            throw new Error("Gap width must be a finite nonnegative number.");
-        }
-        gapWidth = _ ?? 0;
-        gapMappings.clear();
-        return scale;
-    };
-
-    // @ts-expect-error Getter/setter overloads.
-    scale.axisLength = function (_) {
-        if (!arguments.length) return axisLength();
-        axisLength = typeof _ === "function" ? _ : () => _;
-        gapMappings.clear();
-        return scale;
+    scale.sizeForStep = (step) => {
+        if (!gaps.enabled())
+            return step * bandSpace(domainSpan, paddingInner, paddingOuter);
+        if (!domainSpan && !gapDomain) return 0;
+        const first = gapDomain?.[0] ?? gapRank(gaps.positions, domain[0]);
+        const last = gapDomain?.[1] ?? gapRank(gaps.positions, domain[1], true);
+        return (
+            step *
+                Math.max(
+                    gapDomain ? Number.EPSILON : 1,
+                    domainSpan - paddingInner + 2 * paddingOuter
+                ) +
+            gaps.width * (last - first)
+        );
     };
 
     scale.gapDomain = () => gapDomain;
@@ -270,9 +246,9 @@ export default function scaleIndex() {
             .paddingOuter(paddingOuter)
             .align(align)
             .numberingOffset(numberingOffset)
-            .gapPositions(gapPositions)
-            .gapWidth(gapWidth)
-            .axisLength(axisLength);
+            .gapPositions(gaps.positions)
+            .gapWidth(gaps.width)
+            .axisLength(gaps.axisLength);
         if (scale.props) Object.assign(copy, { props: scale.props });
         return copy;
     };

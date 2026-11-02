@@ -26,6 +26,9 @@ export interface ScaleIndex {
 
     gapDomain(): readonly number[] | undefined;
 
+    /** Preferred CSS-pixel extent for a base step, including displayed gaps. */
+    sizeForStep(step: number): number;
+
     domain(): number[];
     domain(_: Iterable<number>, ranks?: readonly number[]): this;
 

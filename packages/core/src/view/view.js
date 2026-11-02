@@ -16,7 +16,6 @@ import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
-import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -34,7 +33,6 @@ import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
 import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";
-import { gapRank, hasGroupingGaps } from "../genome/indexGapMapping.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -623,58 +621,11 @@ export default class View {
 
             if (scale) {
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
-                let steps;
-                if (isDiscrete(scale.type)) {
-                    steps = scale.domain().length;
-                } else if (["locus", "index"].includes(scale.type)) {
-                    const domain = scale.domain();
-                    steps = peek(domain) - domain[0];
-                } else {
+                if (!("sizeForStep" in scale)) {
                     throw new ViewError(
                         `Cannot use step-based size with "${scale.type}" scale!`,
                         this
                     );
-                }
-
-                // TODO: Type guards maybe?
-                const _scale =
-                    /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus.js").ScaleLocus | import("../genome/scaleIndex.js").ScaleIndex} */ (
-                        scale
-                    );
-                const paddingInner =
-                    scale.type === "point" ? 1 : _scale.paddingInner();
-                const paddingOuter = _scale.paddingOuter();
-                let space = bandSpace(steps, paddingInner, paddingOuter);
-                let gapPixels = 0;
-
-                if (hasGroupingGaps(scale.props)) {
-                    const gapScale =
-                        /** @type {{gapPositions: () => readonly number[], gapWidth: () => number}} */ (
-                            /** @type {unknown} */ (scale)
-                        );
-                    const cuts = gapScale.gapPositions();
-                    if (scale.type === "index" || scale.type === "locus") {
-                        const indexScale =
-                            /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
-                                scale
-                            );
-                        const ranks = indexScale.gapDomain();
-                        if (!steps && !ranks) return { px: 0, grow: 0 };
-
-                        const domain = indexScale.domain();
-                        const firstRank =
-                            ranks?.[0] ?? gapRank(cuts, domain[0]);
-                        const lastRank =
-                            ranks?.[1] ?? gapRank(cuts, domain[1], true);
-                        gapPixels =
-                            gapScale.gapWidth() * (lastRank - firstRank);
-                        space = Math.max(
-                            ranks ? Number.EPSILON : 1,
-                            steps - paddingInner + 2 * paddingOuter
-                        );
-                    } else {
-                        gapPixels = gapScale.gapWidth() * cuts.length;
-                    }
                 }
 
                 const offsetChannel =
@@ -689,6 +640,7 @@ export default class View {
 
                 let effectiveStepSize = stepSize;
                 if (stepFor == "offset") {
+                    const paddingInner = scale.paddingInner?.() ?? 1;
                     if (paddingInner === 1) {
                         throw new ViewError(
                             "Offset-step sizing requires a primary scale with nonzero bandwidth.",
@@ -716,7 +668,10 @@ export default class View {
                     effectiveStepSize *= offsetSteps / (1 - paddingInner);
                 }
 
-                return { px: space * effectiveStepSize + gapPixels, grow: 0 };
+                return {
+                    px: scale.sizeForStep(effectiveStepSize),
+                    grow: 0,
+                };
             } else if (implicit) {
                 // Vega-Lite treats a missing positional channel as one
                 // discrete step. Keep explicit step sizes strict.

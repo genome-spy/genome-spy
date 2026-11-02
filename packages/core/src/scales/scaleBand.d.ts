@@ -20,6 +20,7 @@ export type NativeCategoricalScale = (
     type?: string;
     /** Point scales intentionally omit the inner-padding accessor. */
     paddingInner?: ScaleBand<Scalar>["paddingInner"];
+    paddingOuter: ScaleBand<Scalar>["paddingOuter"];
     invert(value: number): Scalar | undefined;
     invertRange(extent: readonly number[]): Scalar[] | undefined;
 };
@@ -27,6 +28,8 @@ export type NativeCategoricalScale = (
 export type CategoricalGapScale = NativeCategoricalScale & {
     props?: Scale;
     gapMapping(extent?: number): CategoricalGapMapping | undefined;
+    /** Preferred CSS extent for a base step, independent of occurrence layout. */
+    sizeForStep(step: number): number;
     gapPositions(): readonly number[];
     gapPositions(cuts: readonly number[] | null): CategoricalGapScale;
     gapWidth(): number;

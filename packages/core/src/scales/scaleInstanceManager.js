@@ -3,6 +3,7 @@ import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { isScalar } from "../utils/variableTools.js";
 
 import createScale, {
     configureScaleProperties,
@@ -321,8 +322,6 @@ export default class ScaleInstanceManager {
         const width = bind(gaps ? (props.gapWidth ?? 6) : 0, true);
         /** @type {import("../spec/scale.js").Scale["gapPositions"]} */
         let previousPositions;
-        /** @type {readonly any[]} */
-        let previousDomain = [];
         let gapPositions = normalizeGapPositions(null);
         // Expressions may bootstrap parameters that reference this scale. Once
         // bound, graph cycle checks guard feedback and observers can read mapping.
@@ -331,14 +330,15 @@ export default class ScaleInstanceManager {
             const state =
                 scale.type === "null" ? null : this.#domainState.get();
             const domain = state ? state.visibleDomain : [];
+            const previous = this.mapping.get();
             const rawPositions = positions(null);
             if (
                 rawPositions !== previousPositions ||
-                (categorical && !shallowArrayEquals(previousDomain, domain))
+                (categorical &&
+                    !shallowArrayEquals(previous?.domain ?? [], domain))
             ) {
                 gapPositions = this.#resolveGapPositions(rawPositions, domain);
                 previousPositions = rawPositions;
-                previousDomain = domain;
             }
             const configuredRange = expressions?.map((expression) =>
                 expression(null)
@@ -353,7 +353,6 @@ export default class ScaleInstanceManager {
             if (command && !canUseCommand) this.#rangeCommandActive = false;
             const range =
                 command && canUseCommand ? command.range : configuredRange;
-            const previous = this.mapping.get();
             // Interpolating schemes and rangeStep depend on domain cardinality.
             const prepared =
                 scale.type === "null" ||
@@ -449,22 +448,15 @@ export default class ScaleInstanceManager {
                 throw new Error(
                     "Band/point gapPositions must be an array of category values or null."
                 );
-            const ranks = new Map(
-                domain.map((category, rank) => [category, rank])
-            );
+            if (!value.every(isScalar))
+                throw new Error(
+                    "Gap categories must be strings, numbers, or booleans."
+                );
+            const categories = new Set(value);
             return normalizeGapPositions(
-                value.flatMap((category) => {
-                    if (
-                        !["string", "number", "boolean"].includes(
-                            typeof category
-                        )
-                    )
-                        throw new Error(
-                            "Gap categories must be strings, numbers, or booleans."
-                        );
-                    const rank = ranks.get(category);
-                    return rank > 0 ? [rank] : [];
-                })
+                domain.flatMap((category, rank) =>
+                    rank > 0 && categories.has(category) ? [rank] : []
+                )
             );
         }
         if (value !== "chromosomes")

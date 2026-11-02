@@ -40,18 +40,11 @@ float scaleBandGaps_${name}(uint value, vec2 domain, vec2 range,
     float paddingInner, float paddingOuter, float align, float band) {
     float gap = uGapGeometry_${name}.x / ${axis};
     float count = uGapGeometry_${name}.z;
-    float available = abs(range.y - range.x) - gap * count;
-    float n = domain.y - domain.x;
-    float space = n - paddingInner + 2.0 * paddingOuter;
-    float step = available / (space > 0.0 ? space : 1.0);
-    float start = min(range.x, range.y) + (available - step * (n - paddingInner)) * align;
+    bool reverse = range.y < range.x;
+    vec2 compressed = range - (reverse ? vec2(gap * count, 0.0) : vec2(0.0, gap * count));
     float rank = float(gapRank_${name}(uvec2(value >> 12u, value & 4095u), false));
-    float offset = float(value) - domain.x;
-    if (range.y < range.x) {
-        offset = n - 1.0 - offset;
-        rank = count - rank;
-    }
-    return start + offset * step + gap * rank + step * (1.0 - paddingInner) * band;
+    return scaleBand(value, domain, compressed, paddingInner, paddingOuter, align, band)
+        + gap * (reverse ? count - rank : rank);
 }
 `
         );

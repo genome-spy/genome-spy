@@ -9,10 +9,10 @@
 
 import { bisectRight } from "d3-array";
 import { InternMap } from "internmap";
+import { bandSpace } from "vega-scale";
 import {
     gapRank,
-    hasGroupingGaps,
-    normalizeGapPositions,
+    installGroupingGapProperties,
 } from "../genome/indexGapMapping.js";
 
 /**
@@ -23,16 +23,6 @@ import {
  * @returns {import("./scaleBand.js").CategoricalGapScale}
  */
 export default function scaleBand(native) {
-    let ranks = new InternMap(native.domain().map((value, i) => [value, i]));
-
-    /** @type {readonly number[]} */
-    let cuts = [];
-
-    let width = 0;
-
-    /** @type {() => number} */
-    let axisLength = () => 1;
-
     /** @type {Map<number, import("./scaleBand.js").CategoricalGapMapping>} */
     const mappings = new Map();
 
@@ -43,6 +33,7 @@ export default function scaleBand(native) {
             native
         )
     );
+    const gaps = installGroupingGapProperties(scale, () => mappings.clear());
 
     // Native state stays authoritative; setters only invalidate derived geometry.
     for (const key of [
@@ -62,11 +53,6 @@ export default function scaleBand(native) {
             const result = method(...args);
             if (result !== native) return result;
             mappings.clear();
-            if (key === "domain") {
-                ranks = new InternMap(
-                    native.domain().map((value, i) => [value, i])
-                );
-            }
             return scale;
         };
         /** @type {any} */ (scale)[key] = forward;
@@ -74,45 +60,44 @@ export default function scaleBand(native) {
 
     /** @param {number} [extent] */
     function getMapping(extent) {
-        const enabled = scale.props
-            ? hasGroupingGaps(scale.props)
-            : width > 0 && cuts.length > 0;
-        if (!enabled) return;
-        extent ??= axisLength();
+        if (!gaps.enabled()) return;
+        extent ??= gaps.axisLength();
         let mapping = mappings.get(extent);
         if (mapping) return mapping;
 
         const domain = native.domain();
-        const rankLookup = ranks;
-        const mappingCuts = cuts;
+        const cuts = gaps.positions;
         const range = native.range();
         const reverse = range[1] < range[0];
         const low = Math.min(...range);
         const high = Math.max(...range);
-        const gap = extent > 0 ? width / extent : 0;
-        const totalGap = mappingCuts.length * gap;
+        const gap = extent > 0 ? gaps.width / extent : 0;
+        const totalGap = cuts.length * gap;
         const fits = extent > 0 && high - low > totalGap;
-        const compressed = native
-            .copy()
-            .range(reverse ? [high - totalGap, low] : [low, high - totalGap]);
-        const bandwidth = fits ? compressed.bandwidth() : 0;
+        const factor = fits ? (high - low - totalGap) / (high - low) : 0;
+        const bandwidth = fits ? native.bandwidth() * factor : 0;
+
+        // With rounding disabled, compressing the native range is affine. Cache
+        // final starts once for both lookup and inversion, including their gaps.
+        const starts = domain.map((value, rank) => {
+            const preceding = gapRank(cuts, rank);
+            return fits
+                ? low +
+                      (native(value) - low) * factor +
+                      (reverse ? cuts.length - preceding : preceding) * gap
+                : NaN;
+        });
+        const lookup = new InternMap(
+            domain.map((value, rank) => [value, starts[rank]])
+        );
+        if (reverse) starts.reverse();
 
         /** @param {import("../spec/channel.js").Scalar} value @param {number} [band] */
         const position = (value, band = 0) => {
-            const rank = rankLookup.get(value);
-            if (rank === undefined) return;
-            if (!fits) return NaN;
-            const preceding = gapRank(mappingCuts, rank);
-            return (
-                compressed(value) +
-                (reverse ? mappingCuts.length - preceding : preceding) * gap +
-                bandwidth * band
-            );
+            const start = lookup.get(value);
+            return start === undefined ? undefined : start + bandwidth * band;
         };
 
-        // Only inversion needs the ordered starts; drawing remains allocation-free.
-        /** @type {number[] | undefined} */
-        let starts;
         /** @param {readonly number[]} bounds */
         const invertRange = (bounds) => {
             if (
@@ -125,9 +110,6 @@ export default function scaleBand(native) {
             const lo = Math.min(bounds[0], bounds[1]);
             const hi = Math.max(bounds[0], bounds[1]);
             if (Number.isNaN(lo) || Number.isNaN(hi)) return;
-            starts ??= (reverse ? domain.toReversed() : domain).map(
-                (value) => /** @type {number} */ (position(value))
-            );
             if (hi < starts[0] || lo > high) return;
 
             let a = Math.max(0, bisectRight(starts, lo) - 1);
@@ -142,7 +124,7 @@ export default function scaleBand(native) {
             position,
             invertRange,
             fits,
-            step: fits ? compressed.step() : 0,
+            step: fits ? native.step() * factor : 0,
             bandwidth,
         };
         mappings.set(extent, mapping);
@@ -150,6 +132,14 @@ export default function scaleBand(native) {
     }
 
     scale.gapMapping = getMapping;
+    scale.sizeForStep = (step) => {
+        const n = native.domain().length;
+        const inner = native.paddingInner?.() ?? 1;
+        return n
+            ? step * bandSpace(n, inner, native.paddingOuter()) +
+                  (gaps.enabled() ? gaps.width * gaps.positions.length : 0)
+            : 0;
+    };
     scale.step = () => getMapping()?.step ?? native.step();
     scale.bandwidth = () => getMapping()?.bandwidth ?? native.bandwidth();
     scale.invertRange = (bounds) => {
@@ -160,30 +150,6 @@ export default function scaleBand(native) {
     };
     scale.invert = (value) => scale.invertRange([value, value])?.[0];
 
-    // @ts-expect-error Getter/setter overloads.
-    scale.gapPositions = function (positions) {
-        if (!arguments.length) return cuts;
-        cuts = normalizeGapPositions(positions);
-        mappings.clear();
-        return scale;
-    };
-    // @ts-expect-error Getter/setter overloads.
-    scale.gapWidth = function (value) {
-        if (!arguments.length) return width;
-        if (value != null && (!Number.isFinite(value) || value < 0))
-            throw new Error("Gap width must be a finite nonnegative number.");
-        width = value ?? 0;
-        mappings.clear();
-        return scale;
-    };
-    // @ts-expect-error Getter/setter overloads.
-    scale.axisLength = function (value) {
-        if (!arguments.length) return axisLength();
-        axisLength = typeof value === "function" ? value : () => value;
-        mappings.clear();
-        return scale;
-    };
-
     scale.copy = () => {
         const copy = scaleBand(
             /** @type {import("./scaleBand.js").NativeCategoricalScale} */ (
@@ -191,7 +157,9 @@ export default function scaleBand(native) {
             )
         );
         copy.type = scale.type;
-        copy.gapPositions(cuts).gapWidth(width).axisLength(axisLength);
+        copy.gapPositions(gaps.positions)
+            .gapWidth(gaps.width)
+            .axisLength(gaps.axisLength);
         if (scale.props) copy.props = scale.props;
         return copy;
     };

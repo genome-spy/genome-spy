@@ -35,12 +35,20 @@ test("categorical gaps preserve equal cells, inverse membership, and copied stat
 });
 
 test("reversed padded bands use placement-local gaps and positive band anchors", () => {
-    const scale = create().domain(["A", "B", "C", "D"]).range([1, 0]);
+    const scale = create().domain(["A", "B", "C", "D"]).range([5, 2]);
     scale.paddingInner(0.2).paddingOuter(0.3).align(0.1);
     scale.gapPositions([2]).gapWidth(8);
 
     for (const extent of [100, 200]) {
         const mapping = scale.gapMapping(extent);
+        const compressed = create()
+            .domain(scale.domain())
+            .range([5 - 8 / extent, 2])
+            .paddingInner(0.2)
+            .paddingOuter(0.3)
+            .align(0.1);
+        expect(mapping.position("D")).toBeCloseTo(compressed("D"));
+        expect(mapping.bandwidth).toBeCloseTo(compressed.bandwidth());
         expect(mapping.position("B") - mapping.position("C")).toBeCloseTo(
             mapping.step + 8 / extent
         );
@@ -50,7 +58,7 @@ test("reversed padded bands use placement-local gaps and positive band anchors",
         expect(mapping.position("B", 0.5) - mapping.position("B")).toBeCloseTo(
             mapping.bandwidth / 2
         );
-        expect(mapping.invertRange([0, 1])).toEqual(["A", "B", "C", "D"]);
+        expect(mapping.invertRange([2, 5])).toEqual(["A", "B", "C", "D"]);
     }
     // Resolution-default inversion must use the same padded placement.
     scale.axisLength(100);
@@ -65,7 +73,10 @@ test("point scales share gap geometry while retaining zero bandwidth and singlet
         .axisLength(68);
 
     expect(scale.domain().map((value) => scale(value) * 68)).toEqual([
-        0, 20, 48, 68,
+        0,
+        expect.closeTo(20),
+        expect.closeTo(48),
+        68,
     ]);
     expect(scale.bandwidth()).toBe(0);
     expect(scale.invert(48 / 68)).toBe("C");

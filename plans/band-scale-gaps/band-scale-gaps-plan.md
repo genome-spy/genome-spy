@@ -145,6 +145,20 @@ domain normalization, and disabled-gap behavior. Preserve each public scale type
 and its discrete traits. Do not build a general discontinuous-scale framework or
 refactor the index navigation machinery as a prerequisite.
 
+The simplification revision uses ordinary native band positions as its source:
+with rounding disabled, compressing a band range is an affine transform. Cache
+the final category starts once per placement extent, then share that table
+between forward lookup and inversion. Do not keep a second rank map or copy a
+native scale for each placement. GPU band gaps similarly call their existing
+band function on the compressed range before adding the gap offset.
+
+Keep the three existing gap properties and their validation in one small shared
+installer for index and categorical scales. A scale-owned `sizeForStep(step)`
+computes preferred extent from the scale's own domain/padding/gap state; View
+retains offset-step selection and layout invalidation. These are internal
+capabilities, without a new grammar, geometry engine, or layout solver. Retained
+WebGPU translation shares one gap-property attachment path for both scale kinds.
+
 Extend existing `gapMapping(extent)` with a shared forward contract: `position`,
 `step`, and `fits`. `position` accepts the scale's domain value and includes the
 within-band anchor; band projection performs category lookup internally. Keep
@@ -567,8 +581,7 @@ dendrogram layout contract is introduced; real examples are regression smoke che
 
 Final verification on 2026-11-02:
 
-- Full unit suite: 575 files, 5,463 tests passed; the subsequently added shared
-  placement regression also passed its focused run.
+- Full unit suite after structural simplification: 575 files, 5,462 tests passed.
 - All workspace TypeScript checks passed; lint passed, with the last SVG test
   checked separately after addition.
 - Real Chrome WebGPU regression: three cases passed. Renderer Storybook built.
@@ -670,9 +683,15 @@ Final verification on 2026-11-02:
 - Final independent integration review found no further blocking correctness or
   KISS/DRY issues. Its documentation suggestion was incorporated: offset-step
   sizing needs nonzero primary bandwidth; point primaries can use `for: "position"`.
-- Size check after integration: the new CPU wrapper is 202 lines; index scale
+- Initial size check after integration: the new CPU wrapper is 202 lines; index scale
   and mapping stay at 281/228 lines, `scalePosition.js` stays at 44, WebGL gap
   helpers grow from 53 to 83, and `view.js` grows from 1,894 to 1,947. WebGPU
   replaces its 78-line index helper with a 98-line shared grouping helper.
   Cut resources, fit checks, and forward consumers are shared; numeric navigation
   remains separate. No general scale or layout framework was introduced.
+- A further structural review selected native affine compression and shared
+  final-position tables, scale-owned preferred extents, shared gap properties,
+  and one retained GPU metadata path. Independent review confirmed snapshot/copy
+  independence, static-disabled behavior, point inversion, fractional index gaps,
+  and offset-step composition. Full tests, workspace types, lint, three real GPU
+  cases, and four WebGL examples passed after the change.
