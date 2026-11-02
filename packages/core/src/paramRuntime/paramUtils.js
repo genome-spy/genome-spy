@@ -167,7 +167,16 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
                         '" must have encodings defined!'
                 );
             }
-            return createIntervalSelection(select.encodings);
+            return param.value
+                ? {
+                      type: "interval",
+                      intervals: {
+                          ...createIntervalSelection(select.encodings)
+                              .intervals,
+                          ...param.value,
+                      },
+                  }
+                : createIntervalSelection(select.encodings);
         }
         throw new Error(
             'Unknown selection config for parameter "' + param.name + '".'

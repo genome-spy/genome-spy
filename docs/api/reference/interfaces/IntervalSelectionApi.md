@@ -67,6 +67,8 @@ Clears the selection and publishes the cleared state when it changed.
 
 Tests whether a canvas point is inside the current interval selection.
 Coordinates are CSS pixels relative to the embedded GenomeSpy canvas.
+Requires an unambiguous interaction host; value reads and subscriptions
+do not depend on host geometry.
 
 #### Parameters
 

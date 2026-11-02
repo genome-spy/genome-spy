@@ -72,6 +72,7 @@ export class IntervalSelectionController {
             selectionRect
         );
 
+        paramRuntime.getIntervalSelectionState(name);
         this.#unregisterSelectionController =
             paramRuntime.registerSelectionController(name, this);
     }
@@ -91,17 +92,14 @@ export class IntervalSelectionController {
     /** @type {() => void} */
     #unregisterSelectionController = () => {};
 
+    /** @type {(() => void)[]} */
+    #scaleDisposers = [];
+
     /** @type {string} */
     #selectionName;
 
     /** @type {import("../../paramRuntime/viewParamRuntime.js").default} */
     #selectionRuntime;
-
-    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>} */
-    #scaleResolutions;
-
-    /** @type {Set<{ listener: (selection: import("../../types/selectionTypes.js").IntervalSelection) => void }>} */
-    #commitListeners = new Set();
 
     /**
      * @param {string} type
@@ -120,7 +118,7 @@ export class IntervalSelectionController {
         this.#cancelActiveDrag();
         this.#unregisterSelectionController();
         this.#viewListeners.dispose();
-        this.#commitListeners.clear();
+        this.#scaleDisposers.splice(0).forEach((dispose) => dispose());
     }
 
     /**
@@ -135,51 +133,12 @@ export class IntervalSelectionController {
     }
 
     /**
-     * Converts selection intervals using the scales that own the selection.
-     *
-     * @param {import("../../types/selectionTypes.js").IntervalSelection["intervals"]} intervals
-     * @returns {import("../../types/embedApi.js").ComplexIntervals}
-     */
-    getComplexIntervals(intervals) {
-        return Object.fromEntries(
-            Object.entries(intervals).map(([channel, interval]) => {
-                const primaryChannel =
-                    /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ (
-                        channel
-                    );
-                return [
-                    primaryChannel,
-                    interval
-                        ? [
-                              this.#scaleResolutions[primaryChannel].toComplex(
-                                  interval[0]
-                              ),
-                              this.#scaleResolutions[primaryChannel].toComplex(
-                                  interval[1]
-                              ),
-                          ]
-                        : null,
-                ];
-            })
-        );
-    }
-
-    /**
-     * @param {(selection: import("../../types/selectionTypes.js").IntervalSelection) => void} listener
-     * @returns {() => void}
-     */
-    subscribeCommit(listener) {
-        const entry = { listener };
-        this.#commitListeners.add(entry);
-        return () => this.#commitListeners.delete(entry);
-    }
-
-    /**
      * Cancels an active gesture and clears a changed selection.
      */
     clear() {
-        this.#cancelActiveDrag();
-        this.#clearSelection();
+        this.#selectionRuntime
+            .getIntervalSelectionState(this.#selectionName)
+            .clear();
     }
 
     /**
@@ -207,10 +166,13 @@ export class IntervalSelectionController {
                 return [channel, resolution];
             })
         );
-        this.#scaleResolutions =
-            /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>} */ (
-                scaleResolutions
+        for (const resolution of Object.values(scaleResolutions)) {
+            const cancel = () => this.#cancelActiveDrag();
+            resolution.addEventListener("domain", cancel);
+            this.#scaleDisposers.push(() =>
+                resolution.removeEventListener("domain", cancel)
             );
+        }
 
         const requiresShiftToBrush = channels.some((channel) =>
             scaleResolutions[channel].isZoomable()
@@ -293,19 +255,16 @@ export class IntervalSelectionController {
             /** @type {import("../../types/selectionTypes.js").IntervalSelection} */
             selection
         ) => {
-            paramRuntime.setValue(name, selection);
+            paramRuntime.setValue(name, selection, {
+                intervalGesture: activeBrush ? this : undefined,
+            });
         };
-
-        if (param.value) {
-            setter({ type: "interval", intervals: param.value });
-        }
 
         const clearSelection = () => {
             if (isActiveIntervalSelection(selectionExpr())) {
                 setter(createIntervalSelection(channels));
             }
         };
-        this.#clearSelection = clearSelection;
 
         const isInsideHost = (/** @type {Point} */ point) =>
             this.host
@@ -497,6 +456,9 @@ export class IntervalSelectionController {
 
             const brush = { start: event.point, translatedRectangle };
             activeBrush = brush;
+            paramRuntime
+                .getIntervalSelectionState(name)
+                .begin(this, () => this.#cancelActiveDrag());
             setIntervalDragActive(Boolean(translatedRectangle));
             if (!translatedRectangle) {
                 clearSelection();
@@ -560,15 +522,21 @@ export class IntervalSelectionController {
                 setter({ type: "interval", intervals });
             };
 
-            this.#cancelActiveDrag = startDocumentDrag({
+            const state = paramRuntime.getIntervalSelectionState(name);
+            const cancel = startDocumentDrag({
                 onMove: mouseMoveListener,
                 hoverContext: view.context,
                 onFinish: () => {
                     activeBrush = null;
                     setIntervalDragActive(false);
                 },
-                onRelease: () => this.#notifyCommit(),
+                onRelease: () => state.finish(this, true),
             });
+            this.#cancelActiveDrag = () => {
+                const canceled = cancel();
+                state.finish(this, false);
+                return canceled;
+            };
         });
 
         this.#viewListeners.add("mouseup", (event) => {
@@ -626,7 +594,7 @@ export class IntervalSelectionController {
                 clearEventConfig.type,
                 (event) => {
                     if (canClear(event)) {
-                        clearSelection();
+                        this.clear();
                         event.stopPropagation();
                     }
                 },
@@ -716,31 +684,6 @@ export class IntervalSelectionController {
                 event.stopPropagation();
             }
         });
-
-        // Setup has already initialized and read the selection expression.
-        const selectionRef = paramRuntime.getParamRef(name);
-
-        this.host.view.registerDisposer(
-            paramRuntime.effect([selectionRef], () => {
-                if (!activeBrush) {
-                    this.#notifyCommit();
-                }
-            })
-        );
-    }
-
-    /** @type {() => void} */
-    #clearSelection = () => {};
-
-    #notifyCommit() {
-        const selection = this.#selectionRuntime.getValue(this.#selectionName);
-        for (const entry of [...this.#commitListeners]) {
-            try {
-                entry.listener(selection);
-            } catch (error) {
-                console.error(error);
-            }
-        }
     }
 }
 

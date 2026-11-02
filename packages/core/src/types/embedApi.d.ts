@@ -357,6 +357,8 @@ export interface IntervalSelectionApi {
     /**
      * Tests whether a canvas point is inside the current interval selection.
      * Coordinates are CSS pixels relative to the embedded GenomeSpy canvas.
+     * Requires an unambiguous interaction host; value reads and subscriptions
+     * do not depend on host geometry.
      */
     contains: (point: { x: number; y: number }) => boolean;
 }

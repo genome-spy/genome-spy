@@ -216,6 +216,8 @@ function createIntervalGridChildView(
     view.getScaleResolution = () =>
         /** @type {any} */ ({
             getResolvedScaleType: () => "linear",
+            addEventListener: () => {},
+            removeEventListener: () => {},
             getScale: () => scale,
             isZoomable: () => false,
             zoomExtent: [0, 1],
@@ -719,7 +721,7 @@ describe("GridChild interval selection interactions", () => {
         try {
             const child = new GridChild(view, layoutParent, 0);
             const controller =
-                view.paramRuntime.getSelectionController("brush");
+                view.paramRuntime.getIntervalSelectionState("brush");
             if (!controller) {
                 throw new Error("Expected an interval selection controller.");
             }

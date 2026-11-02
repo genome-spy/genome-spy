@@ -298,6 +298,13 @@ Interval selection snapshots keep these numeric ranges in `intervals`. They
 also expose `complexIntervals`: locus channels use `{ chrom, pos }` endpoints,
 numeric channels remain numeric, and cleared channels are `null`. The same
 snapshot shape is returned by `getValue()` and passed to subscriptions.
+Reading, observing, and clearing interval selections do not require an on-screen
+brush host. Only `contains({x, y})` needs one unambiguous interaction host in the
+selected scope. Change subscriptions observe settled updates during a drag;
+commit subscriptions report its changed result on release. Programmatic
+replacement or clearing cancels an active drag, so later pointer events cannot
+restore stale bounds. Cancellation alone retains the current bounds without
+emitting a completion.
 
 Current limitations:
 

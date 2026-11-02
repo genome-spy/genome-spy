@@ -1,5 +1,4 @@
 import { Datum } from "../data/flowNode.js";
-import { IntervalSelection } from "./selectionTypes.js";
 
 /** A mark and datum resolved from an internal picking identifier. */
 export interface InternalMarkHit {
@@ -51,11 +50,4 @@ export interface InteractionApi {
 /** Interaction host registered for an interval selection declaration. */
 export interface IntervalSelectionControllerApi {
     contains: (point: { x: number; y: number }) => boolean;
-    getComplexIntervals: (
-        intervals: IntervalSelection["intervals"]
-    ) => import("./embedApi.js").ComplexIntervals;
-    subscribeCommit: (
-        listener: (selection: IntervalSelection) => void
-    ) => () => void;
-    clear: () => void;
 }

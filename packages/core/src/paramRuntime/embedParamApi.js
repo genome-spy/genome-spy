@@ -114,14 +114,11 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
     const select = asSelectionConfig(config.select);
     // Parameter initialization validates the selection kind.
 
-    const controller = isIntervalSelectionConfig(select)
-        ? runtime.getSelectionController(name)
+    const intervalState = isIntervalSelectionConfig(select)
+        ? valueRuntime.getIntervalSelectionState(name)
         : undefined;
-    if (isIntervalSelectionConfig(select) && !controller) {
-        throw new Error(
-            'Selection "' + name + '" has no interaction host in this scope.'
-        );
-    }
+    /** @param {import("../types/selectionTypes.js").Selection} selection */
+    const copy = (selection) => copySelection(selection, runtime, name);
 
     return /** @type {SelectionApi} */ ({
         type: select.type,
@@ -131,7 +128,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
 
         getValue() {
             ensureParamApiIsLive(lifecycle);
-            return copySelection(valueRuntime.getValue(name), controller);
+            return copy(valueRuntime.getValue(name));
         },
 
         subscribe(
@@ -139,11 +136,11 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
             /** @type {{ delivery?: "change" | "commit" }} */ options = {}
         ) {
             ensureParamApiIsLive(lifecycle);
-            if (options.delivery === "commit" && controller) {
+            if (options.delivery === "commit" && intervalState) {
                 return registerParamDisposer(
                     lifecycle,
-                    controller.subscribeCommit((selection) =>
-                        listener(copySelection(selection, controller))
+                    intervalState.subscribeCommit((selection) =>
+                        callEmbedListener(listener, copy(selection))
                     )
                 );
             }
@@ -154,7 +151,7 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
                 () => {
                     callEmbedListener(
                         listener,
-                        copySelection(valueRuntime.getValue(name), controller)
+                        copy(valueRuntime.getValue(name))
                     );
                 },
                 lifecycle
@@ -163,8 +160,8 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
 
         clear() {
             ensureParamApiIsLive(lifecycle);
-            if (controller) {
-                controller.clear();
+            if (intervalState) {
+                intervalState.clear();
             } else {
                 runtime.setValue(
                     name,
@@ -192,10 +189,17 @@ export function resolveEmbedSelection(view, name, lifecycle = {}) {
               }
             : {}),
 
-        ...(controller
+        ...(intervalState
             ? {
                   contains(point) {
                       ensureParamApiIsLive(lifecycle);
+                      const controller = runtime.getSelectionController(name);
+                      if (!controller)
+                          throw new Error(
+                              'Selection "' +
+                                  name +
+                                  '" has no interaction host in this scope.'
+                          );
                       return controller.contains(point);
                   },
               }
@@ -260,10 +264,11 @@ function resolvePointSelectionKeys(view, select, keys) {
 
 /**
  * @param {import("../types/selectionTypes.js").Selection} selection
- * @param {import("../types/interactionApi.d.ts").IntervalSelectionControllerApi} [intervalController]
+ * @param {import("./viewParamRuntime.js").default} runtime
+ * @param {string} name
  * @returns {import("../types/embedApi.js").SelectionSnapshot}
  */
-function copySelection(selection, intervalController) {
+function copySelection(selection, runtime, name) {
     if (isCategorySelection(selection)) {
         return {
             type: "point",
@@ -274,7 +279,6 @@ function copySelection(selection, intervalController) {
         };
     }
     if (isIntervalSelection(selection)) {
-        // Capability creation requires a controller for interval selections.
         return {
             type: "interval",
             active: Object.values(selection.intervals).some(
@@ -290,7 +294,8 @@ function copySelection(selection, intervalController) {
                     ]
                 )
             ),
-            complexIntervals: intervalController.getComplexIntervals(
+            complexIntervals: runtime.getComplexIntervals(
+                name,
                 selection.intervals
             ),
         };

@@ -1,6 +1,7 @@
 # Interactive gradient legends
 
-Status: proposed implementation; independent smell/KISS/DRY reviews complete.
+Status: milestone 1 implemented; milestones 2 and 3 pending.
+Independent plan smell/KISS/DRY reviews complete.
 Issue: [#610](https://github.com/genome-spy/genome-spy/issues/610).
 Base: `master` at `679b6b59d` (2026-11-02), including categorical legend
 binding from #609 / #637 and categorical projections from #608.
@@ -496,3 +497,15 @@ the reviewed plan on the feature branch for implementation/draft review. Before
 merge, reconcile every incomplete acceptance item as completed or explicitly
 discarded, commit that reconciliation, then remove the temporary plan in a later
 commit as required by `plan-genomespy-change`.
+
+## Milestone 1 checkpoint
+
+Interval initialization, detached semantic reads, clear, and commit delivery now
+resolve through parameter ownership. Controllers retain document gestures and
+geometry; external writes cancel their active gesture at setter ingress. A
+shared completion ref delivers release notifications after graph propagation.
+The controller lost 59 lines; the four affected runtime files plus the new
+selection state total 2,794 lines versus 2,673 previously. The net growth owns
+shared commit/cancellation semantics explicitly instead of duplicating them in
+every controller. Focused API, grid, gap, and selection-state tests verify the
+existing interactions and new host-independent contracts.
