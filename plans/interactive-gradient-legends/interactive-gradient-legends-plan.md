@@ -1,6 +1,6 @@
 # Interactive gradient legends
 
-Status: proposed implementation; independent smell/KISS/DRY review complete.
+Status: proposed implementation; independent smell/KISS/DRY reviews complete.
 Issue: [#610](https://github.com/genome-spy/genome-spy/issues/610).
 Base: `master` at `679b6b59d` (2026-11-02), including categorical legend
 binding from #609 / #637 and categorical projections from #608.
@@ -72,7 +72,7 @@ The relevant architecture is [Core's overview](../../packages/core/ARCHITECTURE.
 | Numeric domain-to-ramp position                                       | `data/sources/lazy/legendGradientSource.js`. Share its exact normalized position mapping between ramp samples, ticks, brush inversion, and overlay projection.                                                            |
 | Rendering and retained resources                                      | Existing CPU predicate path, `rendering/webgl/marks/webGlMark.js`, `rendering/webgl/gl/glslScaleGenerator.js`, and `rendering/webgpu/webGpuMarkAdapter.js` / `webGpuSurface.js`. Renderer resources remain backend-owned. |
 | SVG ramp optimization                                                 | `rendering/svg/legendGradient.js`. Optimize only the ramp; render brush and labels through ordinary generated marks.                                                                                                      |
-| Bookmarks, undo/redo, provenance labels                               | App `state/paramValueSerialization.js`, `paramProvenanceBridge.js`, and `paramActionInfo.js`. Persist component and numeric bounds without row keys.                                                                      |
+| Bookmarks, undo/redo, provenance labels                               | App `state/paramValueSerialization.js`, `paramProvenanceBridge.js`, and `paramActionInfo.js`. Persist component and bounds without row keys, explicitly encoding an unbounded numeric upper endpoint for JSON.            |
 
 Current constraints that the implementation must address explicitly:
 
@@ -98,6 +98,9 @@ Current constraints that the implementation must address explicitly:
 6. Native scalar interval predicates use `[lo, hi)`, while legacy positional
    filter/helper paths include some closed comparisons. Add correct numeric
    legend membership without silently changing existing positional contracts.
+   At the legend's greater-value edge, publish `+Infinity` as the upper bound;
+   existing scalar comparisons then include the domain maximum without a new
+   inclusive/exclusive policy. Audit transport and value validation separately.
 7. `collectSamplingSelections()` currently admits every interval leaf. Restrict
    preservation to the existing record/positional cases so a color interval
    cannot bypass semantic sampling; keep eligible leaves independent of Boolean
@@ -128,31 +131,64 @@ state machine is also insufficient.
 
 ### Endpoints, clear, and out-of-domain values
 
-Use finite numeric data bounds with the native half-open test `lo <= v && v < hi`.
-A full-ramp brush stores `[domainMin, domainMax)` and excludes a row exactly at
-`domainMax`. Clearing removes the constraint and is how to include every value,
-including values outside the displayed domain. Label the selected range with
-its exclusive upper bound in documentation and endpoint feedback. Do not add
-epsilon adjustments, infinity sentinels, endpoint flags, or a global closed-range
-rule. This choice preserves the native predicate and retained renderer contract.
+Keep the native half-open test `lo <= v && v < hi`. Interior brushes use finite
+data bounds, for example `[0.3, 0.7)`. When a nonzero brush reaches the ramp's
+numeric maximum, publish `[lo, +Infinity)` and label it `score >= lo` (visually
+`≥ 0.3`). The greater-value edge can be on either screen side depending on
+orientation and reversal. Recognize that edge from the clamped ramp geometry,
+not rounded label text or approximate equality after nonlinear inversion.
+
+A full-ramp brush stores `[domainMin, +Infinity)`. It includes an exact
+domain-maximum row and finite values above the displayed maximum; that upper
+bound remains unbounded if the domain later expands. Values below `domainMin`
+still do not match. Clearing removes the entire constraint, including the lower
+bound. A zero-width gesture at the maximum does not become an open-ended range.
+This is an explicit upper-edge gesture rule, not a new endpoint-inclusion policy,
+an epsilon adjustment, or a change to existing x/y interval behavior.
 
 `null` is clear; an API-authored `[v, v]` remains an active zero-width range
 matching no rows. Missing, nonnumeric, NaN, and infinite row inputs do not match
 an active numeric interval. Comparison is against the raw input before scale
 output or visual clamping, including in explicit filters.
 
-Keep stored bounds when the source or domain changes. Clip only the displayed
-overlay to the current ramp; do not clamp programmatic writes or rewrite state
-on domain notifications. Project labels from stored endpoints, preserving the
-range even when the visible overlay is partial or absent. Cancel an active drag
-if its mapping/domain or host is replaced, before accepting further drag events.
+Keep stored bounds when the source or domain changes. Clip domain bounds to the
+visible ramp before projecting overlay coordinates, so `+Infinity` never enters
+layout, position-scale inversion, or log/linear gesture arithmetic. Labels show
+the stored semantics: finite ranges retain their exclusive upper label, while
+an unbounded upper endpoint shows `≥ lo`, including when the visible overlay is
+partial or absent. Cancel an active drag if its mapping/domain or host changes.
+
+Translation and wheel resize start from the finite visible interval and reuse
+the existing gesture operations. Publish only when the clamped interval changes
+along the ramp's active axis. Then sort domain bounds and promote the upper
+endpoint to `+Infinity` only when a nonzero resulting range reaches its
+numeric-maximum edge. Moving/resizing that edge inward restores a finite upper
+bound. Cross-axis movement, repeated document events, outward wheel input at a
+clamp limit, an unchanged press/release, domain notification, or host initialization
+never changes stored bounds. In particular, an API-authored finite
+`[lo, domainMax)` stays finite and excludes that maximum; authors request an
+open upper bound explicitly with `Infinity`.
+
+Runtime values, API snapshots, and `selectionBounds()` expose the numeric
+`Infinity` endpoint. At JSON boundaries, encode only this permitted unbounded
+upper endpoint with the explicit token `"Infinity"`, for example
+`{"type":"interval","intervals":{"color":[0.3,"Infinity"]}}`. The new legend
+initializer permits the same upper token in its channel-keyed value and converts
+it to the native numeric endpoint during initialization. App bookmark/provenance
+serialization encodes the token before JSON conversion, and restoration decodes
+it before validation/publication. Keep `color: null` as clear; a null endpoint
+inside a pair is invalid. Preserve existing finite and genomic formats, and keep
+this conversion at selection-value boundaries rather than in renderers or a
+general JSON replacer. Direct runtime writes accept numeric `Infinity`, not the
+serialized string. JSON round trips, undo/redo, and action labels must preserve
+the distinction between clear, a finite upper bound, and no upper limit.
 
 ### Ramp gesture defaults
 
 | Input                                                     | Rule                                                                                                                                                                                                                         |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primary-button drag on the ramp outside the current range | Create/replace the numeric interval; clamp pointer positions to the ramp and sort resulting data endpoints.                                                                                                                  |
-| Primary-button drag inside the visible current range      | Translate using the existing screen-space brush behavior and exact inverse mapping; keep the interval inside the displayed extent.                                                                                           |
+| Primary-button drag on the ramp outside the current range | Create/replace the numeric interval; clamp to the ramp and sort data endpoints. A nonzero range reaching the numeric maximum gets an unbounded upper endpoint.                                                               |
+| Primary-button drag inside the visible current range      | Translate the finite visible interval using existing screen-space behavior and exact inversion. Reapply the upper-edge rule after movement; moving inward restores a finite upper endpoint.                                  |
 | Press/release without movement outside the range          | Leave a cleared selection, matching the existing brush replacement path. A click inside the range leaves it unchanged.                                                                                                       |
 | Default double-click anywhere on the ramp                 | Clear this interval, including when the pointer is outside its current overlay.                                                                                                                                              |
 | `select.clear: false` or an authored clear event/filter   | Disable or replace the dedicated clear trigger. Normal creation/replacement still applies, including click-without-drag behavior.                                                                                            |
@@ -167,6 +203,27 @@ Use no delayed click/double-click repair or new source-dependent policy system.
 Record the endpoint and gesture choices in #610 and the grammar docs before
 interaction implementation, as that issue requests. Posting to GitHub is a
 separate implementation follow-up, outside this local plan-only task.
+
+### Brushing cursor
+
+Hovering the bound ramp outside an existing brush uses a native I-beam cursor
+perpendicular to the ramp's long axis:
+
+| Ramp orientation | Cursor          | Affordance                                            |
+| ---------------- | --------------- | ----------------------------------------------------- |
+| Horizontal       | `text`          | Vertical I-beam suggesting left/right range brushing. |
+| Vertical         | `vertical-text` | Horizontal I-beam suggesting up/down range brushing.  |
+
+Use the standard [CSS cursor keywords](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor)
+through existing cursor/hit routing, without custom cursor images or another
+interaction path. An existing brush retains `move` on hover and `grabbing` while
+translated, with authored `select.mark.cursor` taking its existing precedence.
+By default, creation keeps the orientation-appropriate I-beam until release or
+cancellation, including over its newly generated overlay.
+Titles, ticks, labels, padding, and unbound legends keep their ordinary cursor;
+reversal changes the value mapping, not cursor orientation. Browser verification
+must check native cursor changes over the actual ramp and overlay for horizontal,
+vertical, and reversed examples, plus restoration after leaving or disposal.
 
 ### Shared state, API, commits, and lifecycle
 
@@ -188,12 +245,13 @@ separate implementation follow-up, outside this local plan-only task.
   `params.get(name).setValue(intervalSelection({...}))`; add no parallel setter.
 - Validate the new numeric interval form at the shared parameter write boundary,
   reached by generic/scoped APIs and outer aliases, before publication or drag
-  cancellation. Require the declared component with `null` or two finite numeric
-  endpoints satisfying `lo <= hi`; reject undeclared/missing components, reversed
-  bounds, and malformed pairs. Reuse this check for numeric initial values. A bad
-  write leaves both current state and an active gesture intact. This is runtime
-  value validation, distinct from schema shape validation; preserve existing x/y
-  write contracts. Pointer dragging sorts its endpoints before this boundary.
+  cancellation. Require the declared component with `null` or a finite lower
+  endpoint and a finite or positive-infinite upper endpoint satisfying `lo <= hi`.
+  Reject NaN, negative infinity, an infinite lower endpoint, undeclared/missing
+  components, reversed bounds, and malformed pairs. Decode the permitted JSON
+  initializer/restore token before this shared validation. A bad write leaves
+  both current state and an active gesture intact. Preserve existing x/y write
+  contracts. Pointer dragging sorts and applies the upper-edge rule first.
 - Resolve geometry only when `contains({x, y})` is called. Preserve existing
   unambiguous scoped containment; ambiguous or absent geometry fails at that
   operation with a useful scope diagnostic. Existing authored view scopes choose
@@ -236,17 +294,18 @@ controller converts between a logical component's numeric interval and the
 host's physical x/y direction through this mapping; no second selection is stored.
 
 Extend the existing interval host boundary just enough to supply pointer/domain
-conversion, interval/rectangle projection, and ramp bounds. Keep creation,
-translation, wheel handling, document drag, and cancellation in the existing
-controller. Preserve index/locus gap-aware positional projection. Adapt generated
+conversion, finite visible interval/rectangle projection, and ramp bounds. Keep
+creation, translation, wheel handling, document drag, and cancellation in the
+existing controller. Preserve index/locus gap-aware positional projection. Adapt generated
 rectangle specs to take the component-to-screen mapping and reuse their normal
 chrome lifecycle. Any local geometry expressions derive from the native interval
 through the same position helper; they are not a separately writable parameter.
 
 Render a visible brush and readable lower/upper numeric labels with the ordinary
-generated rect/rule/text path. Reserve label space in legend layout and respect
-authored brush/legend styling. Keep the full ramp and ticks as a stable color
-key; do not add responsive ramp dimming in this first implementation. If generated
+generated rect/rule/text path; unbounded ranges show `≥ lo`. Reserve label space
+in legend layout and respect authored brush/legend styling. Keep the full ramp
+and ticks as a stable color key; do not add responsive ramp dimming in this first
+implementation. If generated
 feedback needs membership, bind its internal raw numeric input to the existing
 native predicate path without expanding public field projection grammar.
 
@@ -302,15 +361,20 @@ than leave compatibility wrappers or overlapping assertions.
   sampling eligibility, shared gradient mapping, legend ownership/routing,
   controller host projection, generated brush marks, and backend adapters.
 - Verification: focused authored-spec subsystem tests for linear/log mapping,
-  vertical/reversed display and drag direction, actual bounds, half-open maximum,
-  zero width versus clear, finite-input rejection, and predicate/filter parity.
+  vertical/reversed display and drag direction, actual bounds, finite half-open
+  interiors, upper-edge promotion, and restoring a finite upper bound by moving
+  or resizing inward. Cover zero width at the maximum versus clear, rejecting
+  nonfinite row inputs even for an unbounded range, and predicate/filter parity.
+  Verify cross-axis motion and wheel input at a clamp limit do not promote a
+  finite API-authored upper bound or emit a changed value/commit.
   Compose cell type AND activation, a differently named color field and explicit
   color-to-fill consumer, a ranged positional mark, and an independent x brush.
   Reject unsupported scale/binding/alias combinations at the right boundary.
   Test conflicting on/clear/zoom/style on a collected host, differing local
   settings on separate compatible hosts, and invalid API writes during a drag
   without cancellation or publication.
-  Add exported SVG assertions for one ramp plus visible brush/endpoint labels.
+  Add exported SVG assertions for one ramp plus visible finite/open-bound labels,
+  including a logarithmic range whose upper endpoint is `Infinity`.
 - Docs/migration: update legend, parameter, conditional-encoding, filter, and
   expression grammar as affected, regenerate schema/type tables, and record
   the two design decisions before interaction code. Existing point/symbol and
@@ -321,23 +385,30 @@ than leave compatibility wrappers or overlapping assertions.
 
 - Outcome: the feature survives source/domain replacement, undo/redo, bookmarks,
   and repeated actual GPU interaction, with a polished biological example.
-- Areas: App parameter serialization/restore/action titles, docs examples,
-  `scripts/testInteractiveLegends.mjs` and existing renderer test facilities,
-  SVG/Canvas output, and the feature's release fragment.
+- Areas: App parameter serialization/restore/action titles and
+  `state/paramProvenanceTypes.d.ts`, docs examples, `scripts/testInteractiveLegends.mjs`
+  and existing renderer test facilities, SVG/Canvas output, and the feature's
+  release fragment.
 - Verification: shared, independent, and collected gradients with explicit outer
   aliases; change/commit counts across two hosts; owner disposal/host removal;
   restored bounds before hosts initialize; writes/clear during and after drag;
   clipped overlays after domain shrink and restored overlays after expansion.
+  Round-trip the explicit `"Infinity"` token through real bookmark JSON and
+  undo/redo; keep finite/genomic formats compatible and reject malformed tokens.
   Exercise real WebGL/WebGPU drag, translate, wheel, clear, and picking/event
-  ordering. Check actual Canvas/SVG appearance. Count retained chart uploads and
-  bounded endpoint updates using existing hooks rather than a new benchmark.
+  ordering, including I-beam/move/grabbing cursor precedence and cleanup in both
+  orientations. Check actual Canvas/SVG finite/open-bound appearance. Count
+  retained chart uploads and bounded endpoint updates using existing hooks rather
+  than a new benchmark.
 - Example: `examples/docs/grammar/legend/interactive-gradient-legend.json`,
   illustrative immune cells with shape/cell-type selection AND color/activation
   interval. Clearly label synthetic coordinates/scores, show a stable explicit
-  color domain and an exact upper-maximum row, and explain half-open endpoints
-  and gestures. Reuse/extend the small existing immune-cell fixture where useful;
-  follow `examples/README.md` portable paths. Supplement with a focused log/
-  reversed/shared-host spec under `examples/core/` if it improves verification.
+  color domain, an exact upper-maximum row, and one finite score above that domain.
+  Explain half-open interior bounds, `≥ lo` at the greater end, cursor cues, and
+  move/resize back to a finite range. Reuse/extend the small existing immune-cell
+  fixture where useful; follow `examples/README.md` portable paths. Supplement
+  with a focused log/reversed/shared-host spec under `examples/core/` if it
+  improves verification.
 - Docs/release: use `write-genomespy-docs`, `debug-genomespy-web`, and
   `test-genomespy-views` for their applicable work. Add/reuse one Core minor
   feature changeset and include App only if its shipped behavior changes.
@@ -352,15 +423,27 @@ than leave compatibility wrappers or overlapping assertions.
       brush still work. Check titles/padding/other legends are inert for this range.
 - [ ] Representative linear and log examples produce expected numeric bounds,
       including a geometric midpoint for log, reversed vertical dragging, the
-      exact domain maximum, out-of-domain values, and nonfinite/missing inputs.
+      numeric-maximum edge in either screen direction, exact-maximum and higher
+      finite rows, and nonfinite/missing inputs. Interior upper bounds remain
+      exclusive; returning an open edge inward restores a finite upper bound.
       Explicit numeric filters agree; legacy positional endpoint behavior stays.
 - [ ] Two explicit compatible hosts share values and project independently.
       Reading values and expressions needs no host selection. Only containment
       requires unambiguous geometry. A drag produces no premature or duplicate
       commit from idle hosts; API writes/clear and disposal prevent stale replay.
+      With domains `[0,1]` and `[0,2]`, reaching the first host's maximum writes
+      `Infinity` for both hosts. Moving inward on the second writes a finite upper
+      bound; clipping it on the first does not promote it. Initialization, reads,
+      domain changes, no-op input, and idle observers never reinterpret either value.
 - [ ] Bookmark capture/restore and undo/redo retain logical components and numeric
-      bounds without row keys. Source/domain replacement retains stored bounds
-      and clips only the overlay. Existing genomic endpoint snapshots still work.
+      bounds without row keys, including `Infinity` via its explicit JSON token.
+      Source/domain replacement retains stored bounds and clips only the overlay;
+      it never promotes a finite bound or caps an unbounded one. Existing genomic
+      endpoint snapshots and persisted formats still work.
+- [ ] A horizontal ramp suggests brushing with a vertical I-beam (`text`), and
+      a vertical ramp uses a horizontal I-beam (`vertical-text`). Existing brush
+      move/grabbing and authored cursor precedence work; inert legend areas and
+      disposal do not leave a brushing cursor active.
 - [ ] WebGL/WebGPU pixels and input behavior agree with native membership;
       Canvas2D feedback and actual SVG export retain the full gradient, brush,
       and readable endpoints. SVG optimization does not consume overlay/label marks.
@@ -384,14 +467,24 @@ ownership, controller reuse, half-open endpoints, categorical reset separation,
 sampling adjustment, and existing generic WebGPU projection contract. No broader
 framework or additional selection state was recommended.
 
+A focused follow-up review covered the approved unbounded upper endpoint, finite
+gesture geometry, JSON encoding, and native I-beam cursor cues. Its clarifications
+are incorporated: only changed, clamped active-axis geometry can promote an
+endpoint, and a representative shared-host test uses different domains to prevent
+display clipping or idle observation from reinterpreting stored bounds. The
+original review conclusions still hold; no new policy or state framework is needed.
+
 ## Risks and remaining questions
 
 The largest risk is commit delivery and cancellation across aliases, especially
 external writes equal to current values. Resolve it in milestone 1 before adding
 hosts. The next risks are mismatched nonlinear inversion and accidentally relaxing
 positional mappings or semantic sampling; cover those through representative real
-consumers, not generated-shape snapshots. Endpoint labels must remain readable
-in collected/narrow legends without changing chart-domain ownership.
+consumers, not generated-shape snapshots. Open upper bounds must be clipped before
+gesture/layout math and explicitly encoded before JSON serialization. Domain
+changes and canceled gestures must not silently cap/promote stored bounds.
+Endpoint labels must remain readable in collected/narrow legends without changing
+chart-domain ownership, and cursor cues must agree with the active gesture.
 
 Endpoint and gesture rules are decided above for this proposal. No unresolved
 design gate blocks implementation once those choices are recorded in the issue
