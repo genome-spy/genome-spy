@@ -1,6 +1,6 @@
 # Rule border geometry: bounded design and proof
 
-Status: bounded qualification complete; native candidate rejected; no production implementation.
+Status: shared-mask arithmetic passes its initial coverage gate but fails cost qualification; no production implementation.
 Base: `0feee7824` (the reviewed fill prerequisite in PR #644, pending review).
 Requirement: https://github.com/genome-spy/genome-spy/issues/604 .
 
@@ -166,8 +166,10 @@ will produce consistent shared-edge coverage for both paints, with synchronous
 Canvas rendering and backend-owned resources. A single rotated solid rule with
 fractional paint opacity and an opaque internal-edge check is sufficient for
 its first gate. Do not recreate the six-context matrix or add more rendering
-machinery before that gate passes. No new representation is currently selected;
-the existing negative result stands until a concrete alternative is justified.
+machinery before that gate passes. The shared-mask continuation below passes
+the initial coverage gate but fails the subsequent bounded cost check. The
+other negative results remain valid for their own representations. No native
+composition implementation is selected, and no public border PR is qualified.
 
 Only after this coverage gate passes should the work return to complete dash
 geometry (including zero-on dotted patterns), occurrence order, bounds/picking,
@@ -194,3 +196,94 @@ butt-AA prerequisite and size estimate, narrowed the dash-geometry claim to the
 positive-length cases actually probed, documented the dotted-pattern omission,
 and stated the exact SVG test scope. The raw archived source and numeric results
 remain unchanged. This is a planning/evidence correction with no release impact.
+
+## Narrow continuation: derive the band from shared coverage
+
+Status: initial coverage gate passed; bounded performance gate failed; candidate rejected.
+The rejected geometric-ring candidates and their archived results stay unchanged.
+
+Use the existing native stroke operation to rasterize the nominal body once as
+an opaque white alpha mask `Cf`. Independently rasterize the expanded contour
+as `Co`; require nested coverage. Derive the band numerically through full-tile
+Canvas operations, rather than rasterizing an inner hole:
+
+1. An opaque full-tile source with `source-out` complements the outer alpha:
+   `A = 1 - Co`.
+2. `lighter` adds the shared nominal mask: `B = min(1, A + Cf)`.
+3. Another full-tile `source-out` complements it:
+   `Cs = 1 - B = max(0, Co - Cf)`.
+
+For `0 <= Cf <= Co <= 1`, this is exactly `Co - Cf`. Colorize copies of `Cf`
+and `Cs` with the fill/stroke paints using full-tile `source-in`, add the
+premultiplied contributions, then apply common opacity once. The source masks
+are white and independent of paint opacity. Full-tile complement/colorization
+rectangles have integer physical bounds and no shape-edge antialiasing.
+
+The arithmetic follows W3C compositing operator definitions, not copied code:
+https://www.w3.org/TR/compositing-1/ . Verify it on the complete nested 8-bit
+alpha domain before the browser experiment. Browser execution still needs proof;
+deferred Canvas drawing must not be assumed to preserve the intended operations.
+
+This remains synchronous and Canvas-owned. Reuse bounded surfaces; no painter
+pixel readback, bitmap flush tricks, extra GPU backend, dependencies or new public
+API. The first rendering gate is only one rotated solid butt-cap rule at DPR 1,
+with opaque/fractional paints, common opacity, and a transparent stroke checked
+against the unchanged native body. Do not expand into dash geometry, other
+backends or performance until this first gate passes. If it fails, stop this
+candidate and retain the existing no-implementation decision.
+
+### Initial gate result
+
+The complement/add/complement identity is exact for all 32,896 nested 8-bit
+coverage pairs. The browser proof uses normal Core embedding, native projection,
+and actual Canvas PNG export for one 45-degree solid butt-cap rule at DPR 1.
+Its nominal mask is rasterized by the same native stroke operation as the
+unbordered control. Only decoded export images are read for assertions.
+
+On Chrome 156/Metal, all five paint cases pass across 88 internal-edge pixels
+each (440 comparisons). Opaque alpha is 255 throughout; fractional fill/stroke
+and common-opacity results have at most one 8-bit channel error; a transparent
+stroke matches the entire original unbordered image byte-for-byte. The painter
+has no readback, asynchronous calls, image-bitmap snapshots, filter/flush hints,
+additional GPU backend or dependencies. It reuses three bounded Canvas surfaces.
+
+This establishes feasibility for the one tested primitive and paint cases only.
+Do not infer full contour, outer-edge, thin/subpixel-band, zero-width, other-cap,
+dash/dotted-pattern, DPR 2, cross-browser, order/picking or performance
+qualification. In particular, nested mask coverage and browser arithmetic where
+both masks are partially covered remain to be tested. No performance or API PR
+claim follows from this result. A production design must keep resource ownership
+and cleanup inside the existing Canvas backend, without per-datum retained state
+or a generic effects framework. The archived helper is a temporary prototype.
+
+Evidence is preserved separately in `rule-border-shared-mask-proof/` in this
+chat's artifact directory, including exact source, runner, algebra verification
+and raw results. The older rejected artifacts are unchanged.
+
+### Early cost gate: rejected implementation
+
+After the initial coverage gate passed, a single DPR-1 cost check used 1,000
+short diagonal rules on a 512x512 Canvas, through `GenomeSpy.renderAll()` and
+its public PNG export. Baseline was the unchanged prerequisite `0feee7824`;
+it was measured before and after the candidate. Warm medians used 21 repaints
+and nine PNG exports per case, with no painter readback or diagnostic flush.
+
+| Case                    | Synchronous repaint CPU time | PNG export wall time |
+| ----------------------- | ---------------------------: | -------------------: |
+| Baseline before / after |              0.2 ms / 0.2 ms |    16.7 ms / 16.7 ms |
+| Candidate, no outline   |                       0.2 ms |              16.7 ms |
+| Candidate, outlined     |                     217.3 ms |             439.6 ms |
+
+Repaint measures the actual synchronous Canvas submission path, not completed
+GPU execution. PNG timing also includes rasterization, encoding and browser
+scheduling. These are local measurements, not general performance promises.
+The outlined ceilings were 1.4 ms repaint and 35.4 ms PNG for this baseline;
+the candidate fails both. The no-outline cost gate passes. Do not raise the budgets or start a batching/resource framework to rescue
+this experiment. No further geometry matrix or production implementation follows.
+
+Conclusion: standard Canvas operations can express the required shared coverage
+for the tested primitive, so the earlier failures do not establish mathematical
+impossibility. This three-surface per-occurrence realization is nevertheless not
+a lean implementation. The next design checkpoint needs a concrete lower-cost
+representation before another candidate; no such representation is currently
+selected. Keep the strict coverage/no-dependency requirements and PR #644 intact.
