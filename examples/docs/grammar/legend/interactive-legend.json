@@ -23,14 +23,7 @@
     }
   ],
 
-  "config": {
-    "legend": {
-      "disable": false,
-      "symbolOpacity": 1,
-      "labelFontSize": 12,
-      "rowPadding": 6
-    }
-  },
+  "config": { "legend": { "labelFontSize": 12, "rowPadding": 6 } },
 
   "data": { "url": "data/immune-cell-activation.csv" },
 
