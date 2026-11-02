@@ -1446,9 +1446,11 @@ describe("Canvas2DViewRenderingContext", () => {
                 /** @type {import("../../view/unitView.js").default} */ (view)
                     .mark;
             const channels =
-                type == "rule" || type == "link"
+                type == "link"
                     ? ["color"]
-                    : ["fill", "stroke"];
+                    : type == "rule"
+                      ? ["fill"]
+                      : ["fill", "stroke"];
             const encoders =
                 /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
                     mark.encoders

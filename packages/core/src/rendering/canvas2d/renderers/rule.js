@@ -30,7 +30,7 @@ export function renderRuleCanvas(baseMark, options) {
         mark,
         mark.properties.strokeDashOffset
     );
-    const constantStroke = getDrawConstantPaint(encoders.color, options);
+    const constantStroke = getDrawConstantPaint(encoders.fill, options);
     /** @type {string | undefined} */
     let strokeStyle;
 
@@ -40,7 +40,7 @@ export function renderRuleCanvas(baseMark, options) {
         options,
         (instance) => {
             const stroke =
-                constantStroke ?? toPaintString(encoders.color(instance.datum));
+                constantStroke ?? toPaintString(encoders.fill(instance.datum));
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
                 options.viewOpacity;

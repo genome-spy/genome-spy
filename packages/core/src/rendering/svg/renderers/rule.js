@@ -23,7 +23,7 @@ export function renderRuleSvg(baseMark, options) {
         );
     const strokeDash = mark.properties.strokeDash;
     const encodeStyles = createSvgAttributeEncoder(group, {
-        stroke: { encoder: encoders.color, transform: toPaintString },
+        stroke: { encoder: encoders.fill, transform: toPaintString },
         "stroke-opacity": {
             encoder: encoders.opacity,
             transform: (value) => +value * viewOpacity,

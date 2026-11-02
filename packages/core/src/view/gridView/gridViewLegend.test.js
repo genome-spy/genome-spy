@@ -3204,7 +3204,7 @@ describe("GridView legends", () => {
                     .find((descendant) => descendant.name == "grid0");
                 const labelData = getUnitData(labels);
                 const symbolDatum = getUnitData(symbols)[0];
-                expect(symbols.mark.encoders.color(symbolDatum)).toBe("red");
+                expect(symbols.mark.encoders.fill(symbolDatum)).toBe("red");
 
                 expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
                     expect.objectContaining({ type: "rule" })
@@ -3234,7 +3234,7 @@ describe("GridView legends", () => {
                 );
                 view.paramRuntime.setValue("palette", { foreground: "white" });
                 await view.paramRuntime.whenPropagated();
-                expect(symbols.mark.encoders.color(symbolDatum)).toBe("white");
+                expect(symbols.mark.encoders.fill(symbolDatum)).toBe("white");
             }
         );
 
@@ -3270,7 +3270,7 @@ describe("GridView legends", () => {
             });
             const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
             const symbolDatum = getUnitData(symbols)[0];
-            expect(symbols.mark.encoders.color(symbolDatum)).toBe("red");
+            expect(symbols.mark.encoders.fill(symbolDatum)).toBe("red");
 
             expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
                 expect.objectContaining({ type: "rule" })
@@ -3285,7 +3285,7 @@ describe("GridView legends", () => {
             );
             view.paramRuntime.setValue("palette", { foreground: "white" });
             await view.paramRuntime.whenPropagated();
-            expect(symbols.mark.encoders.color(symbolDatum)).toBe("white");
+            expect(symbols.mark.encoders.fill(symbolDatum)).toBe("white");
         });
 
         test("updates quantitative size entries when a dynamic range changes", async () => {

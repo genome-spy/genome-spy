@@ -1,6 +1,6 @@
 # Core rule paints: smallest outline prerequisite
 
-Status: implementation authorized; explicit-fill prerequisite in progress.
+Status: implemented and verified; no PR opened.
 Baseline inspected: origin/master `2fda19d76`.
 Requirement: https://github.com/genome-spy/genome-spy/issues/604
 
@@ -88,3 +88,34 @@ transparent strokes revealing the nominal fill. Native geometry remains a real
 design task: do not assume two wider/narrower strokes satisfy strict Canvas
 coverage. Design that geometry before coding the border. Do not pull point,
 rectangle, arrow or text alignment migration into this prerequisite.
+
+## Implementation result
+
+- Rules accept explicit fill; all four backend consumers use canonical fill.
+- Ticks keep their supported public channels and normalize only internally.
+- Extracted the existing three-line color-to-paint copy into
+  `applyColorToPaintChannel`; fill/stroke normalization reuse it unchanged.
+  This preserves source provenance and color-scale identity without adding a
+  second normalization implementation. Rule property types select the existing
+  shared fill definition.
+- Two composed SVG regressions cover color fallback and explicit fill, shared
+  scale identity, legend labels and live selection changes. Existing guide,
+  identity and Canvas cache tests retain their behavior assertions with the new
+  internal encoder name. No generated shader snapshots changed.
+- Core's existing `testRenderers` runner samples rule-property expressions,
+  field-fill precedence, legacy color and ordinary ticks through actual Canvas,
+  WebGL and WebGPU raster export, before and after parameter updates.
+- Full Core suite: 379 files, 4,176 passed, one existing skip and two TODOs.
+  Focused pre-integration checks: 348 passed. Actual three-backend check passed.
+- Core types, focused ESLint, schema generation, generated documentation,
+  release policy and release-status checks pass. New Core minor fragment;
+  the fixed release group remains on the planned minor release (1.3.0).
+- Refreshed installed dependencies from the existing lockfile. No manifest or
+  lockfile changes. No production rendering resources, geometry or opacity
+  calculations changed.
+- An early fractional-opacity raster sample differed between existing backend
+  export paths. No opacity/export correction is included; the fill regression
+  uses opaque paints to isolate this contribution. The existing opacity tests
+  remain intact. This does not prove #604's future combined-opacity contract.
+- Visible outlines and the following-slice design gate above remain outside
+  this completed prerequisite. No partial stroke API has been exposed.

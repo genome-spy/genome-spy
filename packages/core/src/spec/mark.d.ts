@@ -532,7 +532,12 @@ export interface StrokeStyleProps {
 }
 
 export interface RuleProps
-    extends MarkPropsBase, SecondaryPositionProps, SizeProps, StrokeStyleProps {
+    extends
+        MarkPropsBase,
+        SecondaryPositionProps,
+        SizeProps,
+        StrokeStyleProps,
+        Pick<FillAndStrokeProps, "fill"> {
     type: "rule";
 }
 
