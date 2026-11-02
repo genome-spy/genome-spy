@@ -10,9 +10,6 @@
     "anchor": "start"
   },
 
-  "width": 420,
-  "height": 260,
-
   "params": [
     {
       "name": "cell_types",
@@ -37,7 +34,7 @@
 
   "data": { "url": "data/immune-cell-activation.csv" },
 
-  "mark": { "type": "point", "tooltip": null, "size": 100 },
+  "mark": { "type": "point", "size": 100 },
 
   "encoding": {
     "x": {

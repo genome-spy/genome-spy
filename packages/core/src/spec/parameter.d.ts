@@ -328,9 +328,10 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
     /**
      * A string or object that defines the events that should clear the selection.
-     * Legend-bound point selections have no default clear event.
+     * Set to `false` to disable these events. Legend-bound point selections also
+     * reset on unmodified background clicks, independently of this property.
      *
-     * __Default value:__ `"dblclick"`
+     * __Default value:__ `"dblclick"`; no `clear` event for legend-bound point selections.
      */
     clear?: DomEventType | EventConfig | string | boolean;
 }
@@ -345,13 +346,12 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     encodings?: [CategorySelectionChannel];
 
     /**
-     * Controls whether data values should be toggled (inserted or removed from a point selection)
-     * when clicking with the shift key pressed.
+     * Controls whether input events with Shift pressed add or remove selected values.
      *
-     * - `true` -- additional values can be selected by shift-clicking.
+     * - `true` -- values can be added or removed while holding Shift.
      * - `false` -- only a single value can be selected at a time.
      *
-     * __Default value:__ `true`
+     * __Default value:__ `true` when `on` uses `"click"`, `false` otherwise.
      */
     toggle?: boolean;
 }
@@ -493,8 +493,8 @@ export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     /**
      * Populate this selection by clicking its categorical symbol legend.
      * Plot input is disabled unless `select.on` is explicitly specified.
-     * Empty-background clicks reset all legend-bound selections. Default
-     * double-click clearing is disabled.
+     * Unmodified background clicks reset all legend-bound selections, independently
+     * of `select.clear`. Default double-click clearing is disabled.
      */
     bind?: "legend";
 

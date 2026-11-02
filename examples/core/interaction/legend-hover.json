@@ -4,8 +4,6 @@
     "Hover a cell to focus its activation state, or use the legend. Shift-click toggles legend categories; click the chart background to reset. Coordinates and categories are synthetic."
   ],
 
-  "width": 420,
-  "height": 260,
   "params": [
     {
       "name": "focus",
@@ -21,7 +19,7 @@
   "config": { "legend": { "disable": false, "symbolOpacity": 1 } },
 
   "data": { "url": "data/immune-cell-activation.csv" },
-  "mark": { "type": "point", "tooltip": null, "size": 100 },
+  "mark": { "type": "point", "size": 100 },
 
   "encoding": {
     "x": {

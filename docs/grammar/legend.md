@@ -21,6 +21,34 @@ legend retains the sizes represented by its scale.
 
 These properties can also be set under `config.legend` for all legends.
 
+## Gradient legends
+
+Continuous quantitative color channels create gradient legends. The gradient
+uses the same scale as the plotted data.
+
+EXAMPLE examples/docs/grammar/legend/gradient-legend.json height=300
+
+The ramp fills available space when its direction is parallel to its legend
+region. Otherwise it uses a natural length of 200 pixels. Set
+`gradientLength` for a fixed ramp. The other gradient properties adjust its
+appearance and desired tick density:
+
+```json
+{
+  "legend": {
+    "gradientLength": 160,
+    "gradientThickness": 16,
+    "gradientOpacity": 0.8,
+    "gradientStrokeColor": "#666",
+    "gradientStrokeWidth": 1,
+    "tickCount": 4
+  }
+}
+```
+
+Explicit `values` determine the ticks when provided and take precedence over
+`tickCount`.
+
 ## Interactive legends
 
 Add `bind: "legend"` to a [categorical point selection](parameters.md#categorical-point-selection)
@@ -71,44 +99,17 @@ hover with multi-category legend clicks:
 }
 ```
 
-Hover replaces the selected category; Shift-clicking legend entries toggles
-categories. The explicit `toggle: true` preserves multiple categories for this
-mixed-input configuration. Explicit `select.clear` events and filters apply to
-legend entries and explicitly enabled plot input; `select.clear: false` disables
-those events. The global background reset remains available independently of
-`select.clear`.
+Hovering without Shift replaces the selected category. The explicit
+`toggle: true` enables Shift-clicking legend entries to add or remove categories.
+Explicit `select.clear` events and filters apply to legend entries and explicitly
+enabled plot input; `select.clear: false` disables those events. The global
+background reset remains available independently of `select.clear`.
 
-The `bind: "legend"` form follows Vega-Lite's grammar. Field projections,
-object-valued legend event bindings, and expression-valued toggling are not
-supported. GenomeSpy retains its existing single-value hover default.
+!!! note "Vega-Lite compatibility"
 
-## Gradient legends
-
-Continuous quantitative color channels create gradient legends. The gradient
-uses the same scale as the plotted data.
-
-EXAMPLE examples/docs/grammar/legend/gradient-legend.json height=300
-
-The ramp fills available space when its direction is parallel to its legend
-region. Otherwise it uses a natural length of 200 pixels. Set
-`gradientLength` for a fixed ramp. The other gradient properties adjust its
-appearance and desired tick density:
-
-```json
-{
-  "legend": {
-    "gradientLength": 160,
-    "gradientThickness": 16,
-    "gradientOpacity": 0.8,
-    "gradientStrokeColor": "#666",
-    "gradientStrokeWidth": 1,
-    "tickCount": 4
-  }
-}
-```
-
-Explicit `values` determine the ticks when provided and take precedence over
-`tickCount`.
+    The `bind: "legend"` form follows Vega-Lite's grammar. Field projections,
+    object-valued legend event bindings, and expression-valued toggling are not
+    supported.
 
 ## Configuration
 
