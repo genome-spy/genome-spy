@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 import { createGenerator } from "ts-json-schema-generator";
 import Ajv from "ajv";
 
@@ -9,27 +9,29 @@ const specDir = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(specDir, "..", "..");
 const repoRoot = path.resolve(packageDir, "..", "..");
 
-function createCoreSchema() {
-    return createGenerator({
-        path: path.join(packageDir, "src/spec/*.ts"),
-        tsconfig: path.join(repoRoot, "tsconfig.json"),
-        type: "CoreRootSpec",
-        skipTypeCheck: true,
-    }).createSchema("CoreRootSpec");
-}
-
-function createCoreValidator() {
-    const schema = createCoreSchema();
-    return new Ajv.default({
-        allErrors: true,
-        strict: false,
-        allowUnionTypes: true,
-    }).compile(schema);
-}
-
 describe("generated core schema", () => {
+    /** @type {import("ts-json-schema-generator").Schema} */
+    let schema;
+
+    /** @type {import("ajv").ValidateFunction} */
+    let validate;
+
+    // Generate and compile once; the tests only read the shared schema.
+    beforeAll(() => {
+        schema = createGenerator({
+            path: path.join(packageDir, "src/spec/*.ts"),
+            tsconfig: path.join(repoRoot, "tsconfig.json"),
+            type: "CoreRootSpec",
+            skipTypeCheck: true,
+        }).createSchema("CoreRootSpec");
+        validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+    }, 30000);
+
     test("accepts Figwig track selections and rejects invalid track and URL shapes", () => {
-        const validate = createCoreValidator();
         const lazy = { type: "figwig", url: "signals.fw" };
 
         for (const selection of [
@@ -74,7 +76,6 @@ describe("generated core schema", () => {
     });
 
     test("categorical point projections and channel-keyed initializers have precise shapes", () => {
-        const validate = createCoreValidator();
         const param = {
             name: "focus",
             select: { type: "point", encodings: ["color"] },
@@ -163,7 +164,6 @@ describe("generated core schema", () => {
     });
 
     test("surround restricts plot kinds while accepting scoped and nested sides", () => {
-        const validate = createCoreValidator();
         const spec = {
             spec: { mark: "rect" },
             surround: {
@@ -233,7 +233,6 @@ describe("generated core schema", () => {
     });
 
     test("facet options accept supported forms and reject unsupported forms", () => {
-        const validate = createCoreValidator();
         const spec = {
             facet: { field: "group" },
             spec: { mark: "point" },
@@ -337,7 +336,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts viewport scale domains and rejects unknown sources and modes", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             mark: "point",
@@ -371,7 +369,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts zindex on views and imports", () => {
-        const validate = createCoreValidator();
         const spec = {
             templates: {
                 panel: { mark: "point", zindex: 3 },
@@ -388,7 +385,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts collected only as a legend resolution behavior", () => {
-        const validate = createCoreValidator();
         const baseSpec = {
             data: { values: [{ group: "A" }] },
             mark: /** @type {const} */ ("point"),
@@ -422,7 +418,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts primary offset channels and secondary offset properties", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: {
                 values: [
@@ -457,7 +452,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts conditional mark-property branches with their own scale", () => {
-        const schema = createCoreSchema();
         const spec = JSON.parse(
             fs.readFileSync(
                 path.join(
@@ -470,19 +464,12 @@ describe("generated core schema", () => {
 
         // Non-obvious: this example exercises a conditional field branch inside
         // a value fallback, which must keep its own nested scale in schema output.
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
     });
 
     test("accepts structured selection predicates and rejects malformed forms", () => {
-        const validate = createCoreValidator();
         const base = /** @type {any} */ ({
             data: { values: [{ id: 1 }] },
             mark: "point",
@@ -565,7 +552,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts restricted conditional order and rejects unsupported forms", () => {
-        const validate = createCoreValidator();
         const base = /** @type {any} */ ({
             data: { values: [{ id: 1 }] },
             mark: "point",
@@ -605,7 +591,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts unit predicates referenced by conditional encodings", () => {
-        const validate = createCoreValidator();
         const spec = /** @type {any} */ ({
             mark: "point",
             predicates: {
@@ -643,7 +628,6 @@ describe("generated core schema", () => {
                 "utf8"
             )
         );
-        const validate = createCoreValidator();
 
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
@@ -651,7 +635,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts eager cross data and rejects lazy cross data", () => {
-        const validate = createCoreValidator();
         const baseSpec = {
             data: { values: [{ x: 1 }] },
             mark: "point",
@@ -696,7 +679,6 @@ describe("generated core schema", () => {
     });
 
     test("includes transform descriptions in the generated schema", () => {
-        const schema = createCoreSchema();
         const aggregateParams =
             /** @type {{ properties: Record<string, { description?: string }> }} */ (
                 schema.definitions.AggregateParams
@@ -713,7 +695,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts debounce only on reactive transforms", () => {
-        const validate = createCoreValidator();
         const spec = /** @type {any} */ ({
             data: { values: [{ x: 1 }] },
             transform: [
@@ -743,7 +724,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts expression-based scaled mark property encodings", () => {
-        const validate = createCoreValidator();
         /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
         const spec = {
             data: { values: [{ active: true }] },
@@ -778,7 +758,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts null primary positional encodings", () => {
-        const validate = createCoreValidator();
         /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
         const spec = {
             data: { values: [{ category: "A" }] },
@@ -795,7 +774,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts setIntersection transform parameters", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ element: "A", set: "S" }] },
             transform: [
@@ -817,7 +795,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts two-dimensional displacement transform parameters", () => {
-        const validate = createCoreValidator();
         /** @type {import("./coreSchemaRoot.js").CoreRootSpec} */
         const spec = {
             data: { values: [{ x: 1, y: 2, width: 20 }] },
@@ -847,7 +824,6 @@ describe("generated core schema", () => {
     });
 
     test("includes shared lookup options in concrete transform schemas", () => {
-        const schema = createCoreSchema();
         const lookupParams =
             /** @type {{ properties: Record<string, unknown> }} */ (
                 schema.definitions.LookupParams
@@ -870,7 +846,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts lookup from the current input batch", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: {
                 values: [
@@ -900,13 +875,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts initial legend configuration and channel legend properties", () => {
-        const schema = createCoreSchema();
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         const spec = {
             data: { values: [{ category: "A", value: 1 }] },
             config: {
@@ -944,13 +912,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts ruler parameter configuration", () => {
-        const schema = createCoreSchema();
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [
@@ -994,7 +955,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts reactive ruler styling but keeps dash patterns static", () => {
-        const validate = createCoreValidator();
         const mark = {
             stroke: { expr: "color" },
             strokeWidth: { expr: "width" },
@@ -1021,7 +981,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts transitioned variable parameters", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [
@@ -1054,7 +1013,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts debounced expression parameters", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1 }] },
             params: [
@@ -1074,7 +1032,6 @@ describe("generated core schema", () => {
     });
 
     test("rejects incompatible expression update policies", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1 }] },
             params: [
@@ -1097,7 +1054,6 @@ describe("generated core schema", () => {
     });
 
     test("rejects bound expression parameters", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [
@@ -1118,7 +1074,6 @@ describe("generated core schema", () => {
     });
 
     test("rejects transitioned value parameters without numeric initial values", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [
@@ -1144,7 +1099,6 @@ describe("generated core schema", () => {
     });
 
     test("rejects transitions on selection parameters", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [
@@ -1165,13 +1119,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts interval selection extent and expression-backed brush colors", () => {
-        const schema = createCoreSchema();
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             params: [
@@ -1201,7 +1148,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts data-derived and unbounded zoom extents", () => {
-        const validate = createCoreValidator();
         const spec = {
             data: { values: [{ x: 1, y: 2 }] },
             mark: "point",
@@ -1231,13 +1177,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts arrow mark shape parameters", () => {
-        const schema = createCoreSchema();
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         const spec = {
             data: {
                 values: [{ start: 8, end: 32, band: "A" }],
@@ -1273,13 +1212,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts arrow direction encoding", () => {
-        const schema = createCoreSchema();
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         const spec = {
             data: {
                 values: [
@@ -1310,13 +1242,6 @@ describe("generated core schema", () => {
     });
 
     test("accepts bidirectional arrow values and rejects unknown directions", () => {
-        const schema = createCoreSchema();
-        const validate = new Ajv.default({
-            allErrors: true,
-            strict: false,
-            allowUnionTypes: true,
-        }).compile(schema);
-
         const markValueSpec = {
             data: { values: [{ start: 20, end: 80 }] },
             mark: { type: "arrow", direction: "both" },

@@ -21,7 +21,7 @@ describe("generated App schema", () => {
             strict: false,
             allowUnionTypes: true,
         }).compile(schema);
-    });
+    }, 30000);
 
     test("accepts Figwig metadata and requires a file URL", () => {
         const backend = {
