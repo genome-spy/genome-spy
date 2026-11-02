@@ -206,20 +206,57 @@ each channel.
 
 EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 
-### Grouping gaps
+## Grouping gaps
 
-Index and locus scales can separate groups with gaps that keep their width
-while zooming and panning. `gapPositions: [5, 12]` inserts gaps before indices
-5 and 12, and `gapWidth: 8` sets their width to 8 CSS pixels, independent of
-device pixel ratio.
+Band, point, index, and locus scales can separate selected groups with extra
+spacing. `gapWidth` specifies this spacing in CSS pixels, independent of device
+pixel ratio. Gap widths stay fixed when the view resizes. Ordinary scale padding
+continues to apply between neighboring categories or indices.
 
-Heatmaps can use independent gaps on both axes:
+Gaps can be configured in an encoding's `scale` or a view's `scales` declaration,
+including shared scales. Axis domain lines split into groups automatically. The
+[`scaleGroups` data source](data/lazy.md#scale-groups) provides matching endpoints
+for custom guides and outlines.
+
+### Band and point scales
+
+On a band or point scale, `gapPositions` lists categories before which gaps
+appear. For example, `gapPositions: ["C"]` inserts a gap between B and C in the
+domain `["A", "B", "C", "D"]`. Numeric categories are values, not ranks:
+`gapPositions: [20]` cuts before category 20 in the domain `[10, 20, 30]`.
+
+The domain determines category order. Duplicate positions, absent categories,
+and the first category add no extra gap. Filtering out a boundary category
+removes its gap; restoring the category restores the gap.
+
+This heatmap separates named rows and columns independently:
+
+EXAMPLE examples/docs/grammar/scale/band-grouping-gaps.json height=260
+
+With band scales, `paddingInner` controls proportional spacing between every
+pair of cells, while grouping gaps add pixels at selected boundaries. Band
+centers and cell widths remain independent of the following gap. Point scales
+use the same category cuts with zero bandwidth; symbols can extend into the
+added spacing.
+Scale inversion within a grouping gap returns no category.
+
+With a fixed view width or height, gaps reserve space by reducing cell widths
+or point spacing. With [step-based sizing](composition/concat.md#step-sizing),
+gaps increase the plot size while preserving the base step.
+
+Grouping gaps apply to primary `x`/`y` scales. Band and point gaps do not
+support `round: true`. Automatically fitted categorical offset scales cannot
+be combined with a gapped primary band. Band and point scales retain their
+usual interaction behavior; adding gaps does not enable zooming or interval
+brushing.
+
+### Index and locus scales
+
+For index and locus scales, `gapPositions` uses numeric boundary coordinates.
+For example, `gapPositions: [5, 12]` inserts gaps before indices 5 and 12.
+Their pixel widths stay fixed during zooming and panning.
 
 EXAMPLE examples/docs/grammar/scale/grouping-gaps.json height=280
-
-Band centers and widths remain independent of the following gap. As with other
-scale properties, gaps can be configured in an encoding's `scale` or a view's
-`scales` declaration, including shared scales.
 
 For chromosome boundaries, set `gapPositions: "chromosomes"` on a locus scale.
 The boundaries come from that scale's assembly, so the same configuration works
@@ -236,16 +273,18 @@ Inverting a pointer anywhere in a gap returns its boundary coordinate. A brush
 entirely within one gap is an active, zero-span selection that matches no data;
 linked scales keep their last valid domain until the brush has a nonzero span.
 
-`gapWidth` and `gapPositions` accept expressions. Constant zero/null width or
-constant empty/null positions completely disables grouping gaps. If visible
-gaps consume the whole axis extent, affected marks are hidden until space is
-available again. Pointer inversion and navigation use the ordinary domain
-mapping while the marks are hidden.
+Pointer inversion and navigation use the ordinary domain mapping if visible
+gaps consume the whole axis extent and the affected marks are hidden.
 
-Axis domain lines follow grouping gaps automatically. The [scaleGroups data
-source](data/lazy.md#scale-groups) generates the same half-open intervals for
-custom guides and group outlines, including the Cartesian product of groups on
-two axes.
+### Reactive gaps
+
+`gapWidth` and `gapPositions` accept expressions. Constant zero/null width or
+constant empty/null positions completely disables grouping gaps. On a
+step-sized axis, gap expressions must be independent of that axis's allocated
+width or height; external parameters can control the gaps.
+
+If gaps consume the whole axis extent, affected marks are hidden until space
+is available again.
 
 ## Nested offset scales
 

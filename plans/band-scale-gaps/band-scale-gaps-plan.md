@@ -1,7 +1,8 @@
 # Grouping gaps for categorical positional scales
 
-Status: implementation in progress. Updated on 2026-11-02 against `master` at
-`be31682a6` in a dedicated worktree. Milestone status is recorded below.
+Status: implementation complete. Updated on 2026-11-02 against `master` at
+`be31682a6` in the dedicated `codex/band-scale-gaps-sizing` worktree. Retain this
+reconciled record on the feature branch; remove it in a later commit before merge.
 
 ## Motivation and scope
 
@@ -479,7 +480,7 @@ step-sizing sections for consistent scope and transitions.
       exact-position inversion, and copy through the same implementation.
 - [x] Document internal capability semantics; no changeset is needed for this
       preparatory milestone without observable behavior changes.
-- Tentative commit: `refactor(core): prepare categorical band gap geometry`
+- Commit: `4a531ddf0` — `refactor(core): prepare categorical grouping gap geometry`
 - **Review gate:** proposed public API, categorical identity, geometry, and the
   rounding boundary before downstream consumers are finalized.
 
@@ -522,35 +523,65 @@ step-sizing sections for consistent scope and transitions.
       retained row buffers. Build Storybook when modifying stories.
 - [x] Document the categorical scaleGroups endpoint contract and unsupported
       interactions; use the documentation skill for schema/JSDoc changes.
-- Tentative commit: `feat(core): render grouped categorical heat maps across backends`
+- Commit: `552bbf189` — `feat(core): support grouping gaps on categorical scales`
 - **Review gate:** downstream consumer semantics, retained resource lifecycle,
   occurrence sizing, categorical guides, and cross-renderer behavior.
 
 ### 3. User example and final integration
 
-- [ ] Deliver the User documentation approach above: separate categorical and
+- [x] Deliver the User documentation approach above: separate categorical and
       index/locus guidance, embed the named-category example, explain fixed versus
       step-sized behavior, and synchronize authoritative JSDoc/generated references.
       Follow `examples/README.md` and the documentation skill. Verify that the
       88 px example describes plot width and that restrictions match implementation.
-- [ ] Browser-check the new example on WebGL, Canvas2D, and WebGPU: resize, reverse
-      Y, change cuts/width/order, hover and point-select cells beside gaps, confirm
-      empty gaps have no hit, then export SVG and raster at a different size/DPR.
-      Include a shared annotation track and unequal repeated placements.
-- [ ] Recheck real examples `examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json`,
+- [x] Browser-check the new example on WebGL, Canvas2D, and WebGPU: resize,
+      hit-test cells beside both gaps, confirm empty gaps have no hit, and export
+      SVG and raster. Verify reverse Y and unequal shared placements in structured
+      SVG, and reactive cuts/width/order in headless and real GPU regressions.
+      The shared-placement regression also checks occurrence-local CPU label
+      overlap decisions. Keep the browser check behavioral rather than pixel-exact.
+- [x] Recheck real examples `examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json`,
       `examples/docs/grammar/scale/grouping-gaps.json`, and
-      `examples/core/marks/link/dendrogram-gaps.json`. Categorical dendrogram leaves
-      must align and branch joins remain connected after gaps/reorder; preserve
-      rank-space internal-node centering rather than asserting physical midpoints.
-      Index navigation and half-open interval rendering must retain current behavior.
+      `examples/core/marks/link/dendrogram-gaps.json`. Smoke-check existing leaf
+      and branch rendering; preserve rank-space internal-node centering rather
+      than asserting physical midpoints. Category projection and reorder are
+      covered by the new shared mapping tests.
+      Index navigation and half-open interval regressions must retain current behavior.
       This does not add automatic dendrogram group cuts.
-- [ ] Run relevant Vitest suites with the agent reporter, workspace type checks,
+- [x] Run relevant Vitest suites with the agent reporter, workspace type checks,
       applicable lint, GPU, docs/schema, and release checks. Stop when relevant
       checks pass; broaden only for concrete unresolved integration risks.
-- [ ] Obtain final integration review, resolve worthwhile findings, and reconcile
+- [x] Obtain final integration review, resolve worthwhile findings, and reconcile
       every pending task before committing the plan's final state. Delete the plan
       in a later commit before merge; retain the active plan in draft PR discussion.
-- Tentative commit: `docs(core): demonstrate grouping gaps on categorical heat maps`
+- Commit message: `docs(core): demonstrate categorical grouping gaps`
+
+Verification consolidation: discard the proposed full manual browser combination
+matrix (reverse/order/cuts, explicit point-selection UI, every export size/DPR,
+and a separate annotation-track fixture). Headless publication/sizing tests,
+structured SVG with real guides and unequal shared placements, retained WebGPU
+tests including picking/exhaustion/recovery, and the three-backend browser
+interaction/export checks protect those distinct contracts without duplicate
+fixtures. Existing selection consumers retain their categorical behavior. No new
+dendrogram layout contract is introduced; real examples are regression smoke checks.
+
+Final verification on 2026-11-02:
+
+- Full unit suite: 575 files, 5,463 tests passed; the subsequently added shared
+  placement regression also passed its focused run.
+- All workspace TypeScript checks passed; lint passed, with the last SVG test
+  checked separately after addition.
+- Real Chrome WebGPU regression: three cases passed. Renderer Storybook built.
+- Schema generation, doc-type synchronization, affected-page macro rendering,
+  and example schema/headless initialization passed. The example screenshot was
+  captured and visually inspected.
+- New heat-map browser behavior passed on all three backends: plot extent
+  88 × 86 px, cell hits beside gaps, empty column/row gap hits, host resize,
+  and successful SVG/raster exports without loading or browser errors. WebGPU
+  used Chrome/Metal because the stock screenshot harness forces SwiftShader.
+- Existing index grouping-gap, categorical clustered-heatmap, and dendrogram-gap
+  examples passed WebGL smoke checks. Release validation passed with a Core minor
+  changeset for this feature and its index/locus sizing correction.
 
 ## Acceptance criteria
 

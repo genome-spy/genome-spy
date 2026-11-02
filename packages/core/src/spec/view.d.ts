@@ -99,7 +99,9 @@ export type ViewOpacityDef = number | DynamicOpacity | ExprRef;
 
 export interface Step {
     /**
-     * Step size in pixels.
+     * Base step size in CSS pixels. Scale padding determines the cell width
+     * within a step. Grouping gaps add their pixel widths to the plot size
+     * without reducing the base step. Point scales have zero-width bands.
      */
     step: number | ExprRef;
 
@@ -107,6 +109,8 @@ export interface Step {
      * Selects which discrete scale the step describes when a positional scale
      * has a nested offset scale. `"offset"` sizes each subgroup step;
      * `"position"` sizes each primary category step.
+     * Offset-step sizing requires nonzero primary bandwidth. For a primary
+     * point scale, use `"position"`.
      *
      * __Default value:__ `"offset"` when a discrete nested offset scale is
      * present, otherwise `"position"`.
