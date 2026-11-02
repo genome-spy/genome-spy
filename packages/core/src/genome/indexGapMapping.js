@@ -47,6 +47,52 @@ export function hasGroupingGaps(props = {}) {
     );
 }
 
+/** Install the shared gap properties; scale geometry stays with each scale kind.
+ * @param {{props?: import("../spec/scale.js").Scale}} scale
+ * @param {() => void} invalidate
+ */
+export function installGroupingGapProperties(scale, invalidate) {
+    const state = {
+        positions: /** @type {readonly number[]} */ ([]),
+        width: 0,
+        axisLength: () => 1,
+    };
+    Object.assign(scale, {
+        /** @param {readonly number[] | null} positions */
+        gapPositions(positions) {
+            if (!arguments.length) return state.positions;
+            state.positions = normalizeGapPositions(positions);
+            invalidate();
+            return scale;
+        },
+        /** @param {number | null} width */
+        gapWidth(width) {
+            if (!arguments.length) return state.width;
+            if (width != null && (!Number.isFinite(width) || width < 0))
+                throw new Error(
+                    "Gap width must be a finite nonnegative number."
+                );
+            state.width = width ?? 0;
+            invalidate();
+            return scale;
+        },
+        /** @param {number | (() => number)} value */
+        axisLength(value) {
+            if (!arguments.length) return state.axisLength();
+            state.axisLength =
+                typeof value === "function" ? value : () => value;
+            invalidate();
+            return scale;
+        },
+    });
+    return Object.assign(state, {
+        enabled: () =>
+            scale.props
+                ? hasGroupingGaps(scale.props)
+                : state.width > 0 && state.positions.length > 0,
+    });
+}
+
 /** Resolved enablement, independent of shader specialization.
  * @param {{gapWidth: number | null, gapPositions: readonly number[]}} mapping
  */

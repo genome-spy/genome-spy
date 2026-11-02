@@ -354,16 +354,19 @@ export type LazyDataParams =
     | Gff3Data
     | VcfData;
 
-/** Generates finite half-open group intervals from resolved index/locus scales. */
+/** Generates group endpoints from resolved positional band/point/index/locus scales. */
 export interface ScaleGroupsData {
     type: "scaleGroups";
 
     /**
      * One or both positional channels, without duplicates. Each contributes
      * `xGroup`, `xStart`, `xEnd` or the corresponding `y` fields. Two channels
-     * produce their Cartesian product. Boundaries are half-open interval
-     * endpoints. Guide views should share the data-bearing view's scales and
-     * set `domainInert: true`.
+     * produce their Cartesian product. Index/locus endpoints are half-open
+     * numeric intervals. Band/point endpoints are category values at the outer
+     * edges of each group. Reversing the range swaps these categories. Use
+     * `band: 0` for Start and `band: 1` for End. Point groups span their centers.
+     * Guide views should share the data-bearing view's scales and set
+     * `domainInert: true`.
      */
     channels: ("x" | "y")[];
 }

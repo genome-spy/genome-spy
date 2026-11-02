@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => {
                 default: {
                     setDomain: vi.fn(),
                     setRange: vi.fn(),
+                    setGapPositions: vi.fn(),
+                    setGapWidth: vi.fn(),
                 },
             },
         },
@@ -484,6 +486,44 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledOnce();
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+    });
+
+    test("updates categorical gaps without treating category IDs as index camera ranks", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {any} */ ({});
+        const definition = /** @type {any} */ ({ type: "point" });
+        const scale = {
+            type: "band",
+            domain: [200, 5, 900],
+            range: [0, 100],
+            gapEnabled: true,
+            gapPositions: [2],
+            gapWidth: 8,
+        };
+        const config = {
+            count: 3,
+            channels: {
+                x: { data: new Uint32Array([200, 5, 900]), type: "u32", scale },
+            },
+        };
+        useMark(surface, mark, definition, config);
+        scale.domain = [900, 200];
+        scale.gapPositions = [1];
+        scale.gapWidth = 0;
+        useMark(surface, mark, definition, config);
+
+        const slot = mocks.handle.scales.x.default;
+        expect(slot.setDomain).toHaveBeenCalledExactlyOnceWith([900, 200]);
+        expect(slot.setGapPositions).toHaveBeenCalledExactlyOnceWith([1]);
+        expect(slot.setGapWidth).toHaveBeenCalledExactlyOnceWith(0);
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+        surface.finalize();
     });
 
     test("does not inspect config structure again when identity is stable", async () => {

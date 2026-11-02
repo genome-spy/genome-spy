@@ -1273,12 +1273,17 @@ export default class WebGLMark {
                 const resolution = this.unitView.getScaleResolution(channel);
                 ops.push(() => {
                     const scale =
-                        /** @type {import("../../../genome/scaleIndex.js").ScaleIndex} */ (
+                        /** @type {(import("../../../genome/scaleIndex.js").ScaleIndex | import("../../../scales/scaleBand.js").CategoricalGapScale) & {type: string}} */ (
                             resolution.getScale()
                         );
-                    const domain = scale.domain();
+                    const categorical =
+                        scale.type === "band" || scale.type === "point";
+                    const domain = categorical
+                        ? [0, scale.domain().length]
+                        : scale.domain().map(Number);
                     const cuts = scale.gapPositions();
-                    const ranks = scale.gapDomain();
+                    const ranks =
+                        "gapDomain" in scale ? scale.gapDomain() : undefined;
                     setUniforms(this.programInfo, {
                         ["uGapCuts_" + channel]:
                             this.rendererResources.getGapTexture(resolution),

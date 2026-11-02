@@ -73,6 +73,7 @@ describe("nested offset scales", () => {
                 expect(channel).toBe("x");
                 return /** @type {any} */ ({
                     getResolvedScaleType: () => "band",
+                    hasGroupingGaps: () => false,
                     getScale: initializePrimaryScale,
                 });
             },

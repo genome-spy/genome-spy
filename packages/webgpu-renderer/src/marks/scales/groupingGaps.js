@@ -1,7 +1,7 @@
 /** @param {import("../../index.d.ts").ChannelScale | undefined} scale */
-export function hasIndexGaps(scale) {
+export function hasGroupingGaps(scale) {
     return (
-        scale?.type === "index" &&
+        (scale?.type === "index" || scale?.type === "band") &&
         (scale.gapEnabled ??
             (scale.gapWidth !== 0 &&
                 scale.gapWidth !== null &&
@@ -30,7 +30,7 @@ export function normalizeCuts(values) {
 }
 
 // Only included when a channel opts into grouping gaps.
-export const INDEX_GAPS_WGSL = /* wgsl */ `
+export const GROUPING_GAPS_WGSL = /* wgsl */ `
 fn gapKeyGreater(a: vec2<u32>, b: vec2<u32>) -> bool {
     return a.x > b.x || (a.x == b.x && a.y > b.y);
 }
@@ -58,7 +58,7 @@ fn gapPlacementFactor(i: u32, axis: u32) -> f32 {
 #endif
 }
 
-fn indexGapsFit(range: vec2<f32>, geometry: vec4<f32>, placement: f32) -> bool {
+fn groupingGapsFit(range: vec2<f32>, geometry: vec4<f32>, placement: f32) -> bool {
     return abs(range.y - range.x) * placement > geometry.x * (geometry.z - geometry.y);
 }
 
@@ -75,4 +75,18 @@ fn scaleIndexGaps(value: vec2<u32>, domain: vec3<f32>, range: vec2<f32>,
     let rank = f32(cutRank(value, table, before));
     return start + hi * step + lo * step + gap * (rank - geometry.y) + step * (1.0 - paddingInner) * band;
 }
+
+#if defined(BAND_GAPS_ENABLED)
+fn scaleBandGaps(value: u32, domain: vec2<f32>, range: vec2<f32>,
+    table: vec2<u32>, geometry: vec4<f32>, paddingInner: f32,
+    paddingOuter: f32, align: f32, band: f32, placement: f32) -> f32 {
+    let reverse = range.y < range.x;
+    let gap = geometry.x / max(placement, 1e-9);
+    let count = geometry.z - geometry.y;
+    let compressed = range - select(vec2<f32>(0.0, gap * count), vec2<f32>(gap * count, 0.0), reverse);
+    let rank = f32(cutRank(vec2<u32>(value >> 12u, value & 4095u), table, false)) - geometry.y;
+    return scaleBand(value, domain, compressed, paddingInner, paddingOuter, align, band)
+        + gap * select(rank, count - rank, reverse);
+}
+#endif
 `;

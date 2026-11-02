@@ -159,6 +159,8 @@ test("Scale respects range configuration", function () {
     s = scale(params);
     expect(s.range()).toEqual([0, 60]);
     expect(s.bandwidth()).toBe(20);
+    expect(vs.scale("band")().gapMapping).toBeTypeOf("function");
+    expect(vs.scale("point")().gapMapping).toBeTypeOf("function");
 
     s = expect(function () {
         scale(util.extend({}, params, { type: "linear" }));

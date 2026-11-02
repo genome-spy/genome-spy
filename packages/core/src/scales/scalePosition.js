@@ -30,7 +30,7 @@ export function getScalePositionAdjustment(scale, band = 0.5) {
  * @param {number} extent
  */
 export function invertScalePosition(scale, value, extent) {
-    if ("gapMapping" in scale) {
+    if (scale.type === "index" || scale.type === "locus") {
         const indexScale =
             /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (scale);
         return (

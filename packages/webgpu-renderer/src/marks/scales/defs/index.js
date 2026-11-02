@@ -11,7 +11,7 @@ import {
     toU32Expr,
 } from "../scaleEmitUtils.js";
 import { packHighPrecisionDomain } from "../../../utils/highPrecision.js";
-import { hasIndexGaps } from "../indexGaps.js";
+import { hasGroupingGaps } from "../groupingGaps.js";
 
 const indexWgsl = /* wgsl */ `
 const lowBits: i32 = 12;
@@ -174,7 +174,7 @@ function emitIndexScale({
             ? rawValueExpr
             : toU32Expr(rawValueExpr, inputScalarType);
     const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
-    if (hasIndexGaps(scaleConfig)) {
+    if (hasGroupingGaps(scaleConfig)) {
         const key =
             inputComponents === 2
                 ? valueExpr

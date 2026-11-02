@@ -169,7 +169,7 @@ export type ScaleSlotHandle = {
     setRange(
         range: Array<number | number[] | string> | ColorInterpolatorFn
     ): void;
-    /** Update cuts on an index scale created with gapEnabled. */
+    /** Update cuts on a band or index scale created with grouping gaps. */
     setGapPositions(positions: readonly number[] | null): void;
     /** Update gap width in logical pixels. */
     setGapWidth(width: number | null): void;
@@ -321,11 +321,11 @@ export type ChannelScale = {
 
     /** Allocate grouping-gap resources even when initial cuts or width are zero. */
     gapEnabled?: boolean;
-    /** Sorted integer boundaries before which to insert grouping gaps. */
+    /** Integer gap boundaries: dense category ranks for band scales, coordinates for index scales. */
     gapPositions?: readonly number[] | null;
     /** Gap width in logical pixels. Default: 6. Zero/null disables visible gaps. */
     gapWidth?: number | null;
-    /** Fractional cut ranks at domain edges during navigation. */
+    /** Index scales only: fractional cut ranks at domain edges during navigation. */
     gapDomain?: readonly number[];
     /** Placement axis, inferred from x/y channel names when omitted. */
     gapAxis?: "x" | "y";

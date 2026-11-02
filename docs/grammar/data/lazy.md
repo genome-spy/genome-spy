@@ -388,27 +388,32 @@ EXAMPLE examples/docs/grammar/data/lazy/axis-genome.json height=150 spechidden
 
 ## Scale groups
 
-The `"scaleGroups"` source generates intervals for outlines and guides around
-[index or locus scale groups](../scale.md#grouping-gaps). It uses the same
-`lazy` grammar as on-demand sources, but generates its rows synchronously and
-keeps them unchanged during pan, zoom, and resize.
+The `"scaleGroups"` source generates endpoints for outlines and guides around
+[band, point, index, or locus scale groups](../scale.md#grouping-gaps). It uses
+the following data declaration:
 
 ```json
 { "data": { "lazy": { "type": "scaleGroups", "channels": ["x", "y"] } } }
 ```
 
 One channel produces `xGroup`, `xStart`, and `xEnd` (or the corresponding `y`
-fields). Two channels produce the Cartesian product of their groups, costing
-one row per pair. Group numbers start at zero in ascending data order and can
-change when cuts change. With gaps disabled, an axis contributes one interval.
+fields). Two channels produce one row for each pair of groups. Group numbers
+start at zero in domain order and can change when cuts change. With gaps
+disabled, a nonempty axis contributes one group.
 
-Boundaries are numeric half-open coordinates, restricted to the nonnegative
-index coordinate space. Locus intervals span the full
-assembly, including chromosomes without loaded data. Index intervals use an
-authored domain when present, otherwise the finalized initial data reference.
-That inferred reference stays fixed when later streaming data arrives. A
-reactive authored domain can provide changing full bounds. Selection-linked
-domains use their independent full reference rather than the selection.
+For band scales, Start and End identify the categories at the outer edges of
+each group. Encode Start with `band: 0` and End with `band: 1` to cover the whole
+group. Reversing the range swaps the endpoint categories while preserving group
+numbering. Point groups span their first and last point centers; a group
+containing only one point has no length.
+
+Index and locus endpoints are nonnegative, half-open numeric coordinates.
+Groups cover the full domain and remain unchanged during pan, zoom, and resize.
+Locus groups span the full assembly, including chromosomes without loaded data.
+Index groups use an authored domain when present, otherwise the extent of the
+initial data. Later streaming data does not extend that inferred domain. An
+authored domain can use an expression to update the full bounds; a domain linked
+to a selection uses its full bounds independently of the selection.
 
 An outline layer shares the data-bearing view's scales and sets view-level
 `domainInert: true` so its generated endpoints do not enlarge those domains.
@@ -419,10 +424,11 @@ SCHEMA ScaleGroupsData
 
 ### Example
 
-This heatmap has three column groups and three row groups. The `scaleGroups`
-source generates their nine combinations, and the final layer draws a gray
-rectangle around each group above the cells. The generated `xStart`/`xEnd` and
-`yStart`/`yEnd` fields provide the rectangle's half-open interval endpoints.
+This index-scale heatmap has three column groups and three row groups. The
+`scaleGroups` source generates their nine combinations, and the final layer
+draws a gray rectangle around each group above the cells. The generated
+`xStart`/`xEnd` and `yStart`/`yEnd` fields provide the rectangle's half-open
+interval endpoints.
 
 EXAMPLE examples/docs/grammar/data/lazy/scale-groups.json height=320
 

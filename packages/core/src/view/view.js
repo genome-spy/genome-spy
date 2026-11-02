@@ -16,7 +16,6 @@ import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
-import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -622,30 +621,12 @@ export default class View {
 
             if (scale) {
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
-                let steps;
-                if (isDiscrete(scale.type)) {
-                    steps = scale.domain().length;
-                } else if (["locus", "index"].includes(scale.type)) {
-                    const domain = scale.domain();
-                    steps = peek(domain) - domain[0];
-                } else {
+                if (!("sizeForStep" in scale)) {
                     throw new ViewError(
                         `Cannot use step-based size with "${scale.type}" scale!`,
                         this
                     );
                 }
-
-                // TODO: Type guards maybe?
-                const _scale =
-                    /** @type {import("d3-scale").ScaleBand<any> | import("../genome/scaleLocus.js").ScaleLocus | import("../genome/scaleIndex.js").ScaleIndex} */ (
-                        scale
-                    );
-
-                steps = bandSpace(
-                    steps,
-                    _scale.paddingInner(),
-                    _scale.paddingOuter()
-                );
 
                 const offsetChannel =
                     dimension == "width" ? "xOffset" : "yOffset";
@@ -659,6 +640,13 @@ export default class View {
 
                 let effectiveStepSize = stepSize;
                 if (stepFor == "offset") {
+                    const paddingInner = scale.paddingInner?.() ?? 1;
+                    if (paddingInner === 1) {
+                        throw new ViewError(
+                            "Offset-step sizing requires a primary scale with nonzero bandwidth.",
+                            this
+                        );
+                    }
                     if (!offsetScale || !isDiscrete(offsetScale.type)) {
                         throw new ViewError(
                             `Cannot use ${dimension}.step.for = "offset" without a discrete ${offsetChannel} scale!`,
@@ -672,14 +660,18 @@ export default class View {
                         );
                     const offsetSteps = bandSpace(
                         offsetScale.domain().length,
-                        discreteOffsetScale.paddingInner(),
+                        offsetScale.type === "point"
+                            ? 1
+                            : discreteOffsetScale.paddingInner(),
                         discreteOffsetScale.paddingOuter()
                     );
-                    effectiveStepSize *=
-                        offsetSteps / (1 - _scale.paddingInner());
+                    effectiveStepSize *= offsetSteps / (1 - paddingInner);
                 }
 
-                return { px: steps * effectiveStepSize, grow: 0 };
+                return {
+                    px: scale.sizeForStep(effectiveStepSize),
+                    grow: 0,
+                };
             } else if (implicit) {
                 // Vega-Lite treats a missing positional channel as one
                 // discrete step. Keep explicit step sizes strict.
@@ -783,12 +775,18 @@ export default class View {
     }
 
     registerSizeInvalidation() {
-        this.#registerStepSizeInvalidationFor("width", "x");
-        this.#registerStepSizeInvalidationFor("height", "y");
         this.#registerSizeExprRefInvalidationFor("width");
         this.#registerSizeExprRefInvalidationFor("height");
         this.#registerSizeExprRefInvalidationFor("viewportWidth");
         this.#registerSizeExprRefInvalidationFor("viewportHeight");
+    }
+
+    /**
+     * Whether the authored or configured size is step-based, without materializing scales.
+     * @param {"width" | "height"} dimension
+     */
+    isStepSized(dimension) {
+        return isStepSize(this.#getDimensionValue(dimension).value);
     }
 
     /**
@@ -823,10 +821,7 @@ export default class View {
                 this.context.requestLayoutReflow();
             }
         };
-        resolution.addEventListener("domain", listener);
-        this.registerDisposer(() =>
-            resolution.removeEventListener("domain", listener)
-        );
+        this.registerDisposer(resolution.observeMapping(listener));
 
         if (value.for != "position") {
             const offsetChannel = dimension == "width" ? "xOffset" : "yOffset";
@@ -835,9 +830,8 @@ export default class View {
                 offsetResolution &&
                 isDiscrete(offsetResolution.getResolvedScaleType())
             ) {
-                offsetResolution.addEventListener("domain", listener);
-                this.registerDisposer(() =>
-                    offsetResolution.removeEventListener("domain", listener)
+                this.registerDisposer(
+                    offsetResolution.observeMapping(listener)
                 );
             }
         }
@@ -1276,9 +1270,16 @@ export default class View {
      * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
+        if (this.#postScaleParamsConfigured) return;
+        this.#postScaleParamsConfigured = true;
+
+        // Mapping observation materializes scales; guides and assemblies must
+        // already be configured before these subscriptions are installed.
+        this.#registerStepSizeInvalidationFor("width", "x");
+        this.#registerStepSizeInvalidationFor("height", "y");
+
         const postScaleParams = this.#scaleDependentParams;
-        if (postScaleParams.length && !this.#postScaleParamsConfigured) {
-            this.#postScaleParamsConfigured = true;
+        if (postScaleParams.length) {
             this.#postScaleParamDataReady = false;
 
             for (const name of postScaleParams) {

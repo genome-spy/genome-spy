@@ -718,72 +718,93 @@ describe("WebGPU mark adapter", () => {
         ).toEqual(["1.23", "−0.50"]);
     });
 
-    test("maps categorical positions to stable band-scale identifiers", () => {
-        const data = [{ category: "A" }, { category: "B" }];
-        const domain = ["A", "B"];
-        const xOptions = {
-            scale: createBandScale(domain),
-            channelDef: {
-                field: "category",
-                type: "nominal",
+    test.each(["band", "point"])(
+        "retains categorical %s identifiers and live gaps",
+        (type) => {
+            const data = [{ category: "A" }, { category: "B" }];
+            const domain = ["A", "B"];
+            let cuts = [1];
+            let width = 8;
+            const scale = {
+                ...createBandScale(domain),
+                type,
+                gapPositions: () => cuts,
+                gapWidth: () => width,
+            };
+            Object.assign(scale.props, { gapPositions: { expr: "cuts" } });
+            const xOptions = {
+                scale,
+                channelDef: {
+                    field: "category",
+                    type: "nominal",
+                    band: 0.5,
+                },
+            };
+            const mark = createMark(
+                "rule",
+                data,
+                {
+                    x: createEncoder((datum) => datum.category, xOptions),
+                    x2: createEncoder((datum) => datum.category, xOptions),
+                    y: createConstantEncoder(0),
+                    y2: createConstantEncoder(1),
+                    xOffset: createConstantEncoder(0),
+                    x2Offset: createConstantEncoder(0),
+                    yOffset: createConstantEncoder(0),
+                    y2Offset: createConstantEncoder(0),
+                    size: createConstantEncoder(1),
+                    color: createConstantEncoder("black"),
+                    opacity: createConstantEncoder(1),
+                },
+                {
+                    strokeDash: null,
+                    minLength: 0,
+                    strokeCap: "butt",
+                    strokeDashOffset: 0,
+                }
+            );
+
+            const translated = createWebGpuMarkConfig(
+                mark,
+                {},
+                Rectangle.create(10, 20, 100, 200)
+            );
+            const x = /** @type {any} */ (translated).config.channels.x;
+
+            expect(x.data).toEqual(new Uint32Array([0, 1]));
+            expect(x.type).toBe("u32");
+            expect(x.scale).toEqual({
+                type: "band",
+                definition: bandScaleDefinition,
+                domain: [0, 1],
+                range: [10, 110],
+                paddingInner: type === "point" ? 1 : 0.2,
+                paddingOuter: 0.1,
+                align: 0.5,
                 band: 0.5,
-            },
-        };
-        const mark = createMark(
-            "rule",
-            data,
-            {
-                x: createEncoder((datum) => datum.category, xOptions),
-                x2: createEncoder((datum) => datum.category, xOptions),
-                y: createConstantEncoder(0),
-                y2: createConstantEncoder(1),
-                xOffset: createConstantEncoder(0),
-                x2Offset: createConstantEncoder(0),
-                yOffset: createConstantEncoder(0),
-                y2Offset: createConstantEncoder(0),
-                size: createConstantEncoder(1),
-                color: createConstantEncoder("black"),
-                opacity: createConstantEncoder(1),
-            },
-            {
-                strokeDash: null,
-                minLength: 0,
-                strokeCap: "butt",
-                strokeDashOffset: 0,
-            }
-        );
+                gapEnabled: true,
+                gapPositions: [1],
+                gapWidth: 8,
+                gapAxis: "x",
+            });
 
-        const translated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.create(10, 20, 100, 200)
-        );
-        const x = /** @type {any} */ (translated).config.channels.x;
-
-        expect(x.data).toEqual(new Uint32Array([0, 1]));
-        expect(x.type).toBe("u32");
-        expect(x.scale).toEqual({
-            type: "band",
-            definition: bandScaleDefinition,
-            domain: [0, 1],
-            range: [10, 110],
-            paddingInner: 0.2,
-            paddingOuter: 0.1,
-            align: 0.5,
-            band: 0.5,
-        });
-
-        domain.reverse();
-        expect(x.scale.domain).toEqual([1, 0]);
-        const updated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.create(10, 20, 100, 200)
-        );
-        const updatedX = /** @type {any} */ (updated).config.channels.x;
-        expect(updatedX.data).toBe(x.data);
-        expect(updatedX.scale.domain).toEqual([1, 0]);
-    });
+            domain.reverse();
+            cuts = [];
+            width = 0;
+            expect(x.scale.gapPositions).toEqual([]);
+            expect(x.scale.gapWidth).toBe(0);
+            expect(x.scale).not.toHaveProperty("gapDomain");
+            expect(x.scale.domain).toEqual([1, 0]);
+            const updated = createWebGpuMarkConfig(
+                mark,
+                {},
+                Rectangle.create(10, 20, 100, 200)
+            );
+            const updatedX = /** @type {any} */ (updated).config.channels.x;
+            expect(updatedX.data).toBe(x.data);
+            expect(updatedX.scale.domain).toEqual([1, 0]);
+        }
+    );
 
     test("keeps reversed discrete Y scales top-to-bottom", () => {
         const data = [{ category: "A" }, { category: "B" }];

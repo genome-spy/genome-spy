@@ -62,20 +62,29 @@ export interface Scale {
     assembly?: string | InlineLocusAssembly;
 
     /**
-     * Boundaries before which to insert grouping gaps on positional index or
-     * locus scales. A cut at 10 separates bands 9 and 10. Positions are sorted
-     * and deduplicated. `"chromosomes"` uses the bound locus assembly's internal
-     * chromosome boundaries. An expression may return an array or null.
+     * Boundaries before which to insert grouping gaps on positional band, point,
+     * index, or locus scales. For band/point scales, list domain category values;
+     * numeric categories are values, not ranks. Missing or first categories add
+     * no gap. Index/locus cuts use numeric coordinates: 10 separates bands 9
+     * and 10. `"chromosomes"` inserts gaps between the assembly's chromosomes.
+     * Positions are deduplicated in domain order. An expression may return an
+     * array or null.
      *
      * Constant null or an empty array completely disables grouping gaps.
      * __Default value:__ null.
      */
-    gapPositions?: number[] | "chromosomes" | ExprRef | null;
+    gapPositions?:
+        (string | number | boolean)[] | "chromosomes" | ExprRef | null;
 
     /**
      * Grouping gap width in CSS pixels, independent of zoom and device pixel
      * ratio. An expression may return a nonnegative number or null. Constant
      * zero or null completely disables grouping gaps.
+     * With step-based sizing, gaps add to plot size while the base step stays
+     * fixed. Band/point gaps do not support `round: true`. Nested categorical
+     * offsets under a gapped band require an explicit offset range. On a
+     * step-sized axis, gap expressions must be independent of the resulting
+     * plot width or height.
      * __Default value:__ 6 when gapPositions is supplied, otherwise 0.
      */
     gapWidth?: number | ExprRef | null;

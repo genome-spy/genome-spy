@@ -15,6 +15,7 @@ import {
 } from "../scaleEmitUtils.js";
 import { isValueChannelConfig } from "../../../types.js";
 import { normalizeOrdinalDomain } from "../ordinalDomain.js";
+import { hasGroupingGaps } from "../groupingGaps.js";
 
 const bandWgsl = /* wgsl */ `
 // TODO: domainExtent should be uint
@@ -94,39 +95,35 @@ function emitBandScale({
     rawValueExpr,
     inputScalarType,
     domainMapName,
+    scaleConfig,
 }) {
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
-    if (domainMapName) {
-        // WGSL rejects constant NaNs, so construct the missing position at runtime.
-        return `${makeFnHeader(name, "f32", functionName)} {
-    let raw = ${valueExpr};
-    var mapped = raw;
+    const gaps = hasGroupingGaps(scaleConfig);
+    const axis = scaleConfig?.gapAxis ?? (name.startsWith("y") ? "y" : "x");
+    const gapArgs = gaps
+        ? `params.gapTable_${name}, params.gapGeometry_${name}, `
+        : "";
+    // WGSL rejects constant NaNs, so construct missing positions at runtime.
+    return `${makeFnHeader(name, "f32", functionName)} {
+    var mapped = ${valueExpr};
+    ${
+        domainMapName
+            ? `
     if (params.${mapCountName} >= 0.0) {
-        mapped = ${hashLookupFunctionName(domainMapName)}(raw, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
-        if (mapped == HASH_NOT_FOUND) { return bitcast<f32>(raw | 0x7fc00000u); }
+        mapped = ${hashLookupFunctionName(domainMapName)}(mapped, params.${DOMAIN_MAP_TABLE_PREFIX}${name}.y);
+        if (mapped == HASH_NOT_FOUND) { return bitcast<f32>(mapped | 0x7fc00000u); }
+    }`
+            : ""
     }
-    return scaleBand(
+    return ${gaps ? "scaleBandGaps" : "scaleBand"}(
         mapped,
         ${domainVec2(name)},
         ${rangeVec2(name)},
-        params.${SCALE_PADDING_INNER_PREFIX}${name},
+        ${gapArgs}params.${SCALE_PADDING_INNER_PREFIX}${name},
         params.${SCALE_PADDING_OUTER_PREFIX}${name},
         params.${SCALE_ALIGN_PREFIX}${name},
-        params.${SCALE_BAND_PREFIX}${name}
-    );
-}`;
-    }
-    return `${makeFnHeader(name, "f32", functionName)} {
-    let v = ${valueExpr};
-    return scaleBand(
-        v,
-        ${domainVec2(name)},
-        ${rangeVec2(name)},
-        params.${SCALE_PADDING_INNER_PREFIX}${name},
-        params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name},
-        params.${SCALE_BAND_PREFIX}${name}
+        params.${SCALE_BAND_PREFIX}${name}${gaps ? `, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u)` : ""}
     );
 }`;
 }

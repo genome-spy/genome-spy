@@ -1,4 +1,4 @@
-import { cssColorToArray } from "../src/utils/colorUtils.js";
+import { cssColorToRgba } from "../src/utils/colorUtils.js";
 import { createExampleRenderer, setupResize } from "./utils.js";
 import { rectMark } from "../src/marks/rect.js";
 import { indexScale } from "../src/scales/index.js";
@@ -34,8 +34,8 @@ export default async function runThresholdScene(canvas) {
 
     const yDomain = [Math.min(minY, 0), Math.max(maxY, 0)];
 
-    const belowZero = [...cssColorToArray("#ed553b"), 1];
-    const aboveZero = [...cssColorToArray("#20639b"), 1];
+    const belowZero = cssColorToRgba("#ed553b");
+    const aboveZero = cssColorToRgba("#20639b");
 
     const { series, scales } = renderer.createMark(rectMark, {
         count,

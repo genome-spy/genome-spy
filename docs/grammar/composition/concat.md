@@ -81,8 +81,8 @@ EXAMPLE examples/docs/grammar/composition/concat/sizedef-layout.json height=150
 
 For a view with a discrete positional scale, `width` or `height` can specify a
 step size instead of a fixed total size. The view derives its size from the
-scale's domain and reserves the specified number of logical pixels for each
-discrete step. The step may also be an expression reference.
+scale's domain and reserves the specified number of CSS pixels for each base
+step. The step may also be an expression reference.
 
 ```json
 {
@@ -90,10 +90,18 @@ discrete step. The step may also be an expression reference.
 }
 ```
 
-SCHEMA Step
+Scale padding determines the cell width within each step. For example, a
+20 px band step with `paddingInner: 0.2` has a 16 px cell width.
+[Grouping gaps](../scale.md#grouping-gaps) add their pixel widths to the plot
+size without changing the base step. Four unpadded band categories at a 20 px
+step with one 8 px grouping gap need an 88 px plot width, excluding guides and
+view padding. Four unpadded point categories have three intervals and need
+68 px with the same step and gap.
 
-Discrete [offset channels](../scale.md#nested-offset-scales) can introduce
-a second scale whose steps determine the view size.
+For nested categories, `for` chooses between
+[primary and offset steps](../scale.md#nested-offset-scales).
+
+SCHEMA Step
 
 ### Scrollable viewports
 
@@ -104,6 +112,10 @@ properties. They accept the same values as `width` and `height` properties excep
 for the step size. Scrollable viewports are particularly useful for categorical
 data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
 do not support zooming and panning.
+
+Step-based `width` and `height` determine the full content size, including any
+grouping gaps. The viewport dimensions control how much of that content is
+visible at once.
 
 Besides using the scrollbars, you can scroll a viewport by dragging its content.
 Scrolling differs from panning: panning changes a zoomable scale's domain, such

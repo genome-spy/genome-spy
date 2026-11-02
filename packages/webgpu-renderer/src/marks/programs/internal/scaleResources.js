@@ -23,10 +23,10 @@ import {
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import {
-    hasIndexGaps,
+    hasGroupingGaps,
     normalizeCuts,
     cutRank,
-} from "../../scales/indexGaps.js";
+} from "../../scales/groupingGaps.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -223,7 +223,7 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     addScaleUniforms(layout, name, channel) {
-        if (hasIndexGaps(channel.scale)) {
+        if (hasGroupingGaps(channel.scale)) {
             layout.push(
                 { name: "gapTable_" + name, type: "u32", components: 2 },
                 { name: "gapGeometry_" + name, type: "f32", components: 4 }
@@ -296,12 +296,15 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     initializeScale(name, channel, scale) {
-        if (hasIndexGaps(scale)) {
+        if (hasGroupingGaps(scale)) {
             this.#gapScales.set(name, {
                 cuts: normalizeCuts(scale.gapPositions),
-                domain: this.#unpackDomain(scale.domain ?? [0, 1]),
+                domain:
+                    scale.type === "band"
+                        ? [0, scale.domain?.length ?? 0]
+                        : this.#unpackDomain(scale.domain ?? [0, 1]),
                 width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
-                ranks: scale.gapDomain,
+                ranks: scale.type === "index" ? scale.gapDomain : undefined,
             });
             this.#updateGapCuts();
             this.updateGapWidth(
@@ -642,10 +645,13 @@ export class ScaleResourceManager {
                 const result = updateDomain(domain);
                 const gaps = this.#gapScales.get(name);
                 if (gaps) {
-                    gaps.domain = this.#unpackDomain(
-                        /** @type {number[]} */ (domain)
-                    );
-                    gaps.ranks = ranks;
+                    // Categorical IDs address the map; gap cuts address dense slots.
+                    const values = /** @type {number[]} */ (domain);
+                    gaps.domain =
+                        scale.type === "band"
+                            ? [0, values.length]
+                            : this.#unpackDomain(values);
+                    gaps.ranks = scale.type === "index" ? ranks : undefined;
                     this.#updateGapGeometry(name);
                 }
                 return result;

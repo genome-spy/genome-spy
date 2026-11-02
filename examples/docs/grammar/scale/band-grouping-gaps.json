@@ -1,0 +1,63 @@
+{
+  "description": [
+    "Grouped categorical heatmap",
+    "Named rows and columns use independent grouping gaps while preserving a 30 px base step."
+  ],
+
+  "data": {
+    "values": [
+      { "gene": "TP53", "sample": "S1", "value": 1.8 },
+      { "gene": "BRCA1", "sample": "S1", "value": 1.2 },
+      { "gene": "EGFR", "sample": "S1", "value": -1.1 },
+      { "gene": "KRAS", "sample": "S1", "value": -1.6 },
+      { "gene": "TP53", "sample": "S2", "value": 1.1 },
+      { "gene": "BRCA1", "sample": "S2", "value": 1.5 },
+      { "gene": "EGFR", "sample": "S2", "value": -0.8 },
+      { "gene": "KRAS", "sample": "S2", "value": -1.2 },
+      { "gene": "TP53", "sample": "S3", "value": -1.3 },
+      { "gene": "BRCA1", "sample": "S3", "value": -0.9 },
+      { "gene": "EGFR", "sample": "S3", "value": 1.7 },
+      { "gene": "KRAS", "sample": "S3", "value": 0.8 },
+      { "gene": "TP53", "sample": "S4", "value": -1.6 },
+      { "gene": "BRCA1", "sample": "S4", "value": -1.2 },
+      { "gene": "EGFR", "sample": "S4", "value": 0.9 },
+      { "gene": "KRAS", "sample": "S4", "value": 1.4 }
+    ]
+  },
+
+  "width": { "step": 30 },
+  "height": { "step": 30 },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "gene",
+      "type": "nominal",
+      "scale": {
+        "type": "band",
+        "domain": ["TP53", "BRCA1", "EGFR", "KRAS"],
+        "gapPositions": ["EGFR"],
+        "gapWidth": 8
+      },
+      "axis": { "title": "Gene", "labelAngle": -45 }
+    },
+    "y": {
+      "field": "sample",
+      "type": "nominal",
+      "scale": {
+        "type": "band",
+        "domain": ["S1", "S2", "S3", "S4"],
+        "gapPositions": ["S3"],
+        "gapWidth": 6
+      },
+      "axis": { "title": "Sample" }
+    },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "scale": { "domain": [-2, 2], "scheme": "blueorange" },
+      "legend": { "title": "Value" }
+    }
+  }
+}

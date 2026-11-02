@@ -27,6 +27,7 @@
  */
 
 import { tickCount } from "./ticks.js";
+import scaleBand, { scalePoint } from "../scales/scaleBand.js";
 import {
     error,
     inherits,
@@ -75,6 +76,9 @@ import {
 import { range as sequence } from "d3-array";
 
 import { interpolate, interpolateRound } from "d3-interpolate";
+
+getScale(Band, scaleBand, ["discrete"]);
+getScale(Point, scalePoint, ["discrete"]);
 
 const Locus = "locus";
 const Index = "index";

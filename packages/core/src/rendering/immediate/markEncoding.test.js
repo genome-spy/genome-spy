@@ -3,7 +3,11 @@ import Rectangle from "../../view/layout/rectangle.js";
 import * as colorUtils from "../color.js";
 import ViewParamRuntime from "../../paramRuntime/viewParamRuntime.js";
 import { createAccessor } from "../../encoder/accessor.js";
-import { createEncoder as buildEncoder } from "../../encoder/encoder.js";
+import {
+    createEncoder as buildEncoder,
+    createSimpleOrConditionalEncoder,
+} from "../../encoder/encoder.js";
+import scaleBand from "../../scales/scaleBand.js";
 import {
     getDrawConstantPaint,
     getPaintOpacityAccessor,
@@ -76,6 +80,48 @@ test("caches parsed alpha across alternating paints and repaints", () => {
 });
 
 describe("prepareRangeProjection", () => {
+    test("gapped categorical positions preserve conditional unscaled values", () => {
+        const runtime = new ViewParamRuntime();
+        const scale = scaleBand()
+            .domain(["A", "B", "C", "D"])
+            .gapPositions([2])
+            .gapWidth(8)
+            .axisLength(100);
+        const x = createSimpleOrConditionalEncoder(
+            [
+                {
+                    accessor: createAccessor("x", { value: 0.75 }, runtime),
+                    predicate: Object.assign(
+                        (
+                            /** @type {import("../../data/flowNode.js").Datum} */ datum
+                        ) => datum.selected,
+                        { constant: false }
+                    ),
+                },
+                {
+                    accessor: createAccessor(
+                        "x",
+                        { field: "category", type: "nominal" },
+                        runtime
+                    ),
+                    predicate: Object.assign(() => true, { constant: true }),
+                },
+            ],
+            () => /** @type {any} */ (scale)
+        );
+        const xOffset = createEncoder(() => 0, { constant: true });
+        const project = prepareRangeProjection(
+            Rectangle.create(0, 0, 100, 100),
+            { x, xOffset },
+            "x",
+            { category: "A" }
+        );
+        expect(project({ category: "A", selected: true }, [0, 0])[0]).toBe(75);
+        expect(
+            project({ category: "A", selected: false }, [0, 0])[0]
+        ).toBeCloseTo(11.5);
+        runtime.dispose();
+    });
     test("hoists constant positions and offsets but evaluates data-dependent encoders", () => {
         let primaryValue = 0.25;
         const x = createEncoder(() => primaryValue, {

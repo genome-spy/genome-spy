@@ -390,7 +390,7 @@ export class IntervalSelectionController {
                     const value = intervals[channel]?.[i];
                     if (value == null) return i;
                     const scale = scaleResolutions[channel].getScale();
-                    if ("gapMapping" in scale) {
+                    if (scale.type === "index" || scale.type === "locus") {
                         const mapping =
                             /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
                                 scale

@@ -1149,7 +1149,13 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                           getRange(channel, coords, undefined),
                           readDomain
                       )
-                    : createBandPositionScale(scale, range, readDomain, band),
+                    : createBandPositionScale(
+                          scale,
+                          range,
+                          readDomain,
+                          band,
+                          channel
+                      ),
         });
     } else if (scale?.type == "index" || scale?.type == "locus") {
         const large = isLargeIndexDomain(scale.domain().map(Number));
@@ -1196,10 +1202,11 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
  * @param {[number, number]} range
  * @param {() => number[]} readDomain
  * @param {number} band
+ * @param {string} channel
  */
-function createBandPositionScale(scale, range, readDomain, band) {
+function createBandPositionScale(scale, range, readDomain, band, channel) {
     const configurableScale = /** @type {any} */ (scale);
-    return retainScaleLeaves(
+    const result = retainScaleLeaves(
         bandScale({
             domain: readDomain(),
             range,
@@ -1211,6 +1218,7 @@ function createBandPositionScale(scale, range, readDomain, band) {
         }),
         readDomain
     );
+    return retainGroupingGaps(result, scale, channel);
 }
 
 /**
@@ -1244,8 +1252,6 @@ function createOrdinalPositionScale(scale, range, readDomain) {
  */
 function createIndexPositionScale(scale, range, band, channel, peer) {
     const configurableScale = /** @type {any} */ (scale);
-    const gaps = hasGroupingGaps(configurableScale.props);
-
     const result = retainScaleLeaves(
         indexScale({
             domain: scale.domain().map(Number),
@@ -1254,32 +1260,37 @@ function createIndexPositionScale(scale, range, band, channel, peer) {
             paddingOuter: configurableScale.paddingOuter(),
             align: configurableScale.align(),
             band,
-            ...(gaps
-                ? {
-                      gapEnabled: true,
-                      gapPositions: configurableScale.gapPositions(),
-                      gapWidth: configurableScale.gapWidth(),
-                      gapDomain: configurableScale.gapDomain(),
-                      gapPeer: peer,
-                      gapAxis: channel[0] === "y" ? "y" : "x",
-                  }
-                : {}),
         }),
         () => scale.domain().map(Number)
     );
-    if (gaps) {
-        for (const property of /** @type {const} */ ([
-            "gapPositions",
-            "gapWidth",
-            "gapDomain",
-        ])) {
-            Object.defineProperty(result, property, {
-                enumerable: true,
-                get: () => configurableScale[property](),
-            });
-        }
+    return retainGroupingGaps(result, scale, channel, peer);
+}
+
+/** Keep grouping-gap inputs live without copying their initial snapshots.
+ * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} target
+ * @param {import("../../types/encoder.js").VegaScale} scale
+ * @param {string} channel
+ * @param {string} [peer]
+ */
+function retainGroupingGaps(target, scale, channel, peer) {
+    if (!hasGroupingGaps(scale.props)) return target;
+    const source = /** @type {any} */ (scale);
+    Object.assign(target, {
+        gapEnabled: true,
+        gapAxis: channel[0] === "y" ? "y" : "x",
+    });
+    const properties = ["gapPositions", "gapWidth"];
+    if ("gapDomain" in source) {
+        Object.assign(target, { gapPeer: peer });
+        properties.push("gapDomain");
     }
-    return result;
+    for (const property of properties) {
+        Object.defineProperty(target, property, {
+            enumerable: true,
+            get: () => source[property](),
+        });
+    }
+    return target;
 }
 
 /**
@@ -1353,7 +1364,8 @@ function createNumericBranch(mark, channel, data, encoder) {
                           readDomain,
                           /** @type {import("../../spec/channel.js").BandMixins} */ (
                               encoder.channelDef
-                          ).band ?? 0.5
+                          ).band ?? 0.5,
+                          channel
                       ),
         };
     }

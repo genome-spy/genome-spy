@@ -224,6 +224,9 @@ export default class AxisView extends LayerView {
         const gappedDomain =
             fullAxisProps.domain && scaleResolution.hasGroupingGaps();
         if (gappedDomain) {
+            const categorical = ["band", "point"].includes(
+                scaleResolution.getResolvedScaleType()
+            );
             const domain = /** @type {import("../spec/view.js").UnitSpec} */ (
                 axisSpec.layer[0]
             );
@@ -252,19 +255,21 @@ export default class AxisView extends LayerView {
                             ),
                             clamp: channel,
                         },
-                        // Preserve the parent's data type while marking these
-                        // known index/locus intervals as half-open.
+                        // Categorical endpoints include whole bands; numeric
+                        // index/locus intervals retain half-open endpoints.
                         encoding: {
                             [channel]: {
                                 field: channel + "Start",
                                 type,
                                 band: 0,
-                                [GAP_PEER]: channel + "2",
+                                ...(categorical
+                                    ? {}
+                                    : { [GAP_PEER]: channel + "2" }),
                             },
                             [channel + "2"]: {
                                 field: channel + "End",
-                                band: 0,
-                                [GAP_PEER]: channel,
+                                band: categorical ? 1 : 0,
+                                ...(categorical ? {} : { [GAP_PEER]: channel }),
                             },
                         },
                     },

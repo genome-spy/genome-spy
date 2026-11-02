@@ -85,6 +85,14 @@ Remaining path/font follow-up includes a compact wide-range tier for tiny
 stroked points, portable Core/Canvas/SVG text effects, and public contract
 documentation.
 
+## Active integration: categorical grouping gaps
+
+Categorical band scales now share grouping-gap tables, fit checks, and retained
+updates with index scales. Sparse category IDs map to dense slots before gap
+placement; the Core adapter also uses this path for zero-bandwidth point scales.
+The categorical grouping-gap scene demonstrates two-axis pixel gaps and retained
+domain reordering. Core grammar/layout integration is in progress.
+
 ## Pending integration: lasso review stack
 
 Scale/gap and mixed-series packing, startup byte negotiation, and the forced-

@@ -3,6 +3,7 @@ import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { isScalar } from "../utils/variableTools.js";
 
 import createScale, {
     configureScaleProperties,
@@ -67,6 +68,9 @@ export default class ScaleInstanceManager {
     /** @type {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} */
     #createExpression;
 
+    /** @type {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} */
+    #validateGapExpression;
+
     /** @type {() => void} */
     #onRangeChange;
 
@@ -98,6 +102,7 @@ export default class ScaleInstanceManager {
      * @param {(domain: any[]) => void} options.onDomainChange
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      * @param {() => number} [options.getAxisLength]
+     * @param {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} [options.validateGapExpression]
      */
     constructor({
         getRuntime,
@@ -106,6 +111,7 @@ export default class ScaleInstanceManager {
         onDomainChange,
         getGenomeStore,
         getAxisLength = () => 0,
+        validateGapExpression = () => {},
     }) {
         this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
@@ -113,6 +119,7 @@ export default class ScaleInstanceManager {
         this.#onDomainChange = onDomainChange;
         this.#getGenomeStore = getGenomeStore;
         this.#getAxisLength = getAxisLength;
+        this.#validateGapExpression = validateGapExpression;
     }
 
     get scale() {
@@ -290,33 +297,47 @@ export default class ScaleInstanceManager {
             scale.type === "null"
                 ? []
                 : [this.#domainState, this.#rangeCommand];
-        /** @param {any} value */
-        const bind = (value) => {
+        /** @param {any} value @param {boolean} [gapInput] */
+        const bind = (value, gapInput = false) => {
             if (!isExprRef(value)) return () => value;
             const expression = this.#createExpression(value);
+            if (gapInput) this.#validateGapExpression(expression);
             dependencies.push(...expression.dependencies);
             return expression;
         };
         const expressions = Array.isArray(props.range)
-            ? props.range.map(bind)
+            ? props.range.map((value) => bind(value))
             : undefined;
         const gaps = hasGroupingGaps(props);
-        if (gaps && !["index", "locus"].includes(scale.type))
+        const categorical = scale.type === "band" || scale.type === "point";
+        if (gaps && !["index", "locus", "band", "point"].includes(scale.type))
             throw new Error(
-                "Grouping gaps require a positional index or locus scale."
+                "Grouping gaps require a positional index, locus, band, or point scale."
             );
-        const positions = bind(gaps ? props.gapPositions : null);
-        const width = bind(gaps ? (props.gapWidth ?? 6) : 0);
-        /** @type {number[] | "chromosomes" | null | undefined} */
+        if (gaps && categorical && props.round)
+            throw new Error(
+                "Grouping gaps on band/point scales do not support round: true."
+            );
+        const positions = bind(gaps ? props.gapPositions : null, true);
+        const width = bind(gaps ? (props.gapWidth ?? 6) : 0, true);
+        /** @type {import("../spec/scale.js").Scale["gapPositions"]} */
         let previousPositions;
         let gapPositions = normalizeGapPositions(null);
         // Expressions may bootstrap parameters that reference this scale. Once
         // bound, graph cycle checks guard feedback and observers can read mapping.
         this.#initializingRange = false;
         this.mapping.rebind(dependencies, () => {
+            const state =
+                scale.type === "null" ? null : this.#domainState.get();
+            const domain = state ? state.visibleDomain : [];
+            const previous = this.mapping.get();
             const rawPositions = positions(null);
-            if (rawPositions !== previousPositions) {
-                gapPositions = this.#resolveGapPositions(rawPositions);
+            if (
+                rawPositions !== previousPositions ||
+                (categorical &&
+                    !shallowArrayEquals(previous?.domain ?? [], domain))
+            ) {
+                gapPositions = this.#resolveGapPositions(rawPositions, domain);
                 previousPositions = rawPositions;
             }
             const configuredRange = expressions?.map((expression) =>
@@ -332,10 +353,6 @@ export default class ScaleInstanceManager {
             if (command && !canUseCommand) this.#rangeCommandActive = false;
             const range =
                 command && canUseCommand ? command.range : configuredRange;
-            const state =
-                scale.type === "null" ? null : this.#domainState.get();
-            const domain = state ? state.visibleDomain : [];
-            const previous = this.mapping.get();
             // Interpolating schemes and rangeStep depend on domain cardinality.
             const prepared =
                 scale.type === "null" ||
@@ -421,9 +438,29 @@ export default class ScaleInstanceManager {
         }
     }
 
-    /** @param {number[] | "chromosomes" | null} value */
-    #resolveGapPositions(value) {
-        if (value !== "chromosomes") return normalizeGapPositions(value);
+    /** @param {Exclude<import("../spec/scale.js").Scale["gapPositions"], import("../spec/parameter.js").ExprRef>} value
+     * @param {readonly any[]} domain
+     */
+    #resolveGapPositions(value, domain) {
+        if (value == null) return normalizeGapPositions(null);
+        if (this.#scale.type === "band" || this.#scale.type === "point") {
+            if (!Array.isArray(value))
+                throw new Error(
+                    "Band/point gapPositions must be an array of category values or null."
+                );
+            if (!value.every(isScalar))
+                throw new Error(
+                    "Gap categories must be strings, numbers, or booleans."
+                );
+            const categories = new Set(value);
+            return normalizeGapPositions(
+                domain.flatMap((category, rank) =>
+                    rank > 0 && categories.has(category) ? [rank] : []
+                )
+            );
+        }
+        if (value !== "chromosomes")
+            return normalizeGapPositions(/** @type {number[]} */ (value));
         if (!isScaleLocus(this.#scale))
             throw new Error(
                 'gapPositions: "chromosomes" requires a locus scale.'
