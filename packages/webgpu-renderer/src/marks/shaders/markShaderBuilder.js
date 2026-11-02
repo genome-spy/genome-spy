@@ -6,7 +6,7 @@ import HASH_TABLE_WGSL, {
 import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
-import { hasIndexGaps, INDEX_GAPS_WGSL } from "../scales/indexGaps.js";
+import { hasGroupingGaps, GROUPING_GAPS_WGSL } from "../scales/groupingGaps.js";
 import { rangeVec2 } from "../scales/scaleEmitUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
@@ -165,7 +165,7 @@ export function buildMarkShader({
         (channelIR) => channelIR.needsDomainMap
     );
     const gapChannels = channelIRs.filter((ir) =>
-        hasIndexGaps(ir.channel.scale)
+        hasGroupingGaps(ir.channel.scale)
     );
     const hasGaps = gapChannels.length > 0;
     if (
@@ -218,7 +218,7 @@ export function buildMarkShader({
     const gapChecks = gapChannels.map(({ name, channel }) => {
         const axis =
             channel.scale.gapAxis ?? (name.startsWith("y") ? "y" : "x");
-        return `indexGapsFit(${rangeVec2(name)}, params.gapGeometry_${name}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
+        return `groupingGapsFit(${rangeVec2(name)}, params.gapGeometry_${name}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
     });
     const instanceVisibility =
         order || hasGaps
@@ -414,7 +414,11 @@ ${clauses.join("\n")}
     // Only explicit gapped ranges need a conditional raw peer accessor.
     const gapPeers = new Set(
         channelIRs
-            .filter((ir) => hasIndexGaps(ir.channel.scale))
+            .filter(
+                (ir) =>
+                    ir.channel.scale?.type === "index" &&
+                    hasGroupingGaps(ir.channel.scale)
+            )
             .map((ir) => ir.channel.scale.gapPeer)
             .filter((peer) => peer !== undefined)
     );
@@ -968,7 +972,7 @@ fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
 }
 
 ${scalesWgsl}
-${hasGaps ? INDEX_GAPS_WGSL : ""}
+${hasGaps ? GROUPING_GAPS_WGSL : ""}
 ${needsHashTable ? HASH_TABLE_WGSL : ""}
 
 struct Params {

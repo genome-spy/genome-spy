@@ -28,6 +28,7 @@ export default class AxisLabelLayoutTransform extends Transform {
     constructor(params, view) {
         super(params, view);
 
+        this.view = view;
         this.params = params;
         this.channel = params.channel;
         this.labelWidthAccessor = this.createFieldAccessor(
@@ -80,10 +81,8 @@ export default class AxisLabelLayoutTransform extends Transform {
         this.schedule = () =>
             view.context.animator.requestTransition(filterAndPropagate);
 
-        const domainListener = () => this.filterAndPropagate();
-        this.resolution.addEventListener("domain", domainListener);
-        this.registerDisposer(() =>
-            this.resolution.removeEventListener("domain", domainListener)
+        this.registerDisposer(
+            this.resolution.observeMapping(() => this.filterAndPropagate())
         );
 
         this.registerDisposer(
@@ -92,7 +91,7 @@ export default class AxisLabelLayoutTransform extends Transform {
     }
 
     complete() {
-        if (this.resolution.getAxisLength()) {
+        if (this.#getAxisLength()) {
             this.filterAndPropagate();
         } else {
             this.schedule();
@@ -105,7 +104,7 @@ export default class AxisLabelLayoutTransform extends Transform {
     }
 
     filterAndPropagate() {
-        const axisLength = this.resolution.getAxisLength();
+        const axisLength = this.#getAxisLength();
         if (!axisLength) {
             return;
         }
@@ -114,6 +113,17 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         const scale = this.resolution.getScale();
         const positionAdjustment = getScalePositionAdjustment(scale);
+        const mapping =
+            "gapMapping" in scale ? scale.gapMapping(axisLength) : undefined;
+        /** @param {import("../../spec/channel.js").Scalar} value */
+        const position = (value) =>
+            (mapping
+                ? /** @type {import("../../scales/scaleBand.js").GroupingGapMapping} */ (
+                      mapping
+                  ).position(value, 0.5)
+                : /** @type {(value: import("../../spec/channel.js").Scalar) => number} */ (
+                      scale
+                  )(value) + positionAdjustment) * axisLength;
         const genome = this.chromLabelWidthAccessor
             ? /** @type {import("../../genome/scaleLocus.js").ScaleLocus} */ (
                   scale
@@ -131,12 +141,11 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         this.nextFlushOffsetMap.clear();
         for (const datum of this.nextOutputData) {
-            const position =
-                (scale(datum.value) + positionAdjustment) * axisLength;
+            const labelPosition = position(datum.value);
             const layoutOffset =
                 this.params.labelFlushZoomExtent && datum.zoomExtent
                     ? getZoomExtentFlushedLabelOffset(
-                          position,
+                          labelPosition,
                           this.getLabelBounds(datum, 0),
                           axisLength,
                           this.params.labelFlushOffset
@@ -144,7 +153,7 @@ export default class AxisLabelLayoutTransform extends Transform {
                     : this.params.labelFlush === false
                       ? 0
                       : getFlushedLabelOffset(
-                            position,
+                            labelPosition,
                             this.getLabelBounds(datum, 0),
                             axisLength,
                             this.params.labelFlush,
@@ -165,10 +174,7 @@ export default class AxisLabelLayoutTransform extends Transform {
          * @returns {[number, number]}
          */
         const getBounds = (datum) => {
-            const bounds = this.getLabelBounds(
-                datum,
-                (scale(datum.value) + positionAdjustment) * axisLength
-            );
+            const bounds = this.getLabelBounds(datum, position(datum.value));
             const encodedOffset = datum[this.params.labelOffset];
             const layoutOffset =
                 this.channel == "x" ? encodedOffset : -encodedOffset;
@@ -234,6 +240,14 @@ export default class AxisLabelLayoutTransform extends Transform {
         this.nextOutputData.length = 0;
         this.nextVisibleLabelValueSet.clear();
         this.nextFlushOffsetMap.clear();
+    }
+
+    #getAxisLength() {
+        return (
+            this.view.layoutCoords?.[
+                this.channel === "x" ? "width" : "height"
+            ] ?? this.resolution.getAxisLength()
+        );
     }
 
     /**

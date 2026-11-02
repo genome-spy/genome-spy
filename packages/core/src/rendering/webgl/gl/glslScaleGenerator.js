@@ -19,7 +19,7 @@ import { isExprRef } from "../../../paramRuntime/paramUtils.js";
 import scaleNull from "../../../utils/scaleNull.js";
 import { hasGroupingGaps } from "../../../genome/indexGapMapping.js";
 import { getGapPeer } from "../../../marks/markUtils.js";
-import { indexGapGlsl } from "./indexGaps.js";
+import { groupingGapGlsl } from "./indexGaps.js";
 import { cssColorToRgba } from "../../color.js";
 import {
     isIndexLikeDomainType,
@@ -364,7 +364,8 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             const gaps = hasGroupingGaps(scale.props);
             const peer = getGapPeer(channelDef);
             const peerAccessor = makeAccessorFunctionName(peer, 0);
-            if (gaps && channel === primary) glsl.push(indexGapGlsl(primary));
+            if (gaps && channel === primary)
+                glsl.push(groupingGapGlsl(primary));
             if (gaps && peer) glsl.push(`${attributeType} ${peerAccessor}();`);
             functionCall = makeScaleCall(
                 gaps ? "scaleGaps_" + primary : "scaleBandHp",
@@ -388,9 +389,12 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             break;
         }
         case "point":
-        case "band":
+        case "band": {
+            const gaps = hasGroupingGaps(scale.props);
+            if (gaps && channel === primary)
+                glsl.push(groupingGapGlsl(primary, true));
             functionCall = makeScaleCall(
-                "scaleBand",
+                gaps ? "scaleBandGaps_" + primary : "scaleBand",
                 "domain",
                 rangeUniformName,
                 transform === "point" ? 1 : scale.paddingInner(),
@@ -400,6 +404,7 @@ export function generateScaleGlsl(channel, scale, channelDef) {
                 toDecimal(channelDef.band ?? 0.5)
             );
             break;
+        }
 
         case "ordinal": // Use identity transform and lookup the value from a texture
         case "null":

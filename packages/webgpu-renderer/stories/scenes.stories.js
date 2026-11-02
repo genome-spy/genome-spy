@@ -9,6 +9,7 @@ import runTextEffectsScene from "../examples/textEffectsScene.js";
 import runThresholdScene from "../examples/thresholdScene.js";
 import runPiecewiseScene from "../examples/piecewiseScene.js";
 import runIndexGapScene from "../examples/indexGapScene.js";
+import runBandGapScene from "../examples/bandGapScene.js";
 import runRectClampingScene from "../examples/rectClampingScene.js";
 import runIndexScene from "../examples/indexScene.js";
 import runRuleScene, { ruleDefaults } from "../examples/ruleScene.js";
@@ -359,6 +360,19 @@ export const IndexGroupingGaps = withSource(
         args: { gapWidth: 10 },
         argTypes: { gapWidth: { control: { type: "range", min: 0, max: 30 } } },
         render: (args) => renderScene(runIndexGapScene, args),
+    }
+);
+
+export const CategoricalGroupingGaps = withSource(
+    "runBandGapScene",
+    { gapWidth: 12, reverse: false },
+    {
+        args: { gapWidth: 12, reverse: false },
+        argTypes: {
+            gapWidth: { control: { type: "range", min: 0, max: 40 } },
+            reverse: { control: "boolean" },
+        },
+        render: (args) => renderScene(runBandGapScene, args),
     }
 );
 

@@ -2,6 +2,7 @@ import clamp from "../../utils/clamp.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
 import { getGapPeer } from "../../marks/markUtils.js";
+import { isValueDef } from "../../encoder/encoder.js";
 import { cssColorToRgba } from "../color.js";
 
 /** @type {WeakMap<import("../../types/encoder.js").Encoder, (paint: string) => number>} */
@@ -145,22 +146,34 @@ export function encodeNumber(encoder, datum) {
 function createGapProjection(encoder, extent, peer) {
     const scale = encoder.scale;
     if (!scale || !("gapMapping" in scale)) return;
-    const indexScale =
-        /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (scale);
-    const mapping = indexScale.gapMapping(extent);
+    const mapping = scale.gapMapping(extent);
     if (!mapping) return;
 
-    const accessor = encoder.branches[0].accessor;
-    const def = accessor.channelDef;
     const peerAccessor =
-        peer && getGapPeer(encoder.channelDef) && peer.branches[0].accessor;
+        peer &&
+        (scale.type === "index" || scale.type === "locus") &&
+        getGapPeer(encoder.channelDef) &&
+        peer.branches[0].accessor;
     const defaultBand = peerAccessor ? 0 : 0.5;
-    const band = "band" in def ? (def.band ?? defaultBand) : defaultBand;
+    const projectors = encoder.branches.map(({ accessor }) => {
+        const def = accessor.channelDef;
+        if (isValueDef(def)) return accessor.asNumberAccessor();
+        const band = "band" in def ? (def.band ?? defaultBand) : defaultBand;
+        return (/** @type {object} */ datum) => {
+            const value = accessor(datum);
+            const before =
+                !!peerAccessor && Number(value) > Number(peerAccessor(datum));
+            return /** @type {import("../../scales/scaleBand.js").GroupingGapMapping} */ (
+                mapping
+            ).position(value, band, before);
+        };
+    });
 
     return (/** @type {object} */ datum) => {
-        const value = Number(accessor(datum));
-        const before = !!peerAccessor && value > Number(peerAccessor(datum));
-        return mapping.position(value, band, before);
+        for (let i = 0; i < projectors.length; i++) {
+            if (encoder.branches[i].predicate(datum))
+                return projectors[i](datum);
+        }
     };
 }
 

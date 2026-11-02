@@ -129,6 +129,25 @@ function getNode(ref) {
     return node;
 }
 
+/** Whether a graph ref reads another ref, including ordinary derived aliases.
+ * @param {import("./types.js").ParamRef<any>} source
+ * @param {import("./types.js").ParamRef<any>} target
+ */
+export function dependsOn(source, target) {
+    const targetNode = getNode(target);
+    const visited = new Set();
+    /** @param {import("./types.js").ParamRef<any>} ref */
+    const visit = (ref) => {
+        const node = getNode(ref);
+        if (node === targetNode) return true;
+        if (visited.has(node)) return false;
+        visited.add(node);
+        const computed = /** @type {ComputedNode<any>} */ (node);
+        return (computed.dependencies ?? []).some(visit);
+    };
+    return visit(source);
+}
+
 /**
  * @param {import("./types.js").ParamRef<any>} dep
  * @returns {number}
@@ -449,24 +468,9 @@ export default class GraphRuntime {
                         );
                     // Validate before disconnecting the old producer. Keeping the
                     // same ref lets existing consumers retain their dependency.
-                    const visited = new Set();
-                    const visit = (
-                        /** @type {import("./types.js").ParamRef<any>} */ ref
-                    ) => {
-                        const source =
-                            /** @type {ComputedNode<any> | undefined} */ (
-                                /** @type {any} */ (ref)[RUNTIME_NODE]
-                            );
-                        if (source === node)
-                            throw new Error(
-                                "Reactive dependency cycle: " + name
-                            );
-                        if (visited.has(source)) return;
-                        visited.add(source);
-                        for (const dep of source?.dependencies ?? [])
-                            visit(dep);
-                    };
-                    dependencies.forEach(visit);
+                    const target = createRef(node);
+                    if (dependencies.some((ref) => dependsOn(ref, target)))
+                        throw new Error("Reactive dependency cycle: " + name);
                     unsubscribers.forEach((unsubscribe) => unsubscribe());
                     node.dependencies = dependencies;
                     node.fn = evaluate;

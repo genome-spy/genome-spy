@@ -195,12 +195,7 @@ function isOccurrenceVisible(mark, coords) {
         const scale = mark.encoders[axis]?.scale;
         if (scale && "gapMapping" in scale) {
             const extent = axis === "x" ? coords.width : coords.height;
-            if (
-                /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
-                    scale
-                ).gapMapping(extent)?.fits === false
-            )
-                return false;
+            if (scale.gapMapping(extent)?.fits === false) return false;
         }
     }
     return true;

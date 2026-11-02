@@ -122,7 +122,7 @@ export default class WebGLRendererResources {
     /** @param {import("../../scales/scaleResolution.js").default} resolution */
     getGapTexture(resolution) {
         const cuts =
-            /** @type {import("../../genome/scaleIndex.js").ScaleIndex} */ (
+            /** @type {import("../../genome/scaleIndex.js").ScaleIndex | import("../../scales/scaleBand.js").CategoricalGapScale} */ (
                 resolution.getScale()
             ).gapPositions();
         const previous = this.#gapTextures.get(resolution);

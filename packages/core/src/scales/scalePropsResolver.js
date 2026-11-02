@@ -174,6 +174,10 @@ export function resolveScalePropsBase({
         const positionResolution = getOwnerScaleResolution?.(positionChannel);
 
         if (positionResolution?.getResolvedScaleType() == "band") {
+            if (positionResolution.hasGroupingGaps())
+                throw new Error(
+                    "Automatically fitted categorical offsets do not support grouping gaps on the primary band scale."
+                );
             // Initialize the dependency before binding the reactive range.
             // Otherwise its first range notification can re-enter bandwidth()
             // while the offset scale itself is being initialized.

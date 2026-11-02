@@ -23,6 +23,7 @@ import {
 } from "../spec/channel.js";
 import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
+import { CategoricalGapScale } from "../scales/scaleBand.js";
 import { Scalar } from "../spec/channel.js";
 import { Datum } from "../data/flowNode.js";
 
@@ -169,4 +170,7 @@ export type D3Scale =
 
 export type GenericScale = any;
 
-export type VegaScale = (D3Scale | ScaleIndex | ScaleLocus) & ScaleMetadata;
+export type VegaScale = (
+    D3Scale | ScaleIndex | ScaleLocus | CategoricalGapScale
+) &
+    ScaleMetadata;

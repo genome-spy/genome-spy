@@ -27,6 +27,7 @@
  */
 
 import { tickCount } from "./ticks.js";
+import scaleBand from "../scales/scaleBand.js";
 import {
     error,
     inherits,
@@ -228,7 +229,8 @@ export default function createScale(_, logger) {
         throw new Error("Unknown scale type: " + key);
     }
 
-    const scaleInstance = scale();
+    const scaleInstance =
+        key === Band || key === Point ? scaleBand(scale) : scale();
 
     configureScale(
         scaleProps,

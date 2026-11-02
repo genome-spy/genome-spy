@@ -1,7 +1,7 @@
 /** @param {import("../../index.d.ts").ChannelScale | undefined} scale */
-export function hasIndexGaps(scale) {
+export function hasGroupingGaps(scale) {
     return (
-        scale?.type === "index" &&
+        (scale?.type === "index" || scale?.type === "band") &&
         (scale.gapEnabled ??
             (scale.gapWidth !== 0 &&
                 scale.gapWidth !== null &&
@@ -30,7 +30,7 @@ export function normalizeCuts(values) {
 }
 
 // Only included when a channel opts into grouping gaps.
-export const INDEX_GAPS_WGSL = /* wgsl */ `
+export const GROUPING_GAPS_WGSL = /* wgsl */ `
 fn gapKeyGreater(a: vec2<u32>, b: vec2<u32>) -> bool {
     return a.x > b.x || (a.x == b.x && a.y > b.y);
 }
@@ -58,7 +58,7 @@ fn gapPlacementFactor(i: u32, axis: u32) -> f32 {
 #endif
 }
 
-fn indexGapsFit(range: vec2<f32>, geometry: vec4<f32>, placement: f32) -> bool {
+fn groupingGapsFit(range: vec2<f32>, geometry: vec4<f32>, placement: f32) -> bool {
     return abs(range.y - range.x) * placement > geometry.x * (geometry.z - geometry.y);
 }
 
@@ -74,5 +74,25 @@ fn scaleIndexGaps(value: vec2<u32>, domain: vec3<f32>, range: vec2<f32>,
     let lo = stableSub(f32(value.y), domain.y);
     let rank = f32(cutRank(value, table, before));
     return start + hi * step + lo * step + gap * (rank - geometry.y) + step * (1.0 - paddingInner) * band;
+}
+
+fn scaleBandGaps(value: u32, domain: vec2<f32>, range: vec2<f32>,
+    table: vec2<u32>, geometry: vec4<f32>, paddingInner: f32,
+    paddingOuter: f32, align: f32, band: f32, placement: f32) -> f32 {
+    let reverse = range.y < range.x;
+    let gap = geometry.x / max(placement, 1e-9);
+    let count = geometry.z - geometry.y;
+    let available = abs(range.y - range.x) - gap * count;
+    let n = domain.y - domain.x;
+    let space = n - paddingInner + 2.0 * paddingOuter;
+    let step = available / select(1.0, space, space > 0.0);
+    let start = min(range.x, range.y) + (available - step * (n - paddingInner)) * align;
+    var rank = f32(cutRank(vec2<u32>(value >> 12u, value & 4095u), table, false)) - geometry.y;
+    var offset = f32(value) - domain.x;
+    if (reverse) {
+        offset = n - 1.0 - offset;
+        rank = count - rank;
+    }
+    return start + offset * step + rank * gap + step * (1.0 - paddingInner) * band;
 }
 `;

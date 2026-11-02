@@ -13,8 +13,7 @@ express larger separators at selected group boundaries.
 
 Extend positional `band` and `point` scales with fixed CSS-pixel grouping gaps.
 Point is the zero-bandwidth variant of band and shares its gap implementation.
-Keep equal
-cell bandwidths, category identities, explicit domain ordering, aligned axes,
+Keep equal cell bandwidths, category identities, explicit domain ordering, aligned axes,
 shared annotation tracks, picking, and export consistent. Support gaps on both
 heat-map axes, fixed/stretch dimensions, and step-based dimensions. Initially
 reject automatically fitted categorical offset scales under a statically gapped
@@ -280,10 +279,11 @@ preferred size changes. Range/extent notifications from layout must settle with
 the same preferred size. Do not create a second sizing snapshot. On a step-sized
 axis, gap width/cut expressions must be independent of that axis's allocated
 extent, directly or indirectly. External parameter-driven gaps remain supported.
-The existing parameter graph does not reliably detect a cycle crossing imperative
-arrangement and its width/height setters. No iterative layout solver or general
-dependency-validation framework is part of this feature; see the bounded open
-enforcement question below.
+The existing parameter graph detects direct reads and ordinary derived aliases;
+reject these using the existing ref dependencies. It cannot reliably detect a
+cycle crossing imperative arrangement or delayed parameter updates. Such inputs
+remain unsupported. No iterative layout solver or general dependency-validation
+framework is part of this feature.
 
 `step.for = "offset"` keeps its existing behavior on non-gapped primary scales.
 For a hypothetical supported nested case, the algebra is
@@ -485,43 +485,42 @@ step-sizing sections for consistent scope and transitions.
 
 ### 2. Heat-map rendering, guides, and sizing across backends
 
-- [ ] Integrate WebGL, immediate/SVG, and generic WebGPU band mapping/resources;
+- [x] Integrate WebGL, immediate/SVG, and generic WebGPU band mapping/resources;
       reuse forward projection and fit consumers; update picking, scaleGroups/axes,
       desired dimensions, occurrence-local label layout, and `bandstep` together.
       Reject automatically fitted categorical offsets on statically gapped primary
       bands while preserving existing non-gapped offset behavior.
-- [ ] Bind expressions, normalize category cuts against completed domain state,
-      update public specification types/JSDoc, and enable positional band-gap
+- [x] Bind expressions, normalize category cuts against completed domain state,
+      update public specification types/JSDoc, and enable positional band/point-gap
       validation only once the renderers and ordinary axes work together. Correct
       step-based sizing for band/index/locus using the bounded rules above. Add
       one Core minor changeset covering band gaps and the step-sizing correction.
-- [ ] Extend existing focused tests in `scaleResolution.categorical.test.js`,
-      `offsetScale.test.js`, `scaleGroupsSource.test.js`, SVG gap/axis suites, WebGL
-      shader/resource suites, and WebGPU adapter/surface suites as needed for distinct
-      failure modes. Use a representative headless layout/structured SVG test for
+- [x] Extend focused categorical-resolution, offset, SVG gap/axis, and WebGPU
+      resource/adapter/surface suites as needed for distinct failure modes. Reuse
+      existing scale-group and index renderer regressions. Use a representative headless layout/structured SVG test for
       preferred extent, cell step, gaps, and rendered guides together; reserve GPU
       cases for shader lookup/fit behavior. Do not repeat the same sizing matrix
       per backend or mirror the geometry formula in standalone tests.
-- [ ] Extend `view.test.js` step regressions with band padding/gaps and mapping-only
+- [x] Extend view step regressions in the adjacent `view.gaps.test.js` with band padding/gaps and mapping-only
       updates, then an index partial-gap case where fractional ranks change without
       numeric endpoints changing. Include no-reflow when the gap footprint is
       unchanged, startup-empty/zero-span behavior, static-disabled compatibility
       versus reactive zero/empty specialization, and categorical-offset rejection.
-      Verify subscription setup after inherited view-level scale/assembly config
-      and disposal on dynamic removal. Reuse existing grouped-bar tests for the
+      Verify subscription setup after inherited view-level scale/assembly config;
+      reuse existing disposer registration for dynamic removal. Reuse existing grouped-bar tests for the
       unchanged non-gapped offset contract. Cover scrollable content with fixed
       viewport size using an existing layout test rather than a new harness.
-- [ ] Add one representative point-scale sizing/reversal regression: four
+- [x] Add one representative point-scale sizing/reversal regression: four
       unpadded points at a 20 px base step and one 8 px gap need 68 px. Preserve
       ordinary symbol geometry/picking and point-center guide endpoints.
-- [ ] Exercise real headless gapped specs through reorder/remove/reinsert,
+- [x] Exercise real headless gapped specs through reorder/remove/reinsert,
       unchanged stable IDs, constant-disabled expressions, reactive enable/disable,
       and completed mapping observers. Review related tests for overlapping coverage.
-- [ ] Add a renderer-generic band-gap story and GPU regression alongside
+- [x] Add a renderer-generic band-gap story and GPU regression alongside
       `packages/webgpu-renderer/tests/index-gaps.gpu.test.js`, including reordered
       sparse IDs and table updates. Confirm changing order/cuts does not rebuild
       retained row buffers. Build Storybook when modifying stories.
-- [ ] Document the categorical scaleGroups endpoint contract and unsupported
+- [x] Document the categorical scaleGroups endpoint contract and unsupported
       interactions; use the documentation skill for schema/JSDoc changes.
 - Tentative commit: `feat(core): render grouped categorical heat maps across backends`
 - **Review gate:** downstream consumer semantics, retained resource lifecycle,
@@ -578,28 +577,25 @@ step-sizing sections for consistent scope and transitions.
    gaps and predict plot size; generated references and documented restrictions
    agree with the implemented contract.
 
-## Risks and questions to confirm before implementation
+## Shipped boundaries and remaining risks
 
 - **Nested offsets:** initially excluded as described above. Future automatic
   fitting needs occurrence-local renderer composition, not just an extra extent
   argument to `bandwidth()`. No solution for arbitrary extent-sensitive expressions
   is proposed by this feature.
 - **Boundary ownership:** category-anchored cuts disappear when the named category
-  is filtered out. The proposal deliberately chooses this simple rule. Confirm
-  whether heat maps instead need persistent group membership through filtering;
-  that would require a different data/group contract, not an implicit fallback.
-- **scaleGroups surface:** the proposed inclusive categorical endpoints extend a
-  source currently documented only for numeric half-open intervals. Confirm this
-  type-specific contract before shipping; a dedicated categorical guide source
-  is an alternative if it makes user-authored guides clearer.
+  is filtered out. Persistent group membership would require a different
+  data/group contract, not an implicit fallback.
+- **scaleGroups surface:** inclusive categorical endpoints extend the existing
+  source. Automatic axes use band anchors 0 and 1 with these endpoints; numeric
+  half-open endpoints are unchanged. The public reference documents both contracts.
 - **Rounding:** the initial explicit rejection keeps scope bounded. Supporting
   rounded band cells while preserving exact gaps and backend parity needs a
   separate pixel-space rounding design, especially at fractional DPR/export size.
 - **Size-dependent expressions:** step-sized gap inputs must not read the same
-  axis's allocated extent. Use existing expression/ref metadata for a narrow
-  rejection where possible. Enforcement of indirect layout dependencies remains
-  open if that metadata cannot describe them cheaply; do not claim current graph
-  cycle checks cover imperative layout or expand this feature into a new solver.
+  axis's allocated extent. Existing graph refs reject direct reads and ordinary
+  derived aliases. Cycles through imperative layout or delayed updates remain
+  unsupported and cannot be reliably rejected by this bounded check.
 - **Performance:** normalize category cuts on domain/mapping changes, retain
   immutable cut tables, and avoid allocations during drawing. Measure focused
   code size and representative heat-map update behavior before and after any
@@ -633,3 +629,19 @@ step-sizing sections for consistent scope and transitions.
 - Point gaps are included at the user's request through the same categorical
   implementation. The extra contracts are effective inner padding 1, zero
   bandwidth, point-center guides, and native point inversion/singleton behavior.
+- Milestone 1 committed as `4a531ddf0`. Category-to-cut normalization stayed in
+  milestone 2 with completed-domain publication, rather than entering the scale
+  wrapper. The wrapper only consumes normalized numeric cuts.
+- Implementation review caught three concrete issues: disabled gaps reading
+  placement geometry for offsets, conditional immediate encodings bypassing their
+  predicates, and offset-step sizing on zero-bandwidth primaries dividing by zero.
+  Each has a regression and is fixed in milestone 2.
+- Final independent integration review found no further blocking correctness or
+  KISS/DRY issues. Its documentation suggestion was incorporated: offset-step
+  sizing needs nonzero primary bandwidth; point primaries can use `for: "position"`.
+- Size check after integration: the new CPU wrapper is 202 lines; index scale
+  and mapping stay at 281/228 lines, `scalePosition.js` stays at 44, WebGL gap
+  helpers grow from 53 to 83, and `view.js` grows from 1,894 to 1,947. WebGPU
+  replaces its 78-line index helper with a 98-line shared grouping helper.
+  Cut resources, fit checks, and forward consumers are shared; numeric navigation
+  remains separate. No general scale or layout framework was introduced.

@@ -57,6 +57,7 @@ import {
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 import { isInChromeSubtree } from "../view/viewChrome.js";
+import { dependsOn } from "../paramRuntime/graphRuntime.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -217,6 +218,8 @@ export default class ScaleResolution {
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
             getAxisLength: () => this.getAxisLength(),
+            validateGapExpression: (expression) =>
+                this.#validateGapExpression(expression),
         });
 
         this.#interactionController = new ScaleInteractionController({
@@ -325,6 +328,33 @@ export default class ScaleResolution {
             }
 
             throw this.#createParameterScopeError(match[1], error);
+        }
+    }
+
+    /** Reject graph-visible feedback from a step-sized view's own layout signal.
+     * Authored width/height parameters are external inputs, not layout signals.
+     * @param {import("../paramRuntime/types.js").ExprRefFunction} expression
+     */
+    #validateGapExpression(expression) {
+        const dimension = this.channel === "x" ? "width" : "height";
+        const views = new Set([
+            this.#expressionScopeView,
+            ...Array.from(this.#members, (member) => member.view),
+        ]);
+        for (const view of views) {
+            if (
+                !view.isStepSized(dimension) ||
+                view.paramRuntime.hasConfiguredParamInScopeChain(dimension)
+            )
+                continue;
+            const size = view.paramRuntime.getParamRef(dimension);
+            if (
+                size &&
+                expression.dependencies.some((ref) => dependsOn(ref, size))
+            )
+                throw new Error(
+                    `Grouping gaps on a step-sized axis cannot depend on its allocated ${dimension}.`
+                );
         }
     }
 
@@ -1326,7 +1356,7 @@ export default class ScaleResolution {
         }
         if (hasGroupingGaps(props) && !["x", "y"].includes(this.channel))
             throw new Error(
-                "Grouping gaps require a positional index or locus scale."
+                "Grouping gaps require a positional index, locus, band, or point scale."
             );
 
         this.#resolvingScaleProps += 1;

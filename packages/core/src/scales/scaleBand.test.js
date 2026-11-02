@@ -99,5 +99,10 @@ test("reactive empty gaps retain native geometry, while exhausted placements rec
     expect(scale(true)).toBe(0.5);
 
     scale.props = { gapPositions: [], gapWidth: 0 };
+    scale.axisLength(() => {
+        throw new Error("Disabled gaps must not request positional geometry.");
+    });
     expect(scale.gapMapping()).toBeUndefined();
+    expect(scale(false)).toBe(0);
+    expect(scale.bandwidth()).toBe(0.5);
 });

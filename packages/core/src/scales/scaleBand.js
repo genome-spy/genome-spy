@@ -74,11 +74,12 @@ export default function scaleBand(createNativeScale) {
     }
 
     /** @param {number} [extent] */
-    function getMapping(extent = axisLength()) {
+    function getMapping(extent) {
         const enabled = scale.props
             ? hasGroupingGaps(scale.props)
             : width > 0 && cuts.length > 0;
         if (!enabled) return;
+        extent ??= axisLength();
         let mapping = mappings.get(extent);
         if (mapping) return mapping;
 

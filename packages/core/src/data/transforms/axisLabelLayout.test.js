@@ -42,6 +42,12 @@ class FakeScaleResolution {
         }
     }
 
+    /** @param {() => void} listener */
+    observeMapping(listener) {
+        this.domainListeners.add(listener);
+        return () => this.domainListeners.delete(listener);
+    }
+
     emitDomain() {
         for (const listener of this.domainListeners) {
             listener();

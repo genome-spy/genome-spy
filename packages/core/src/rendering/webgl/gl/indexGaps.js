@@ -1,12 +1,13 @@
 /** Generate helpers only for structurally enabled scales.
  * @param {string} name
+ * @param {boolean} [categorical]
  */
-export function indexGapGlsl(name) {
+export function groupingGapGlsl(name, categorical = false) {
     const axis =
         name === "y"
             ? "uViewportSize.y * getSampleFacetPos().height"
             : "uViewportSize.x";
-    return `
+    const shared = `
 uniform highp usampler2D uGapCuts_${name};
 uniform highp int uGapCount_${name};
 uniform highp vec4 uGapGeometry_${name};
@@ -29,7 +30,35 @@ int gapRank_${name}(uvec2 value, bool before) {
     }
     return lo;
 }
+`;
 
+    if (categorical)
+        return (
+            shared +
+            `
+float scaleBandGaps_${name}(uint value, vec2 domain, vec2 range,
+    float paddingInner, float paddingOuter, float align, float band) {
+    float gap = uGapGeometry_${name}.x / ${axis};
+    float count = uGapGeometry_${name}.z;
+    float available = abs(range.y - range.x) - gap * count;
+    float n = domain.y - domain.x;
+    float space = n - paddingInner + 2.0 * paddingOuter;
+    float step = available / (space > 0.0 ? space : 1.0);
+    float start = min(range.x, range.y) + (available - step * (n - paddingInner)) * align;
+    float rank = float(gapRank_${name}(uvec2(value >> 12u, value & 4095u), false));
+    float offset = float(value) - domain.x;
+    if (range.y < range.x) {
+        offset = n - 1.0 - offset;
+        rank = count - rank;
+    }
+    return start + offset * step + gap * rank + step * (1.0 - paddingInner) * band;
+}
+`
+        );
+
+    return (
+        shared +
+        `
 float scaleGaps_${name}(uvec2 value, vec3 domain, vec2 range,
     float paddingInner, float paddingOuter, float align, float band, bool before) {
     vec4 geometry = uGapGeometry_${name};
@@ -49,5 +78,6 @@ float scaleGaps_${name}(uint value, vec3 domain, vec2 range,
     return scaleGaps_${name}(uvec2(value >> 12u, value & 4095u), domain, range,
         paddingInner, paddingOuter, align, band, before);
 }
-`;
+`
+    );
 }

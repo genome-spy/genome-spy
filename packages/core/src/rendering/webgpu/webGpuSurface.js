@@ -570,7 +570,7 @@ function compileResourceBindings(
  */
 function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
     if (scaleSlot && channel.scale) {
-        if (channel.scale.gapEnabled) {
+        if (channel.scale.gapEnabled && channel.scale.type === "index") {
             add(
                 key + ":domain",
                 () => [channel.scale.domain, channel.scale.gapDomain],

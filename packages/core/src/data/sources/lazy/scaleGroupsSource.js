@@ -37,7 +37,7 @@ export default class ScaleGroupsSource extends DataSource {
 
     #ready = false;
 
-    /** @type {{extent: readonly number[], cuts: readonly number[], ready: boolean}[] | undefined} */
+    /** @type {{groups: import("../../../spec/channel.js").Scalar[][], ready: boolean}[] | undefined} */
     #snapshot;
 
     /** @param {import("../../../spec/data.js").ScaleGroupsData} params
@@ -60,10 +60,12 @@ export default class ScaleGroupsSource extends DataSource {
             const resolution = view.getScaleResolution(channel);
             if (
                 !resolution ||
-                !["index", "locus"].includes(resolution.getResolvedScaleType())
+                !["index", "locus", "band", "point"].includes(
+                    resolution.getResolvedScaleType()
+                )
             ) {
                 throw new Error(
-                    `scaleGroups requires a resolved index or locus scale for ${channel}.`
+                    `scaleGroups requires a resolved index, locus, band, or point scale for ${channel}.`
                 );
             }
             return {
@@ -112,28 +114,51 @@ export default class ScaleGroupsSource extends DataSource {
     #publish(force) {
         const snapshot = this.axes.map((axis) => {
             const mapping = axis.mapping.get();
-            if (!["index", "locus"].includes(mapping.scale.type)) {
-                throw new Error("scaleGroups requires index or locus scales.");
+            const cuts = hasEffectiveGroupingGaps(mapping)
+                ? mapping.gapPositions
+                : [];
+            const categorical =
+                mapping.scale.type === "band" || mapping.scale.type === "point";
+            if (categorical) {
+                const domain = mapping.domain;
+                const reverse =
+                    mapping.scale.range()[1] < mapping.scale.range()[0];
+                return {
+                    ready: true,
+                    groups: splitScaleGroups([0, domain.length], cuts).map(
+                        ([start, end]) =>
+                            reverse
+                                ? [domain[end - 1], domain[start]]
+                                : [domain[start], domain[end - 1]]
+                    ),
+                };
+            } else {
+                if (
+                    mapping.scale.type !== "index" &&
+                    mapping.scale.type !== "locus"
+                )
+                    throw new Error(
+                        "scaleGroups requires index, locus, band, or point scales."
+                    );
+                const { extent, ready } = axis.extent.get();
+                return {
+                    ready,
+                    groups: ready ? splitScaleGroups(extent, cuts) : [],
+                };
             }
-            return {
-                ...axis.extent.get(),
-                cuts: hasEffectiveGroupingGaps(mapping)
-                    ? mapping.gapPositions
-                    : [],
-            };
         });
         if (!force && deepEqual(snapshot, this.#snapshot)) return;
         this.#snapshot = snapshot;
         this.#ready = snapshot.every((axis) => axis.ready);
 
-        let rows = /** @type {Record<string, number>[]} */ ([{}]);
+        let rows =
+            /** @type {Record<string, import("../../../spec/channel.js").Scalar>[]} */ ([
+                {},
+            ]);
         if (this.#ready) {
             for (let i = 0; i < this.axes.length; i++) {
                 const channel = this.axes[i].channel;
-                const groups = splitScaleGroups(
-                    snapshot[i].extent,
-                    snapshot[i].cuts
-                );
+                const groups = snapshot[i].groups;
                 rows = rows.flatMap((row) =>
                     groups.map(([start, end], group) => ({
                         ...row,

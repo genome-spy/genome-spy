@@ -785,6 +785,53 @@ describe("WebGPU mark adapter", () => {
         expect(updatedX.scale.domain).toEqual([1, 0]);
     });
 
+    test.each(["band", "point"])(
+        "retains live categorical %s gaps on dense domain ranks",
+        (type) => {
+            const domain = ["A", "B", "C"];
+            let cuts = [2];
+            let width = 8;
+            const scale = {
+                ...createBandScale(domain, true),
+                type,
+                gapPositions: () => cuts,
+                gapWidth: () => width,
+            };
+            Object.assign(scale.props, { gapPositions: { expr: "cuts" } });
+            const mark = createMark(
+                "point",
+                domain.map((category) => ({ category })),
+                {
+                    y: createEncoder((datum) => datum.category, {
+                        scale,
+                        channelDef: { field: "category", type: "nominal" },
+                    }),
+                }
+            );
+            const translated = createWebGpuMarkConfig(
+                mark,
+                {},
+                Rectangle.create(0, 0, 100, 200)
+            );
+            const y = /** @type {any} */ (translated).config.channels.y;
+            expect(y.scale).toMatchObject({
+                type: "band",
+                paddingInner: type === "point" ? 1 : 0.2,
+                gapEnabled: true,
+                gapPositions: [2],
+                gapWidth: 8,
+                gapAxis: "y",
+            });
+            domain.reverse();
+            cuts = [1];
+            width = 0;
+            expect(y.scale.domain).toEqual([2, 1, 0]);
+            expect(y.scale.gapPositions).toEqual([1]);
+            expect(y.scale.gapWidth).toBe(0);
+            expect(y.scale).not.toHaveProperty("gapDomain");
+        }
+    );
+
     test("keeps reversed discrete Y scales top-to-bottom", () => {
         const data = [{ category: "A" }, { category: "B" }];
         const yOptions = {
