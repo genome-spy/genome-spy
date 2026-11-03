@@ -364,9 +364,11 @@ async function renderFrames({ renderer, dpr }) {
  * @param {number} dpr
  */
 async function checkAlignment(page, renderer, dpr) {
-    const { frames, unionChecks } = await page.evaluate(
+    const { frames, unionChecks, contours } = await page.evaluate(
         async ({ renderer, dpr }) => {
             const { embed } = await import("/index.js");
+            const { RASTER_COORDINATE_OFFSET } =
+                await import("/rendering/renderingConstants.js");
             await import("/rendering/webgpu/register.js");
             /** @param {Blob} blob @param {number[][]} points */
             async function capture(blob, points) {
@@ -381,11 +383,20 @@ async function checkAlignment(page, renderer, dpr) {
                         ),
                         ctx = canvas.getContext("2d");
                     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-                    return points.map(([x, y]) =>
-                        Array.from(
-                            ctx.getImageData(x * dpr, y * dpr, 1, 1).data
-                        )
-                    );
+                    // Read the decoded export, never Core's rendering canvas.
+                    const pixels = ctx.getImageData(
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    ).data;
+                    return points.map(([x, y]) => {
+                        const offset =
+                            (Math.floor(y * dpr) * canvas.width +
+                                Math.floor(x * dpr)) *
+                            4;
+                        return Array.from(pixels.subarray(offset, offset + 4));
+                    });
                 } finally {
                     globalThis.URL.revokeObjectURL(url);
                 }
@@ -475,7 +486,7 @@ async function checkAlignment(page, renderer, dpr) {
                                 pixelRatio: dpr,
                             }),
                         ];
-                        if (renderer === "canvas" && body >= 1)
+                        if (renderer === "canvas")
                             exports.push(
                                 await api.imageExport.svg({
                                     background: "white",
@@ -489,6 +500,12 @@ async function checkAlignment(page, renderer, dpr) {
                                     [40, 40],
                                     [11, 40],
                                     [5, 40],
+                                    ...(body < 1
+                                        ? Array.from(
+                                              { length: 32 * dpr },
+                                              (_, i) => [40, 24 + i / dpr]
+                                          )
+                                        : []),
                                 ])
                             );
                         }
@@ -508,8 +525,175 @@ async function checkAlignment(page, renderer, dpr) {
                     }
                 }
                 const unionChecks = [];
+                const contours = [];
+                // Independently classify every output pixel by nominal-boundary distance.
+                // SVG may differ within one output pixel of a boundary; GPU internal
+                // paint transitions must retain opaque coverage even in that region.
+                /**
+                 * @param {Blob} blob
+                 * @param {(x: number, y: number) => number} distance
+                 * @param {number} inset
+                 * @param {number} outset
+                 * @param {boolean} svg
+                 * @param {number} [yMin]
+                 */
+                async function contour(
+                    blob,
+                    distance,
+                    inset,
+                    outset,
+                    svg,
+                    yMin = 0
+                ) {
+                    const points = Array.from(
+                        { length: 80 * (80 - yMin) * dpr * dpr },
+                        (_, i) => [
+                            (i % (80 * dpr)) / dpr,
+                            yMin + Math.floor(i / (80 * dpr)) / dpr,
+                        ]
+                    );
+                    const pixels = await capture(blob, points);
+                    const errors = [];
+                    let checked = 0,
+                        edgeInk = 0;
+                    for (let i = 0; i < points.length; i++) {
+                        const [x, y] = points[i],
+                            d = distance(x + 0.5 / dpr, y + 0.5 / dpr),
+                            pixel = pixels[i];
+                        if (
+                            !svg &&
+                            d < outset - 1 / dpr &&
+                            pixel[1] > 2 &&
+                            errors.length < 3
+                        )
+                            errors.push([x, y, "internal seam", pixel]);
+                        if (
+                            Math.abs(d + inset) <= 1 / dpr ||
+                            Math.abs(d - outset) <= 1 / dpr
+                        )
+                            continue;
+                        const expected =
+                            d < -inset
+                                ? [255, 0, 0, 255]
+                                : d < outset
+                                  ? [0, 0, 255, 255]
+                                  : [255, 255, 255, 255];
+                        if (
+                            pixel.some(
+                                (v, c) => Math.abs(v - expected[c]) > 2
+                            ) &&
+                            errors.length < 3
+                        )
+                            errors.push([x, y, d, pixel, expected]);
+                        checked++;
+                        if (d < outset && (x < 2 || y < 2)) edgeInk++;
+                    }
+                    return { errors, checked, edgeInk };
+                }
+                // A diagonal square ribbon has a corner crossing the viewport edge.
+                // The reference is an oriented rectangle's signed distance, not a rule path.
+                const diagonal = await embed(
+                    globalThis.document.body,
+                    {
+                        width: 80,
+                        height: 80,
+                        padding: 0,
+                        config: {
+                            background: null,
+                            view: { stroke: null, strokeWidth: 0 },
+                        },
+                        data: { values: [{}] },
+                        params: [{ name: "alignment", value: "inside" }],
+                        mark: {
+                            type: "rule",
+                            size: 12,
+                            fill: "red",
+                            stroke: "blue",
+                            strokeWidth: 4,
+                            strokeCap: "square",
+                            strokeAlign: { expr: "alignment" },
+                            clip: true,
+                        },
+                        encoding: Object.fromEntries(
+                            Object.entries({
+                                x: 4 / 80,
+                                x2: 66 / 80,
+                                y: 1 - 6 / 80,
+                                y2: 1 - 56 / 80,
+                            }).map(([c, value]) => [c, { value }])
+                        ),
+                    },
+                    { renderer }
+                );
+                try {
+                    const length = Math.hypot(62, 50),
+                        tx = 62 / length,
+                        ty = 50 / length;
+                    /** @type {(x: number, y: number) => number} */
+                    const distance = (x, y) => {
+                        // Preserve the existing GPU raster-coordinate translation.
+                        if (renderer !== "canvas") {
+                            x -= RASTER_COORDINATE_OFFSET;
+                            y -= RASTER_COORDINATE_OFFSET;
+                        }
+                        const dx =
+                            Math.abs((x - 4) * tx + (y - 6) * ty - length / 2) -
+                            (length / 2 + 6);
+                        const dy = Math.abs(-(x - 4) * ty + (y - 6) * tx) - 6;
+                        return (
+                            Math.hypot(Math.max(dx, 0), Math.max(dy, 0)) +
+                            Math.min(Math.max(dx, dy), 0)
+                        );
+                    };
+                    for (const alignment of ["inside", "center"]) {
+                        diagonal.getParam("alignment").setValue(alignment);
+                        await new Promise((resolve) =>
+                            globalThis.requestAnimationFrame(() =>
+                                globalThis.requestAnimationFrame(resolve)
+                            )
+                        );
+                        const svg = renderer === "canvas";
+                        const exported = svg
+                            ? await diagonal.imageExport.svg({
+                                  background: "white",
+                              })
+                            : await diagonal.imageExport.raster({
+                                  background: "white",
+                                  pixelRatio: dpr,
+                              });
+                        const result = await contour(
+                            exported.blob,
+                            distance,
+                            alignment === "inside" ? 4 : 2,
+                            alignment === "inside" ? 0 : 2,
+                            svg
+                        );
+                        contours.push({
+                            name: "diagonal " + alignment,
+                            ...result,
+                        });
+                        const hit = await diagonal.views
+                            .root()
+                            .marks.pick({ x: 1.5, y: 2.5 });
+                        if (hit.status !== "hit")
+                            throw new Error(
+                                "clipped square cap must remain pickable"
+                            );
+                    }
+                } finally {
+                    diagonal.finalize();
+                }
                 if (renderer === "canvas") {
                     // Independent solid interiors must not acquire borders from overlapping dash caps.
+                    const rule = {
+                        type: "rule",
+                        size: 8,
+                        fill: "red",
+                        stroke: "blue",
+                        strokeWidth: 2,
+                        strokeOpacity: 0.5,
+                        strokeAlign: { expr: "alignment" },
+                    };
                     const union = await embed(
                         globalThis.document.body,
                         {
@@ -529,13 +713,7 @@ async function checkAlignment(page, renderer, dpr) {
                             layer: [
                                 {
                                     mark: {
-                                        type: "rule",
-                                        size: 8,
-                                        fill: "red",
-                                        stroke: "blue",
-                                        strokeWidth: 2,
-                                        strokeOpacity: 0.5,
-                                        strokeAlign: { expr: "alignment" },
+                                        ...rule,
                                         strokeCap: "square",
                                         strokeDash: [8, 2],
                                     },
@@ -543,13 +721,8 @@ async function checkAlignment(page, renderer, dpr) {
                                 },
                                 {
                                     mark: {
-                                        type: "rule",
-                                        size: 8,
-                                        fill: "red",
-                                        stroke: "blue",
-                                        strokeWidth: 2,
-                                        strokeOpacity: 0.5,
-                                        strokeAlign: { expr: "alignment" },
+                                        ...rule,
+                                        strokeOpacity: 1,
                                         strokeCap: "round",
                                         strokeDash: [0, 4],
                                     },
@@ -560,6 +733,45 @@ async function checkAlignment(page, renderer, dpr) {
                         { renderer }
                     );
                     try {
+                        // Circle-union distance is computed from exposed radial points
+                        // and adjacent-circle intersections, independently of SVG arcs.
+                        const centers = Array.from(
+                            { length: 16 },
+                            (_, i) => 10 + 4 * i
+                        );
+                        const vertices = centers.slice(1).flatMap((c) => [
+                            [c - 2, 60 - Math.sqrt(12)],
+                            [c - 2, 60 + Math.sqrt(12)],
+                        ]);
+                        /** @type {(x: number, y: number) => number} */
+                        const distance = (x, y) => {
+                            const inside = centers.some(
+                                (c) => Math.hypot(x - c, y - 60) <= 4
+                            );
+                            let nearest = Math.min(
+                                ...vertices.map(([vx, vy]) =>
+                                    Math.hypot(x - vx, y - vy)
+                                )
+                            );
+                            for (const c of centers) {
+                                const r = Math.hypot(x - c, y - 60);
+                                if (r === 0) continue;
+                                const bx = c + (4 * (x - c)) / r,
+                                    by = 60 + (4 * (y - 60)) / r;
+                                if (
+                                    centers.every(
+                                        (other) =>
+                                            Math.hypot(bx - other, by - 60) >=
+                                            4 - 1e-8
+                                    )
+                                )
+                                    nearest = Math.min(
+                                        nearest,
+                                        Math.hypot(x - bx, y - by)
+                                    );
+                            }
+                            return inside ? -nearest : nearest;
+                        };
                         for (const alignment of ["inside", "center"]) {
                             union.getParam("alignment").setValue(alignment);
                             await new Promise((resolve) =>
@@ -567,6 +779,21 @@ async function checkAlignment(page, renderer, dpr) {
                                     globalThis.requestAnimationFrame(resolve)
                                 )
                             );
+                            contours.push({
+                                name: "round union " + alignment,
+                                ...(await contour(
+                                    (
+                                        await union.imageExport.svg({
+                                            background: "white",
+                                        })
+                                    ).blob,
+                                    distance,
+                                    alignment === "inside" ? 2 : 1,
+                                    alignment === "inside" ? 0 : 1,
+                                    true,
+                                    40
+                                )),
+                            });
                             unionChecks.push(
                                 ...(await capture(
                                     (
@@ -586,13 +813,26 @@ async function checkAlignment(page, renderer, dpr) {
                         union.finalize();
                     }
                 }
-                return { frames, unionChecks };
+                return { frames, unionChecks, contours };
             } finally {
                 api.finalize();
             }
         },
         { renderer, dpr }
     );
+    for (const result of contours) {
+        assert.deepEqual(
+            result.errors,
+            [],
+            `${renderer}: ${result.name} contour at DPR ${dpr}`
+        );
+        assert(result.checked > 1000, `${renderer}: full contour coverage`);
+        if (result.name.startsWith("diagonal"))
+            assert(
+                result.edgeInk > 0,
+                `${renderer}: visible border at clipped viewport edge`
+            );
+    }
     for (let i = 0; i < unionChecks.length; i++) {
         const expected = i % 3 === 2 ? [128, 0, 128, 255] : [255, 0, 0, 255];
         assert(
@@ -622,6 +862,31 @@ async function checkAlignment(page, renderer, dpr) {
                     ),
                     `${renderer}/${frame.align}: thin aligned ribbon ${frame.captures[0][1]} vs ${expected}`
                 );
+            } else {
+                const profile = frame.captures[1].slice(4);
+                const extent =
+                    0.25 + { inside: 0, center: 3, outside: 6 }[frame.align];
+                assert(
+                    profile.some((p) => p[2] > p[0] + 2),
+                    "SVG: thin aligned stroke remains visible"
+                );
+                for (let i = 0; i < profile.length; i++) {
+                    const distance = Math.abs(24 + (i + 0.5) / dpr - 40);
+                    const expected =
+                        distance > extent + 1 / dpr
+                            ? [255, 255, 255, 255]
+                            : distance > 0.25 + 1 / dpr &&
+                                distance < extent - 1 / dpr
+                              ? [0, 0, 255, 255]
+                              : null;
+                    if (expected)
+                        assert(
+                            profile[i].every(
+                                (v, c) => Math.abs(v - expected[c]) <= 2
+                            ),
+                            `SVG/${frame.align}: thin profile ${i}: ${profile[i]} vs ${expected}`
+                        );
+                }
             }
             continue;
         }
