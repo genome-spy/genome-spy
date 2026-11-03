@@ -1,289 +1,170 @@
-# Rule border geometry: bounded design and proof
+# Shared rule strokes: native Canvas decision and implementation scope
 
-Status: shared-mask arithmetic passes its initial coverage gate but fails cost qualification; no production implementation.
-Base: `0feee7824` (the reviewed fill prerequisite in PR #644, pending review).
-Requirement: https://github.com/genome-spy/genome-spy/issues/604 .
+Status: native Canvas correctness/cost proof passes its bounded checks; production
+rule borders remain unimplemented. PR #644 is the separate explicit-fill
+prerequisite, based at `0feee7824`.
 
-## Scope and architectural fit
+Requirements: [#604](https://github.com/genome-spy/genome-spy/issues/604).
+Accepted Canvas decision:
+[#646](https://github.com/genome-spy/genome-spy/issues/646#issuecomment-6604214445).
 
-Determine whether an outside border around a straight rule ribbon has a small,
-correct native implementation before exposing more Core grammar. Keep PR #644
-unchanged. Only this plan is tracked; prototypes and measurements stay outside
-Git. No dependencies, point/rectangle/arrow/text work, generic effects framework,
-retained CPU scene graph or production API changes.
+## Contract and architectural fit
 
-- Semantic marks own the existing fill/stroke channels, normalization and
-  parameter/scale identity. A future border uses size for the nominal body,
-  strokeWidth for the full band, and separate paint/common opacity.
-- `rendering/immediate/marks/rule.js` owns native projected endpoints,
-  minimum-length completion and culling. Small native rule-contour geometry
-  belongs beside it; it must not own Canvas, SVG or GPU resources.
-- Canvas owns scratch surfaces and occurrence isolation; SVG owns vector
-  elements and definitions; WebGL owns its finite-ribbon SDF/quad and picking.
-  The Core WebGPU adapter consumes only public renderer channels. Existing
-  standalone rule shading is a reference, not an implementation to import.
-- All backend consumers and export/picking bounds are required before shipping
-  rule borders. Do not shrink the first public API PR by dropping a consumer.
-- Sources: root/Core ARCHITECTURE.md and rendering.md; RuleMark; native rule
-  projection/painters; WebGL rule shaders; Core WebGPU adapter; standalone
-  RuleProgram and rule-definition.gpu.test.js.
+Use existing `fill`, `fillOpacity`, `stroke`, `strokeWidth` and `strokeOpacity`
+channels/properties. `size` remains nominal body thickness. Explicit fill wins
+against the existing color fallback. No outline-specific vocabulary, dependencies,
+extra logical marks or generic effects machinery. Preserve ordinary ticks and
+other mark families.
 
-## Geometry decisions to qualify
+The maintainer decision supersedes strict Canvas coverage for **rule borders
+only**. Canvas constructs a projected centerline once, paints the wider stroke,
+then paints the nominal body. Keep both paints adjacent in occurrence order.
+Absent/transparent borders preserve the original body; nonpositive body sizes
+stay hidden. Retain the no-border single-paint path.
 
-For a solid rule, the nominal shape is its finite rectangle (butt/square caps)
-or capsule (round caps). Outside expansion is the Euclidean offset by the
-border width. It surrounds the ends and corners as well as the sides; changing
-only the centerline width is insufficient. Nominal fill stays independent.
+Accepted Canvas differences, for live rendering and Canvas-backed export:
 
-For the initial proof, construct a nominal contour and its expanded contour.
-A disjoint outside ring plus the unchanged nominal fill can represent the
-required paints. Canvas must resolve them in an isolated occurrence with
-additive coverage, then composite once. Ordinary source-over at an internal
-antialiased edge is not the coverage equation. Test the isolated additive
-candidate rather than assuming compound paths rasterize complementarily.
-Keep the existing no-border fast path intact. Scratch allocation and sizing
-remain a backend concern; do not retain a shape object per user datum.
+- Native edge antialiasing/composition, without a promised one-pixel bound.
+- The border can show through a translucent body throughout its interior.
+- Common per-rule opacity on both paints can change combined color/alpha.
+  Existing view-level opacity composition remains in use.
+- Native caps/dashes approximate the effect; butt endpoints and dash cuts need
+  not receive complete silhouette borders.
+- Width expansion approximates outside alignment even for future inside/center
+  requests. Exact alignment remains a GPU requirement.
 
-SVG uses native vector contours and occurrence opacity. Retain the previously
-accepted one-output-pixel internal antialiasing hairline limit; no implicit
-rasterization, filters or new SVG composition experiment.
+WebGL/WebGPU still require shared-coverage composition, including finite end/dash
+borders and correct thin-body compensation. SVG remains vector-only, with the
+previously accepted internal antialiasing hairline limitation. The Canvas decision
+introduces no new SVG exception.
 
-Dash contours need special scrutiny: expanded neighbors can overlap. A path
-with multiple outer/inner contours is not automatically a union. Also verify
-current cap/dash semantics across backends before choosing a canonical contour.
-Do not silently change ordinary dashed rules to fit the border implementation.
+Ownership and affected consumers:
 
-Primary comparison sources: SVG 2 painting/stroke-shape rules
-(https://www.w3.org/TR/SVG/painting), HTML Canvas
-(https://html.spec.whatwg.org/multipage/canvas.html), and compositing operators
-(https://www.w3.org/TR/compositing-1/). Study the contracts; copy no external code.
+- `marks/rule.js` owns paint normalization, scale identity and reactive encoders.
+  Specification types/defaults/schema and rule guides consume that contract.
+- `rendering/immediate/marks/rule.js` owns native endpoint projection,
+  minimum-length completion and conservative culling. Reuse its single visitor.
+- `rendering/canvas2d/renderers/rule.js` owns the adjacent native paints.
+  No scratch surfaces, isolation, custom contour/dash machinery or readback.
+- `rendering/canvas2d/picking/renderers/index.js` extends its existing rule path
+  for visible border extent without another traversal or picking pass.
+- SVG owns vector elements/definitions; WebGL owns finite-ribbon shaders,
+  retained buffers and GPU picking. Core's WebGPU adapter uses only public
+  renderer channels. Fix renderer math in its owner, not via adapter opacity.
+- Conservative export/culling bounds and picking must include visible border
+  extent; preserve clipping, view opacity and occurrence order.
 
-## Bounded qualification
+Architecture sources: root/Core `ARCHITECTURE.md`, Core rendering architecture,
+semantic RuleMark, native visitor/painters/software picking, WebGL rule shaders,
+Core `webGpuMarkAdapter.js` and standalone `ruleProgram.js`. Backend resources
+remain inside their existing boundaries; no CPU scene graph or retained datum
+geometry.
 
-Use a temporary copy of the current Core source, normal public embedding,
-projection and actual Canvas/SVG/WebGPU rendering. Temporary painter/channel
-changes are candidates, not a production implementation. Record their limits.
+## Bounded native Canvas proof: passed
 
-- Representative solids: all three caps; fractional placement and width;
-  red fill/blue border with opaque and fractional paint opacity; zero-alpha
-  stroke preserving fill; zero/nonpositive size remaining hidden.
-- Dash probes: separated fragments and fragments whose outside bands overlap;
-  phase and end caps. Compare ordinary unbordered output before proposing changes.
-- Composition: crossing occurrences in both paint orders and common opacity.
-- Numeric coverage checks at DPR 1/2; use exact horizontal rectangle area and
-  existing renderer controls where appropriate. Do not hide geometric errors
-  behind screenshot tolerances. Native and SDF outer-edge AA need not be
-  byte-identical, but silhouette/paint and seam claims must have direct evidence.
-- A bounded 1,000-rule timing check for a candidate that passes correctness:
-  unchanged no-border repaint/export within max(10%, 0.2 ms) of baseline;
-  provisional outlined repaint/export ceiling 2x baseline plus 1/2 ms,
-  respectively. Measure warm repeated runs; do not raise a failed gate.
+Temporary source copy of `0feee7824`, using real Core embedding, projection,
+Canvas live rendering and PNG export. Replaced only the temporary Canvas painter
+with two native strokes, retaining the earlier prototype channel/default and
+conservative-culling wiring. This is not a production implementation. All source,
+runners and raw results are outside Git in this chat's artifact directory under
+`rule-border-native-proof/`; no project dependencies were installed.
 
-Stop at decisive counterexamples or a qualified candidate. Do not build a
-benchmark framework, broaden into all alignment modes, or add permanent tests
-before the production contract is selected.
+Chrome 156, DPR 1, tested with Metal and with GPU/accelerated Canvas disabled:
 
-## Delivery gate
+- Opaque nominal red body and blue exterior retain their intended paint/size.
+- Transparent stroke opacity and transparent CSS border paint each match the
+  original unoutlined export byte-for-byte. Unoutlined and tick exports also
+  match their original controls byte-for-byte.
+- A half-transparent red body over an opaque blue border gives the accepted
+  purple interior. Common opacity 0.5 gives combined alpha about 192, rather
+  than pretending to match GPU composition.
+- Crossing occurrences in both orders preserve the later body and border.
+- Zero-size rules remain hidden; native round/square ends and dash gaps render.
+- An offscreen centerline with a visible outside band survives native culling.
 
-Report the qualified geometry, falsified alternatives, actual-path results,
-remaining blockers and one coherent first implementation scope/size. A proof
-that fails its geometry/composition gate is not ready to become an API PR.
-For a passing design, propose focused permanent regressions, docs/minor release
-impact and a tentative commit: `feat(core): add outside strokes to rule bodies`.
-Inside/center and shared legacy alignment normalization need their own bounded
-contract decision before exposure; no temporary rule-specific vocabulary.
+The initial cap assertion mistakenly sampled inside the nominal cap; moving it
+outside the body confirmed the intended blue border. No painter change or
+rendering tolerance relaxation was needed.
 
-## Qualification result
+### Cost and interaction
 
-Bounded proof complete on Chrome/Metal, DPR 1/2, six actual renderer contexts.
-No production code changes. The full source candidates and numeric results are
-archived outside Git at `rule-border-proof/` in this chat's artifact directory.
+1,000 short diagonal rules, 512x512, DPR 1. Warm medians: 21 synchronous
+repaints and nine PNG exports, original baseline measured before/after.
 
-### Geometry and paint evidence
+| Configuration                   | Original repaint / PNG | Candidate without border | Candidate with border |
+| ------------------------------- | ---------------------: | -----------------------: | --------------------: |
+| Metal                           |          0.2 / 16.7 ms |            0.2 / 16.7 ms |         0.3 / 16.3 ms |
+| GPU/accelerated Canvas disabled |          0.2 / 16.6 ms |            0.2 / 16.7 ms |         0.3 / 16.7 ms |
 
-A one-dimensional union of equal rounded intervals is a promising construction
-for straight rules and positive-length dash fragments. Outside expansion
-commutes with union, so nominal and expanded contours can be constructed
-independently.
-An even-odd ring is valid only after forming each union; overlapping individual
-outer/hole contours are not a valid substitute. Selected wide-border probes
-preserve red interiors, paint the closed gap blue, and retain a genuine gap
-when the dash spacing is larger. This is promising geometry, not full renderer
-qualification. The prototype discards zero-length painted spans: for example,
-`intervals(40, 4, "round", [0, 8], 0)` returns no intervals. It therefore cannot
-represent native dotted round-cap strokes. Zero-on dashes were not included in
-the browser probes; the omission was confirmed directly in the interval helper,
-not with an additional browser test. Do not promote the prototype as a general
-dash implementation. Preserve the archived source and results as evidence of
-this rejected candidate.
+Both configurations pass existing gates: unchanged no-border cost within
+max(10%, 0.2 ms); outlined repaint/export at most twice baseline plus 1/2 ms.
+Repaint is CPU submission time; PNG is wall time including encoding/scheduling.
+Do not interpret the PNG difference as a speedup or these values as GPU timing.
 
-For straight horizontal edges, 24/24 numeric paint samples pass the outside
-coverage equation across Canvas and WebGPU at DPR 1/2: opaque, fractional fill,
-fractional stroke, common opacity, transparent stroke and subpixel border.
-The oracle uses unbordered coverage from the same actual backend to avoid
-assuming identical layout pixel alignment. SVG stays vector-only in twelve
-horizontal butt-cap paint exports (six paint cases at two DPRs), which show the
-already accepted internal hairline. SVG cap/rotation, dash-union and ordinary
-dash-cap behavior were not tested by this runner. These exports do not qualify
-SVG geometry generally.
+Live pan/zoom used the public named-scale `zoomTo` API with immediate rendering,
+alternating full, panned and zoomed domains. Thirty measured transitions after
+ten warmups per case, again 1,000 rules:
 
-Canvas fails the broader strict gate: only 4/12 cap/rotation seam cases pass.
-At an opaque shared edge that is fully inside the expanded contour, several
-rotated or round-cap pixels have alpha 192 rather than 255. Separate paint
-canvases, contour clips, and synchronous OffscreenCanvas image snapshots do not
-provide a qualified solution. A pixel-readback diagnostic changes rasterization
-and makes these cases appear to pass; it is explicitly rejected. Final results
-contain no painter readback. Do not promote these candidates or add flush/filter
-tricks, supersampling, or per-datum retained surfaces to make them pass.
+| Configuration                   | Original CPU median / p95 | Outlined CPU median / p95 | Original next-frame p95 | Outlined next-frame p95 |
+| ------------------------------- | ------------------------: | ------------------------: | ----------------------: | ----------------------: |
+| Metal                           |              1.5 / 1.7 ms |              2.0 / 2.2 ms |                 18.1 ms |                 18.9 ms |
+| GPU/accelerated Canvas disabled |              0.4 / 0.5 ms |              0.8 / 2.0 ms |                 17.1 ms |                 18.5 ms |
 
-The earlier Canvas rectangle PNG budget has not been relaxed. The candidate
-failed correctness, so performance, crossing-order, clipping/picking expansion
-and broader browser qualification were not pursued. No outline API PR is ready.
+Next-frame timing includes browser scheduling, not GPU completion. Separate runs
+showed CPU timing variability; do not compare Metal/software as a platform ranking.
+The tested fallback workload remained responsive. Larger production datasets,
+other browsers, DPR 2 and more complex compositions are not qualified by this
+bounded proof. Picking was traced but not yet extended/tested; the culling probe
+does not establish picking correctness. No permanent configuration matrix follows.
 
-### Existing backend findings
+## Smallest coherent implementation and success criteria
 
-- Actual unbordered probes confirm that Canvas caps every dash, whereas current
-  WebGL/WebGPU cap the whole ribbon and cut internal dash ends flat. SVG 2's
-  stroke-shape specification also describes caps on dashes, but the runner did
-  not independently verify SVG's ordinary dashed output. Preserve current
-  behavior while designing; do not silently select a different nominal
-  silhouette only when a border is visible.
-- For a half-physical-pixel body with an opaque four-physical-pixel outside
-  stroke, WebGPU's maximum alpha is 128 rather than 255 at both DPRs. Its thin
-  body compensation currently multiplies the complete result. This belongs in
-  renderer coverage math, not a Core adapter opacity workaround. A fix must also
-  preserve the existing no-stroke/transparent-stroke body appearance.
-- WebGL butt ends use quad rasterization rather than finite SDF end coverage.
-  Eight physical phase samples produce repeated coarse alpha steps; native and
-  WebGPU end coverage changes at each fractional phase. MSAA supplies some
-  intermediate coverage, so the current result is not strictly binary.
+Implement outside rule strokes through the existing shared paint API, covering
+all supported consumers before exposing the grammar. Keep PR #644 independent.
+Inside/center and shared legacy alignment normalization remain a later shared
+contract change; do not introduce a rule-only alignment property in this slice.
 
-## Next decision for the outline work
+1. Close the remaining concrete renderer gaps: finite outside end/dash coverage
+   in WebGL, WebGPU thin-body compensation that currently fades the border, and
+   vector SVG geometry including dotted round-cap patterns. Reuse existing
+   backend representations; no new generic contour/effects system. Qualify one
+   representative actual-path case per distinct risk before promoting candidates.
+2. Wire semantic channels/defaults, native two-stroke Canvas, GPU/SVG consumers
+   and conservative bounds/picking together. Preserve color fallback, paint scale
+   identity, conditions/expressions, nominal body size, zero-size hiding, ticks,
+   no-border appearance, minLength and existing clipping/dash semantics.
+3. Extend existing regression coverage for distinct contracts: transparent border,
+   translucent composition, a crossing order, border-only picking/culling, thin
+   GPU body with opaque border, and vector-only SVG. Use actual rendering paths
+   for pixel contracts. Avoid duplicating every case across backend/config matrices.
+4. Document native limitations and add one Core minor Changeset. Show exact diff
+   size before opening the PR; review architecture/simplicity at the shared API
+   and final integration boundary. Tentative commit:
+   `feat(core): add outside strokes to rule bodies`.
 
-No border implementation PR is qualified. Keep the work focused on strict
-native composition: before another experiment, describe how one representation
-will produce consistent shared-edge coverage for both paints, with synchronous
-Canvas rendering and backend-owned resources. A single rotated solid rule with
-fractional paint opacity and an opaque internal-edge check is sufficient for
-its first gate. Do not recreate the six-context matrix or add more rendering
-machinery before that gate passes. The shared-mask continuation below passes
-the initial coverage gate but fails the subsequent bounded cost check. The
-other negative results remain valid for their own representations. No native
-composition implementation is selected, and no public border PR is qualified.
+Stop if the complete consumer path requires a much larger abstraction or fails a
+cost gate. Re-scope explicitly rather than silently dropping a consumer or
+relaxing GPU/SVG contracts. No unrelated point/rectangle/arrow/text features.
 
-Only after this coverage gate passes should the work return to complete dash
-geometry (including zero-on dotted patterns), occurrence order, bounds/picking,
-SVG limits and performance. Existing correctness and PNG budgets remain intact.
-Do not expose a partial API, change native/GPU cap semantics implicitly, or
-relax strict Canvas coverage to manufacture a small PR.
+## Historical evidence: rejected strict Canvas candidates
 
-## Optional independent rendering defect
+Previous results remain archived unchanged and in plan history at `7d5b0999d`.
+They do not constrain the newly accepted approximate Canvas implementation.
 
-WebGL's coarse butt-end coverage is a separately observed rendering defect.
-A finite SDF correction could be useful independently, but the proof does not
-establish it as a required prerequisite or the next step for rule outlines. It
-resolves none of the native composition, dash-cap or WebGPU thin-border issues.
-Do not start that fix as the default continuation of this plan. Any separate
-proposal must justify its user-visible benefit and verify picking, ticks,
-minLength, dash phase and performance on its own merits; no implementation or
-size commitment is made here.
+- Separate ring rasterization failed 8/12 cap/rotation seam checks (alpha 192
+  rather than 255 inside an opaque outer shape). Readback changed rasterization
+  and masked failures; flush/readback/filter tricks were rejected.
+- A one-dimensional contour union was promising for selected positive-length
+  dashes but discarded zero-on spans, so it did not support dotted round caps.
+  Do not promote that helper as general dash geometry.
+- Initial SVG proof covered only twelve horizontal butt-cap paint exports,
+  not caps, rotation or dash unions. Three reviewers corrected this claim and
+  rejected treating the neighboring WebGL butt-AA defect as a prerequisite.
+- Shared-mask complement/add/complement arithmetic was exact for all 32,896
+  nested 8-bit coverage pairs and passed 440 minimal actual-path comparisons.
+  Its three-surface realization cost 217.3 ms repaint / 439.6 ms PNG versus
+  0.2 / 16.7 ms unoutlined, decisively failing the same provisional gates.
+  These failures reject those implementations, not mathematical feasibility.
 
-## Review reconciliation
-
-Three independent reviews supported stopping the failed candidate and the
-existing ownership boundaries. Applied their findings: removed the unsupported
-butt-AA prerequisite and size estimate, narrowed the dash-geometry claim to the
-positive-length cases actually probed, documented the dotted-pattern omission,
-and stated the exact SVG test scope. The raw archived source and numeric results
-remain unchanged. This is a planning/evidence correction with no release impact.
-
-## Narrow continuation: derive the band from shared coverage
-
-Status: initial coverage gate passed; bounded performance gate failed; candidate rejected.
-The rejected geometric-ring candidates and their archived results stay unchanged.
-
-Use the existing native stroke operation to rasterize the nominal body once as
-an opaque white alpha mask `Cf`. Independently rasterize the expanded contour
-as `Co`; require nested coverage. Derive the band numerically through full-tile
-Canvas operations, rather than rasterizing an inner hole:
-
-1. An opaque full-tile source with `source-out` complements the outer alpha:
-   `A = 1 - Co`.
-2. `lighter` adds the shared nominal mask: `B = min(1, A + Cf)`.
-3. Another full-tile `source-out` complements it:
-   `Cs = 1 - B = max(0, Co - Cf)`.
-
-For `0 <= Cf <= Co <= 1`, this is exactly `Co - Cf`. Colorize copies of `Cf`
-and `Cs` with the fill/stroke paints using full-tile `source-in`, add the
-premultiplied contributions, then apply common opacity once. The source masks
-are white and independent of paint opacity. Full-tile complement/colorization
-rectangles have integer physical bounds and no shape-edge antialiasing.
-
-The arithmetic follows W3C compositing operator definitions, not copied code:
-https://www.w3.org/TR/compositing-1/ . Verify it on the complete nested 8-bit
-alpha domain before the browser experiment. Browser execution still needs proof;
-deferred Canvas drawing must not be assumed to preserve the intended operations.
-
-This remains synchronous and Canvas-owned. Reuse bounded surfaces; no painter
-pixel readback, bitmap flush tricks, extra GPU backend, dependencies or new public
-API. The first rendering gate is only one rotated solid butt-cap rule at DPR 1,
-with opaque/fractional paints, common opacity, and a transparent stroke checked
-against the unchanged native body. Do not expand into dash geometry, other
-backends or performance until this first gate passes. If it fails, stop this
-candidate and retain the existing no-implementation decision.
-
-### Initial gate result
-
-The complement/add/complement identity is exact for all 32,896 nested 8-bit
-coverage pairs. The browser proof uses normal Core embedding, native projection,
-and actual Canvas PNG export for one 45-degree solid butt-cap rule at DPR 1.
-Its nominal mask is rasterized by the same native stroke operation as the
-unbordered control. Only decoded export images are read for assertions.
-
-On Chrome 156/Metal, all five paint cases pass across 88 internal-edge pixels
-each (440 comparisons). Opaque alpha is 255 throughout; fractional fill/stroke
-and common-opacity results have at most one 8-bit channel error; a transparent
-stroke matches the entire original unbordered image byte-for-byte. The painter
-has no readback, asynchronous calls, image-bitmap snapshots, filter/flush hints,
-additional GPU backend or dependencies. It reuses three bounded Canvas surfaces.
-
-This establishes feasibility for the one tested primitive and paint cases only.
-Do not infer full contour, outer-edge, thin/subpixel-band, zero-width, other-cap,
-dash/dotted-pattern, DPR 2, cross-browser, order/picking or performance
-qualification. In particular, nested mask coverage and browser arithmetic where
-both masks are partially covered remain to be tested. No performance or API PR
-claim follows from this result. A production design must keep resource ownership
-and cleanup inside the existing Canvas backend, without per-datum retained state
-or a generic effects framework. The archived helper is a temporary prototype.
-
-Evidence is preserved separately in `rule-border-shared-mask-proof/` in this
-chat's artifact directory, including exact source, runner, algebra verification
-and raw results. The older rejected artifacts are unchanged.
-
-### Early cost gate: rejected implementation
-
-After the initial coverage gate passed, a single DPR-1 cost check used 1,000
-short diagonal rules on a 512x512 Canvas, through `GenomeSpy.renderAll()` and
-its public PNG export. Baseline was the unchanged prerequisite `0feee7824`;
-it was measured before and after the candidate. Warm medians used 21 repaints
-and nine PNG exports per case, with no painter readback or diagnostic flush.
-
-| Case                    | Synchronous repaint CPU time | PNG export wall time |
-| ----------------------- | ---------------------------: | -------------------: |
-| Baseline before / after |              0.2 ms / 0.2 ms |    16.7 ms / 16.7 ms |
-| Candidate, no outline   |                       0.2 ms |              16.7 ms |
-| Candidate, outlined     |                     217.3 ms |             439.6 ms |
-
-Repaint measures the actual synchronous Canvas submission path, not completed
-GPU execution. PNG timing also includes rasterization, encoding and browser
-scheduling. These are local measurements, not general performance promises.
-The outlined ceilings were 1.4 ms repaint and 35.4 ms PNG for this baseline;
-the candidate fails both. The no-outline cost gate passes. Do not raise the budgets or start a batching/resource framework to rescue
-this experiment. No further geometry matrix or production implementation follows.
-
-Conclusion: standard Canvas operations can express the required shared coverage
-for the tested primitive, so the earlier failures do not establish mathematical
-impossibility. This three-surface per-occurrence realization is nevertheless not
-a lean implementation. The next design checkpoint needs a concrete lower-cost
-representation before another candidate; no such representation is currently
-selected. Keep the strict coverage/no-dependency requirements and PR #644 intact.
+No release impact from this plan/proof-only branch. Retire this temporary plan
+before any implementation PR is merged, following the planning skill.
