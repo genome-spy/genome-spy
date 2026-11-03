@@ -1,6 +1,7 @@
 # Zoomable categorical scales
 
-Status: proposed design, reviewed for KISS/DRY, 2026-11-03. No feature implementation.
+Status: proposed design, revised after KISS/DRY review and axis discussion,
+2026-11-03. No feature implementation.
 Baseline: `482e9a1d42d5b6bb1c293737a9cf0b647f229f3e`.
 Issues: [zoomable band scale #647](https://github.com/genome-spy/genome-spy/issues/647),
 [SampleView follow-up #573](https://github.com/genome-spy/genome-spy/issues/573).
@@ -81,6 +82,13 @@ Endpoints are floats in half-open rank coordinates for smooth pan/zoom. Numeric
 categories remain category values; they do not become navigation coordinates.
 Point uses the same rank window and its existing point padding semantics.
 
+Use **scale viewport** for this rank interval and **layout viewport** for the
+pixel rectangle controlled by `viewportWidth`/`viewportHeight`. Scale navigation
+changes projection; layout scrolling moves already-laid-out content without
+changing the scales. Retain the scoped `scale.viewport` spelling, and qualify
+the terms in prose wherever both concepts appear. They can coexist without
+sharing state or changing step-based layout sizing.
+
 Use a single exact snapshot shape for categorical placement:
 
 ```ts
@@ -105,12 +113,14 @@ is distinct from pinning a copied `[0, n]` interval. Getters return detached sta
   projection/inversion, `navigate`, and interpolation. Existing `gapMapping()`
   retains its consumer-facing category/numeric contracts and delegates to the
   same geometry; its presence alone is not a navigation capability check.
-- Categorical `ticks(count?)` returns visible category candidates efficiently.
-  Fit mode preserves existing category tick behavior and overlap policy.
-- Public resolutions gain `getViewport()` and `zoomToViewport(snapshotOrNull,
-options?: ZoomToOptions)` for band/point, with the same duration, cancellation,
-  and immediate-render behavior as `zoomTo()`. Keep domain-based `zoomTo()` for
-  existing scale kinds; reject it for categorical scales to avoid numeric-category
+- Keep categorical tick generation's existing full-domain fallback. Rendering
+  culling handles offscreen ticks/labels; no categorical `ticks()` method is
+  required. See the axis contract below.
+- Public resolutions gain `getViewport()` and
+  `zoomToViewport(snapshotOrNull, options?: ZoomToOptions)` for band/point, with
+  the same duration, cancellation, and immediate-render behavior as `zoomTo()`.
+  Keep domain-based `zoomTo()` for existing scale kinds; reject it for categorical
+  scales to avoid numeric-category
   ambiguity. An interval-only snapshot fits the requested window; snapshots with
   gap ranks preserve exact navigation state.
 - Add one public `getScaleType()` query so host persistence can select domain or
@@ -131,7 +141,7 @@ zoom disabled, as programmatic domain navigation does today.
 
 ### Configuration
 
-Reuse `zoom: true` to enable band/point gestures on x/y. Both remain opt-in;
+Use boolean `zoom` to enable band/point gestures on x/y. Both remain opt-in;
 index/locus defaults stay unchanged. Encoding-level `scale` and view-level
 `scales` declarations share the same property resolution.
 
@@ -152,12 +162,13 @@ Keep authored configuration separate from displayed state. Defer viewport
 expressions until a concrete consumer requires them; existing reactive categorical
 domains and grouping-gap properties keep their current behavior.
 
-For categorical scales, reuse `zoom.extent` in rank coordinates: default/`"data"`
-is `[0, domain.length]`, a numeric pair gives explicit gesture bounds, and
-`"unbounded"` permits empty space outside membership. Explicit bounds are honored
-as supplied; do not silently intersect them with category membership. String or
-boolean endpoints are invalid. `gapPositions` still lists category identities.
-Index/locus inclusive author-facing interval conventions remain unchanged.
+Categorical navigation bounds are always derived from the complete domain:
+`[0, domain.length]`. An initial smaller scale viewport does not restrict access
+to the other categories. Do not expose `zoom.extent`, `"data"`, or `"unbounded"`
+options for band/point; reject object-valued categorical `zoom` at the configuration
+boundary. The shared navigation helper still receives numeric bounds internally.
+`gapPositions` continues to list category identities. Index/locus zoom options
+and inclusive author-facing interval conventions remain unchanged.
 
 Validate finite literal intervals and supported channels at the grammar/API
 boundary. Ordinary interval requests use the same one-band navigation limits as
@@ -214,13 +225,12 @@ not a category-domain event, indexer mutation, cut upload, or row re-encoding.
 Reuse current owner transaction, transition cancellation, disposal, and completed
 mapping observation for expressions, dependent offset ranges, guides, and rendering.
 
-Fit mode follows membership changes. Navigated windows preserve rank positions
-across reorder/growth; data-bounded windows reconcile when settled membership
-shrinks. Explicit/unbounded gesture bounds keep their declared meaning. Reuse
-existing readiness so bootstrap partial domains cannot destroy an authored window.
-Cancel/reconcile stale viewport animation on membership or gap-topology changes;
-resize recomputes occurrence geometry. Identity anchoring after sorting/filtering
-is App policy, not implicit Core behavior.
+Fit mode follows membership changes. Navigated scale viewports preserve rank
+positions across reorder/growth and reconcile against the full domain when settled
+membership shrinks. Reuse existing readiness so bootstrap partial domains cannot
+destroy an authored window. Cancel/reconcile stale viewport animation on membership
+or gap-topology changes; resize recomputes occurrence geometry. Identity anchoring
+after sorting/filtering is App policy, not implicit Core behavior.
 
 ### Preserve index gap semantics
 
@@ -242,6 +252,38 @@ values. Do not introduce a separate slope-based categorical zoom metric. Changes
 to gap-related zoom metrics, if needed, must be designed consistently for all
 three scales rather than bundled as a categorical special case.
 
+### Axis ticks and labels
+
+Retain all categorical ticks (or authored `axis.values`) and cull their offscreen
+rendering. A scale-viewport change must not regenerate tick data simply because
+different categories became visible. Visible-only tick generation is a possible
+later optimization, not a scale API requirement.
+
+Existing culling primitives suffice, but their axis wiring needs extension.
+`GridChild.getAxisLabelClipPolicy()` currently selects anchor culling primarily
+for layout-scroll viewports; ordinary tick rules use `clip: false`. Reuse
+directional label-anchor culling and tick-rule clipping/clamping for navigable
+categorical axes while retaining labels/ticks outside the plot in the perpendicular
+direction. Do not rely on canvas-edge clipping or numeric x indexing, which does
+not cover categorical tick rules/text. Keep numeric rank bounds out of tick labels.
+
+Add optional `axis.labelSqueeze: boolean`, default false, for band axes. Each
+label fits independently within its own band's span along the axis, excluding
+scale padding and grouping gaps. Generate band-edge ranged text in the main
+direction and keep its normal perpendicular placement and `labelPadding`.
+Reuse TextMark's `fitToBand`/ranged-text machinery and `squeeze: true`, rather
+than adding a second fitting algorithm or CPU label-placement pass. Existing
+rotation-aware bounds, uniform glyph scaling, and tiny-label fade/hide behavior
+apply; labels do not grow beyond the configured font size.
+
+When squeezing is enabled, bypass label-overlap removal, including an explicit
+`labelOverlap` setting: labels occupy disjoint band spans. Keep offscreen culling
+and any text measurement needed by ordinary axis sizing. When squeezing is off,
+preserve existing label behavior; if overlap removal is requested, offscreen
+candidates must not suppress visible labels. Enable squeezing only for band
+scales: point has zero bandwidth, and index/locus tick labels retain their current
+tick-selection and overlap behavior.
+
 ## Consumers
 
 - **Input:** keep GridView/facet/shared-resolution discovery and gesture routing.
@@ -256,11 +298,9 @@ three scales rather than bundled as a categorical special case.
   with an atomic viewport update/reset. Keep numeric renderer APIs independent of
   Core grammar. Use documented exports in the Core adapter, retain series/domain
   buffers during navigation, and add one focused retained-update story.
-- **Axes:** generate visible categorical candidates and refresh through existing
-  mapping/zoom publication. Filter explicit tick values with the same occurrence
-  projection and anchor. Labels use `clip: false`, so clipping alone is insufficient.
-  Numeric rank bounds must not become categorical boundary tick labels. Reuse
-  existing mapping-based overlap layout and scale-group identity/projection.
+- **Axes:** retain categorical tick data and reuse culling and band-label squeezing
+  as specified above. Existing mapping publication updates placement and any
+  requested overlap layout; scale groups retain their identity/projection.
 - **Selections and sources:** preserve category IDs for point selections and the
   continuous-only interval-selection boundary. Keep genomic source domain events
   and existing continuous constraints for viewport-derived autoscaling.
@@ -285,8 +325,10 @@ Proposed reading order after the existing Index/Locus introductions:
    rank placement; use `["A", "B", "C", "D"]` and `[1, 3]`, explain fractional
    endpoints, fit/reset, and point's shared behavior. Embed one small fixed-size
    mixed categorical/index example so the equivalent navigation is visible.
-3. **Zoom extent:** keep `SCHEMA ZoomParams`; surrounding prose distinguishes
-   half-open categorical ranks from existing index/locus endpoint conventions.
+3. **Zoom extent:** keep `SCHEMA ZoomParams` explicitly scoped to continuous,
+   index, and locus navigation. Explain categorical full-domain bounds with the
+   scale viewport, not as configurable extents. Preserve the existing genomic
+   endpoint-convention explanation.
 4. **Grouping gaps**, then existing **Nested offset scales** and **Viewport
    autoscaling**: keep gaps focused on boundaries, fixed pixels, and sizing. Link
    back to navigation instead of repeating zoom semantics. Autoscaling remains a
@@ -299,16 +341,17 @@ programmatic API for transition options.
 
 Content ownership:
 
-| Source                                                    | Content                                                                                                                                                                                                                                                                              |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `packages/core/src/spec/scale.d.ts`                       | Authoritative `viewport`, `zoom`, and extent types/defaults/constraints. Reuse generated property docs; do not duplicate their catalogs in prose.                                                                                                                                    |
-| `docs/grammar/scale.md`                                   | Relationships, coordinate examples, fit/reset, shared-scale authoring, and links. Update the old assertion that categorical gaps cannot zoom; retain brushing limits. Distinguish scale viewport from layout `viewportWidth`/`viewportHeight` with a short link to scrollable views. |
-| `docs/grammar/composition/concat.md#scrollable-viewports` | Replace the categorical-no-zoom assertion. Explain that pan changes a scale's numeric navigation window (domain or categorical viewport), while layout scrolling moves already-laid-out content. Link the common navigation section without repeating its tutorial.                  |
-| `docs/grammar/expressions.md#scale-functions`             | Explain that categorical `domain()` stays categorical and placement-dependent expressions react to navigation; use the common zoom metric. Link configuration back to Scales.                                                                                                        |
-| `packages/core/src/types/scaleResolutionApi.d.ts`         | Exact snapshot/method/event semantics, fit mode and transition options. Regenerate TypeDoc under `docs/api/reference/`; do not edit generated files manually.                                                                                                                        |
-| `docs/api/runtime-state.md#named-scales`                  | Add Categorical viewports after Domains, then broaden Domain events to Scale state events. Show only essential read/navigate/observe calls and link a runnable synchronization example. Preserve old heading anchors where links need compatibility.                                 |
-| `docs/grammar/parameters.md`                              | Keep interval selection's continuous-scale requirement clear; link to categorical navigation where useful.                                                                                                                                                                           |
-| `docs/sample-collections/app-features.md#bookmarking`     | State that bookmarks retain categorical navigation too; keep payload internals out of user prose.                                                                                                                                                                                    |
+| Source                                                                         | Content                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/core/src/spec/scale.d.ts`                                            | Authoritative categorical `viewport` and boolean `zoom`, with configurable zoom extents limited to supported noncategorical scales. Reuse generated property docs rather than duplicating catalogs in prose.                                                                         |
+| `docs/grammar/scale.md`                                                        | Relationships, coordinate examples, fit/reset, shared-scale authoring, and links. Update the old assertion that categorical gaps cannot zoom; retain brushing limits. Distinguish scale viewport from layout `viewportWidth`/`viewportHeight` with a short link to scrollable views. |
+| `docs/grammar/composition/concat.md#scrollable-viewports`                      | Replace the categorical-no-zoom assertion. Explain that pan changes a scale's numeric navigation window (domain or categorical viewport), while layout scrolling moves already-laid-out content. Link the common navigation section without repeating its tutorial.                  |
+| `docs/grammar/expressions.md#scale-functions`                                  | Explain that categorical `domain()` stays categorical and placement-dependent expressions react to navigation; use the common zoom metric. Link configuration back to Scales.                                                                                                        |
+| `packages/core/src/types/scaleResolutionApi.d.ts`                              | Exact snapshot/method/event semantics, fit mode and transition options. Regenerate TypeDoc under `docs/api/reference/`; do not edit generated files manually.                                                                                                                        |
+| `docs/api/runtime-state.md#named-scales`                                       | Add Categorical viewports after Domains, then broaden Domain events to Scale state events. Show only essential read/navigate/observe calls and link a runnable synchronization example. Preserve old heading anchors where links need compatibility.                                 |
+| `docs/grammar/parameters.md`                                                   | Keep interval selection's continuous-scale requirement clear; link to categorical navigation where useful.                                                                                                                                                                           |
+| `packages/core/src/spec/axis.d.ts` and `docs/grammar/axis.md#ticks-and-labels` | Define `labelSqueeze` and its band-only/default-false behavior in specification JSDoc. Explain per-band fitting and its precedence over overlap removal next to the existing overlap discussion; use the generated property reference and link to ranged text.                       |
+| `docs/sample-collections/app-features.md#bookmarking`                          | State that bookmarks retain categorical navigation too; keep payload internals out of user prose.                                                                                                                                                                                    |
 
 Add one self-contained `examples/docs/grammar/scale/zoomable-band.json` using
 synthetic inline/local data and a categorical axis plus an index axis. Demonstrate
@@ -317,6 +360,9 @@ Keep `band-grouping-gaps.json` focused on gaps/step sizing; use an `examples/cor
 integration variant for zoomed gaps and shared labels. Extend existing `scaleApi`
 or `linkedEmbeds` examples for exact viewport synchronization. Follow
 `examples/README.md`; do not import examples or add maintained `$schema` fields.
+Demonstrate `labelSqueeze: true` in the categorical example, with a short note
+linking to axis label fitting. Keep the fitting explanation on the Axis page and
+the text-scaling mechanics on the Text page.
 
 No backend inventories, gap-edge serialization details, controller internals, or
 SampleView migration rationale belong in the introductory grammar explanation.
@@ -346,8 +392,9 @@ Outcome: grammar-authored categorical navigation works through existing gestures
 shared resolutions, all projection backends, and public embedding APIs.
 
 Areas: spec/config, runtime/mapping, controller adaptation, renderer adapters,
-axes/expressions, public viewport APIs/events. Focus headless subsystem tests on
-real specs: movement without category mutation, late membership/reorder, readiness,
+axes/expressions, band-axis `labelSqueeze`, public viewport APIs/events. Focus
+headless subsystem tests on real specs: movement without category mutation,
+late membership/reorder, readiness,
 reset/cancellation, ticks, offsets, and unchanged step-based layout. Use
 `test-genomespy-views` for structured output; browser-test DOM/input/GPU contracts
 with `debug-genomespy-web`. Follow `write-genomespy-docs` for the documentation
@@ -372,6 +419,11 @@ Final composed checks:
   `examples/docs/grammar/transform/dendrogram/clustered-heatmap-band.json` with
   order changes, resize, picking, and export. Include point as the same projection
   with zero bandwidth and an appropriate point mark.
+- Keep the categorical tick set stable during navigation and verify offscreen
+  tick/label culling, including explicit tick values. On band axes, verify label
+  squeezing along x/y, rotated labels, proportional/fixed gaps, and zoom, without
+  overlap removal. Reuse text-fitting coverage for shared mechanics; preserve
+  default unsqueezed categorical and existing index/locus label behavior.
 - Check Canvas2D/SVG output against live GPU placement and picking. At the
   existing retained-resource boundary, verify viewport frames do not rebuild
   category lookup/cut tables or re-encode data. No new benchmark framework.
@@ -408,4 +460,6 @@ Retain the plan on the feature branch for discussion; reconcile and retire it
 before merge under `plan-genomespy-change`. Implementation is not authorized by
 the request to revise and commit this plan. The requested independent KISS review
 is complete; its shared-transition and scrolling-documentation findings are
-incorporated above.
+incorporated above. The subsequent axis discussion simplifies categorical ticks
+and zoom configuration and adds optional label squeezing through existing text
+rendering; these refinements have not had a further independent review.
