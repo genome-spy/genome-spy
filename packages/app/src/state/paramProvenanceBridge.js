@@ -243,7 +243,10 @@ export default class ParamProvenanceBridge {
                 ),
                 value
             ) &&
-            this.#isSelectionClearedInProvenance(entry, selectorKey)
+            this.#isStoredSelectionCleared(
+                entry,
+                this.#getPresentEntries()[selectorKey]
+            )
         ) {
             return;
         }
@@ -312,14 +315,9 @@ export default class ParamProvenanceBridge {
         }
 
         const previous = past[past.length - 1];
-        const previousEntry = previous.paramProvenance.entries[selectorKey];
-        if (!previousEntry) {
-            return true;
-        }
-
-        return this.#isSerializedSelectionCleared(
-            entry.param,
-            previousEntry.value
+        return this.#isStoredSelectionCleared(
+            entry,
+            previous.paramProvenance.entries[selectorKey]
         );
     }
 
@@ -359,16 +357,18 @@ export default class ParamProvenanceBridge {
 
     /**
      * @param {BookmarkableParamEntry} entry
-     * @param {string} selectorKey
+     * @param {ParamProvenanceEntry | undefined} stored
      * @returns {boolean}
      */
-    #isSelectionClearedInProvenance(entry, selectorKey) {
-        const stored = this.#getPresentEntries()[selectorKey];
-        if (!stored) {
-            return true;
-        }
-
-        return this.#isSerializedSelectionCleared(entry.param, stored.value);
+    #isStoredSelectionCleared(entry, stored) {
+        // An absent history entry restores the declared default, which may be active.
+        return stored
+            ? this.#isSerializedSelectionCleared(entry.param, stored.value)
+            : isSelectionParameter(entry.param) &&
+                  this.#isSelectionCleared(
+                      entry.param,
+                      this.#getDefaultValue(entry)
+                  );
     }
 
     /**
