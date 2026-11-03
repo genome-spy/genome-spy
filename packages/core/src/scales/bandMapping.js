@@ -107,6 +107,7 @@ export function createBandMapping({
      * @param {number} factor
      * @param {number} anchor
      * @param {number} pan
+     * @returns {{ domain: [number, number], ranks: [number, number] | undefined }}
      */
     function navigate(factor, anchor, pan) {
         if (!width || !cuts.length) {
@@ -137,7 +138,9 @@ export function createBandMapping({
         return domainAt(slope, origin);
     }
 
-    /** @param {number} slope @param {number} origin */
+    /** @param {number} slope @param {number} origin
+     * @returns {{ domain: [number, number], ranks: [number, number] }}
+     */
     function domainAt(slope, origin) {
         const first = invertPoint(
             range[0] + slope * 2 * paddingOuter * align,

@@ -84,27 +84,23 @@ export default class DomainRuntime {
         this.#runtime = runtime;
         this.#manager = manager;
         this.#animator = animator;
-        this.#state = runtime.signal(
-            "domain state",
-            createDomainState(domain, resetDomain)
-        );
-        if ("viewport" in manager.scale) {
-            this.#state.set({
-                ...this.state,
-                viewport:
-                    /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
-                        manager.scale
-                    ).viewport(),
-            });
-        }
-        this.viewport = runtime.computed(
+        this.#state = runtime.signal("domain state", {
+            ...createDomainState(domain, resetDomain),
+            viewport:
+                "viewport" in manager.scale
+                    ? /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                          manager.scale
+                      ).viewport()
+                    : undefined,
+        });
+        const viewport = runtime.computed(
             "scale viewport",
             [this.#state],
             () => this.state.viewport,
-            { equals: (a, b) => deepEqual(a, b) }
+            { equals: deepEqual }
         );
         if (notifyViewport)
-            runtime.effect([this.viewport], () => {
+            runtime.effect([viewport], () => {
                 if (this.state.viewport !== undefined) notifyViewport();
             });
         this.domain = runtime.computed(
@@ -131,9 +127,6 @@ export default class DomainRuntime {
 
     /** @type {import("../paramRuntime/types.js").ComputedParamRef<import("./domainLifecycle.js").Domain>} */
     domain;
-
-    /** @type {import("../paramRuntime/types.js").ComputedParamRef<import("./scaleBand.js").CategoricalViewport | null | undefined>} */
-    viewport;
 
     get runtime() {
         return this.#runtime;
@@ -202,22 +195,23 @@ export default class DomainRuntime {
                     operation.resolve();
                     return;
                 }
-                if (
-                    "domain" in update &&
-                    !(update.type === "navigate" && update.viewport) &&
-                    !(
-                        update.type === "frame" &&
-                        this.state.transition?.viewport
-                    ) &&
-                    !(
-                        (update.type === "navigate" ||
-                            update.type === "frame") &&
-                        update.gapDomain
-                    )
-                ) {
+                if (update.type === "set") {
                     update = {
                         ...update,
                         domain: this.#manager.normalizeDomain(update.domain),
+                    };
+                } else if (
+                    "target" in update &&
+                    "domain" in update.target &&
+                    !update.target.gapDomain
+                ) {
+                    update = {
+                        ...update,
+                        target: {
+                            domain: this.#manager.normalizeDomain(
+                                update.target.domain
+                            ),
+                        },
                     };
                 }
                 if ("readiness" in update && this.state.phase !== "ready") {
@@ -361,14 +355,9 @@ export default class DomainRuntime {
         const sourceMapping = numericScale?.navigationMapping();
         const targetScale = numericScale?.copy();
         if (targetScale) {
-            if (action.viewport)
-                targetScale.viewport({
-                    interval: /** @type {[number, number]} */ (to),
-                    gapRanks: /** @type {[number, number]} */ (
-                        action.gapDomain
-                    ),
-                });
-            else targetScale.domain(to, action.gapDomain);
+            if ("viewport" in action.target)
+                targetScale.viewport(action.target.viewport);
+            else targetScale.domain(to, action.target.gapDomain);
         }
         const targetMapping = targetScale?.navigationMapping();
         const token = createCancelToken();
@@ -384,8 +373,18 @@ export default class DomainRuntime {
                     void this.update({
                         type: "frame",
                         id: action.id,
-                        domain: frame.domain,
-                        gapDomain: frame.ranks,
+                        target:
+                            "viewport" in action.target
+                                ? {
+                                      viewport: {
+                                          interval: frame.domain,
+                                          gapRanks: frame.ranks,
+                                      },
+                                  }
+                                : {
+                                      domain: frame.domain,
+                                      gapDomain: frame.ranks,
+                                  },
                     });
                     return;
                 }
@@ -395,10 +394,12 @@ export default class DomainRuntime {
                 void this.update({
                     type: "frame",
                     id: action.id,
-                    domain: [
-                        from[0] === to[0] ? from[0] : c - w / 2,
-                        from[1] === to[1] ? from[1] : c + w / 2,
-                    ],
+                    target: {
+                        domain: [
+                            from[0] === to[0] ? from[0] : c - w / 2,
+                            from[1] === to[1] ? from[1] : c + w / 2,
+                        ],
+                    },
                 });
             },
         });

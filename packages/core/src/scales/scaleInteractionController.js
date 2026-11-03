@@ -23,6 +23,7 @@ import {
 } from "../genome/genome.js";
 
 /**
+ * @typedef {import("./domainLifecycle.js").NavigationTarget} NavigationTarget
  * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
  * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
@@ -36,7 +37,7 @@ export default class ScaleInteractionController {
     /** @type {() => ScaleWithProps} */
     #getScale;
 
-    /** @type {(domain: number[] | null, duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} */
+    /** @type {(target: NavigationTarget, duration: number, renderImmediately?: boolean) => Promise<void>} */
     #navigate;
 
     /** @type {() => void} */
@@ -60,7 +61,7 @@ export default class ScaleInteractionController {
     /**
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
-     * @param {(domain: number[] | null, duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} options.navigate
+     * @param {(target: NavigationTarget, duration: number, renderImmediately?: boolean) => Promise<void>} options.navigate
      * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[] | undefined} options.getDataZoomExtent
@@ -189,7 +190,19 @@ export default class ScaleInteractionController {
             const ranks = shallowArrayEquals(clamped, transformed.domain)
                 ? transformed.ranks
                 : undefined;
-            void this.#navigate(clamped, 0, false, ranks);
+            void this.#navigate(
+                isCategoricalPositionScale(scale.type)
+                    ? {
+                          viewport: {
+                              interval: /** @type {[number, number]} */ (
+                                  clamped
+                              ),
+                              gapRanks: ranks,
+                          },
+                      }
+                    : { domain: clamped, gapDomain: ranks },
+                0
+            );
             return true;
         }
         let newDomain = applyZoomTransform(
@@ -205,7 +218,7 @@ export default class ScaleInteractionController {
         newDomain = clampRange(newDomain, zoomExtent[0], zoomExtent[1]);
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            void this.#navigate(newDomain, 0);
+            void this.#navigate({ domain: newDomain }, 0);
             return true;
         }
 
@@ -234,7 +247,7 @@ export default class ScaleInteractionController {
         );
 
         // TODO: Intersect the domain with zoom extent
-        return this.#dispatchNavigation(to, options);
+        return this.#dispatchNavigation({ domain: to }, options);
     }
 
     /** @returns {number[]} */
@@ -261,25 +274,15 @@ export default class ScaleInteractionController {
             copyViewport(viewport),
             this.getZoomExtent()[1]
         );
-        return this.#dispatchNavigation(
-            target?.interval ?? null,
-            options,
-            target?.gapRanks
-        );
+        return this.#dispatchNavigation({ viewport: target }, options);
     }
 
-    /** @param {number[] | null} domain
+    /** @param {NavigationTarget} target
      * @param {ZoomToOptions | boolean | number | undefined} options
-     * @param {readonly number[]} [ranks]
      */
-    #dispatchNavigation(domain, options, ranks) {
+    #dispatchNavigation(target, options) {
         const { duration, renderImmediately } = normalizeZoomToOptions(options);
-        const transition = this.#navigate(
-            domain,
-            duration,
-            renderImmediately,
-            ranks
-        );
+        const transition = this.#navigate(target, duration, renderImmediately);
         if (renderImmediately) this.#renderImmediately();
         return transition;
     }
@@ -306,7 +309,7 @@ export default class ScaleInteractionController {
         const newDomain = this.#getResetDomain();
 
         // Even an equal reset cancels an active transition.
-        void this.#navigate(newDomain, 0);
+        void this.#navigate({ domain: newDomain }, 0);
         return !shallowArrayEquals(oldDomain, scale.domain());
     }
 

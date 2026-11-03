@@ -7,7 +7,8 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  * mutates scales, or schedules callbacks.
  *
  * @typedef {readonly (number | string | boolean)[]} Domain
- * @typedef {{ id: number, target: Domain, gapDomain?: readonly number[], viewport?: boolean, fit?: boolean }} DomainTransition
+ * @typedef {{ domain: Domain, gapDomain?: readonly number[] } | { viewport: import("./scaleBand.js").CategoricalViewport | null }} NavigationTarget
+ * @typedef {{ id: number, target: NavigationTarget }} DomainTransition
  * @typedef {{
  *   visibleDomain: Domain,
  *   viewport?: import("./scaleBand.js").CategoricalViewport | null,
@@ -52,16 +53,12 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  *   domain: Domain,
  * } | {
  *   type: "navigate",
- *   domain: Domain,
+ *   target: NavigationTarget,
  *   duration: number,
- *   gapDomain?: readonly number[],
- *   viewport?: boolean,
- *   fit?: boolean,
  * } | {
  *   type: "frame",
  *   id: number,
- *   domain: Domain,
- *   gapDomain?: readonly number[],
+ *   target: NavigationTarget,
  * } | {
  *   type: "finish",
  *   id: number,
@@ -71,9 +68,7 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  *   id: number,
  *   from: Domain,
  *   to: Domain,
- *   gapDomain?: readonly number[],
- *   viewport?: boolean,
- *   fit?: boolean,
+ *   target: NavigationTarget,
  *   duration: number,
  * }} TransitionAction
  * @typedef {{
@@ -118,48 +113,34 @@ export function createDomainState(visibleDomain, resetDomain) {
 export function planDomainUpdate(state, update, policy) {
     switch (update.type) {
         case "set":
-            return applyDomain(state, update.domain, 0, policy);
+            return applyTarget(state, { domain: update.domain }, 0, policy);
         case "frame":
         case "finish": {
             if (state.transition?.id !== update.id) {
                 return unchanged(state);
             }
-            const domain =
-                update.type === "finish"
-                    ? state.transition.target
-                    : update.domain;
-            return commitDomain(
+            return commitTarget(
                 update.type === "finish"
                     ? { ...state, transition: undefined }
                     : state,
-                domain,
-                policy,
-                update.type === "frame"
-                    ? update.gapDomain
-                    : state.transition.gapDomain,
-                !!state.transition.viewport,
-                update.type === "finish" && !!state.transition.fit
+                update.type === "finish"
+                    ? state.transition.target
+                    : update.target,
+                policy
             );
         }
         case "navigate": {
-            if (policy.scaleKind === "discrete" && !update.viewport) {
+            const viewport = "viewport" in update.target;
+            if (policy.scaleKind === "discrete" && !viewport) {
                 throw new Error(
                     "Discrete domains do not support navigation or reset."
                 );
             }
             const next =
-                state.phase === "collecting" && !update.viewport
+                state.phase === "collecting" && !viewport
                     ? { ...state, phase: /** @type {const} */ ("interacted") }
                     : state;
-            return applyDomain(
-                next,
-                update.domain,
-                update.duration,
-                policy,
-                update.gapDomain,
-                !!update.viewport,
-                !!update.fit
-            );
+            return applyTarget(next, update.target, update.duration, policy);
         }
         case "data":
         case "configuration":
@@ -238,7 +219,8 @@ function planSourceUpdate(state, update, policy) {
 
     // An unchanged membership publication must not cancel viewport animation.
     if (
-        state.transition?.viewport &&
+        state.transition &&
+        "viewport" in state.transition.target &&
         shallowArrayEquals(update.candidate, state.visibleDomain)
     )
         return unchanged(next);
@@ -255,32 +237,32 @@ function planSourceUpdate(state, update, policy) {
     if (
         animate &&
         state.transition &&
-        shallowArrayEquals(update.candidate, state.transition.target)
+        "domain" in state.transition.target &&
+        shallowArrayEquals(update.candidate, state.transition.target.domain)
     ) {
         return unchanged(next);
     }
-    return applyDomain(next, update.candidate, animate ? 500 : 0, policy);
+    return applyTarget(
+        next,
+        { domain: update.candidate },
+        animate ? 500 : 0,
+        policy
+    );
 }
 
 /**
  * @param {DomainState} state
- * @param {Domain} domain
+ * @param {NavigationTarget} target
  * @param {number} duration
  * @param {DomainPolicy} policy
- * @param {readonly number[]} [gapDomain]
- * @param {boolean} [viewport]
- * @param {boolean} [fit]
  * @returns {DomainUpdatePlan}
  */
-function applyDomain(
-    state,
-    domain,
-    duration,
-    policy,
-    gapDomain,
-    viewport = false,
-    fit = false
-) {
+function applyTarget(state, target, duration, policy) {
+    const viewport = "viewport" in target;
+    const domain = viewport
+        ? (target.viewport?.interval ?? [0, state.visibleDomain.length])
+        : target.domain;
+    const gapDomain = viewport ? target.viewport?.gapRanks : target.gapDomain;
     const from = viewport
         ? (state.viewport?.interval ?? [0, state.visibleDomain.length])
         : state.visibleDomain;
@@ -304,7 +286,7 @@ function applyDomain(
         return {
             state: {
                 ...state,
-                transition: { id, target: domain, gapDomain, viewport, fit },
+                transition: { id, target },
                 transitionSerial: id,
             },
             domainChanged: false,
@@ -314,61 +296,29 @@ function applyDomain(
                 id,
                 from,
                 to: domain,
-                gapDomain,
-                viewport,
-                fit,
+                target,
                 duration,
             },
         };
     }
 
     return {
-        ...commitDomain(
-            { ...state, transition: undefined },
-            domain,
-            policy,
-            gapDomain,
-            viewport,
-            fit
-        ),
+        ...commitTarget({ ...state, transition: undefined }, target, policy),
         transition: state.transition ? { type: "cancel" } : { type: "none" },
     };
 }
 
 /**
  * @param {DomainState} state
- * @param {Domain} domain
+ * @param {NavigationTarget} target
  * @param {DomainPolicy} policy
- * @param {readonly number[]} [gapDomain]
- * @param {boolean} [viewport]
- * @param {boolean} [fit]
  * @returns {DomainUpdatePlan}
  */
-function commitDomain(
-    state,
-    domain,
-    policy,
-    gapDomain,
-    viewport = false,
-    fit = false
-) {
-    if (viewport) {
-        return unchanged({
-            ...state,
-            viewport: fit
-                ? null
-                : {
-                      interval: /** @type {[number, number]} */ (domain),
-                      ...(gapDomain
-                          ? {
-                                gapRanks: /** @type {[number, number]} */ (
-                                    gapDomain
-                                ),
-                            }
-                          : {}),
-                  },
-        });
+function commitTarget(state, target, policy) {
+    if ("viewport" in target) {
+        return unchanged({ ...state, viewport: target.viewport });
     }
+    const { domain, gapDomain } = target;
     const domainChanged =
         !shallowArrayEquals(domain, state.visibleDomain) ||
         !shallowArrayEquals(gapDomain ?? [], state.gapDomain ?? []);

@@ -234,23 +234,9 @@ export default class ScaleResolution {
             // Zoom level does not depend on the range, so an initialized scale
             // is safe to read while its range expression is being configured.
             getScale: () => this.#scaleManager.scale ?? this.getScale(),
-            navigate: (
-                domain,
-                duration,
-                renderImmediately = false,
-                gapDomain
-            ) =>
+            navigate: (target, duration, renderImmediately = false) =>
                 this.#commitDomainUpdate(
-                    {
-                        type: "navigate",
-                        domain: domain ?? [0, this.getDomain().length],
-                        duration,
-                        gapDomain,
-                        viewport: isCategoricalPositionScale(
-                            this.getResolvedScaleType()
-                        ),
-                        fit: domain === null,
-                    },
+                    { type: "navigate", target, duration },
                     !renderImmediately
                 ),
             renderImmediately: () => this.#domainRuntime.renderImmediately(),

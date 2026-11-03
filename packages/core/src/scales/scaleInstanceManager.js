@@ -576,8 +576,22 @@ export default class ScaleInstanceManager {
         // Public mutation compatibility (including App sample layout). Internal
         // configuration uses the original setters and publishes through mapping.
         const scale = this.#scale;
-        const range = scale.range;
-        const domain = scale.domain;
+        if (scale.type === "null") return;
+
+        /**
+         * @template {(...args: any[]) => any} F
+         * @param {F} read
+         * @param {(value: any) => void} write
+         * @returns {F}
+         */
+        const intercept = (read, write) =>
+            /** @type {F} */ (
+                function (/** @type {any} */ value) {
+                    if (!arguments.length) return read();
+                    write(value);
+                    return scale;
+                }
+            );
         const setRange = (/** @type {any[]} */ values) => {
             const configuration = this.mapping.get();
             this.#rangeCommandActive = true;
@@ -588,44 +602,18 @@ export default class ScaleInstanceManager {
             });
             this.#runtime.flushNow({ afterTransaction: true });
         };
-        const updateDomain = this.#onDomainChange;
+        scale.range = intercept(scale.range, setRange);
+        scale.domain = intercept(scale.domain, (values) =>
+            this.#onDomainChange(Array.from(values))
+        );
         if ("viewport" in scale) {
             const categorical =
                 /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
                     scale
                 );
-            const read = categorical.viewport;
-            const update = this.#onViewportChange;
-            // @ts-expect-error Getter/setter overloads.
-            categorical.viewport = function (value) {
-                if (!arguments.length) return read();
-                update(value);
-                return categorical;
-            };
-        }
-
-        if (typeof range === "function") {
-            scale.range = /** @type {any} */ (
-                function (/** @type {any} */ _) {
-                    if (arguments.length) {
-                        setRange(_);
-                        return scale;
-                    } else {
-                        return range();
-                    }
-                }
-            );
-        }
-        if (typeof domain === "function") {
-            scale.domain = /** @type {any} */ (
-                function (/** @type {any} */ _) {
-                    if (arguments.length) {
-                        updateDomain(Array.from(_));
-                        return scale;
-                    } else {
-                        return domain();
-                    }
-                }
+            categorical.viewport = intercept(
+                categorical.viewport,
+                this.#onViewportChange
             );
         }
     }

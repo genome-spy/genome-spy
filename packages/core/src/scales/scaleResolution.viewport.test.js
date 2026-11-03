@@ -225,7 +225,7 @@ test("initial viewport reconciliation publishes the settled zoom metric", async 
     expect(x.isZoomed()).toBe(false);
 });
 
-test("gap-only viewport changes animate intermediate geometry and retain exact final ranks", async () => {
+test("categorical animation retains exact gap-only targets and returns to fit-all", async () => {
     const animator = new Animator(() => undefined);
     vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);
     const { view } = await createHeadlessEngine(
@@ -263,6 +263,15 @@ test("gap-only viewport changes animate intermediate geometry and retain exact f
     await transition;
     expect(x.getViewport()).toEqual(to);
     expect(scale.gapMapping().position("B")).toBeCloseTo(final);
+
+    const reset = x.zoomToViewport(null, { duration: 500 });
+    expect(x.getViewport()).toEqual(to);
+    animator.transitions
+        .splice(0)
+        .forEach((frame) => frame(performance.now() + 1000));
+    await reset;
+    expect(x.getViewport()).toBeNull();
+    expect(x.getMappingRef().get().viewport).toBeNull();
 });
 
 test("ordinary categorical intervals share one-band limits across authored, API, and reset bounds", async () => {

@@ -26,7 +26,7 @@ function createLinearScale(domain, props = {}) {
 /**
  * @param {object} [options]
  * @param {ReturnType<typeof createLinearScale>} [options.scale]
- * @param {(domain: number[], duration: number, renderImmediately?: boolean) => Promise<void>} [options.navigate]
+ * @param {(target: import("./domainLifecycle.js").NavigationTarget, duration: number, renderImmediately?: boolean) => Promise<void>} [options.navigate]
  * @param {() => void} [options.renderImmediately]
  * @param {() => number[]} [options.getGenomeExtent]
  * @param {() => number[] | undefined} [options.getDataZoomExtent]
@@ -43,8 +43,9 @@ function createController({
         getScale: () => scale,
         navigate:
             navigate ??
-            (async (domain) => {
-                scale.domain(domain);
+            (async (target) => {
+                if ("domain" in target) scale.domain(target.domain);
+                else scale.viewport(target.viewport);
             }),
         getInitialDomainSnapshot: () => [0, 10],
         getDataZoomExtent: getDataZoomExtent ?? (() => [0, 10]),
@@ -261,33 +262,33 @@ describe("ScaleInteractionController", () => {
 
     test("zoomTo accepts options object with duration", async () => {
         const scale = createLinearScale([0, 10]);
-        const navigate = vi.fn(async (domain) => {
-            scale.domain(domain);
+        const navigate = vi.fn(async (target) => {
+            scale.domain(target.domain);
         });
         const controller = createController({ scale, navigate });
 
         await controller.zoomTo([2, 8], { duration: 0 });
 
         expect(scale.domain()).toEqual([2, 8]);
-        expect(navigate).toHaveBeenCalledWith([2, 8], 0, false, undefined);
+        expect(navigate).toHaveBeenCalledWith({ domain: [2, 8] }, 0, false);
     });
 
     test("zoomTo still accepts direct duration for compatibility", async () => {
         const scale = createLinearScale([0, 10]);
-        const navigate = vi.fn(async (domain) => {
-            scale.domain(domain);
+        const navigate = vi.fn(async (target) => {
+            scale.domain(target.domain);
         });
         const controller = createController({ scale, navigate });
 
         await controller.zoomTo([2, 8], 500);
 
-        expect(navigate).toHaveBeenCalledWith([2, 8], 500, false, undefined);
+        expect(navigate).toHaveBeenCalledWith({ domain: [2, 8] }, 500, false);
     });
 
     test("zoomTo can render immediately without requesting animation frame", async () => {
         const scale = createLinearScale([0, 10]);
-        const navigate = vi.fn(async (domain) => {
-            scale.domain(domain);
+        const navigate = vi.fn(async (target) => {
+            scale.domain(target.domain);
         });
         const renderImmediately = vi.fn();
         const controller = createController({
@@ -303,7 +304,7 @@ describe("ScaleInteractionController", () => {
 
         expect(scale.domain()).toEqual([2, 8]);
         expect(renderImmediately).toHaveBeenCalledTimes(1);
-        expect(navigate).toHaveBeenCalledWith([2, 8], 0, true, undefined);
+        expect(navigate).toHaveBeenCalledWith({ domain: [2, 8] }, 0, true);
     });
 
     test("zoomTo rejects immediate rendering for animated zooms", async () => {

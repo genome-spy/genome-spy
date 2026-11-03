@@ -490,6 +490,20 @@ picking tests.
 
 ## Risks and delivery
 
+The lifecycle simplification carries a complete `{ domain, gapDomain? }` or
+`{ viewport }` navigation target through the controller, model, and animation.
+A null viewport already means fit-all, so separate viewport/fit flags are
+unnecessary. The runtime remains the state owner; publication mirroring and
+mapping restoration retain their distinct timing. Domain, range, and viewport
+setter interception share one wrapper, and runtime state initializes once.
+Existing lifecycle and headless navigation regressions verify this internal
+refactor without changing public APIs or grammar.
+Independent review confirms the reduced control flow and retained ownership.
+Disabled scales keep their native lack of domain/range methods; their existing
+inspection regression passes. Exact-gap animation coverage now also verifies
+animated return to fit-all. All 5,500 tests, Core types/build, lint, and release
+checks pass after the refactor.
+
 The main risks are accidentally freezing categorical membership, changing
 ordinary band/point projection while sharing geometry, and missing a mapping
 consumer or accidentally serializing categories through an existing persistence
