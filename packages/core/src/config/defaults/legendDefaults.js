@@ -51,7 +51,6 @@ const TRACK_BOTTOM_LEGEND_STYLE = {
 export const LEGEND_STYLE_DEFAULTS = {
     "gradient-selection-brush": {
         clip: false,
-        stroke: "black",
         strokeOpacity: 1,
         shadowColor: "white",
         shadowOpacity: 1,

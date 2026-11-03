@@ -459,8 +459,7 @@ export interface BrushConfig
      * The stroke color of the interval mark.
      *
      * __Default value:__ `defaultThemeColors.foreground`, falling back to `"black"`
-     * in the default theme, for positional brushes. Gradient-legend brushes
-     * default to `"black"`.
+     * in the default theme.
      */
     stroke?: string | ExprRef;
 

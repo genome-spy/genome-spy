@@ -142,7 +142,8 @@ Domain changes preserve stored bounds and clip only the visible brush.
 The brush uses the same `select.mark` configuration as a positional interval
 brush. Rect appearance properties control its fill, stroke, opacity, rounded
 corners, hatching, and shadow; expressions resolve in the selection's declaring
-scope. Gradient brushes default to an unclipped black outline with a white glow.
+scope. Gradient brushes use an unclipped outline in the theme foreground color, with a
+glow in the theme background color (white for a transparent background).
 Shared gradient-brush defaults can be set with
 `config.style["gradient-selection-brush"]`.
 For example, this configuration changes the outline and disables the glow:
