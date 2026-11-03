@@ -1,0 +1,297 @@
+{
+  "description": [
+    "Zoomable band scale heatmap with dendrograms",
+    "Zoom and drag the matrix or either dendrogram. Shared band scales keep both trees aligned, with fixed-size gaps between the main clades. Values and trees are imaginary."
+  ],
+
+  "name": "zoomableClusteredHeatmap",
+  "params": [{ "name": "sampleOrder" }, { "name": "geneOrder" }],
+
+  "resolve": {
+    "scale": { "x": "excluded", "y": "excluded" },
+    "legend": { "color": "collected" }
+  },
+
+  "scales": {
+    "x": {
+      "name": "genes",
+      "type": "band",
+      "domain": { "expr": "geneOrder" },
+      "zoom": true,
+      "gapPositions": ["E"],
+      "gapWidth": 14
+    },
+    "y": {
+      "name": "samples",
+      "type": "band",
+      "domain": { "expr": "sampleOrder" },
+      "zoom": true,
+      "gapPositions": ["S4"],
+      "gapWidth": 14,
+      "reverse": true
+    }
+  },
+
+  "spacing": 10,
+
+  "spec": {
+    "name": "matrix",
+    "data": {
+      "values": [
+        { "sample": "S1", "gene": "A", "z": 1.8 },
+        { "sample": "S1", "gene": "B", "z": 1.5 },
+        { "sample": "S1", "gene": "C", "z": 1.2 },
+        { "sample": "S1", "gene": "D", "z": 0.8 },
+        { "sample": "S1", "gene": "E", "z": -0.7 },
+        { "sample": "S1", "gene": "F", "z": -1.2 },
+        { "sample": "S1", "gene": "G", "z": -1.5 },
+        { "sample": "S1", "gene": "H", "z": -1.1 },
+        { "sample": "S2", "gene": "A", "z": 1.3 },
+        { "sample": "S2", "gene": "B", "z": 1.7 },
+        { "sample": "S2", "gene": "C", "z": 0.8 },
+        { "sample": "S2", "gene": "D", "z": 1.1 },
+        { "sample": "S2", "gene": "E", "z": -1.0 },
+        { "sample": "S2", "gene": "F", "z": -0.8 },
+        { "sample": "S2", "gene": "G", "z": -1.3 },
+        { "sample": "S2", "gene": "H", "z": -1.6 },
+        { "sample": "S3", "gene": "A", "z": 0.9 },
+        { "sample": "S3", "gene": "B", "z": 1.1 },
+        { "sample": "S3", "gene": "C", "z": 1.6 },
+        { "sample": "S3", "gene": "D", "z": 1.4 },
+        { "sample": "S3", "gene": "E", "z": -1.5 },
+        { "sample": "S3", "gene": "F", "z": -1.1 },
+        { "sample": "S3", "gene": "G", "z": -0.6 },
+        { "sample": "S3", "gene": "H", "z": -0.9 },
+        { "sample": "S4", "gene": "A", "z": -1.4 },
+        { "sample": "S4", "gene": "B", "z": -1.0 },
+        { "sample": "S4", "gene": "C", "z": -0.8 },
+        { "sample": "S4", "gene": "D", "z": -1.5 },
+        { "sample": "S4", "gene": "E", "z": 1.6 },
+        { "sample": "S4", "gene": "F", "z": 1.2 },
+        { "sample": "S4", "gene": "G", "z": 0.8 },
+        { "sample": "S4", "gene": "H", "z": 1.1 },
+        { "sample": "S5", "gene": "A", "z": -0.9 },
+        { "sample": "S5", "gene": "B", "z": -1.3 },
+        { "sample": "S5", "gene": "C", "z": -1.6 },
+        { "sample": "S5", "gene": "D", "z": -1.1 },
+        { "sample": "S5", "gene": "E", "z": 1.0 },
+        { "sample": "S5", "gene": "F", "z": 1.7 },
+        { "sample": "S5", "gene": "G", "z": 1.3 },
+        { "sample": "S5", "gene": "H", "z": 0.9 },
+        { "sample": "S6", "gene": "A", "z": -1.6 },
+        { "sample": "S6", "gene": "B", "z": -0.8 },
+        { "sample": "S6", "gene": "C", "z": -1.2 },
+        { "sample": "S6", "gene": "D", "z": -0.7 },
+        { "sample": "S6", "gene": "E", "z": 1.4 },
+        { "sample": "S6", "gene": "F", "z": 0.9 },
+        { "sample": "S6", "gene": "G", "z": 1.1 },
+        { "sample": "S6", "gene": "H", "z": 1.8 }
+      ]
+    },
+    "mark": "rect",
+    "encoding": {
+      "x": {
+        "field": "gene",
+        "type": "nominal",
+        "axis": { "title": "Gene", "labelAngle": 0 }
+      },
+      "y": {
+        "field": "sample",
+        "type": "nominal",
+        "axis": { "title": "Sample", "orient": "right" }
+      },
+      "color": {
+        "field": "z",
+        "type": "quantitative",
+        "scale": {
+          "domain": [-2, 2],
+          "scheme": "blueorange"
+        },
+        "legend": { "title": "Value", "orient": "right" }
+      }
+    }
+  },
+
+  "surround": {
+    "top": [
+      {
+        "name": "geneTree",
+        "height": 80,
+        "data": {
+          "values": [
+            { "id": "A", "height": 0, "gene": "A", "parent": "AB", "order": 0 },
+            { "id": "B", "height": 0, "gene": "B", "parent": "AB", "order": 1 },
+            { "id": "C", "height": 0, "gene": "C", "parent": "CD", "order": 0 },
+            { "id": "D", "height": 0, "gene": "D", "parent": "CD", "order": 1 },
+            { "id": "E", "height": 0, "gene": "E", "parent": "EF", "order": 0 },
+            { "id": "F", "height": 0, "gene": "F", "parent": "EF", "order": 1 },
+            { "id": "G", "height": 0, "gene": "G", "parent": "GH", "order": 0 },
+            { "id": "H", "height": 0, "gene": "H", "parent": "GH", "order": 1 },
+            { "id": "AB", "height": 0.5, "parent": "ABCD", "order": 0 },
+            { "id": "CD", "height": 0.6, "parent": "ABCD", "order": 1 },
+            { "id": "EF", "height": 0.4, "parent": "EFGH", "order": 0 },
+            { "id": "GH", "height": 0.7, "parent": "EFGH", "order": 1 },
+            { "id": "ABCD", "height": 1.1, "parent": "root", "order": 0 },
+            { "id": "EFGH", "height": 1.3, "parent": "root", "order": 1 },
+            { "id": "root", "height": 2.2, "parent": null }
+          ]
+        },
+        "transform": [
+          {
+            "type": "dendrogram",
+            "key": "id",
+            "parentKey": "parent",
+            "height": "height",
+            "leaf": "gene",
+            "siblingOrder": "order",
+            "domainParam": { "name": "geneOrder", "push": "outer" }
+          }
+        ],
+        "mark": {
+          "type": "link",
+          "linkShape": "orthogonal",
+          "orient": "vertical",
+          "size": 1.3,
+          "color": "#334155",
+          "clip": "x"
+        },
+        "encoding": {
+          "x": {
+            "field": "sourceValue",
+            "type": "nominal",
+            "band": 0.5,
+            "axis": null
+          },
+          "x2": { "field": "targetValue", "band": 0.5 },
+          "xOffset": {
+            "field": "sourceOffset",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 1],
+              "range": [0, { "expr": "width * bandstep('x', width)" }]
+            }
+          },
+          "x2Offset": { "field": "targetOffset" },
+          "y": {
+            "field": "sourceHeight",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 2.4],
+              "reverse": false,
+              "zoom": false,
+              "nice": false
+            },
+            "axis": null
+          },
+          "y2": { "field": "targetHeight" }
+        }
+      }
+    ],
+    "left": [
+      {
+        "name": "sampleTree",
+        "width": 80,
+        "data": {
+          "values": [
+            {
+              "id": "S1",
+              "height": 0,
+              "sample": "S1",
+              "parent": "S12",
+              "order": 0
+            },
+            {
+              "id": "S2",
+              "height": 0,
+              "sample": "S2",
+              "parent": "S12",
+              "order": 1
+            },
+            {
+              "id": "S3",
+              "height": 0,
+              "sample": "S3",
+              "parent": "S123",
+              "order": 1
+            },
+            {
+              "id": "S4",
+              "height": 0,
+              "sample": "S4",
+              "parent": "S45",
+              "order": 0
+            },
+            {
+              "id": "S5",
+              "height": 0,
+              "sample": "S5",
+              "parent": "S45",
+              "order": 1
+            },
+            {
+              "id": "S6",
+              "height": 0,
+              "sample": "S6",
+              "parent": "S456",
+              "order": 1
+            },
+            { "id": "S12", "height": 0.5, "parent": "S123", "order": 0 },
+            { "id": "S123", "height": 1.0, "parent": "root", "order": 0 },
+            { "id": "S45", "height": 0.6, "parent": "S456", "order": 0 },
+            { "id": "S456", "height": 1.2, "parent": "root", "order": 1 },
+            { "id": "root", "height": 2.2, "parent": null }
+          ]
+        },
+        "transform": [
+          {
+            "type": "dendrogram",
+            "key": "id",
+            "parentKey": "parent",
+            "height": "height",
+            "leaf": "sample",
+            "siblingOrder": "order",
+            "domainParam": { "name": "sampleOrder", "push": "outer" }
+          }
+        ],
+        "mark": {
+          "type": "link",
+          "linkShape": "orthogonal",
+          "orient": "horizontal",
+          "size": 1.3,
+          "color": "#334155",
+          "clip": "y"
+        },
+        "encoding": {
+          "y": {
+            "field": "sourceValue",
+            "type": "nominal",
+            "band": 0.5,
+            "axis": null
+          },
+          "y2": { "field": "targetValue", "band": 0.5 },
+          "yOffset": {
+            "field": "sourceOffset",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 1],
+              "range": [0, { "expr": "-height * bandstep('y', height)" }]
+            }
+          },
+          "y2Offset": { "field": "targetOffset" },
+          "x": {
+            "field": "sourceHeight",
+            "type": "quantitative",
+            "scale": {
+              "domain": [0, 2.4],
+              "reverse": true,
+              "zoom": false,
+              "nice": false
+            },
+            "axis": null
+          },
+          "x2": { "field": "targetHeight" }
+        }
+      }
+    ]
+  }
+}
