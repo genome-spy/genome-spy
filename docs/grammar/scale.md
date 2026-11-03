@@ -247,12 +247,10 @@ domain; `zoom.extent` options do not apply. Navigation does not support
 [scrollable layout viewport](composition/concat.md#scrollable-viewports), which
 moves over content that is already laid out.
 
-This example zooms across 26 categorical columns while two categorical rows
-remain fixed. Two inline value arrays are reshaped into the heatmap's cells.
-The axis uses [`labelSqueeze`](axis.md#ticks-and-labels) to fit each column label
-inside its band as space changes:
+This example zooms across 78 categorical columns in three alphabetic groups,
+separated by fixed-pixel gaps:
 
-EXAMPLE examples/docs/grammar/scale/categorical-zoom.json height=210
+EXAMPLE examples/docs/grammar/scale/categorical-zoom.json height=100
 
 For point placement, change the x scale to `"point"`, use a point mark, and
 remove `labelSqueeze`. Point scales share the rank viewport behavior but have
