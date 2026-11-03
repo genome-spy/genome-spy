@@ -178,12 +178,16 @@ export default class ParamProvenanceBridge {
     #registerParamListeners() {
         for (const entry of this.#entries) {
             const paramName = entry.selector.param;
-            const unsubscribe = entry.view.paramRuntime.subscribe(
-                paramName,
-                () => {
-                    this.#handleParamChange(entry);
-                }
-            );
+            const runtime = entry.view.paramRuntime;
+            const capture = () => this.#handleParamChange(entry);
+            // Replaying an intermediate value would cancel the active brush.
+            const unsubscribe =
+                isSelectionParameter(entry.param) &&
+                isIntervalSelectionConfig(asSelectionConfig(entry.param.select))
+                    ? runtime
+                          .getIntervalSelectionState(paramName)
+                          .subscribeCommit(capture)
+                    : runtime.subscribe(paramName, capture);
             this.#disposers.push(unsubscribe);
         }
     }
@@ -373,7 +377,8 @@ export default class ParamProvenanceBridge {
      */
     #shouldThrottle(param) {
         if (isSelectionParameter(param)) {
-            return true;
+            // Interval notifications already represent complete gestures.
+            return !isIntervalSelectionConfig(asSelectionConfig(param.select));
         }
 
         return isVariableParameter(param) && Boolean(param.bind);
@@ -871,8 +876,12 @@ export default class ParamProvenanceBridge {
                     const intervals = decodeGradientIntervals(
                         storedValue.intervals
                     );
+                    // Serialized cleared selections omit null components.
                     if (component)
-                        validateGradientIntervals(intervals, component);
+                        validateGradientIntervals(
+                            { ...selection.intervals, ...intervals },
+                            component
+                        );
                     this.#applyIntervals(entry.view, selection, intervals);
                     const originIntervals = this.#resolveOriginIntervals(
                         storedEntry.origin
