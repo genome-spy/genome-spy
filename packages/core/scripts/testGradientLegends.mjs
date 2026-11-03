@@ -265,9 +265,7 @@ await testRenderers([{ deviceScaleFactor: 1 }], async (page, renderer) => {
         host.style.height = "600px";
         const { embed } = await import("/index.js");
         const spec = await (
-            await fetch(
-                "/examples/docs/grammar/legend/interactive-gradient-legend.json"
-            )
+            await fetch("/examples/core/interaction/legend-gradient-brush.json")
         ).json();
         spec.baseUrl = new URL("/examples/", location.href).href;
         const api = await embed(host, spec, { renderer });

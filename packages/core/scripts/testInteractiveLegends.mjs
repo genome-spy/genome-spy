@@ -12,9 +12,7 @@ await testRenderers(
             host.style.cssText = "width:720px;height:400px";
             document.body.append(host);
             const spec = await (
-                await fetch(
-                    "/examples/docs/grammar/legend/interactive-legend.json"
-                )
+                await fetch("/examples/core/interaction/legend-categories.json")
             ).json();
             spec.name = "cells";
             spec.baseUrl = new URL("/examples/", location.href).href;
