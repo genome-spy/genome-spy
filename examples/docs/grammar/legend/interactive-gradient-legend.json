@@ -3,99 +3,72 @@
     "Brush activation across immune cell types",
     "Choose a cell type and brush its activation range. Drag the brush to move it; wheel to resize; double-click the ramp to clear. Coordinates, cell types, and scores are synthetic."
   ],
+
   "title": {
     "text": "Explore immune cell activation",
     "subtitle": "Choose T cells, then brush activation to highlight their intersection.",
     "anchor": "start"
   },
+
   "params": [
     {
       "name": "cell_types",
-      "select": {
-        "type": "point",
-        "encodings": ["shape"]
-      },
+      "select": { "type": "point", "encodings": ["shape"] },
       "bind": "legend"
     },
     {
       "name": "activation",
-      "select": {
-        "type": "interval",
-        "encodings": ["color"]
-      },
+      "select": { "type": "interval", "encodings": ["color"] },
       "bind": "legend"
     }
   ],
+
   "config": {
     "legend": {
+      "orient": "right",
       "labelFontSize": 12,
-      "rowPadding": 6
+      "rowPadding": 6,
+      "layout": { "right": { "direction": "vertical", "wrap": false } }
     }
   },
-  "data": {
-    "url": "data/immune-cell-activation.csv"
-  },
-  "mark": {
-    "type": "point",
-    "size": 100
-  },
+
+  "data": { "url": "data/immune-cell-activation.csv" },
+
+  "mark": { "type": "point", "size": 100 },
+
   "encoding": {
     "x": {
       "field": "x",
       "type": "quantitative",
       "title": "Synthetic embedding 1",
-      "scale": {
-        "domain": [0, 9]
-      }
+      "scale": { "domain": [0, 9] }
     },
     "y": {
       "field": "y",
       "type": "quantitative",
       "title": "Synthetic embedding 2",
-      "scale": {
-        "domain": [0, 7]
-      }
+      "scale": { "domain": [0, 7] }
     },
     "shape": {
       "field": "cell_type",
       "type": "nominal",
       "title": "Cell type",
-      "scale": {
-        "domain": ["T cell", "B cell"]
-      }
+      "scale": { "domain": ["T cell", "B cell"] }
     },
     "color": {
       "field": "activation_score",
       "type": "quantitative",
       "title": "Activation score",
-      "scale": {
-        "domain": [0, 1],
-        "scheme": "viridis"
-      },
-      "legend": {
-        "orient": "bottom",
-        "direction": "horizontal",
-        "gradientLength": 300
-      }
+      "scale": { "domain": [0, 1], "scheme": "viridis" }
     },
     "opacity": {
       "condition": {
         "test": {
-          "and": [
-            {
-              "param": "cell_types"
-            },
-            {
-              "param": "activation"
-            }
-          ]
+          "and": [{ "param": "cell_types" }, { "param": "activation" }]
         },
         "value": 1
       },
       "value": 0.12
     }
-  },
-  "name": "immune_cells",
-  "width": 550,
-  "height": 320
+  }
 }
