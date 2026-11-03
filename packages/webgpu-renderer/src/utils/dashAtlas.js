@@ -8,13 +8,15 @@
 
 export const DASH_MAX_PATTERN_COUNT = 256;
 export const DASH_MAX_PATTERN_LENGTH = 256;
-export const DASH_ATLAS_WIDTH = DASH_MAX_PATTERN_LENGTH * 2 + 1;
+export const DASH_ATLAS_WIDTH = DASH_MAX_PATTERN_LENGTH * 4 + 1;
 
 /**
  * Build a dash atlas texture for rule-style line patterns.
  *
- * Each rgba8uint row starts with a two-byte period and an all-on/all-off flag.
- * Two texels per logical sample then store the left and right painted intervals.
+ * Each rgba8uint row starts with a two-byte period, an all-on flag, and a
+ * no-positive-length-dash flag. Four texels per logical sample store the left
+ * and right intervals, first including zero-length dashes, then excluding them.
+ * Butt caps use the latter pair because zero-length butt dashes have no body.
  * Endpoints are two-byte integers relative to that sample, biased by 256.
  * Keep both neighbors: a containing run can clip empty at a finite rule endpoint
  * while the preceding run still contributes a border. Zero-length gaps are merged.
@@ -82,33 +84,49 @@ export function buildDashAtlas(patterns) {
         const base = row * DASH_ATLAS_WIDTH * 4;
         data[base] = length & 255;
         data[base + 1] = length >> 8;
-        /** @type {boolean[]} */
-        const mask = [];
+        /** @type {[number, number][]} */
+        const runs = [];
+        let position = 0;
         for (let segment = 0; segment < pattern.length; segment++) {
-            for (let j = 0; j < pattern[segment]; j++)
-                mask.push(segment % 2 === 0);
+            const end = position + pattern[segment];
+            if (segment % 2 === 0) {
+                const previous = runs.at(-1);
+                if (previous && previous[1] === position) previous[1] = end;
+                else runs.push([position, end]);
+            }
+            position = end;
         }
-        if (mask.every(Boolean) || mask.every((x) => !x)) {
-            data[base + 2] = mask[0] ? 1 : 2;
+        if (runs.length === 1 && runs[0][1] - runs[0][0] === length) {
+            data[base + 2] = 1;
             return;
         }
-        /** @param {number} x */
-        const on = (x) => mask[((x % length) + length) % length];
-        for (let x = 0; x < length; x++) {
-            for (const side of [0, 1]) {
-                let at = side ? x : x - 1;
-                while (!on(at)) at += side ? 1 : -1;
-                let start = at,
-                    end = at + 1;
-                while (on(start - 1)) start--;
-                while (on(end)) end++;
-                const address = base + (1 + x * 2 + side) * 4;
-                const left = start - x + 256,
-                    right = end - x + 256;
-                data.set(
-                    [left & 255, left >> 8, right & 255, right >> 8],
-                    address
+        // Joining at the periodic seam also removes redundant zero-length caps.
+        if (runs.length > 1 && runs[0][0] === 0 && runs.at(-1)[1] === length) {
+            runs[0][0] = runs.pop()[0] - length;
+        }
+        const positiveRuns = runs.filter(([start, end]) => start < end);
+        data[base + 3] = positiveRuns.length === 0 ? 1 : 0;
+        for (const [table, intervals] of [runs, positiveRuns].entries()) {
+            if (intervals.length === 0) continue;
+            const repeated = [-1, 0, 1].flatMap((cycle) =>
+                intervals.map(([start, end]) => [
+                    start + cycle * length,
+                    end + cycle * length,
+                ])
+            );
+            for (let x = 0; x < length; x++) {
+                // At an on-start keep its predecessor too: after finite-path clipping,
+                // the containing dash may vanish while that predecessor's border survives.
+                const left = repeated.findLast(
+                    ([start, end]) => start < x || (start === x && end === x)
                 );
+                const right = repeated.find(([, end]) => end > x);
+                for (const [side, interval] of [left, right].entries()) {
+                    const address = base + (1 + x * 4 + table * 2 + side) * 4;
+                    const a = interval[0] - x + 256;
+                    const b = interval[1] - x + 256;
+                    data.set([a & 255, a >> 8, b & 255, b >> 8], address);
+                }
             }
         }
     });

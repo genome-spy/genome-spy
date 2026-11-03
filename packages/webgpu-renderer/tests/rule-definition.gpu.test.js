@@ -272,40 +272,25 @@ for (const dpr of [1, 2]) {
                     [{ mark: neighbor }, { mark }],
                 ])
                     crossing.push(await paint(2 / dpr, 1, [[32, 32]], draws));
-                const acuteX = 24.5 / dpr + 2.25;
-                const acuteY = 44.5 / dpr - Math.sqrt(7) - 1;
                 const dashData = {
-                    uniqueId: new Uint32Array([17, 18, 19]),
-                    x: new Float32Array([8 + 0.5 / dpr, 8 + 0.5 / dpr, acuteX]),
-                    x2: new Float32Array([
-                        40 + 0.5 / dpr,
-                        40 + 0.5 / dpr,
-                        acuteX + 32,
-                    ]),
-                    y: new Float32Array([
-                        8 + 0.5 / dpr,
-                        24 + 0.5 / dpr,
-                        acuteY,
-                    ]),
-                    y2: new Float32Array([
-                        8 + 0.5 / dpr,
-                        24 + 0.5 / dpr,
-                        acuteY,
-                    ]),
-                    size: new Float32Array([4, 4 / dpr, 8]),
-                    strokeWidth: new Float32Array([1, 1 / dpr, 1]),
-                    strokeCap: new Uint32Array([0, 2, 2]),
-                    strokeDash: new Uint32Array([0, 1, 4]),
-                    strokeDashOffset: new Float32Array([0, 0, 4]),
+                    uniqueId: new Uint32Array([17, 18]),
+                    x: new Float32Array([8 + 0.5 / dpr, 8 + 0.5 / dpr]),
+                    x2: new Float32Array([40 + 0.5 / dpr, 40 + 0.5 / dpr]),
+                    y: new Float32Array([8 + 0.5 / dpr, 24 + 0.5 / dpr]),
+                    y2: new Float32Array([8 + 0.5 / dpr, 24 + 0.5 / dpr]),
+                    size: new Float32Array([4, 4 / dpr]),
+                    strokeWidth: new Float32Array([1, 1 / dpr]),
+                    strokeCap: new Uint32Array([0, 2]),
+                    strokeDash: new Uint32Array([0, 1]),
+                    strokeDashOffset: new Float32Array([0, 0]),
                 };
                 const dashConfig = {
-                    count: 3,
+                    count: 2,
                     dashPatterns: [
                         [3, 1, 1, 2],
-                        [4, 4],
+                        [4, 8],
                         [0, 3],
                         [254, 2],
-                        [1, 7],
                     ],
                     channels: {
                         ...Object.fromEntries(
@@ -356,10 +341,8 @@ for (const dpr of [1, 2]) {
                     [[8 * dpr - 1, 24 * dpr - 3]],
                     dashDraws
                 );
-                // At the acute corner q=(-3,sqrt(7)), this sample is 1.25px away.
-                const acuteCut = await capture([[24, 44]], dashDraws);
                 const gapPick = await renderer.pick(
-                    14 + 0.5 / dpr,
+                    16 + 0.5 / dpr,
                     24 + 0.5 / dpr
                 );
                 const scalar = renderer.createMark(ruleMark, {
@@ -370,29 +353,36 @@ for (const dpr of [1, 2]) {
                     },
                 });
                 const scalarGap = await capture(
-                    [[14 * dpr, 24 * dpr]],
+                    [[16 * dpr, 24 * dpr]],
                     [{ mark: scalar }]
                 );
-                scalar.values.strokeDashOffset.set(2);
+                scalar.values.strokeDashOffset.set(4);
                 const scalarShift = await capture(
-                    [[14 * dpr, 24 * dpr]],
+                    [[16 * dpr, 24 * dpr]],
                     [{ mark: scalar }]
                 );
-                dashData.strokeDashOffset.set([2, 2, 4]);
-                dashed.series.replace(dashData, 3);
+                dashData.strokeDashOffset.set([2, 2]);
+                dashed.series.replace(dashData, 2);
                 await capture([], dashDraws);
                 const shiftedPick = await renderer.pick(
-                    14 + 0.5 / dpr,
+                    16 + 0.5 / dpr,
                     24 + 0.5 / dpr
                 );
                 dashData.strokeDash.fill(2);
-                dashed.series.replace(dashData, 3);
-                const allOff = await capture([[20 * dpr, 8 * dpr]], dashDraws);
+                dashed.series.replace(dashData, 2);
+                const zeroButt = await capture(
+                    [[20 * dpr, 8 * dpr]],
+                    dashDraws
+                );
+                const zeroRound = await capture(
+                    [[9 * dpr, 24 * dpr]],
+                    dashDraws
+                );
                 const emptyPick = await renderer.pick(20, 8);
                 dashData.strokeDash.fill(3);
                 dashData.strokeWidth.fill(0);
                 dashData.strokeDashOffset.fill(250);
-                dashed.series.replace(dashData, 3);
+                dashed.series.replace(dashData, 2);
                 const maxPeriod = await capture(
                     [[13 * dpr, 8 * dpr]],
                     dashDraws
@@ -410,10 +400,10 @@ for (const dpr of [1, 2]) {
                     scalarShift,
                     endPick,
                     roundCut,
-                    acuteCut,
                     gapPick,
                     shiftedPick,
-                    allOff,
+                    zeroButt,
+                    zeroRound,
                     emptyPick,
                     maxPeriod,
                     periodPick,
@@ -463,14 +453,14 @@ for (const dpr of [1, 2]) {
         expect(result.selectedBorder).toEqual([[0, 128, 0, 128]]);
         expect(result.scalarGap).toEqual([[0, 0, 0, 0]]);
         expect(result.scalarShift[0][3]).toBeGreaterThan(0);
-        expect(result.roundCut).toEqual([[0, 0, 22, 22]]);
-        expect(result.acuteCut).toEqual([
-            [0, 0, dpr === 1 ? 64 : 0, dpr === 1 ? 64 : 0],
-        ]);
-        // Dash gaps and all-off patterns remain in the hit quad as in WebGL.
+        // A circular cap of radius 2 with a 1px outside border, sampled at (-1,-3).
+        const capCoverage = Math.round((3.5 - Math.sqrt(10)) * 255);
+        expect(result.roundCut).toEqual([[0, 0, capCoverage, capCoverage]]);
+        // Dash gaps and zero-length butt dashes remain in the hit quad as in WebGL.
         expect(result.gapPick).toBe(18);
         expect(result.shiftedPick).toBe(18);
-        expect(result.allOff).toEqual([[0, 0, 0, 0]]);
+        expect(result.zeroButt).toEqual([[0, 0, 0, 0]]);
+        expect(result.zeroRound).toEqual([[255, 0, 0, 255]]);
         expect(result.emptyPick).toBe(17);
         expect(result.maxPeriod).toEqual([[0, 0, 0, 0]]);
         expect(result.periodPick).toBe(17);

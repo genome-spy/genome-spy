@@ -10,6 +10,7 @@ import VERTEX_SHADER from "./rule.vertex.glsl";
 import FRAGMENT_SHADER from "./rule.fragment.glsl";
 import COMMON_SHADER from "./rule.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
+import { createDashIntervals } from "./dashIntervals.js";
 
 /**
  * @extends {WebGLMark}
@@ -26,8 +27,6 @@ export default class WebGLRuleMark extends WebGLMark {
         /** @type {WebGLTexture | undefined} */
         this.dashTexture = undefined;
         this.dashTextureSize = 0;
-        /** @type {WebGLTexture | undefined} */
-        this.dashIntervalTexture = undefined;
     }
 
     /**
@@ -67,46 +66,32 @@ export default class WebGLRuleMark extends WebGLMark {
         super.initializeGraphics();
 
         const gl = this.gl;
-        const textureData = createDashTextureArray(this.properties.strokeDash);
-        this.dashTexture = createTexture(gl, {
-            level: 0,
-            mag: gl.NEAREST,
-            min: gl.NEAREST,
-            internalFormat: gl.R8,
-            format: gl.RED,
-            src: textureData,
-            height: 1,
-        });
-        if (textureData.length > 0 && this.mark.getType() === "rule") {
-            // Two neighboring painted intervals preserve borders at finite dash cuts.
-            const intervals = new Float32Array(textureData.length * 4);
-            const on = (/** @type {number} */ x) =>
-                textureData[
-                    ((x % textureData.length) + textureData.length) %
-                        textureData.length
-                ] > 0;
-            for (let x = 0; x < textureData.length; x++) {
-                for (const side of [0, 1]) {
-                    let at = side ? x : x - 1;
-                    while (!on(at)) at += side ? 1 : -1;
-                    let start = at,
-                        end = at + 1;
-                    while (on(start - 1)) start--;
-                    while (on(end)) end++;
-                    intervals.set([start - x, end - x], x * 4 + side * 2);
-                }
-            }
-            this.dashIntervalTexture = createTexture(gl, {
+        if (this.mark.getType() === "rule") {
+            const { data, length } = createDashIntervals(
+                this.properties.strokeDash
+            );
+            this.dashTextureSize = length;
+            this.dashTexture = createTexture(gl, {
                 level: 0,
                 minMag: gl.NEAREST,
                 internalFormat: gl.RGBA32F,
                 format: gl.RGBA,
                 type: gl.FLOAT,
-                src: intervals,
+                src: data,
+                height: 2,
+            });
+        } else {
+            const data = createDashTextureArray(this.properties.strokeDash);
+            this.dashTextureSize = data.length;
+            this.dashTexture = createTexture(gl, {
+                level: 0,
+                minMag: gl.NEAREST,
+                internalFormat: gl.R8,
+                format: gl.RED,
+                src: data,
                 height: 1,
             });
         }
-        this.dashTextureSize = textureData.length; // Not needed with WebGL2
 
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
             COMMON_SHADER,
@@ -166,9 +151,6 @@ export default class WebGLRuleMark extends WebGLMark {
             // an incompatible texture from an earlier program.
             setUniforms(this.programInfo, {
                 uDashTexture: this.dashTexture,
-                ...(this.dashIntervalTexture
-                    ? { uDashIntervals: this.dashIntervalTexture }
-                    : {}),
             })
         );
 
@@ -207,8 +189,6 @@ export default class WebGLRuleMark extends WebGLMark {
             this.gl.deleteTexture(this.dashTexture);
             this.dashTexture = undefined;
         }
-        if (this.dashIntervalTexture)
-            this.gl.deleteTexture(this.dashIntervalTexture);
         super.dispose();
     }
 }

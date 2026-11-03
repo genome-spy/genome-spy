@@ -223,26 +223,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     return out;
 }
 
-// Signed distance to a finite rectangle or a capsule clipped by a dash interval.
-// The closest point uses the actual clipped contour, including acute cap cuts.
+// Cap each clipped centerline interval, including zero-length round/square dashes.
 fn intervalDistance(in: VSOut, interval: vec2<f32>, radius: f32) -> f32 {
-    let p = vec2<f32>(in.along, in.normalDistance);
-    let span = in.span;
-    var nearest = vec2<f32>(clamp(p.x, interval.x, interval.y), clamp(p.y, -radius, radius));
-    var interior = min(radius - abs(p.y), min(p.x - interval.x, interval.y - p.x));
+    let along = max(interval.x - in.along, in.along - interval.y);
     if (in.strokeCap == ROUND) {
-        let center = vec2<f32>(clamp(p.x, 0.0, span), 0.0);
-        let v = p - center;
-        let distance = length(v);
-        nearest = p;
-        if (distance > radius) { nearest = center + v * (radius / distance); }
-        nearest.x = clamp(nearest.x, interval.x, interval.y);
-        let capX = max(-nearest.x, max(nearest.x - span, 0.0));
-        let height = sqrt(max(0.0, radius * radius - capX * capX));
-        nearest.y = clamp(p.y, -height, height);
-        interior = min(radius - distance, min(p.x - interval.x, interval.y - p.x));
+        return length(vec2<f32>(max(along, 0.0), in.normalDistance)) - radius;
     }
-    return select(length(p - nearest), -interior, interior >= 0.0);
+    let end = select(0.0, in.nominalWidth * 0.5, in.strokeCap == SQUARE);
+    let q = vec2<f32>(along - end, abs(in.normalDistance) - radius);
+    return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0);
 }
 
 fn boundaryCoverage(in: VSOut, interval: vec2<f32>, offset: f32) -> f32 {
@@ -255,17 +244,18 @@ fn boundaryCoverage(in: VSOut, interval: vec2<f32>, offset: f32) -> f32 {
 }
 
 fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
-    if (interval.x >= interval.y) { return vec3<f32>(0.0); }
+    if (interval.x > interval.y ||
+        (interval.x == interval.y && in.strokeCap == BUTT)) { return vec3<f32>(0.0); }
     let cf = boundaryCoverage(in, interval, 0.0);
     if (in.inset == 0.0 && in.outset == 0.0) { return vec3<f32>(cf); }
     var co = cf;
     if (in.outset > 0.0) { co = boundaryCoverage(in, interval, in.outset); }
     var ci = cf;
     if (in.inset > 0.0) {
-        var maxInset = min(in.nominalWidth * 0.5, (interval.y - interval.x) * 0.5);
-        if (in.strokeCap == ROUND) {
-            maxInset = min(maxInset, min(interval.y + in.nominalWidth * 0.5,
-                in.span + in.nominalWidth * 0.5 - interval.x) * 0.5);
+        var maxInset = in.nominalWidth * 0.5;
+        if (in.strokeCap != ROUND) {
+            let end = select(0.0, in.nominalWidth * 0.5, in.strokeCap == SQUARE);
+            maxInset = min(maxInset, (interval.y - interval.x) * 0.5 + end);
         }
         ci = select(boundaryCoverage(in, interval, -in.inset),
             0.0, in.inset >= maxInset);
@@ -274,23 +264,14 @@ fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
 }
 
 fn ruleCoverage(in: VSOut) -> vec3<f32> {
-    let span = in.span;
-    let capRadius = select(in.halfWidth, 0.5 * in.nominalWidth, in.strokeCap == SQUARE);
-    let end = select(0.0, capRadius, in.strokeCap != BUTT);
-    let bounds = vec2<f32>(-end, span + end);
+    let bounds = vec2<f32>(0.0, in.span);
     if (params.uDashPatternCount == 0u || in.dashIndex >= params.uDashPatternCount) {
         return intervalCoverage(in, bounds);
     }
     let info = textureLoad(dashAtlas, vec2<i32>(0, i32(in.dashIndex)), 0);
     if (info.z == 1u) { return intervalCoverage(in, bounds); }
-    if (info.z == 2u) { return vec3<f32>(0.0); }
-    let p = vec2<f32>(in.along, in.normalDistance);
-    var query = clamp(p.x, bounds.x, bounds.y);
-    if (in.strokeCap == ROUND) {
-        let center = vec2<f32>(clamp(p.x, 0.0, span), 0.0);
-        let v = p - center;
-        if (length(v) > in.halfWidth) { query = (center + normalize(v) * in.halfWidth).x; }
-    }
+    if (info.w == 1u && in.strokeCap == BUTT) { return vec3<f32>(0.0); }
+    let query = clamp(in.along, 0.0, in.span);
     let period = f32(info.x + 256u * info.y);
     let phase = fract((query + in.dashOffset) / period) * period;
     // A tiny negative phase can round fract() to one; wrap the lookup as well.
@@ -298,7 +279,8 @@ fn ruleCoverage(in: VSOut) -> vec3<f32> {
     var coverage = vec3<f32>(0.0);
     for (var side = 0u; side < 2u; side++) {
         let packed = textureLoad(dashAtlas,
-            vec2<i32>(1 + i32(floor(local)) * 2 + i32(side), i32(in.dashIndex)), 0);
+            vec2<i32>(1 + i32(floor(local)) * 4 +
+                select(0, 2, in.strokeCap == BUTT) + i32(side), i32(in.dashIndex)), 0);
         let interval = decodeDashInterval(packed) + query - fract(local);
         coverage = max(coverage, intervalCoverage(in,
             vec2<f32>(max(bounds.x, interval.x), min(bounds.y, interval.y))));
