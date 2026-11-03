@@ -28,13 +28,14 @@ the numeric path through index as it does today.
 
 Goals are opt-in categorical navigation, coherent shared scales/guides, stable
 category identity, matching supported rendering/export/picking, and explicit
-embedding and App persistence. Navigation must not rebuild category positions,
+embedding APIs. Navigation must not rebuild category positions,
 re-encode rows, or upload categorical lookup tables per frame.
 
-SampleView migration, sticky summaries, scrollbars, peek policy, categorical
-interval selection, and categorical constraints for viewport autoscaling remain
-outside this feature. Point navigation is included through the same categorical
-implementation, not through a separate milestone or policy.
+SampleView migration, App bookmark/URL viewport persistence, sticky summaries,
+scrollbars, peek policy, categorical interval selection, and categorical
+constraints for viewport autoscaling remain outside this feature. Point navigation
+is included through the same categorical implementation, not through a separate
+milestone or policy.
 
 Current ownership and source anchors:
 
@@ -123,9 +124,10 @@ is distinct from pinning a copied `[0, n]` interval. Getters return detached sta
   scales to avoid numeric-category
   ambiguity. An interval-only snapshot fits the requested window; snapshots with
   gap ranks preserve exact navigation state.
-- Add one public `getScaleType()` query so host persistence can select domain or
-  categorical viewport APIs without inspecting the implementation. Avoid a new
-  navigation-strategy registry or serialization framework.
+
+Do not add a public scale-type query solely for deferred App persistence. App's
+existing domain serialization can exclude categorical scales using its internal
+resolved scale metadata.
 
 Keep `zoom()`, `isZoomable()`, `isZoomed()`, and `resetZoom()` as the common UI
 surface. Domain getters remain categorical for band/point. `invert()` returns
@@ -304,11 +306,12 @@ tick-selection and overlap behavior.
 - **Selections and sources:** preserve category IDs for point selections and the
   continuous-only interval-selection boundary. Keep genomic source domain events
   and existing continuous constraints for viewport-derived autoscaling.
-- **App:** add optional `scaleViewports` beside existing `scaleDomains` in bookmark
-  and URL payloads, covering band and point together. Observe viewport events,
-  restore order before placement, and preserve old domain-only payloads. Fit mode
-  can be omitted. Keep navigation outside undoable sample provenance. This is
-  needed even before SampleView migrates.
+- **App compatibility:** defer categorical viewport storage and restoration in
+  bookmarks/URLs. Keep band/point out of existing domain serialization and URL
+  domain subscriptions, so broader `isZoomable()`/`isZoomed()` discovery does not
+  save category lists as numeric navigation domains. Reuse internal scale metadata
+  for this narrow guard; add no payload fields, migration, viewport listeners, or
+  undoable sample state. Existing scale reset handling can use the common API.
 
 ## Documentation presentation
 
@@ -351,7 +354,6 @@ Content ownership:
 | `docs/api/runtime-state.md#named-scales`                                       | Add Categorical viewports after Domains, then broaden Domain events to Scale state events. Show only essential read/navigate/observe calls and link a runnable synchronization example. Preserve old heading anchors where links need compatibility.                                 |
 | `docs/grammar/parameters.md`                                                   | Keep interval selection's continuous-scale requirement clear; link to categorical navigation where useful.                                                                                                                                                                           |
 | `packages/core/src/spec/axis.d.ts` and `docs/grammar/axis.md#ticks-and-labels` | Define `labelSqueeze` and its band-only/default-false behavior in specification JSDoc. Explain per-band fitting and its precedence over overlap removal next to the existing overlap discussion; use the generated property reference and link to ranged text.                       |
-| `docs/sample-collections/app-features.md#bookmarking`                          | State that bookmarks retain categorical navigation too; keep payload internals out of user prose.                                                                                                                                                                                    |
 
 Add one self-contained `examples/docs/grammar/scale/zoomable-band.json` using
 synthetic inline/local data and a categorical axis plus an index axis. Demonstrate
@@ -398,18 +400,14 @@ late membership/reorder, readiness,
 reset/cancellation, ticks, offsets, and unchanged step-based layout. Use
 `test-genomespy-views` for structured output; browser-test DOM/input/GPU contracts
 with `debug-genomespy-web`. Follow `write-genomespy-docs` for the documentation
-structure above, schema/API regeneration, and the example.
+structure above, schema/API regeneration, and the example. Include the narrow
+App compatibility guard that excludes categorical scales from current domain
+persistence, without adding viewport persistence. Assess release impact and add
+the feature changeset using `write-genomespy-changeset`.
 
 Tentative commit: `feat(core): enable categorical scale navigation`.
 
-### 3. App persistence and composed integration
-
-Outcome: band/point placement saves/restores alongside genomic domains, with
-SampleView migration remaining independent. Cover mixed bookmark/URL round-trips,
-fractional gap edges, category-order restoration, old payloads, and default reset.
-Add App documentation and the feature changeset using `write-genomespy-changeset`.
-
-Final composed checks:
+## Final integration verification
 
 - Navigate a categorical-x/index-y plot with layered rects/text, shared concat
   spacing, and facet occurrences of different sizes. A shared resolution moves
@@ -427,27 +425,29 @@ Final composed checks:
 - Check Canvas2D/SVG output against live GPU placement and picking. At the
   existing retained-resource boundary, verify viewport frames do not rebuild
   category lookup/cut tables or re-encode data. No new benchmark framework.
-- Verify linked-embed synchronization and mixed categorical/locus persistence
-  without changing existing genomic endpoint conventions.
+- Verify linked-embed synchronization without changing existing genomic endpoint
+  conventions. In App bookmarks/URLs, categorical scales are omitted while
+  existing numeric/locus domain persistence remains compatible. Include numeric
+  category values so exclusion cannot rely on the shape of the domain array.
 - Animate restoration of an exact snapshot with fractional gap edges and verify
   the final projection retains its interval and gap ranks. Cover this shared
   transition contract once, rather than repeating identical numeric cases for
   index, band, and point.
 
-Tentative commit: `feat(app): persist categorical scale viewports`.
-
 Run narrow relevant Vitest suites with the `agent` reporter, affected type/lint
 checks, generated schema/API/doc checks, and GPU/story checks when applicable.
 Review related coverage for duplication as the shared path replaces older code;
 retain wrapper-specific identity and inversion contracts. Stop when relevant
-checks pass. These milestones belong to one coherent feature branch; do not
-declare the feature complete before rendering and persistence consumers work.
+checks pass. These milestones belong to one coherent feature branch; completion
+requires working rendering/embedding and safe existing App domain persistence,
+not storage of categorical viewports.
 
 ## Risks and delivery
 
 The main risks are accidentally freezing categorical membership, changing
 ordinary band/point projection while sharing geometry, and missing a mapping
-consumer or persistence caller. Existing shared index gap semantics are a reuse
+consumer or accidentally serializing categories through an existing persistence
+caller. Existing shared index gap semantics are a reuse
 requirement, not an unresolved band-specific camera design question.
 
 Rank windows preserve positions in display order, not category identity after
