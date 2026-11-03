@@ -206,6 +206,8 @@ rows.
 ### Interval Selection
 
 Interval selections allow for selecting a range of rows along one or two axes.
+They also support [brushing numeric gradient legends](legend.md#numeric-ranges)
+through a single color, fill, or stroke component with `bind: "legend"`.
 The selected range includes its start and excludes its end. For example, an
 index brush spanning `[6, 11)` selects positions 6 through 10.
 
@@ -236,8 +238,9 @@ draws a rectangle in each participating view. `"container"` requires the
 spanning rectangle, and `"view"` always draws per-view rectangles.
 
 The brush outline follows `defaultThemeColors.foreground` in the default theme. Override
-its appearance with `select.mark`; its `fill` and `stroke` colors can be
-expressions. Use `config.style["selection-brush"]` to set shared brush defaults.
+its appearance with `select.mark`, using rect properties such as fill, stroke,
+opacity, rounded corners, hatching, and shadow. Numeric and color properties can
+be expressions. Use `config.style["selection-brush"]` to set shared brush defaults.
 
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 

@@ -1,0 +1,71 @@
+{
+  "description": [
+    "Explore penguins with interactive legends",
+    "Select sex through the symbol legend and brush body mass on the gradient to highlight their intersection. Uses Palmer penguins data from vega-datasets, excluding records with missing or unknown sex."
+  ],
+
+  "title": { "text": "Palmer penguins", "anchor": "start" },
+  "width": 350,
+  "height": 250,
+
+  "data": { "url": "vega-datasets/penguins.json" },
+  "transform": [
+    { "type": "filter", "expr": "datum.Sex == 'FEMALE' || datum.Sex == 'MALE'" }
+  ],
+
+  "params": [
+    {
+      "name": "sex",
+      "select": { "type": "point", "encodings": ["shape"], "toggle": true },
+      "bind": "legend"
+    },
+    {
+      "name": "body_mass",
+      "select": { "type": "interval", "encodings": ["color"] },
+      "bind": "legend"
+    }
+  ],
+
+  "config": {
+    "legend": {
+      "orient": "right",
+      "symbolSize": 70,
+      "layout": { "right": { "direction": "vertical", "wrap": false } }
+    }
+  },
+
+  "mark": { "type": "point", "filled": false, "size": 31.5 },
+
+  "encoding": {
+    "x": {
+      "field": "Beak Length (mm)",
+      "type": "quantitative",
+      "scale": { "zero": false, "nice": true }
+    },
+    "y": {
+      "field": "Beak Depth (mm)",
+      "type": "quantitative",
+      "scale": { "zero": false, "nice": true }
+    },
+    "color": {
+      "field": "Body Mass (g)",
+      "type": "quantitative",
+      "scale": { "domain": [2500, 6500], "scheme": "viridis" }
+    },
+    "shape": {
+      "field": "Sex",
+      "type": "nominal",
+      "scale": {
+        "domain": ["FEMALE", "MALE"],
+        "range": ["circle", "triangle-up"]
+      }
+    },
+    "opacity": {
+      "condition": {
+        "test": { "and": [{ "param": "sex" }, { "param": "body_mass" }] },
+        "value": 0.85
+      },
+      "value": 0.08
+    }
+  }
+}

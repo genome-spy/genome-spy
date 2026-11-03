@@ -347,6 +347,8 @@ export interface ParameterPredicate {
      * For example, `{ "x": "x2" }` tests the selected x interval against x2
      * alone. Each selected component must be mapped when this is provided.
      * Category components map to unconditional categorical channel inputs.
+     * Numeric color, fill, and stroke intervals map to unconditional quantitative
+     * color inputs; omitted mappings use the same channel in this view.
      * This mapping does not change the stored selection component or values.
      */
     project?:

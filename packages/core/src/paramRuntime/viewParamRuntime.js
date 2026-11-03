@@ -1,6 +1,7 @@
 import { getSpecLocation } from "../utils/specOrigin.js";
 import { annotateSpecError } from "../utils/specError.js";
 import ParamRuntime from "./paramRuntime.js";
+import IntervalSelectionState from "../selection/intervalSelectionState.js";
 import FlowOutput from "../data/flowOutput.js";
 import { makeLerpSmoother } from "../utils/animator.js";
 import {
@@ -10,7 +11,10 @@ import {
     isSelectionParameter,
     validateParameterName,
 } from "./paramUtils.js";
-import { asSelectionConfig } from "../selection/selection.js";
+import {
+    asSelectionConfig,
+    isGradientSelectionChannel,
+} from "../selection/selection.js";
 
 export {
     activateExprRefProps,
@@ -66,6 +70,7 @@ export default class ViewParamRuntime {
      *
      * @typedef {object} SetValueOptions
      * @prop {boolean} [animate=true]
+     * @prop {object} [intervalGesture] Internal originating interaction host.
      *
      * @typedef {object} WatchExpressionOptions
      * @prop {boolean} [scopeOwned=true]
@@ -107,6 +112,9 @@ export default class ViewParamRuntime {
 
     /** @type {Map<string, Set<import("../types/interactionApi.d.ts").IntervalSelectionControllerApi>>} */
     #selectionControllers = new Map();
+
+    /** @type {Map<string, IntervalSelectionState>} */
+    #intervalStates = new Map();
 
     /** @type {import("../view/view.js").default | undefined} */
     #selectionSource;
@@ -200,7 +208,9 @@ export default class ViewParamRuntime {
                 type:
                     declaration.kind === "interval"
                         ? declaration.source?.getScaleResolution(
-                              /** @type {"x" | "y"} */ (component)
+                              /** @type {import("../spec/parameter.js").IntervalSelectionChannel} */ (
+                                  component
+                              )
                           )?.type
                         : undefined,
             })),
@@ -436,6 +446,27 @@ export default class ViewParamRuntime {
         this.#lazyExpressionNames.add(name);
     }
 
+    /** Named read-only producer for generated chrome; materialized with its consumers.
+     * @template T
+     * @param {string} name
+     * @param {() => import("./types.js").ParamRef<any>[]} dependencies
+     * @param {() => T} evaluate
+     */
+    registerComputed(name, dependencies, evaluate) {
+        this.#runtime.registerInitializer(this.#scopeId, name, () => {
+            this.#localRefs.set(
+                name,
+                this.#runtime.registerComputed(
+                    this.#scopeId,
+                    name,
+                    dependencies(),
+                    evaluate
+                )
+            );
+        });
+        this.#lazyExpressionNames.add(name);
+    }
+
     /**
      * Registers a read-only expression evaluated in another view's scope.
      * Generated views use this to preserve the declaration scope of styling.
@@ -510,9 +541,10 @@ export default class ViewParamRuntime {
             }
             setter = (
                 /** @type {any} */
-                value
+                value,
+                /** @type {SetValueOptions} */ options = {}
             ) => {
-                outerRuntime.setValue(name, value);
+                outerRuntime.setValue(name, value, options);
             };
             this.#allocatedSetters.set(name, setter);
             const sources = outerRuntime.#pushSources.get(name) ?? new Set();
@@ -583,7 +615,13 @@ export default class ViewParamRuntime {
                     defaultValue
                 );
                 this.#localRefs.set(name, ref);
-                this.#allocatedSetters.set(name, (value) => {
+                this.#allocatedSetters.set(name, (value, options) => {
+                    this.#intervalStates
+                        .get(name)
+                        ?.beforeWrite(
+                            /** @type {any} */ (value),
+                            options?.intervalGesture
+                        );
                     ref.set(value);
                     this.#runtime.flushNow();
                 });
@@ -596,6 +634,14 @@ export default class ViewParamRuntime {
         this.#paramConfigs.set(name, param);
 
         this.#registerSelectionCapability(param);
+        if (
+            "select" in param &&
+            asSelectionConfig(param.select).type === "interval"
+        ) {
+            this.getIntervalSelectionState(name).beforeWrite(
+                this.findValue(name)
+            );
+        }
 
         return setter;
     }
@@ -628,13 +674,20 @@ export default class ViewParamRuntime {
         this.#localRefs.set(paramName, ref);
         const setter = (
             /** @type {T} */
-            value
+            value,
+            /** @type {SetValueOptions} */ options = {}
         ) => {
             if (this.#outputs.has(paramName)) {
                 throw new Error(
                     'Cannot set output parameter "' + paramName + '".'
                 );
             }
+            this.#intervalStates
+                .get(paramName)
+                ?.beforeWrite(
+                    /** @type {any} */ (value),
+                    options?.intervalGesture
+                );
             ref.set(value);
             this.#runtime.flushNow();
         };
@@ -834,6 +887,54 @@ export default class ViewParamRuntime {
         }
 
         return this.#parentFinder()?.findConfiguredParam(paramName);
+    }
+
+    /** Semantic interval operations follow the value owner, independent of hosts.
+     * @param {string} name
+     */
+    getIntervalSelectionState(name) {
+        const owner = this.findRuntimeForParam(name);
+        let state = owner.#intervalStates.get(name);
+        if (!state) {
+            const declaration = owner.#selectionDeclarations
+                .get(name)
+                ?.values()
+                .next().value;
+            state = new IntervalSelectionState(
+                owner,
+                name,
+                declaration?.components.find(isGradientSelectionChannel)
+            );
+            owner.#intervalStates.set(name, state);
+        }
+        return state;
+    }
+
+    /** @param {string} name
+     * @param {import("../types/selectionTypes.js").IntervalSelection["intervals"]} intervals
+     * @returns {import("../types/embedApi.js").ComplexIntervals}
+     */
+    getComplexIntervals(name, intervals) {
+        const owner = this.findRuntimeForParam(name);
+        const source = owner.#selectionDeclarations.get(name)?.values().next()
+            .value?.source;
+        return Object.fromEntries(
+            Object.entries(intervals).map(([component, interval]) => {
+                const resolution = source?.getScaleResolution(
+                    /** @type {import("../spec/parameter.js").IntervalSelectionChannel} */ (
+                        component
+                    )
+                );
+                return [
+                    component,
+                    interval
+                        ? interval.map((value) =>
+                              resolution ? resolution.toComplex(value) : value
+                          )
+                        : null,
+                ];
+            })
+        );
     }
 
     /**
@@ -1243,6 +1344,8 @@ export default class ViewParamRuntime {
         }
 
         this.#disposed = true;
+        for (const state of this.#intervalStates.values()) state.dispose();
+        this.#intervalStates.clear();
         this.#runtime.disposeScope(this.#scopeId);
         this.#allocatedSetters.clear();
         this.#localRefs.clear();

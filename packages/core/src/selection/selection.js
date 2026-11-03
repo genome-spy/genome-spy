@@ -207,6 +207,20 @@ export function makeSelectionTestExpression(params, selection) {
             /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ (
                 Object.keys(selection.intervals)
             );
+        if (channelsInSelection.some(isGradientSelectionChannel)) {
+            const component = channelsInSelection[0];
+            if (Object.keys(fields).length !== 1 || !fields[component])
+                throw new Error(
+                    `Numeric filter fields must map "${component}".`
+                );
+            const input =
+                "datum" +
+                splitAccessPath(fields[component])
+                    .map((part) => `[${JSON.stringify(part)}]`)
+                    .join("");
+            const bounds = `${paramName}.intervals.${component}`;
+            return `${bounds} ? (isNumber(${input}) && isFinite(${input}) && ${bounds}[0] < ${bounds}[1] && ${bounds}[0] <= ${input} && ${input} < ${bounds}[1]) : ${empty}`;
+        }
 
         const primaryChannelsInConfig = Object.keys(fields).filter(
             isPrimaryPositionalChannel
@@ -390,7 +404,12 @@ export function selectionBounds(selection, component) {
     if (!Object.hasOwn(selection.intervals, component)) {
         throw new Error(`Undeclared selection component "${component}".`);
     }
-    const bounds = selection.intervals[/** @type {"x" | "y"} */ (component)];
+    const bounds =
+        selection.intervals[
+            /** @type {import("../spec/parameter.js").IntervalSelectionChannel} */ (
+                component
+            )
+        ];
     return bounds ? bounds.slice() : null;
 }
 
@@ -413,7 +432,8 @@ export function asSelectionConfig(typeOrConfig, bind) {
           : undefined;
 
     config.clear =
-        config.clear === false || (bind === "legend" && config.clear == null)
+        config.clear === false ||
+        (bind === "legend" && config.type === "point" && config.clear == null)
             ? undefined
             : config.clear === true || config.clear == null
               ? { type: "dblclick" }
@@ -496,4 +516,48 @@ export function selectionContainsPoint(selection, point) {
             interval[0] <= point[channel] &&
             interval[1] >= point[channel]
     );
+}
+
+/** @param {string} channel @returns {channel is import("../spec/parameter.js").GradientSelectionChannel} */
+export function isGradientSelectionChannel(channel) {
+    return channel === "color" || channel === "fill" || channel === "stroke";
+}
+
+/** Decode the numeric legend initializer/bookmark boundary, never row values.
+ * @param {Record<string, any>} intervals
+ */
+export function decodeGradientIntervals(intervals) {
+    return Object.fromEntries(
+        Object.entries(intervals).map(([channel, bounds]) => [
+            channel,
+            bounds &&
+            isGradientSelectionChannel(channel) &&
+            bounds[1] === "Infinity"
+                ? [bounds[0], Infinity]
+                : bounds,
+        ])
+    );
+}
+
+/** Validate logical numeric bounds at API and persistence boundaries.
+ * @param {Record<string, any>} intervals
+ * @param {import("../spec/parameter.js").GradientSelectionChannel} component
+ */
+export function validateGradientIntervals(intervals, component) {
+    const bounds = intervals?.[component];
+    if (
+        !intervals ||
+        Object.keys(intervals).length !== 1 ||
+        bounds === undefined ||
+        (bounds !== null &&
+            (!Array.isArray(bounds) ||
+                bounds.length !== 2 ||
+                !Number.isFinite(bounds[0]) ||
+                !(Number.isFinite(bounds[1]) || bounds[1] === Infinity) ||
+                bounds[0] > bounds[1]))
+    ) {
+        throw new Error(
+            `Interval requires a finite lower and finite or unbounded upper endpoint for "${component}".`
+        );
+    }
 }

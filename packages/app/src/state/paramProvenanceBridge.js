@@ -13,6 +13,9 @@ import {
     isSinglePointSelection,
     isCategorySelection,
     resolvePointSelectionFromKeyTuples,
+    decodeGradientIntervals,
+    isGradientSelectionChannel,
+    validateGradientIntervals,
 } from "@genome-spy/core/selection/selection.js";
 import { categorySelectionFromTuples } from "@genome-spy/core/selection/categorySelection.js";
 import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
@@ -175,12 +178,16 @@ export default class ParamProvenanceBridge {
     #registerParamListeners() {
         for (const entry of this.#entries) {
             const paramName = entry.selector.param;
-            const unsubscribe = entry.view.paramRuntime.subscribe(
-                paramName,
-                () => {
-                    this.#handleParamChange(entry);
-                }
-            );
+            const runtime = entry.view.paramRuntime;
+            const capture = () => this.#handleParamChange(entry);
+            // Replaying an intermediate value would cancel the active brush.
+            const unsubscribe =
+                isSelectionParameter(entry.param) &&
+                isIntervalSelectionConfig(asSelectionConfig(entry.param.select))
+                    ? runtime
+                          .getIntervalSelectionState(paramName)
+                          .subscribeCommit(capture)
+                    : runtime.subscribe(paramName, capture);
             this.#disposers.push(unsubscribe);
         }
     }
@@ -236,7 +243,10 @@ export default class ParamProvenanceBridge {
                 ),
                 value
             ) &&
-            this.#isSelectionClearedInProvenance(entry, selectorKey)
+            this.#isStoredSelectionCleared(
+                entry,
+                this.#getPresentEntries()[selectorKey]
+            )
         ) {
             return;
         }
@@ -305,14 +315,9 @@ export default class ParamProvenanceBridge {
         }
 
         const previous = past[past.length - 1];
-        const previousEntry = previous.paramProvenance.entries[selectorKey];
-        if (!previousEntry) {
-            return true;
-        }
-
-        return this.#isSerializedSelectionCleared(
-            entry.param,
-            previousEntry.value
+        return this.#isStoredSelectionCleared(
+            entry,
+            previous.paramProvenance.entries[selectorKey]
         );
     }
 
@@ -352,16 +357,18 @@ export default class ParamProvenanceBridge {
 
     /**
      * @param {BookmarkableParamEntry} entry
-     * @param {string} selectorKey
+     * @param {ParamProvenanceEntry | undefined} stored
      * @returns {boolean}
      */
-    #isSelectionClearedInProvenance(entry, selectorKey) {
-        const stored = this.#getPresentEntries()[selectorKey];
-        if (!stored) {
-            return true;
-        }
-
-        return this.#isSerializedSelectionCleared(entry.param, stored.value);
+    #isStoredSelectionCleared(entry, stored) {
+        // An absent history entry restores the declared default, which may be active.
+        return stored
+            ? this.#isSerializedSelectionCleared(entry.param, stored.value)
+            : isSelectionParameter(entry.param) &&
+                  this.#isSelectionCleared(
+                      entry.param,
+                      this.#getDefaultValue(entry)
+                  );
     }
 
     /**
@@ -370,7 +377,8 @@ export default class ParamProvenanceBridge {
      */
     #shouldThrottle(param) {
         if (isSelectionParameter(param)) {
-            return true;
+            // Interval notifications already represent complete gestures.
+            return !isIntervalSelectionConfig(asSelectionConfig(param.select));
         }
 
         return isVariableParameter(param) && Boolean(param.bind);
@@ -861,20 +869,38 @@ export default class ParamProvenanceBridge {
                 const selection = /** @type {any} */ (
                     createIntervalSelection(select.encodings)
                 );
-                this.#applyIntervals(
-                    entry.view,
-                    selection,
-                    storedValue.intervals
-                );
-
-                const originIntervals = this.#resolveOriginIntervals(
-                    storedEntry.origin
-                );
-                if (originIntervals) {
-                    this.#applyIntervals(
-                        entry.view,
-                        selection,
-                        originIntervals
+                try {
+                    const component = select.encodings?.find(
+                        isGradientSelectionChannel
+                    );
+                    const intervals = decodeGradientIntervals(
+                        storedValue.intervals
+                    );
+                    // Serialized cleared selections omit null components.
+                    if (component)
+                        validateGradientIntervals(
+                            { ...selection.intervals, ...intervals },
+                            component
+                        );
+                    this.#applyIntervals(entry.view, selection, intervals);
+                    const originIntervals = this.#resolveOriginIntervals(
+                        storedEntry.origin
+                    );
+                    if (originIntervals)
+                        this.#applyIntervals(
+                            entry.view,
+                            selection,
+                            originIntervals
+                        );
+                    if (component)
+                        validateGradientIntervals(
+                            selection.intervals,
+                            component
+                        );
+                } catch (error) {
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
+                        `cannot be restored: ${error.message}`
                     );
                 }
 
@@ -1081,7 +1107,9 @@ export default class ParamProvenanceBridge {
                     /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
                         channel
                     );
-                const resolution = view.getScaleResolution(channelWithScale);
+                const resolution = isGradientSelectionChannel(channel)
+                    ? undefined
+                    : view.getScaleResolution(channelWithScale);
                 selection.intervals[channel] = [
                     resolution?.fromComplex
                         ? resolution.fromComplex(interval[0])

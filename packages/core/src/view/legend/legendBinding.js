@@ -1,4 +1,4 @@
-import { isDiscrete } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 import {
     asSelectionConfig,
     clearPointSelection,
@@ -14,7 +14,7 @@ import deepEqual from "../../utils/deepEqual.js";
  * @prop {string} name
  * @prop {import("../../paramRuntime/viewParamRuntime.js").default} runtime
  * @prop {import("../../spec/parameter.js").CategorySelectionChannel} component
- * @prop {import("../../spec/parameter.js").PointSelectionConfig} select
+ * @prop {import("../../spec/parameter.js").SelectionConfig} select
  */
 
 /** Resolve sources throughout the hierarchy before constructing generated guides.
@@ -45,7 +45,8 @@ export function resolveLegendBindings(viewRoot) {
             )
                 continue;
             const select = asSelectionConfig(param.select, "legend");
-            if (select.type !== "point" || !select.encodings) {
+            const gradient = select.type === "interval";
+            if (!select.encodings) {
                 throw new Error(
                     `Legend binding "${param.name}" requires one categorical point projection.`
                 );
@@ -63,12 +64,15 @@ export function resolveLegendBindings(viewRoot) {
             });
             if (
                 !scale ||
-                !["nominal", "ordinal"].includes(scale.type) ||
-                !isDiscrete(scale.getResolvedScaleType()) ||
+                (gradient
+                    ? scale.type !== "quantitative" ||
+                      !isContinuous(scale.getResolvedScaleType())
+                    : !["nominal", "ordinal"].includes(scale.type) ||
+                      !isDiscrete(scale.getResolvedScaleType())) ||
                 !matches.length
             ) {
                 throw new Error(
-                    `Legend binding "${param.name}" requires an unambiguous categorical symbol legend in its declaring scope.`
+                    `Legend binding "${param.name}" requires an unambiguous ${gradient ? "quantitative gradient" : "categorical symbol"} legend in its declaring scope.`
                 );
             }
             const binding = {
@@ -79,10 +83,26 @@ export function resolveLegendBindings(viewRoot) {
             };
             const ref = binding.runtime.getParamRef(binding.name);
             for (const { resolution, definition } of matches) {
-                if (definition.type !== "symbol")
+                if (definition.type !== (gradient ? "gradient" : "symbol"))
                     throw new Error(
-                        `Legend binding "${param.name}" requires a symbol legend.`
+                        `Legend binding "${param.name}" requires the corresponding legend kind.`
                     );
+                if (gradient) {
+                    const encoding =
+                        /** @type {import("../unitView.js").default} */ (
+                            definition.view
+                        ).getEncoding();
+                    const input = encoding[component];
+                    if (
+                        !input ||
+                        !("field" in input) ||
+                        "condition" in input ||
+                        input.type !== "quantitative"
+                    )
+                        throw new Error(
+                            `Legend binding "${param.name}" requires an unconditional quantitative field.`
+                        );
+                }
                 const previous = resolution.selectionBindings.get(
                     definition.scaleResolution
                 );
@@ -92,9 +112,15 @@ export function resolveLegendBindings(viewRoot) {
                             `A legend cannot bind competing selections "${previous.name}" and "${param.name}".`
                         );
                     }
-                    if (!deepEqual(previous.select.clear, select.clear)) {
+                    if (
+                        !deepEqual(
+                            gradient ? previous.select : previous.select.clear,
+                            gradient ? select : select.clear
+                        ) ||
+                        (gradient && !sameBrushBindings(previous, binding))
+                    ) {
                         throw new Error(
-                            `Shared legend binding "${param.name}" has conflicting clear settings.`
+                            `Shared legend binding "${param.name}" has conflicting ${gradient ? "interaction" : "clear"} settings.`
                         );
                     }
                     continue;
@@ -106,6 +132,27 @@ export function resolveLegendBindings(viewRoot) {
             }
         }
     }
+}
+
+/** Equal expression text can refer to different parameters in sibling scopes.
+ * @param {LegendBinding} a
+ * @param {LegendBinding} b
+ */
+function sameBrushBindings(a, b) {
+    const select =
+        /** @type {import("../../spec/parameter.js").IntervalSelectionConfig} */ (
+            a.select
+        );
+    return Object.values(select.mark ?? {})
+        .filter(isExprRef)
+        .every((value) => {
+            const left = a.runtime.createExpression(value.expr).dependencies;
+            const right = b.runtime.createExpression(value.expr).dependencies;
+            return (
+                left.length === right.length &&
+                left.every((ref, index) => ref === right[index])
+            );
+        });
 }
 
 /** Reset legend bindings after ordinary view interaction bookkeeping.
@@ -126,8 +173,18 @@ export function clearLegendSelectionsOnBackgroundClick(viewRoot, event) {
         for (const resolution of Object.values(view.resolutions.legend)) {
             for (const binding of resolution.selectionBindings.values()) {
                 const { name, runtime, select } = binding;
-                if (runtime.findValue(name).values.size) {
-                    runtime.setValue(name, clearPointSelection(select));
+                if (
+                    select.type === "point" &&
+                    runtime.findValue(name).values.size
+                ) {
+                    runtime.setValue(
+                        name,
+                        clearPointSelection(
+                            /** @type {import("../../spec/parameter.js").PointSelectionConfig} */ (
+                                select
+                            )
+                        )
+                    );
                 }
             }
         }
@@ -140,7 +197,11 @@ export function clearLegendSelectionsOnBackgroundClick(viewRoot, event) {
  * @param {import("../unitView.js").default[]} units
  */
 export function bindLegend(legend, binding, units) {
-    const { name, runtime, component, select } = binding;
+    const { name, runtime, component } = binding;
+    const select =
+        /** @type {import("../../spec/parameter.js").PointSelectionConfig} */ (
+            binding.select
+        );
     const alias = "legendSelection";
     legend.paramRuntime.registerScopedExpression(alias, name, runtime);
     const entry = units.find((unit) => unit.name === "entries");
@@ -224,7 +285,14 @@ export function bindLegend(legend, binding, units) {
         const matches = createEventPredicate(clear);
         legend.addInteractionListener(clear.type, (event) => {
             if (picked(event) && matches(event.proxiedMouseEvent)) {
-                runtime.setValue(name, clearPointSelection(select));
+                runtime.setValue(
+                    name,
+                    clearPointSelection(
+                        /** @type {import("../../spec/parameter.js").PointSelectionConfig} */ (
+                            select
+                        )
+                    )
+                );
             }
         });
     }

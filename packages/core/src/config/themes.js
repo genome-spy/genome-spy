@@ -147,6 +147,11 @@ const BUILT_IN_THEME_DEFINITIONS = {
             "selection-brush": {
                 stroke: defaultThemeColor("foreground"),
             },
+            "gradient-selection-brush": {
+                shadowColor: {
+                    expr: "defaultThemeColors.background || 'white'",
+                },
+            },
         },
     },
     vegalite: VEGALITE_THEME,
@@ -228,6 +233,7 @@ const BUILT_IN_THEME_DEFINITIONS = {
                 "group-subtitle": { color: "#fff" },
                 "arrow-transcript": { color: "#fff" },
                 "selection-brush": { stroke: "#fff" },
+                "gradient-selection-brush": { shadowColor: "#333" },
             },
         },
     ]),

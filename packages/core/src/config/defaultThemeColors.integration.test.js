@@ -708,3 +708,69 @@ test("explicit brush colors override shared styles and update through expression
         view.disposeSubtree();
     }
 });
+
+test.each(/** @type {const} */ ([undefined, "dark"]))(
+    "gradient brush outline and glow follow theme %s",
+    async (theme) => {
+        const { view, params, palette, render } = await create({
+            theme,
+            params: [
+                {
+                    name: "range",
+                    select: { type: "interval", encodings: ["color"] },
+                    bind: "legend",
+                    value: { color: [2, 7] },
+                },
+            ],
+            data: { values: [{ score: 4 }] },
+            mark: "point",
+            encoding: {
+                color: {
+                    field: "score",
+                    type: "quantitative",
+                    scale: { domain: [0, 10] },
+                },
+            },
+        });
+        try {
+            const selection = params.getSelection("range");
+            const selected = selection.getValue();
+            const selector =
+                '[data-name="gradientBrush"] [stroke]:not([filter])';
+            const initial = await render();
+            expectColor(initial, selector, "stroke", theme ? "#fff" : "black");
+            expectColor(
+                initial,
+                '[data-name="gradientBrush"] [filter]',
+                "fill",
+                theme ? "#333" : "white"
+            );
+            palette.setValue({ ...darkColors });
+            await view.paramRuntime.whenPropagated();
+            const dark = await render();
+            expectColor(
+                dark,
+                selector,
+                "stroke",
+                theme ? "#fff" : darkColors.foreground
+            );
+            expectColor(
+                dark,
+                '[data-name="gradientBrush"] [filter]',
+                "fill",
+                theme ? "#333" : darkColors.background
+            );
+            palette.setValue({ ...DEFAULT_THEME_COLORS });
+            await view.paramRuntime.whenPropagated();
+            expectColor(
+                await render(),
+                selector,
+                "stroke",
+                theme ? "#fff" : "black"
+            );
+            expect(selection.getValue()).toEqual(selected);
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);

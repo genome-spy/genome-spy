@@ -2692,7 +2692,7 @@ describe("GridView wheel zoom", () => {
             );
             const commit = vi.fn();
             concatView.paramRuntime
-                .getSelectionController("brush")
+                .getIntervalSelectionState("brush")
                 ?.subscribeCommit(commit);
 
             concatView.propagateInteraction(

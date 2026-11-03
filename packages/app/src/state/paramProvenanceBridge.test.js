@@ -178,6 +178,279 @@ async function getShowMessageDialogMock() {
 }
 
 describe("ParamProvenanceBridge", () => {
+    it.each(["x", "color"])(
+        "captures %s interval gestures only after release",
+        async (component) => {
+            vi.useFakeTimers();
+            const view = new FakeView();
+            view.paramRuntime.registerParam(
+                component === "color"
+                    ? {
+                          name: "brush",
+                          select: { type: "interval", encodings: ["color"] },
+                          bind: "legend",
+                      }
+                    : {
+                          name: "brush",
+                          select: { type: "interval", encodings: ["x"] },
+                      }
+            );
+            const store = createStore();
+            const bridge = createBridge(view, store, new IntentExecutor(store));
+            const key = makeParamSelectorKey({ scope: [], param: "brush" });
+            const state = view.paramRuntime.getIntervalSelectionState("brush");
+            const host = {};
+            const cancel = vi.fn();
+            const settle = async () => {
+                await view.paramRuntime.whenPropagated();
+                vi.advanceTimersByTime(200);
+                await bridge.whenApplied();
+            };
+            try {
+                // Seed the initial history entry, as App startup does for defaults.
+                view.paramRuntime.setValue("brush", {
+                    type: "interval",
+                    intervals: { [component]: [0.05, 0.1] },
+                });
+                await settle();
+                const initialEntry =
+                    store.getState().provenance.present.paramProvenance.entries[
+                        key
+                    ];
+                const initialHistoryLength =
+                    store.getState().provenance.past.length;
+                state.begin(host, cancel);
+                for (const hi of [0.21, 0.4, 0.8]) {
+                    view.paramRuntime.setValue(
+                        "brush",
+                        {
+                            type: "interval",
+                            intervals: { [component]: [0.2, hi] },
+                        },
+                        { intervalGesture: host }
+                    );
+                    await settle();
+                    expect(cancel).not.toHaveBeenCalled();
+                    expect(
+                        store.getState().provenance.present.paramProvenance
+                            .entries[key]
+                    ).toBe(initialEntry);
+                    expect(store.getState().provenance.past).toHaveLength(
+                        initialHistoryLength
+                    );
+                }
+                state.finish(host, true);
+                await settle();
+                expect(
+                    store.getState().provenance.present.paramProvenance.entries[
+                        key
+                    ].value.intervals[component]
+                ).toEqual([0.2, 0.8]);
+                store.dispatch(ActionCreators.undo());
+                await settle();
+                expect(
+                    view.paramRuntime.getValue("brush").intervals[component]
+                ).toEqual([0.05, 0.1]);
+                store.dispatch(ActionCreators.redo());
+                await settle();
+                expect(
+                    view.paramRuntime.getValue("brush").intervals[component]
+                ).toEqual([0.2, 0.8]);
+            } finally {
+                bridge.dispose();
+                view.paramRuntime.dispose();
+                vi.useRealTimers();
+            }
+        }
+    );
+
+    it.each([false, true])(
+        "clears an initialized brush instead of restoring defaults (adjusted=%s)",
+        async (adjusted) => {
+            vi.useFakeTimers();
+            const view = new FakeView();
+            const other = view.paramRuntime.registerParam({
+                name: "other",
+                value: 0,
+                bind: { input: "range" },
+            });
+            view.paramRuntime.registerParam({
+                name: "brush",
+                select: { type: "interval", encodings: ["color"] },
+                bind: "legend",
+                value: { color: [0.4, 0.6] },
+            });
+            const store = createStore();
+            const bridge = createBridge(view, store, new IntentExecutor(store));
+            const key = makeParamSelectorKey({ scope: [], param: "brush" });
+            const state = view.paramRuntime.getIntervalSelectionState("brush");
+            const settle = async () => {
+                await view.paramRuntime.whenPropagated();
+                vi.advanceTimersByTime(200);
+                await bridge.whenApplied();
+            };
+            try {
+                // Missing brush history restores its nonempty declared default.
+                other(1);
+                await settle();
+                if (adjusted) {
+                    const host = {};
+                    state.begin(host, vi.fn());
+                    view.paramRuntime.setValue(
+                        "brush",
+                        {
+                            type: "interval",
+                            intervals: { color: [0.65, 0.75] },
+                        },
+                        { intervalGesture: host }
+                    );
+                    state.finish(host, true);
+                    await settle();
+                }
+                const beforeClear = store.getState().provenance.past.length;
+                state.clear();
+                await settle();
+                expect(
+                    view.paramRuntime.getValue("brush").intervals.color
+                ).toBeNull();
+                expect(
+                    store.getState().provenance.present.paramProvenance.entries[
+                        key
+                    ].value
+                ).toEqual({ type: "interval", intervals: {} });
+                expect(store.getState().provenance.past).toHaveLength(
+                    beforeClear + 1
+                );
+                store.dispatch(ActionCreators.undo());
+                await settle();
+                expect(
+                    view.paramRuntime.getValue("brush").intervals.color
+                ).toEqual(adjusted ? [0.65, 0.75] : [0.4, 0.6]);
+                store.dispatch(ActionCreators.redo());
+                await settle();
+                expect(
+                    view.paramRuntime.getValue("brush").intervals.color
+                ).toBeNull();
+            } finally {
+                bridge.dispose();
+                view.paramRuntime.dispose();
+                vi.useRealTimers();
+            }
+        }
+    );
+
+    it("round-trips open numeric ranges through bookmark JSON and undo/redo before a host exists", async () => {
+        vi.useFakeTimers();
+        const showMessageDialog = await getShowMessageDialogMock();
+        showMessageDialog.mockClear();
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "activation",
+            select: { type: "interval", encodings: ["color"] },
+            bind: "legend",
+        });
+        const store = createStore();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        const selector = { scope: [], param: "activation" };
+        const key = makeParamSelectorKey(selector);
+        const settle = async () => {
+            await view.paramRuntime.whenPropagated();
+            vi.advanceTimersByTime(200);
+            await bridge.whenApplied();
+        };
+        try {
+            view.paramRuntime.setValue("activation", {
+                type: "interval",
+                intervals: { color: [0.3, Infinity] },
+            });
+            await settle();
+            const entry =
+                store.getState().provenance.present.paramProvenance.entries[
+                    key
+                ];
+            expect(entry.value).toEqual({
+                type: "interval",
+                intervals: { color: [0.3, "Infinity"] },
+            });
+            const bookmark = decompressFromUrlHash(
+                compressToUrlHash({
+                    actions: [paramProvenanceSlice.actions.paramChange(entry)],
+                })
+            );
+
+            view.paramRuntime.getIntervalSelectionState("activation").clear();
+            await settle();
+            store.dispatch(ActionCreators.undo());
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toEqual([0.3, Infinity]);
+            store.dispatch(ActionCreators.redo());
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toBeNull();
+            store.dispatch(bookmark.actions[0]);
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toEqual([0.3, Infinity]);
+            // Cleared bookmarks encode no bounds; replay must restore an empty brush.
+            store.dispatch(
+                paramProvenanceSlice.actions.paramChange({
+                    selector,
+                    value: { type: "interval", intervals: {} },
+                })
+            );
+            await settle();
+            expect(
+                view.paramRuntime.getValue("activation").intervals.color
+            ).toBeNull();
+            expect(showMessageDialog).not.toHaveBeenCalled();
+        } finally {
+            bridge.dispose();
+            view.paramRuntime.dispose();
+            vi.useRealTimers();
+        }
+    });
+
+    it("rejects malformed numeric bookmark bounds before publication", async () => {
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "activation",
+            select: { type: "interval", encodings: ["color"] },
+            bind: "legend",
+            value: { color: [0.2, "Infinity"] },
+        });
+        const store = createStore();
+        const bridge = createBridge(view, store, new IntentExecutor(store));
+        try {
+            for (const color of [
+                [0.2, null],
+                ["Infinity", 1],
+                [0.2, "infinity"],
+                [0.8, 0.2],
+            ]) {
+                store.dispatch(
+                    paramProvenanceSlice.actions.paramChange({
+                        selector: { scope: [], param: "activation" },
+                        value: /** @type {any} */ ({
+                            type: "interval",
+                            intervals: { color },
+                        }),
+                    })
+                );
+                await bridge.whenApplied();
+                expect(
+                    view.paramRuntime.getValue("activation").intervals.color
+                ).toEqual([0.2, Infinity]);
+            }
+        } finally {
+            bridge.dispose();
+            view.paramRuntime.dispose();
+        }
+    });
+
     it("captures shared raw categories and replays URL state, clear, undo, and redo without data lookup", async () => {
         vi.useFakeTimers();
         const { root, views } = await createTestEmbed({

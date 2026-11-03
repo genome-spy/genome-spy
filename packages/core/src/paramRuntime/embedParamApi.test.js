@@ -414,6 +414,32 @@ describe("embed param API", () => {
         ).toEqual({ x: null });
     });
 
+    test("interval reads, initialization and clear survive host disposal", async () => {
+        const { view: root } = await createHeadlessEngine(
+            makeUnit("track", [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                    value: { x: [1, 2] },
+                },
+            ])
+        );
+        expect(
+            root.paramRuntime.getSelectionController("brush")
+        ).toBeUndefined();
+        const selection = resolveEmbedSelection(root, "brush");
+        expect(selection.getValue()).toMatchObject({
+            intervals: { x: [1, 2] },
+        });
+        if (selection.type !== "interval") throw new Error("Expected interval");
+        expect(() => selection.contains({ x: 0, y: 0 })).toThrow(
+            "no interaction host"
+        );
+        selection.clear();
+        expect(selection.getValue().active).toBe(false);
+        root.disposeSubtree();
+    });
+
     test("delivers interval commits after programmatic writes", async () => {
         const { view: root } = await createHeadlessEngine({
             params: [

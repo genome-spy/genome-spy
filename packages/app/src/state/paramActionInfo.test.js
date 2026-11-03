@@ -321,6 +321,27 @@ describe("getParamActionInfo", () => {
         );
     });
 
+    it("formats open numeric selections as a lower threshold", () => {
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "activation",
+            select: { type: "interval", encodings: ["color"] },
+            bind: "legend",
+        });
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: [], param: "activation" },
+            value: {
+                type: "interval",
+                intervals: { color: [0.3, "Infinity"] },
+            },
+        });
+        expect(
+            normalizeTitle(
+                getParamActionInfo(action, /** @type {any} */ (view))
+            )
+        ).toContain("Brush activation (≥ 0.3)");
+    });
+
     it("formats interval selections with x and y ranges", () => {
         const view = new FakeView({ explicitName: "intervals" });
         view.paramRuntime.registerParam({

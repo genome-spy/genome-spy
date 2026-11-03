@@ -1,6 +1,16 @@
-import { PrimaryPositionalChannel, Scalar } from "./channel.js";
+import {
+    PrimaryPositionalChannel,
+    PositionalChannel,
+    OffsetChannel,
+    Scalar,
+} from "./channel.js";
 import { ChromosomalLocus } from "./genome.js";
-import { ShadowProps, FillAndStrokeProps, MarkPropsBase } from "./mark.js";
+import {
+    ShadowProps,
+    FillAndStrokeProps,
+    MarkPropsBase,
+    RectProps,
+} from "./mark.js";
 import { ZIndexProps } from "./decoration.js";
 
 export interface ExprRef {
@@ -356,13 +366,17 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
     toggle?: boolean;
 }
 
+export type GradientSelectionChannel = "color" | "fill" | "stroke";
+export type IntervalSelectionChannel =
+    PrimaryPositionalChannel | GradientSelectionChannel;
+
 export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval"> {
     type: "interval";
 
     /**
      * An array of encoding channels that define the interval selection.
      */
-    encodings?: PrimaryPositionalChannel[];
+    encodings?: IntervalSelectionChannel[];
 
     /**
      * Visual extent of the interval selection rectangle.
@@ -401,7 +415,25 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     zoom?: DomEventType | EventConfig | string | boolean;
 }
 
-export interface BrushConfig extends ShadowProps, ZIndexProps {
+/**
+ * Rect mark appearance for positional and gradient-legend interval brushes.
+ * Expressions resolve in the selection's declaring scope. Selection bounds
+ * determine the rectangle's position.
+ */
+export interface BrushConfig
+    extends
+        Omit<
+            RectProps,
+            | "type"
+            | PositionalChannel
+            | OffsetChannel
+            | "x2Offset"
+            | "y2Offset"
+            | "tooltip"
+            | "buildIndex"
+            | "cullByVisibleRange"
+        >,
+        ZIndexProps {
     /**
      * Mouse cursor shown while the pointer is over the interval mark.
      *
@@ -421,38 +453,38 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
      *
      * __Default value:__ `0.05`
      */
-    fillOpacity?: number;
+    fillOpacity?: RectProps["fillOpacity"];
 
     /**
      * The stroke color of the interval mark.
      *
      * __Default value:__ `defaultThemeColors.foreground`, falling back to `"black"`
-     * in the default theme
+     * in the default theme.
      */
     stroke?: string | ExprRef;
 
     /**
      * The stroke opacity of the interval mark (a value between `0` and `1`).
      *
-     * __Default value:__ `0.2`
+     * __Default value:__ `0.2` for positional brushes, `1` for gradient legends
      */
-    strokeOpacity?: number;
+    strokeOpacity?: RectProps["strokeOpacity"];
 
     /**
      * The stroke width of the interval mark.
      *
      * __Default value:__ `1`
      */
-    strokeWidth?: number;
+    strokeWidth?: RectProps["strokeWidth"];
 
     /**
      * Clip the brush rectangle to the viewport along the selected axes.
      * An explicit value overrides this direction-based default.
      *
      * __Default value:__ `"x"` for x selections, `"y"` for y selections,
-     * and `true` for x/y selections.
+     * `true` for x/y selections, and `false` for gradient legends.
      */
-    clip?: boolean | "never";
+    clip?: RectProps["clip"];
 
     /**
      * Z-order of the interval mark relative to the view content.
@@ -502,7 +534,7 @@ export interface CategorySelectionParameter<C extends CategorySelectionChannel>
     value?: Record<C, Scalar>[];
 }
 
-export interface IntervalSelectionParameter
+export interface PositionalIntervalSelectionParameter
     extends ParameterBase, PersistedParameter {
     /**
      * Determines the default event processing and data query for the selection. GenomeSpy supports two selection types, following the Vega-Lite model:
@@ -510,13 +542,37 @@ export interface IntervalSelectionParameter
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
      */
-    select: "interval" | IntervalSelectionConfig;
+    select:
+        | "interval"
+        | (Omit<IntervalSelectionConfig, "encodings"> & {
+              encodings?: PrimaryPositionalChannel[];
+          });
 
     /**
      * Initial value for the selection.
      */
     value?: SelectionInitIntervalMapping;
 }
+
+/** Brush a quantitative gradient legend. Interior bounds are half-open; brushing
+ * to its numeric maximum removes the upper limit. */
+export interface GradientIntervalSelectionParameter<
+    C extends GradientSelectionChannel,
+>
+    extends ParameterBase, PersistedParameter {
+    select: Omit<IntervalSelectionConfig, "encodings" | "extent"> & {
+        encodings: [C];
+    };
+    bind: "legend";
+    /** Initial range; the upper token "Infinity" means no upper limit. */
+    value?: Record<C, [number, number | "Infinity"] | null>;
+}
+
+export type IntervalSelectionParameter =
+    | PositionalIntervalSelectionParameter
+    | GradientIntervalSelectionParameter<"color">
+    | GradientIntervalSelectionParameter<"fill">
+    | GradientIntervalSelectionParameter<"stroke">;
 
 export type SelectionParameter<T extends SelectionType = SelectionType> =
     T extends "interval"

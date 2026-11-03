@@ -1,5 +1,8 @@
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
-import createScale from "../../../scale/scale.js";
+import {
+    createNormalizedScale,
+    createLinearPositionScale,
+} from "../../../scales/legendGradientMapping.js";
 import { tickCount, tickFormat, tickValues } from "../../../scale/ticks.js";
 import { findLegendScaleResolution } from "./legendEntriesSource.js";
 import DataSource from "../dataSource.js";
@@ -17,113 +20,6 @@ const DEFAULT_TICK_COUNT = 5;
  *     thresholds: () => unknown[]
  * }} QuantizeScale
  */
-
-/**
- * @param {import("../../../types/encoder.js").VegaScale} scale
- * @param {number} start
- * @param {number} stop
- * @returns {NormalizedPositionScale}
- */
-function createNormalizedScale(scale, start, stop) {
-    const domain = getNumericScaleDomain(scale, start, stop);
-    const range = createNormalizedRange(domain.length);
-
-    if (
-        "copy" in scale &&
-        typeof scale.copy == "function" &&
-        "invert" in scale &&
-        typeof scale.invert == "function"
-    ) {
-        const normalizedScale = scale.copy();
-        normalizedScale.domain(domain);
-        normalizedScale.range(range);
-        return /** @type {NormalizedPositionScale} */ (normalizedScale);
-    }
-
-    const props =
-        /** @type {{ props?: import("../../../spec/scale.js").Scale }} */ (
-            scale
-        ).props;
-    const type = props?.type;
-
-    if (type) {
-        const positionProps = { ...props };
-        const extraPositionProps = /** @type {Record<string, unknown>} */ (
-            positionProps
-        );
-        delete positionProps.range;
-        delete positionProps.scheme;
-        delete extraPositionProps.domainMin;
-        delete extraPositionProps.domainMid;
-        delete extraPositionProps.domainMax;
-        delete extraPositionProps.schemeExtent;
-        delete extraPositionProps.schemeCount;
-        const positionScale = createScale({
-            ...positionProps,
-            type,
-            domain,
-            range,
-            zero: false,
-            nice: false,
-        });
-        if (
-            "invert" in positionScale &&
-            typeof positionScale.invert == "function"
-        ) {
-            return /** @type {NormalizedPositionScale} */ (positionScale);
-        }
-    }
-
-    return createLinearPositionScale(start, stop);
-}
-
-/**
- * @param {import("../../../types/encoder.js").VegaScale} scale
- * @param {number} start
- * @param {number} stop
- * @returns {number[]}
- */
-function getNumericScaleDomain(scale, start, stop) {
-    if ("domain" in scale && typeof scale.domain == "function") {
-        const domain = scale.domain().map(finiteNumber);
-        if (domain.length >= 2) {
-            return [start, ...domain.slice(1, -1), stop];
-        }
-    }
-
-    return [start, stop];
-}
-
-/**
- * @param {number} length
- * @returns {number[]}
- */
-function createNormalizedRange(length) {
-    const last = length - 1;
-    return Array.from({ length }, (_, index) => index / last);
-}
-
-/**
- * @param {number} start
- * @param {number} stop
- * @returns {(position: number) => number}
- */
-function createLinearPositionInverter(start, stop) {
-    return (position) => start + (stop - start) * position;
-}
-
-/**
- * @param {number} start
- * @param {number} stop
- * @returns {NormalizedPositionScale}
- */
-function createLinearPositionScale(start, stop) {
-    const scale = /** @type {NormalizedPositionScale} */ (
-        (/** @type {number} */ value) => (value - start) / (stop - start)
-    );
-    scale.invert = createLinearPositionInverter(start, stop);
-    return scale;
-}
 
 /**
  * @param {number[]} domain

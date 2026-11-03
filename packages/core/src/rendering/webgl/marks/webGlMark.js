@@ -59,6 +59,7 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
     isCategorySelection,
+    isGradientSelectionChannel,
 } from "../../../selection/selection.js";
 import { collectAppearanceSelections } from "../../../selection/selection.js";
 import {
@@ -267,6 +268,23 @@ export default class WebGLMark {
             return makeAttributeName(/** @type {Channel} */ (channel));
         };
 
+        /** Logical numeric components need no corresponding consumer scale.
+         * @param {string} component
+         */
+        const getIntervalAttributeTypes = (component) =>
+            getAttributeAndArrayTypes(
+                isGradientSelectionChannel(component)
+                    ? undefined
+                    : this.unitView
+                          .getScaleResolution(
+                              /** @type {import("../../../spec/channel.js").ChannelWithScale} */ (
+                                  component
+                              )
+                          )
+                          .getScale(),
+                /** @type {Channel} */ (component)
+            );
+
         /** @type {string[]} */
         const dynamicMarkUniforms = [];
 
@@ -283,15 +301,7 @@ export default class WebGLMark {
                 return (
                     isIntervalSelection(selection) &&
                     Object.keys(selection.intervals).some(
-                        (channel) =>
-                            getAttributeAndArrayTypes(
-                                this.unitView
-                                    .getScaleResolution(
-                                        /** @type {"x" | "y"} */ (channel)
-                                    )
-                                    .getScale(),
-                                /** @type {Channel} */ (channel)
-                            ).largeHp
+                        (channel) => getIntervalAttributeTypes(channel).largeHp
                     )
                 );
             })
@@ -423,12 +433,10 @@ export default class WebGLMark {
                     `bool ${SELECTION_EMPTY_PREFIX}${param}() { return ${uniformName} == 0u; }`
                 );
             } else if (isIntervalSelection(selection)) {
-                const intervalChannels = Object.keys(
-                    selection.intervals
-                ).filter((channel) => ["x", "y"].includes(channel));
+                const intervalChannels = Object.keys(selection.intervals);
                 if (intervalChannels.length == 0) {
                     throw new ViewError(
-                        `Interval selection "${param}" has no supported x or y targets.`,
+                        `Interval selection "${param}" has no components.`,
                         this.unitView
                     );
                 }
@@ -444,12 +452,7 @@ export default class WebGLMark {
                         `_${channel}`;
 
                     const { attributeType, largeHp } =
-                        getAttributeAndArrayTypes(
-                            this.unitView
-                                .getScaleResolution(channel)
-                                .getScale(),
-                            channel
-                        );
+                        getIntervalAttributeTypes(channel);
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
                         `    uniform highp ${attributeType}[2] ${uniformName};`
@@ -561,13 +564,8 @@ export default class WebGLMark {
                 const second = projection.secondaryInput
                     ? getSelectionAttributeName(projection.secondaryInput)
                     : undefined;
-                const { largeHp } = getAttributeAndArrayTypes(
-                    this.unitView
-                        .getScaleResolution(
-                            /** @type {"x" | "y"} */ (projection.component)
-                        )
-                        .getScale(),
-                    /** @type {Channel} */ (projection.component)
+                const { largeHp } = getIntervalAttributeTypes(
+                    projection.component
                 );
                 const leq = (
                     /** @type {string} */ a,

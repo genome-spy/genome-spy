@@ -1,5 +1,5 @@
 import { Datum } from "../data/flowNode.js";
-import { PositionalChannel, Scalar } from "../spec/channel.js";
+import { Scalar } from "../spec/channel.js";
 import { CategorySelectionChannel } from "../spec/parameter.js";
 
 export interface SelectionBase {
@@ -9,7 +9,12 @@ export interface SelectionBase {
 export interface IntervalSelection extends SelectionBase {
     type: "interval";
 
-    intervals: Partial<Record<PositionalChannel, number[] | null>>;
+    intervals: Partial<
+        Record<
+            import("../spec/parameter.js").IntervalSelectionChannel,
+            number[] | null
+        >
+    >;
 }
 
 export interface CategoryPointSelection extends SelectionBase {

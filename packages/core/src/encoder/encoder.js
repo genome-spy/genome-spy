@@ -109,7 +109,8 @@ export function createConditionalBranches(
         const accessor = createAccessor(
             channel,
             branchChannelDef,
-            paramRuntime
+            paramRuntime,
+            isPositionalChannel(channel) ? getType?.(channel) : undefined
         );
 
         if (isColorChannel(channel) && isValueDef(branchChannelDef)) {

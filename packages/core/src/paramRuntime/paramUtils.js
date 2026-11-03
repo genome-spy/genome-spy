@@ -3,8 +3,10 @@ import {
     asSelectionConfig,
     clearPointSelection,
     createIntervalSelection,
+    decodeGradientIntervals,
     isIntervalSelectionConfig,
     isPointSelectionConfig,
+    isGradientSelectionChannel,
 } from "../selection/selection.js";
 import { createRulerValue } from "../ruler/rulerValue.js";
 import { createCategorySelection } from "../selection/categorySelection.js";
@@ -160,6 +162,17 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
             return clearPointSelection(select);
         }
         if (isIntervalSelectionConfig(select)) {
+            if (
+                select.encodings?.some(isGradientSelectionChannel) &&
+                (!("bind" in param) ||
+                    param.bind !== "legend" ||
+                    select.encodings.length !== 1 ||
+                    select.extent !== undefined)
+            ) {
+                throw new Error(
+                    `Numeric interval "${param.name}" requires one legend-bound color, fill, or stroke component without an extent.`
+                );
+            }
             if (!select.encodings) {
                 throw new Error(
                     'Interval selection "' +
@@ -167,7 +180,16 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
                         '" must have encodings defined!'
                 );
             }
-            return createIntervalSelection(select.encodings);
+            return param.value
+                ? {
+                      type: "interval",
+                      intervals: {
+                          ...createIntervalSelection(select.encodings)
+                              .intervals,
+                          ...decodeGradientIntervals(param.value),
+                      },
+                  }
+                : createIntervalSelection(select.encodings);
         }
         throw new Error(
             'Unknown selection config for parameter "' + param.name + '".'

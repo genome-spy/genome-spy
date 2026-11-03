@@ -449,10 +449,6 @@ SCHEMA InlineLocusAssembly
 
 SCHEMA InteractionEventType
 
-## IntervalSelectionConfig
-
-SCHEMA IntervalSelectionConfig
-
 ## IntervalSelectionParameter
 
 SCHEMA IntervalSelectionParameter
@@ -708,6 +704,10 @@ SCHEMA PositionValueDef
 ## PositionalChannel
 
 SCHEMA PositionalChannel
+
+## PositionalIntervalSelectionParameter
+
+SCHEMA PositionalIntervalSelectionParameter
 
 ## PrimaryPositionalChannel
 

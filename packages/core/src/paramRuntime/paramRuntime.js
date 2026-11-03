@@ -178,6 +178,26 @@ export default class ParamRuntime {
         return this.#paramStore.register(scope, name, ref);
     }
 
+    /** Bind an internal computed producer into expression scope.
+     * @template T
+     * @param {ScopeId} scope
+     * @param {string} name
+     * @param {import("./types.js").ParamRef<any>[]} deps
+     * @param {() => T} evaluate
+     */
+    registerComputed(scope, name, deps, evaluate) {
+        return this.#paramStore.register(
+            scope,
+            name,
+            this.#graphRuntime.computed(
+                this.#paramStore.getOwnerId(scope),
+                name,
+                deps,
+                evaluate
+            )
+        );
+    }
+
     /**
      * Creates an expression function bound to scope-based parameter resolution.
      *
