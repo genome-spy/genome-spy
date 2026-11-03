@@ -103,4 +103,10 @@ standalone WebGPU implementation from #615. No third-party code is introduced.
   Canvas picking). Core types, targeted ESLint/Prettier, schema generation,
   generated documentation type index and release checks pass. Release plan is
   a Core minor bump propagated through the configured fixed group.
-- [ ] Final exact diff, commit and plan retirement before PR delivery.
+- [x] Implementation committed as ba39e905a. Exact deliverable against #649
+  219355912: 17 files, +595/-40. This includes +395 browser/headless regression
+  lines; runtime JS/GLSL is +165/-36 across 10 files (raw lines, comments and
+  blanks included). No dependency or other-mark implementation changes.
+- [x] Every scoped task is complete; no unresolved design questions remain.
+  This reconciled plan is committed before its removal in the following commit.
+  PR creation/push is deferred until requested; #649 remains untouched.
