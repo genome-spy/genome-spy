@@ -63,10 +63,10 @@ export function renderRuleSvg(baseMark, options) {
                 ? encodeNumber(encoders.fillOpacity, instance.datum)
                 : 1;
             if (instance.strokeWidth > 0) {
-                const length = Math.hypot(
-                    instance.x2 - instance.x1,
-                    instance.y2 - instance.y1
-                );
+                const dx = instance.x2 - instance.x1;
+                const dy = instance.y2 - instance.y1;
+                const length = Math.hypot(dx, dy);
+                const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
                 const path = rulePath(
                     length,
                     formatSvgNumber(instance.size),
@@ -75,7 +75,7 @@ export function renderRuleSvg(baseMark, options) {
                     dashOffset
                 );
                 const paints = createSvgElement("g", {
-                    transform: `translate(${formatSvgNumber(instance.x1)} ${formatSvgNumber(instance.y1)}) rotate(${formatSvgNumber((Math.atan2(instance.y2 - instance.y1, instance.x2 - instance.x1) * 180) / Math.PI)})`,
+                    transform: `translate(${formatSvgNumber(instance.x1)} ${formatSvgNumber(instance.y1)}) rotate(${angle})`,
                     opacity:
                         encodeNumber(encoders.opacity, instance.datum) *
                         viewOpacity,

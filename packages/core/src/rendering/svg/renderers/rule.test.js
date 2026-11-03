@@ -6,6 +6,56 @@ import { createSinglePointSelection } from "../../../selection/selection.js";
 import { createSvg } from "../index.js";
 
 describe("SVG rule renderer", () => {
+    test("preserves the endpoint of a long diagonal rule with a border", async () => {
+        const { view } = await createHeadlessEngine({
+            padding: 0,
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                size: 4,
+                fill: "red",
+                stroke: "blue",
+                strokeWidth: 2,
+            },
+            encoding: {
+                x: { value: 0.05 },
+                x2: { value: 0.95 },
+                y: { value: 0.9 },
+                y2: { value: 0.4 },
+            },
+        });
+        try {
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 2000,
+                logicalHeight: 2000,
+                background: null,
+            });
+            const paints = svg.querySelector('[data-mark-type="rule"] > g');
+            const [x, y, degrees] = paints
+                .getAttribute("transform")
+                .match(/-?\d+(?:\.\d+)?/g)
+                .map(Number);
+            const length = Number(
+                paints
+                    .querySelector("path")
+                    .getAttribute("d")
+                    .match(/H([\d.]+)/)[1]
+            );
+            const radians = (degrees * Math.PI) / 180;
+
+            // Angular rounding accumulates into visible endpoint drift on long rules.
+            expect(
+                Math.hypot(
+                    x + length * Math.cos(radians) - 1900,
+                    y + length * Math.sin(radians) - 1200
+                )
+            ).toBeLessThan(0.1);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("uses shared paint channels and filled color routing for vector rule borders", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "ink", value: "blue" }],
