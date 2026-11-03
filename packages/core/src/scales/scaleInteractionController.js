@@ -1,3 +1,8 @@
+import { copyViewport } from "./scaleBand.js";
+import {
+    isCategoricalPositionScale,
+    supportsScaleNavigation,
+} from "./scaleRules.js";
 import {
     clampRange,
     isArray,
@@ -8,7 +13,6 @@ import {
     panPow,
     span,
 } from "vega-util";
-import { isContinuous, isDiscrete } from "vega-scale";
 
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { zoomDomainByScaleType } from "./zoomDomainUtils.js";
@@ -32,7 +36,7 @@ export default class ScaleInteractionController {
     /** @type {() => ScaleWithProps} */
     #getScale;
 
-    /** @type {(domain: number[], duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} */
+    /** @type {(domain: number[] | null, duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} */
     #navigate;
 
     /** @type {() => void} */
@@ -56,7 +60,7 @@ export default class ScaleInteractionController {
     /**
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
-     * @param {(domain: number[], duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} options.navigate
+     * @param {(domain: number[] | null, duration: number, renderImmediately?: boolean, gapDomain?: readonly number[]) => Promise<void>} options.navigate
      * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[] | undefined} options.getDataZoomExtent
@@ -86,6 +90,8 @@ export default class ScaleInteractionController {
 
     getZoomExtent() {
         const scale = this.#getScale();
+        if (isCategoricalPositionScale(scale.type))
+            return this.#getDataZoomExtent() ?? [0, scale.domain().length];
         const zoom = scale.props.zoom;
         return resolveZoomExtent(
             scale,
@@ -103,7 +109,7 @@ export default class ScaleInteractionController {
 
     isZoomingSupported() {
         const type = this.#getScale().type;
-        return isContinuous(type) && !isDiscrete(type);
+        return supportsScaleNavigation(type);
     }
 
     /**
@@ -112,6 +118,24 @@ export default class ScaleInteractionController {
      * @returns true if zoomed
      */
     isZoomed() {
+        const scale = this.#getScale();
+        if (isCategoricalPositionScale(scale.type)) {
+            const viewport =
+                /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                    scale
+                ).viewport();
+            const extent = this.getZoomExtent();
+            const reset = scale.props.viewport;
+            return (
+                !!viewport?.gapRanks ||
+                !shallowArrayEquals(
+                    viewport?.interval ?? extent,
+                    reset && extent[1] > 0
+                        ? clampRange(reset, 0, extent[1])
+                        : (reset ?? extent)
+                )
+            );
+        }
         return (
             this.isZoomingSupported() &&
             !shallowArrayEquals(
@@ -136,12 +160,17 @@ export default class ScaleInteractionController {
         }
 
         const scale = this.#getScale();
-        const oldDomain = scale.domain();
+        const oldDomain = this.#getNavigationDomain();
+        if (
+            isCategoricalPositionScale(scale.type) &&
+            this.getZoomExtent()[1] <= 1
+        )
+            return false;
         const mapping =
-            "gapMapping" in scale &&
+            "navigationMapping" in scale &&
             /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
                 scale
-            ).gapMapping(axisLength);
+            ).navigationMapping(axisLength);
         if (mapping) {
             const transformed = mapping.navigate(
                 scaleFactor,
@@ -195,6 +224,8 @@ export default class ScaleInteractionController {
         }
 
         const scale = this.#getScale();
+        if (isCategoricalPositionScale(scale.type))
+            throw new Error("Use zoomToViewport() for a categorical scale.");
         const to = normalizeInteractionInterval(
             /** @type {import("../spec/scale.js").ScaleType} */ (scale.type),
             domain,
@@ -215,6 +246,51 @@ export default class ScaleInteractionController {
         return transition;
     }
 
+    /** @returns {number[]} */
+    #getNavigationDomain() {
+        const scale = this.#getScale();
+        if (isCategoricalPositionScale(scale.type)) {
+            return (
+                /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                    scale
+                ).viewport()?.interval ?? this.getZoomExtent()
+            );
+        }
+        return scale.domain();
+    }
+
+    /** @param {import("./scaleBand.js").CategoricalViewport | null} viewport
+     * @param {ZoomToOptions} [options]
+     */
+    async zoomToViewport(viewport, options) {
+        const scale = this.#getScale();
+        if (!isCategoricalPositionScale(scale.type))
+            throw new Error("Scale viewports require a band or point scale.");
+        const target = copyViewport(viewport);
+        const { duration, renderImmediately } = normalizeZoomToOptions(options);
+        if (duration > 0 && renderImmediately)
+            throw new Error(
+                "renderImmediately is not supported for animated zooms."
+            );
+        const extent = this.getZoomExtent();
+        const interval =
+            target && extent[1] > 0
+                ? clampRange(target.interval, 0, extent[1])
+                : target?.interval;
+        const ranks =
+            target && shallowArrayEquals(interval, target.interval)
+                ? target.gapRanks
+                : undefined;
+        const transition = this.#navigate(
+            interval ?? null,
+            duration,
+            renderImmediately,
+            ranks
+        );
+        if (renderImmediately) this.#renderImmediately();
+        return transition;
+    }
+
     /**
      * Resets the current domain to the initial one
      *
@@ -226,6 +302,13 @@ export default class ScaleInteractionController {
         }
 
         const scale = this.#getScale();
+        if (isCategoricalPositionScale(scale.type)) {
+            const changed = this.isZoomed();
+            void this.zoomToViewport(
+                scale.props.viewport ? { interval: scale.props.viewport } : null
+            );
+            return changed;
+        }
         const oldDomain = scale.domain();
         const newDomain = this.#getResetDomain();
 
@@ -244,7 +327,9 @@ export default class ScaleInteractionController {
                 ? zoomExtent
                 : (this.#getInitialDomainSnapshot() ??
                   this.#getScale().domain());
-            return span(referenceDomain) / span(this.#getScale().domain());
+            return span(referenceDomain) > 0
+                ? span(referenceDomain) / span(this.#getNavigationDomain())
+                : 1;
         }
 
         return 1.0;
@@ -352,32 +437,6 @@ function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
         case "linear":
             newDomain = panLinear(newDomain, pan || 0);
             break;
-        case "index":
-        case "locus": {
-            const indexScale =
-                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
-                    scale
-                );
-            const [rangeStart, rangeEnd] = indexScale.range();
-            const fraction =
-                (scaleAnchor - rangeStart) / (rangeEnd - rangeStart);
-            const domainSpan = span(domain);
-            const newSpan = Math.max(1, domainSpan * scaleFactor);
-            const padding =
-                2 * indexScale.paddingOuter() - indexScale.paddingInner();
-            const stepSpan = Math.max(1, domainSpan + padding);
-            const newStepSpan = Math.max(1, newSpan + padding);
-            const align = indexScale.align();
-
-            // Padding stays fixed in domain units. Account for the minimum
-            // step span too, so zooming preserves the pointer coordinate.
-            const start =
-                domain[0] +
-                (fraction - align) * (stepSpan - newStepSpan) +
-                align * (domainSpan - newSpan) -
-                (pan || 0) * newSpan;
-            return [start, start + newSpan];
-        }
         case "log":
             newDomain = panLog(newDomain, pan || 0);
             break;

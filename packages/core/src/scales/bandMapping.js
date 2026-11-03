@@ -109,6 +109,21 @@ export function createBandMapping({
      * @param {number} pan
      */
     function navigate(factor, anchor, pan) {
+        if (!width || !cuts.length) {
+            // Keep ordinary index navigation's span semantics while padding
+            // remains fixed in rank units. Gapped navigation changes data slope.
+            const newSpan = Math.max(1, span * factor);
+            const pad = 2 * paddingOuter - paddingInner;
+            const oldStepSpan = Math.max(minimumSpan, span + pad) || 1;
+            const newStepSpan = Math.max(minimumSpan, newSpan + pad) || 1;
+            const fraction = (anchor - range[0]) / rangeSpan;
+            const first =
+                domain[0] +
+                (fraction - align) * (oldStepSpan - newStepSpan) +
+                align * (span - newSpan) -
+                pan * newSpan;
+            return { domain: [first, first + newSpan], ranks: undefined };
+        }
         const point = invertPoint(anchor);
         const limit =
             Math.abs(rangeSpan) /

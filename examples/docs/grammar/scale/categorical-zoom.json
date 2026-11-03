@@ -1,0 +1,51 @@
+{
+  "description": [
+    "Zoomable categories and indices",
+    "A categorical scale viewport preserves category order while both axes zoom. Band labels squeeze to fit their columns."
+  ],
+
+  "data": {
+    "values": [
+      { "family": "Alpha family", "index": 0, "value": 1 },
+      { "family": "Beta family", "index": 0, "value": 2 },
+      { "family": "Gamma family", "index": 0, "value": 3 },
+      { "family": "Delta family", "index": 0, "value": 4 },
+      { "family": "Alpha family", "index": 1, "value": 4 },
+      { "family": "Beta family", "index": 1, "value": 3 },
+      { "family": "Gamma family", "index": 1, "value": 2 },
+      { "family": "Delta family", "index": 1, "value": 1 },
+      { "family": "Alpha family", "index": 2, "value": 2 },
+      { "family": "Beta family", "index": 2, "value": 4 },
+      { "family": "Gamma family", "index": 2, "value": 1 },
+      { "family": "Delta family", "index": 2, "value": 3 }
+    ]
+  },
+
+  "width": 240,
+  "height": 120,
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "family",
+      "type": "nominal",
+      "scale": {
+        "type": "band",
+        "domain": [
+          "Alpha family",
+          "Beta family",
+          "Gamma family",
+          "Delta family"
+        ],
+        "zoom": true,
+        "viewport": [1, 3],
+        "gapPositions": ["Gamma family"],
+        "gapWidth": 8
+      },
+      "axis": { "labelAngle": 0, "labelSqueeze": true, "title": null }
+    },
+    "y": { "field": "index", "type": "index", "scale": { "domain": [0, 2] } },
+    "color": { "field": "value", "type": "quantitative", "legend": null }
+  }
+}

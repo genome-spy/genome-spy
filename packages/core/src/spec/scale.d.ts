@@ -283,9 +283,27 @@ export interface Scale {
     interpolate?: ScaleInterpolate | ScaleInterpolateParams;
 
     /**
-     * If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively.
+     * Enable interactive zooming and panning on a positional scale. Band and
+     * point scales accept a boolean and navigate their scale viewport while
+     * retaining the full categorical domain. Continuous scales also accept
+     * zoom extent options.
+     *
+     * __Default value:__ `true` for index and locus scales; `false` otherwise.
      */
     zoom?: boolean | ZoomParams;
+
+    /**
+     * Initial and reset scale viewport for positional band or point scales,
+     * expressed as a half-open rank interval. Fractional endpoints allow smooth
+     * navigation. The categorical domain retains its membership and order.
+     * Categorical zoom uses boolean `zoom` and is bounded by the full domain.
+     *
+     * This scale viewport differs from a layout viewport, which scrolls
+     * already-laid-out content using `viewportWidth` or `viewportHeight`.
+     *
+     * __Default value:__ `null`, fitting all categories.
+     */
+    viewport?: [number, number] | null;
 
     /**
      * The offset added to data values when formatting tick labels on index and
@@ -396,7 +414,9 @@ export type ComplexDomain = ChromosomalLocus[];
 
 export interface ZoomParams {
     /**
-     * The boundaries that limit zoom and pan interactions.
+     * The boundaries that limit zoom and pan interactions on continuous scales.
+     * Band and point scales use the full categorical domain as their bounds
+     * and accept only a boolean `zoom` property.
      *
      * A domain array sets explicit boundaries. `"data"` derives the boundaries
      * from the data that contributes to the scale domain. For index and

@@ -173,7 +173,9 @@ resolves scales by channel instead of by named scale.
 
 They are available in `formula` and `filter` transforms, in dynamic expression
 properties, and in scale `ExprRef` properties. They are reactive: when a
-referenced scale changes, dependent expressions update.
+referenced scale changes, dependent expressions update. This includes categorical
+navigation: placement and bandwidth change while the full category domain stays
+intact. See [categorical scale viewports](scale.md#categorical-scale-viewports).
 
 When a helper is used in a scale `ExprRef`, it resolves from the view that owns
 the scale resolution. For a shared scale, declare the expression in
@@ -203,7 +205,8 @@ range position.
 <a name="domain" href="#domain">#</a>
 <b>domain</b>(<i>channel</i>)<br/>
 Returns the current domain of the scale for the given channel. The channel is
-resolved against the current view's scale resolution.
+resolved against the current view's scale resolution. For band and point scales,
+this remains the complete ordered category list during zooming and panning.
 
 <a name="range" href="#range">#</a>
 <b>range</b>(<i>channel</i>)<br/>
@@ -246,7 +249,9 @@ expression is bound.
 <b>zoomLevel</b>(<i>channel</i>)<br/>
 Returns the zoom level of one scale, such as `zoomLevel("x")`. The channel must
 be a literal string. The value is the reference-domain span divided by the
-current displayed-domain span. A non-zoomable scale returns `1`.
+current displayed-domain span. For band and point scales, it is the category
+count divided by the scale viewport's rank span. A non-zoomable scale returns
+`1`.
 
 Compose separate calls when a formula needs multiple explicit scales. For
 example, `sqrt(zoomLevel("x") * zoomLevel("y"))` is the explicit equivalent of

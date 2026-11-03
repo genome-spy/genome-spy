@@ -206,6 +206,79 @@ each channel.
 
 EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
 
+## Zooming and panning
+
+To enable zooming and panning on a positional scale, set
+the `zoom` scale property to `true`. Example:
+
+```json
+{
+  "x": {
+    "field": "foo",
+    "type": "quantitative",
+    "scale": {
+      "zoom": true
+    }
+  }
+}
+```
+
+Both `"index"` and `"locus"` scales are zoomable by default.
+
+### Categorical scale viewports
+
+Band and point scales keep their full category domain while zooming and panning
+change a **scale viewport** in category-rank coordinates. For a domain of
+`["A", "B", "C", "D"]`, `viewport: [1, 3]` shows B and C. Bounds are half-open
+and may be fractional, so `[1.5, 3.5]` pans by half a category. Numeric categories
+remain category values; viewport bounds always refer to ranks in domain order.
+
+Omitting `viewport`, or setting it to `null`, fits all categories and follows
+later domain changes. An explicit interval sets the initial and reset window.
+Navigation preserves rank positions when categories are reordered or added;
+shrinking the domain moves the window back inside its bounds. Step-based sizes
+continue to use the full domain and base step.
+
+Categorical zooming is opt-in with `zoom: true`. Its bounds are always the full
+domain; `zoom.extent` options do not apply. Navigation does not support
+`round: true` or interval brushing. A scale viewport differs from a
+[scrollable layout viewport](composition/concat.md#scrollable-viewports), which
+moves over content that is already laid out.
+
+This example combines a zoomable categorical x scale with an index y scale.
+The axis uses [`labelSqueeze`](axis.md#ticks-and-labels) to fit each column label
+inside its band as space changes:
+
+EXAMPLE examples/docs/grammar/scale/categorical-zoom.json height=210
+
+For point placement, change the x scale to `"point"`, use a point mark, and
+remove `labelSqueeze`. Point scales share the rank viewport behavior but have
+zero bandwidth. The [scale API](../api/runtime-state.md#categorical-scale-viewports)
+can read, restore, link, and animate categorical viewports.
+
+### Zoom extent
+
+Continuous scales can constrain navigation with the following options:
+
+SCHEMA ZoomParams
+
+For `"index"` and `"locus"` scales, two-point zoom extents are inclusive.
+
+The following scale starts at `[10, 20]` and allows zooming out to the full
+data extent:
+
+```json
+{
+  ...,
+  "scale": {
+    "domain": [10, 20],
+    "zoom": {
+      "extent": "data"
+    }
+  }
+}
+```
+
 ## Grouping gaps
 
 Grouping gaps separate selected rows or columns in heatmaps and other grouped
@@ -240,7 +313,7 @@ removes its gap; restoring the category restores the gap.
 
 Band and point gaps do not support `round: true`. Nested categorical offsets
 under a gapped band require an [explicit offset range](#nested-offset-scales).
-Adding gaps does not enable zooming or interval brushing on these scales.
+Adding gaps does not enable zooming; enable it separately with `zoom: true`.
 
 ### Index and locus scales
 
@@ -344,53 +417,6 @@ autoscaled scale. A positional scale cannot be both zoomable and
 viewport-derived.
 
 EXAMPLE examples/docs/grammar/scale/viewport-autoscale.json
-
-## Zooming and panning
-
-To enable zooming and panning of continuous scales on positional channels, set
-the `zoom` scale property to `true`. Example:
-
-```json
-{
-  "x": {
-    "field": "foo",
-    "type": "quantitative",
-    "scale": {
-      "zoom": true
-    }
-  }
-}
-```
-
-Both `"index"` and `"locus"` scales are zoomable by default.
-
-### Zoom extent
-
-SCHEMA ZoomParams
-
-For `"index"` and `"locus"` scales, two-point zoom extents are inclusive.
-
-The following scale starts at `[10, 20]` and allows zooming out to the full
-data extent:
-
-```json
-{
-  ...,
-  "scale": {
-    "domain": [10, 20],
-    "zoom": {
-      "extent": "data"
-    }
-  }
-}
-```
-
-### Domain transitions
-
-By default, domain updates are applied with a smooth transition when that is
-possible. Set `domainTransition` to `false` to apply the new domain
-immediately. ExprRef-driven domains default to `domainTransition: false`
-unless overridden.
 
 ## Shared scales in composed views
 
@@ -533,6 +559,13 @@ example, the upper end of this size range follows the `maxSize` parameter:
   }
 }
 ```
+
+### Domain transitions
+
+By default, domain updates are applied with a smooth transition when that is
+possible. Set `domainTransition` to `false` to apply the new domain
+immediately. ExprRef-driven domains default to `domainTransition: false`
+unless overridden.
 
 ### Parameter scope
 

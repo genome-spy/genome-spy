@@ -27,14 +27,6 @@ contains only current work that still has a concrete renderer or Core consumer.
 - Adding registries, a renderer scene graph, per-facet marks, or speculative
   backend abstractions.
 
-## Active integration: categorical scale navigation
-
-Band scales expose retained rank viewports independently of categorical domains.
-The Categorical Grouping Gaps story and GPU picking tests cover viewport updates,
-partial gaps, and unequal placements. Core still needs to connect its resolution
-state, interaction controller, and adapter to this API; see
-`plans/zoomable-band-scale/zoomable-band-scale-plan.md` at the repository root.
-
 ## Active integration: aligned rule borders
 
 The standalone rule API composes fill and stroke with inside/center/outside

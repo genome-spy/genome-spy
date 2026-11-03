@@ -584,6 +584,23 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 true
             );
         }
+        if ("viewport" in channel.scale) {
+            add(
+                key + ":viewport",
+                () => {
+                    const viewport = channel.scale.viewport;
+                    return viewport
+                        ? [viewport.interval, viewport.gapRanks]
+                        : null;
+                },
+                (value) =>
+                    scaleSlot.setViewport(
+                        value
+                            ? { interval: value[0], gapRanks: value[1] }
+                            : null
+                    )
+            );
+        }
         if ("range" in channel.scale) {
             add(
                 key + ":range",

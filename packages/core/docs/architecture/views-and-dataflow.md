@@ -178,6 +178,16 @@ updates from normalized snapshots before the live scale is changed. Its initial
 phase distinguishes collecting, early interaction, and complete readiness;
 interaction protects the display without ending reference collection.
 
+Band and point scales retain their complete categorical domain. `DomainRuntime`
+also owns their numeric scale viewport (null means fit all categories), using
+its existing command queue and transition resource. Viewport updates publish
+mapping and zoom state plus a `viewport` event, without emitting a category
+`domain` event or freezing later membership changes. `ScaleInstanceManager`
+mirrors viewport commands separately. Index, band, and point share numeric
+geometry/navigation in `scales/bandMapping.js`; categorical wrappers only add
+category lookup and physical band-edge semantics. Layout scrolling continues to
+use the independent concat viewport.
+
 All scale kinds compile expression dependencies, accessors and viewport topology
 in `domainInputs.js`. Subtree initialization binds each affected resolution once
 after installing all encoders. The binding owns collector subscriptions and

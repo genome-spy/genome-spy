@@ -223,7 +223,7 @@ test("categorical mappings refresh shared textures without re-encoding rows", as
             x: {
                 field: "category",
                 type: "nominal",
-                scale: { domain: { expr: "order" } },
+                scale: { domain: { expr: "order" }, zoom: true },
                 axis: null,
             },
         },
@@ -268,6 +268,9 @@ test("categorical mappings refresh shared textures without re-encoding rows", as
         resources.synchronize(entries);
         const texture = resources.getCategoricalTexture(resolution);
         expect(uploads).toEqual([[1, 2, 3, 0]]);
+        resolution.zoom(0.5, 0.5, 0, 200);
+        resources.synchronize(entries);
+        expect(uploads).toHaveLength(1);
 
         for (const order of [["c", "a"], ["b", "c", "a"], []]) {
             view.paramRuntime.setValue("order", order);
@@ -482,6 +485,7 @@ function createScaleResolution() {
         listeners,
         dispose,
         getScale: () => ({ type: "linear" }),
+        getDomainRef: () => ({ get: /** @returns {number[]} */ () => [] }),
         observeMapping: vi.fn((/** @type {() => void} */ listener) => {
             listeners.set("mapping", listener);
             return dispose;

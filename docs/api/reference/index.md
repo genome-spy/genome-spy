@@ -4,6 +4,7 @@ Public TypeScript API for `@genome-spy/core`.
 
 ## Interfaces
 
+- [CategoricalViewport](interfaces/CategoricalViewport.md)
 - [CoordinateAssembly](interfaces/CoordinateAssembly.md)
 - [CoordinateLocus](interfaces/CoordinateLocus.md)
 - [FontCatalogEntry](interfaces/FontCatalogEntry.md)

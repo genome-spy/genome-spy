@@ -1,15 +1,17 @@
 /**
- * @param {import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi} scaleResolution
+ * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
  * @returns {boolean}
  */
 export function shouldSerializeScaleDomain(scaleResolution) {
+    const type = scaleResolution.getResolvedScaleType();
+    if (type === "band" || type === "point") return false;
     const linkedDomainInfo = scaleResolution.getLinkedSelectionDomainInfo?.();
     return !linkedDomainInfo?.persist;
 }
 
 /**
- * @param {{ getNamedScaleResolutions: () => Map<string, import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi> }} genomeSpy
- * @param {(scaleResolution: import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionApi) => boolean} predicate
+ * @param {{ getNamedScaleResolutions: () => Map<string, import("@genome-spy/core/scales/scaleResolution.js").default> }} genomeSpy
+ * @param {(scaleResolution: import("@genome-spy/core/scales/scaleResolution.js").default) => boolean} predicate
  * @returns {Record<string, any>}
  */
 export function collectScaleDomains(genomeSpy, predicate) {

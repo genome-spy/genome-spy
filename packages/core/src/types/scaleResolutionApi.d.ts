@@ -1,6 +1,8 @@
 import { ComplexDomain, NumericDomain } from "../spec/scale.js";
+import { CategoricalViewport } from "../scales/scaleBand.js";
+export type { CategoricalViewport } from "../scales/scaleBand.js";
 
-export type ScaleResolutionEventType = "domain" | "range";
+export type ScaleResolutionEventType = "domain" | "range" | "viewport";
 export interface ScaleResolutionEvent {
     type: ScaleResolutionEventType;
 
@@ -32,6 +34,22 @@ export interface ZoomToOptions {
  * A public API for ScaleResolution
  */
 export interface ScaleResolutionApi {
+    /**
+     * Return detached band/point navigation state; null means fit all categories.
+     * Throws for other scale types. Listen to `"viewport"` events for navigation
+     * changes; the categorical domain continues to contain all categories.
+     */
+    getViewport(): CategoricalViewport | null;
+
+    /**
+     * Navigate a band/point scale in half-open rank coordinates, preserving its
+     * categorical domain. Null fits all categories; optional gap ranks retain
+     * partially visible gaps. Uses the same transition options as zoomTo().
+     */
+    zoomToViewport(
+        viewport: CategoricalViewport | null,
+        options?: ZoomToOptions
+    ): Promise<void>;
     addEventListener(
         type: ScaleResolutionEventType,
         listener: ScaleResolutionListener
@@ -45,7 +63,8 @@ export interface ScaleResolutionApi {
     /**
      * Returns the current, possibly zoomed domain. For locus scales, this is
      * the internal half-open numeric interval; zoomTo() currently expects an
-     * inclusive upper endpoint.
+     * inclusive upper endpoint. Band and point scales return the full ordered
+     * category domain, independently of their scale viewport.
      */
     getDomain(): any[];
 
@@ -84,6 +103,7 @@ export interface ScaleResolutionApi {
 
     /**
      * Zooms to the given interval, optionally animating the transition.
+     * Band and point scales use zoomToViewport() instead.
      *
      * For locus scales, explicit numeric and chromosome-relative endpoints are
      * zero-based with an inclusive upper endpoint. Subtract one from the upper

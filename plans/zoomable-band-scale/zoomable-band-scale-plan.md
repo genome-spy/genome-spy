@@ -1,7 +1,8 @@
 # Zoomable categorical scales
 
-Status: implementation in progress, 2026-11-03. Milestone 1 is implemented;
-Core grammar, resolution/controller integration, guides, and documentation remain.
+Status: implemented and verified, 2026-11-03. Both milestones are complete.
+Milestone 1: `5ad05ce1e`. Milestone 2 includes Core grammar, resolution/controller
+integration, guides, renderer adapters, App compatibility, and documentation.
 Baseline: `482e9a1d42d5b6bb1c293737a9cf0b647f229f3e`.
 Issues: [zoomable band scale #647](https://github.com/genome-spy/genome-spy/issues/647),
 [SampleView follow-up #573](https://github.com/genome-spy/genome-spy/issues/573).
@@ -37,7 +38,7 @@ constraints for viewport autoscaling remain outside this feature. Point navigati
 is included through the same categorical implementation, not through a separate
 milestone or policy.
 
-Current ownership and source anchors:
+Baseline ownership and source anchors (before implementation):
 
 - `packages/core/src/genome/scaleIndex.js` and `genome/indexGapMapping.js` own
   numeric band projection and gap-aware navigation. The latter already retains
@@ -351,16 +352,18 @@ Content ownership:
 | `docs/grammar/composition/concat.md#scrollable-viewports`                      | Replace the categorical-no-zoom assertion. Explain that pan changes a scale's numeric navigation window (domain or categorical viewport), while layout scrolling moves already-laid-out content. Link the common navigation section without repeating its tutorial.                  |
 | `docs/grammar/expressions.md#scale-functions`                                  | Explain that categorical `domain()` stays categorical and placement-dependent expressions react to navigation; use the common zoom metric. Link configuration back to Scales.                                                                                                        |
 | `packages/core/src/types/scaleResolutionApi.d.ts`                              | Exact snapshot/method/event semantics, fit mode and transition options. Regenerate TypeDoc under `docs/api/reference/`; do not edit generated files manually.                                                                                                                        |
-| `docs/api/runtime-state.md#named-scales`                                       | Add Categorical viewports after Domains, then broaden Domain events to Scale state events. Show only essential read/navigate/observe calls and link a runnable synchronization example. Preserve old heading anchors where links need compatibility.                                 |
+| `docs/api/runtime-state.md#named-scales`                                       | Add Categorical viewports after Domains, then retain Domain events for continuous-domain behavior. Show only essential read/navigate/observe calls and show complete-snapshot synchronization. Preserve old heading anchors where links need compatibility.                          |
 | `docs/grammar/parameters.md`                                                   | Keep interval selection's continuous-scale requirement clear; link to categorical navigation where useful.                                                                                                                                                                           |
 | `packages/core/src/spec/axis.d.ts` and `docs/grammar/axis.md#ticks-and-labels` | Define `labelSqueeze` and its band-only/default-false behavior in specification JSDoc. Explain per-band fitting and its precedence over overlap removal next to the existing overlap discussion; use the generated property reference and link to ranged text.                       |
 
-Add one self-contained `examples/docs/grammar/scale/zoomable-band.json` using
+Add one self-contained `examples/docs/grammar/scale/categorical-zoom.json` using
 synthetic inline/local data and a categorical axis plus an index axis. Demonstrate
 point through a short configuration variation, not a second near-identical spec.
-Keep `band-grouping-gaps.json` focused on gaps/step sizing; use an `examples/core/`
-integration variant for zoomed gaps and shared labels. Extend existing `scaleApi`
-or `linkedEmbeds` examples for exact viewport synchronization. Follow
+Keep `band-grouping-gaps.json` focused on gaps/step sizing. The mixed documentation
+example and real-spec regression tests cover zoomed gaps/shared guides without
+another maintained Core fixture. The runtime-state API page demonstrates exact
+viewport synchronization; a separate linked-embed demo was discarded as duplicate
+presentation of that small API example. Follow
 `examples/README.md`; do not import examples or add maintained `$schema` fields.
 Demonstrate `labelSqueeze: true` in the categorical example, with a short note
 linking to axis label fitting. Keep the fitting explanation on the Axis page and
@@ -393,6 +396,11 @@ wrapper. Document the renderer contract alongside it.
 Tentative commit: `feat(core): share band layout and add categorical viewports`.
 
 ### 2. Core grammar, lifecycle, guides, and interaction
+
+Implemented through the existing runtime, numeric mapping, gesture routing, and
+renderer slots. Full unit and workspace type checks pass; focused browser checks
+cover WebGL, WebGPU, Canvas2D, picking, resize, and SVG export. Axis output checks
+cover x/y fitting, rotation, gaps, stable tick data, and offscreen culling.
 
 Outcome: grammar-authored categorical navigation works through existing gestures,
 shared resolutions, all projection backends, and public embedding APIs.
@@ -445,6 +453,24 @@ retain wrapper-specific identity and inversion contracts. Stop when relevant
 checks pass. These milestones belong to one coherent feature branch; completion
 requires working rendering/embedding and safe existing App domain persistence,
 not storage of categorical viewports.
+
+### Verification outcome
+
+- Full monorepo suite: 578 files, 5,496 passing tests (one skipped, two todo).
+  Subsequent viewport configuration/startup fixes pass 512 focused scale,
+  layout, axis, and SVG tests, including their new regressions.
+- All workspace TypeScript checks, lint, Core production/declaration build,
+  App/Doc Embed builds, schema generation, API generation, and docs site pass.
+- Focused WebGPU gap picking: three tests pass, including sparse categorical
+  IDs, fractional gap edges, reverse ranges, and unequal placements. The
+  foundation Storybook build passed in milestone 1.
+- Browser wheel/drag, resize, band/point picking, and SVG export pass on WebGL,
+  WebGPU, and Canvas2D; grouping gaps remain 8 CSS pixels. The existing clustered
+  heatmap retains its window after tree-driven category reordering.
+- Two real embeds synchronize an animated exact viewport snapshot, including
+  fractional gap ranks, through the documented event and immediate-render API.
+- Release checks pass: Core minor, propagated through the fixed release group
+  from 1.2.0 to 1.3.0. App bookmark/URL viewport persistence remains deferred.
 
 ## Risks and delivery
 

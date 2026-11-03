@@ -1,13 +1,16 @@
+import { clampRange } from "vega-util";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 /**
- * Lifecycle policy for the scale resolution's single domain commit path. Inputs are normalized internal domains;
- * this module never reads collectors, mutates scales, or schedules callbacks.
+ * Lifecycle policy for the scale resolution's commit path. Inputs are internal
+ * domains or categorical rank intervals. This module never reads collectors,
+ * mutates scales, or schedules callbacks.
  *
  * @typedef {readonly (number | string | boolean)[]} Domain
- * @typedef {{ id: number, target: Domain }} DomainTransition
+ * @typedef {{ id: number, target: Domain, gapDomain?: readonly number[], viewport?: boolean, fit?: boolean }} DomainTransition
  * @typedef {{
  *   visibleDomain: Domain,
+ *   viewport?: import("./scaleBand.js").CategoricalViewport | null,
  *   gapDomain?: readonly number[],
  *   resetDomain: Domain,
  *   initialReference: Domain | undefined,
@@ -52,6 +55,8 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  *   domain: Domain,
  *   duration: number,
  *   gapDomain?: readonly number[],
+ *   viewport?: boolean,
+ *   fit?: boolean,
  * } | {
  *   type: "frame",
  *   id: number,
@@ -66,6 +71,9 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
  *   id: number,
  *   from: Domain,
  *   to: Domain,
+ *   gapDomain?: readonly number[],
+ *   viewport?: boolean,
+ *   fit?: boolean,
  *   duration: number,
  * }} TransitionAction
  * @typedef {{
@@ -126,17 +134,21 @@ export function planDomainUpdate(state, update, policy) {
                     : state,
                 domain,
                 policy,
-                update.type === "frame" ? update.gapDomain : undefined
+                update.type === "frame"
+                    ? update.gapDomain
+                    : state.transition.gapDomain,
+                !!state.transition.viewport,
+                update.type === "finish" && !!state.transition.fit
             );
         }
         case "navigate": {
-            if (policy.scaleKind === "discrete") {
+            if (policy.scaleKind === "discrete" && !update.viewport) {
                 throw new Error(
                     "Discrete domains do not support navigation or reset."
                 );
             }
             const next =
-                state.phase === "collecting"
+                state.phase === "collecting" && !update.viewport
                     ? { ...state, phase: /** @type {const} */ ("interacted") }
                     : state;
             return applyDomain(
@@ -144,7 +156,9 @@ export function planDomainUpdate(state, update, policy) {
                 update.domain,
                 update.duration,
                 policy,
-                update.gapDomain
+                update.gapDomain,
+                !!update.viewport,
+                !!update.fit
             );
         }
         case "data":
@@ -222,6 +236,13 @@ function planSourceUpdate(state, update, policy) {
         return unchanged(next);
     }
 
+    // An unchanged membership publication must not cancel viewport animation.
+    if (
+        state.transition?.viewport &&
+        shallowArrayEquals(update.candidate, state.visibleDomain)
+    )
+        return unchanged(next);
+
     const animate =
         state.phase === "ready" &&
         policy.scaleKind === "continuous" &&
@@ -247,28 +268,39 @@ function planSourceUpdate(state, update, policy) {
  * @param {number} duration
  * @param {DomainPolicy} policy
  * @param {readonly number[]} [gapDomain]
+ * @param {boolean} [viewport]
+ * @param {boolean} [fit]
  * @returns {DomainUpdatePlan}
  */
-function applyDomain(state, domain, duration, policy, gapDomain) {
+function applyDomain(
+    state,
+    domain,
+    duration,
+    policy,
+    gapDomain,
+    viewport = false,
+    fit = false
+) {
+    const from = viewport
+        ? (state.viewport?.interval ?? [0, state.visibleDomain.length])
+        : state.visibleDomain;
     if (
         duration > 0 &&
-        policy.scaleKind !== "discrete" &&
-        state.visibleDomain.length === 2 &&
+        (viewport || policy.scaleKind !== "discrete") &&
+        from.length === 2 &&
         domain.length === 2 &&
         // Exponential span interpolation requires nonzero spans of the same sign.
         // Empty startup domains acquire their first effective extent immediately.
         Number.isFinite(+domain[1] - +domain[0]) &&
-        Number.isFinite(+state.visibleDomain[1] - +state.visibleDomain[0]) &&
-        (+domain[1] - +domain[0]) *
-            (+state.visibleDomain[1] - +state.visibleDomain[0]) >
-            0 &&
-        !shallowArrayEquals(domain, state.visibleDomain)
+        Number.isFinite(+from[1] - +from[0]) &&
+        (+domain[1] - +domain[0]) * (+from[1] - +from[0]) > 0 &&
+        !shallowArrayEquals(domain, from)
     ) {
         const id = state.transitionSerial + 1;
         return {
             state: {
                 ...state,
-                transition: { id, target: domain },
+                transition: { id, target: domain, gapDomain, viewport, fit },
                 transitionSerial: id,
             },
             domainChanged: false,
@@ -276,8 +308,11 @@ function applyDomain(state, domain, duration, policy, gapDomain) {
             transition: {
                 type: "start",
                 id,
-                from: state.visibleDomain,
+                from,
                 to: domain,
+                gapDomain,
+                viewport,
+                fit,
                 duration,
             },
         };
@@ -288,7 +323,9 @@ function applyDomain(state, domain, duration, policy, gapDomain) {
             { ...state, transition: undefined },
             domain,
             policy,
-            gapDomain
+            gapDomain,
+            viewport,
+            fit
         ),
         transition: state.transition ? { type: "cancel" } : { type: "none" },
     };
@@ -299,15 +336,54 @@ function applyDomain(state, domain, duration, policy, gapDomain) {
  * @param {Domain} domain
  * @param {DomainPolicy} policy
  * @param {readonly number[]} [gapDomain]
+ * @param {boolean} [viewport]
+ * @param {boolean} [fit]
  * @returns {DomainUpdatePlan}
  */
-function commitDomain(state, domain, policy, gapDomain) {
+function commitDomain(
+    state,
+    domain,
+    policy,
+    gapDomain,
+    viewport = false,
+    fit = false
+) {
+    if (viewport) {
+        return unchanged({
+            ...state,
+            viewport: fit
+                ? null
+                : {
+                      interval: /** @type {[number, number]} */ (domain),
+                      ...(gapDomain
+                          ? {
+                                gapRanks: /** @type {[number, number]} */ (
+                                    gapDomain
+                                ),
+                            }
+                          : {}),
+                  },
+        });
+    }
     const domainChanged =
         !shallowArrayEquals(domain, state.visibleDomain) ||
         !shallowArrayEquals(gapDomain ?? [], state.gapDomain ?? []);
     return {
         state: domainChanged
-            ? { ...state, visibleDomain: domain, gapDomain }
+            ? {
+                  ...state,
+                  visibleDomain: domain,
+                  gapDomain,
+                  viewport:
+                      state.phase === "ready"
+                          ? reconcileViewport(
+                                state.viewport
+                                    ? { interval: state.viewport.interval }
+                                    : state.viewport,
+                                domain.length
+                            )
+                          : state.viewport,
+              }
             : state,
         domainChanged,
         // A configured initial domain may already match the startup display
@@ -329,4 +405,18 @@ function unchanged(state) {
         syncSelection: false,
         transition: { type: "none" },
     };
+}
+
+/** Preserve rank positions while reconciling a settled category membership change.
+ * @param {import("./scaleBand.js").CategoricalViewport | null | undefined} viewport
+ * @param {number} length
+ */
+export function reconcileViewport(viewport, length) {
+    if (!viewport || !length) return viewport;
+    const interval = clampRange(viewport.interval, 0, length);
+    return shallowArrayEquals(interval, viewport.interval)
+        ? viewport
+        : {
+              interval: /** @type {[number, number]} */ (interval),
+          };
 }

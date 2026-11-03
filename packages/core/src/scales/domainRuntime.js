@@ -4,7 +4,11 @@ import { createCancelToken } from "../utils/transition.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import deepEqual from "../utils/deepEqual.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
-import { createDomainState, planDomainUpdate } from "./domainLifecycle.js";
+import {
+    createDomainState,
+    planDomainUpdate,
+    reconcileViewport,
+} from "./domainLifecycle.js";
 
 // Streaming replay roots use their finite tree depth. Domain policy must see
 // every pending publication before making historical initialization decisions.
@@ -63,6 +67,7 @@ export default class DomainRuntime {
      * @param {import("./domainLifecycle.js").Domain} options.domain
      * @param {import("./domainLifecycle.js").Domain} options.resetDomain
      * @param {() => void} options.notifyDomain
+     * @param {() => void} [options.notifyViewport]
      * @param {() => void} options.renderImmediately
      * @param {() => void} options.publishZoom
      */
@@ -73,6 +78,7 @@ export default class DomainRuntime {
         domain,
         resetDomain,
         notifyDomain,
+        notifyViewport,
         publishZoom,
         renderImmediately,
     }) {
@@ -85,6 +91,25 @@ export default class DomainRuntime {
             "domain state",
             createDomainState(domain, resetDomain)
         );
+        if ("viewport" in manager.scale) {
+            this.#state.set({
+                ...this.state,
+                viewport:
+                    /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                        manager.scale
+                    ).viewport(),
+            });
+        }
+        this.viewport = runtime.computed(
+            "scale viewport",
+            [this.#state],
+            () => this.state.viewport,
+            { equals: (a, b) => deepEqual(a, b) }
+        );
+        if (notifyViewport)
+            runtime.effect([this.viewport], () => {
+                if (this.state.viewport !== undefined) notifyViewport();
+            });
         this.domain = runtime.computed(
             "displayed domain",
             [this.#state],
@@ -109,6 +134,9 @@ export default class DomainRuntime {
 
     /** @type {import("../paramRuntime/types.js").ComputedParamRef<import("./domainLifecycle.js").Domain>} */
     domain;
+
+    /** @type {import("../paramRuntime/types.js").ComputedParamRef<import("./scaleBand.js").CategoricalViewport | null | undefined>} */
+    viewport;
 
     get runtime() {
         return this.#runtime;
@@ -179,6 +207,11 @@ export default class DomainRuntime {
                 }
                 if (
                     "domain" in update &&
+                    !(update.type === "navigate" && update.viewport) &&
+                    !(
+                        update.type === "frame" &&
+                        this.state.transition?.viewport
+                    ) &&
                     !(
                         (update.type === "navigate" ||
                             update.type === "frame") &&
@@ -203,6 +236,10 @@ export default class DomainRuntime {
                 }
                 const previous = this.state;
                 const plan = planDomainUpdate(previous, update, this.policy());
+                const viewportChanged = !deepEqual(
+                    previous.viewport,
+                    plan.state.viewport
+                );
                 if (plan.transition.type !== "none") {
                     this.#cancelTransition();
                 }
@@ -211,6 +248,10 @@ export default class DomainRuntime {
                         plan.state.visibleDomain,
                         plan.state.gapDomain
                     );
+                    this.#renderRequested ||= operation.render;
+                }
+                if (viewportChanged) {
+                    this.#manager.mirrorViewport(plan.state.viewport ?? null);
                     this.#renderRequested ||= operation.render;
                 }
                 this.#state.set(plan.state);
@@ -225,6 +266,7 @@ export default class DomainRuntime {
                 }
                 if (
                     plan.domainChanged ||
+                    viewportChanged ||
                     !deepEqual(
                         previous.initialReference,
                         plan.state.initialReference
@@ -275,7 +317,14 @@ export default class DomainRuntime {
             this.#initialReady &&
             this.state.phase !== "ready"
         ) {
-            this.#state.set({ ...this.state, phase: "ready" });
+            const viewport = reconcileViewport(
+                this.state.viewport,
+                this.state.visibleDomain.length
+            );
+            const viewportChanged = !deepEqual(viewport, this.state.viewport);
+            if (viewportChanged) this.#manager.mirrorViewport(viewport ?? null);
+            this.#state.set({ ...this.state, phase: "ready", viewport });
+            if (viewportChanged) this.#publishZoom();
         }
     };
 
@@ -306,15 +355,25 @@ export default class DomainRuntime {
         const fc = from[0] + fw / 2;
         const tc = to[0] + tw / 2;
         const scale = this.#manager.scale;
-        const indexScale =
-            "gapMapping" in scale
-                ? /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+        const numericScale =
+            "navigationMapping" in scale
+                ? /** @type {import("../genome/scaleIndex.js").ScaleIndex & import("./scaleBand.js").CategoricalGapScale} */ (
                       scale
                   )
                 : undefined;
-        const sourceMapping = indexScale?.gapMapping();
-        const targetMapping =
-            sourceMapping && indexScale.copy().domain(to).gapMapping();
+        const sourceMapping = numericScale?.navigationMapping();
+        const targetScale = numericScale?.copy();
+        if (targetScale) {
+            if (action.viewport)
+                targetScale.viewport({
+                    interval: /** @type {[number, number]} */ (to),
+                    gapRanks: /** @type {[number, number]} */ (
+                        action.gapDomain
+                    ),
+                });
+            else targetScale.domain(to, action.gapDomain);
+        }
+        const targetMapping = targetScale?.navigationMapping();
         const token = createCancelToken();
         this.#transitionToken = token;
         await this.#animator.transition({

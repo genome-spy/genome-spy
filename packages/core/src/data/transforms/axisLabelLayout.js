@@ -167,7 +167,11 @@ export default class AxisLabelLayoutTransform extends Transform {
 
         const method = this.getOverlapMethod(scale);
         const labelCandidates = this.nextOutputData.filter(
-            (datum) => datum.label !== ""
+            (datum) =>
+                datum.label !== "" &&
+                ((scale.type !== "band" && scale.type !== "point") ||
+                    (position(datum.value) >= 0 &&
+                        position(datum.value) <= axisLength))
         );
         /**
          * @param {import("../flowNode.js").Datum} datum

@@ -1,10 +1,17 @@
 import { Scalar } from "../spec/channel.js";
 import { Scale } from "../spec/scale.js";
 
+/** Exact navigation snapshot for a band or point scale. */
 export interface CategoricalViewport {
+    /** Half-open category-rank interval; endpoints may be fractional. */
     interval: [number, number];
+    /** Fractional gap-edge ranks. Preserve these for exact restoration through grouping gaps. */
     gapRanks?: [number, number];
 }
+
+export function copyViewport(
+    value: CategoricalViewport | null
+): CategoricalViewport | null;
 
 /** Forward projection shared by categorical and index-like grouping gaps. */
 export interface GroupingGapMapping<Value = Scalar> {

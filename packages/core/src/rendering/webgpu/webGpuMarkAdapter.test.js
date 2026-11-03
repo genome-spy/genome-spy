@@ -775,6 +775,7 @@ describe("WebGPU mark adapter", () => {
             expect(x.type).toBe("u32");
             expect(x.scale).toEqual({
                 type: "band",
+                viewport: null,
                 definition: bandScaleDefinition,
                 domain: [0, 1],
                 range: [10, 110],
@@ -2476,7 +2477,19 @@ function createMark(type, data, encoders, properties = {}) {
                 getCollector: () => ({
                     facetBatches: new Map([[undefined, data]]),
                 }),
-                getScaleResolution: /** @returns {undefined} */ () => undefined,
+                getScaleResolution: (/** @type {string} */ channel) => {
+                    const scale =
+                        encoders[channel]?.scale ??
+                        encoders[channel + "2"]?.scale;
+                    return scale
+                        ? {
+                              getScale: () => scale,
+                              getDomainRef: () => ({
+                                  get: () => scale.domain().slice(),
+                              }),
+                          }
+                        : undefined;
+                },
                 getPathString: () => "root/plot",
                 paramRuntime: {
                     watchExpression: vi.fn(),
@@ -2573,6 +2586,7 @@ function createLinearScale(domain, reverse = false) {
 function createBandScale(domain, reverse = false) {
     return {
         type: "band",
+        viewport: /** @returns {null} */ () => null,
         domain: () => domain,
         props: {
             reverse,

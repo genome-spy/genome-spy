@@ -785,6 +785,11 @@ export default class GridChild {
             return configuredPolicy;
         }
 
+        const scaleType = view
+            .getScaleResolution(channel)
+            ?.getResolvedScaleType();
+        if (scaleType === "band" || scaleType === "point") return "anchor";
+
         return (channel === "x" &&
             (view.spec.viewportWidth != null ||
                 this.layoutParent.spec.viewportWidth != null)) ||

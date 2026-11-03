@@ -2257,6 +2257,58 @@ describe("GridView wheel zoom", () => {
         return preventDefault;
     };
 
+    test("shared band navigation and index zoom use the same wheel routing", async () => {
+        const unit = makeGapZoomSpec();
+        unit.data = {
+            values: [0, 1, 2, 3].map((i) => ({ x: "ABCD"[i], y: i })),
+        };
+        unit.encoding.x = {
+            field: "x",
+            type: "nominal",
+            scale: {
+                type: "band",
+                domain: ["A", "B", "C", "D"],
+                zoom: true,
+                gapPositions: ["C"],
+                gapWidth: 6,
+            },
+        };
+        unit.encoding.y = {
+            field: "y",
+            type: "index",
+            scale: { domain: [0, 3] },
+        };
+        const view = /** @type {ConcatView} */ (
+            await createAndInitialize(
+                {
+                    vconcat: [unit, unit],
+                    resolve: { scale: { x: "shared" }, axis: { x: "shared" } },
+                },
+                ConcatView
+            )
+        );
+        renderForLayout(view);
+        const child = view.children[0];
+        const x = child.getScaleResolution("x");
+        const y = child.getScaleResolution("y");
+        expect(view.children[1].getScaleResolution("x")).toBe(x);
+        const yDomain = y.getDomain();
+        dispatchWheel(
+            view,
+            new Point(
+                child.coords.x + child.coords.width / 2,
+                child.coords.y + child.coords.height / 2
+            )
+        );
+        expect(x.getViewport()).not.toBeNull();
+        expect(x.getDomain()).toEqual(["A", "B", "C", "D"]);
+        expect(y.getDomain()).not.toEqual(yDomain);
+        const viewport = x.getViewport();
+        dispatchWheel(view, findSharedAxisPoint(view, "vconcat"));
+        expect(x.getViewport()).not.toEqual(viewport);
+        view.disposeSubtree();
+    });
+
     test("applies zoom to both x and y resolutions", async () => {
         const zoomableUnitSpec = makeGapZoomSpec();
 

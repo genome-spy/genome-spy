@@ -1,4 +1,4 @@
-import { isContinuous } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 
 import {
     isPositionalChannel,
@@ -11,6 +11,21 @@ import {
     ORDINAL,
     QUANTITATIVE,
 } from "./scaleResolutionConstants.js";
+
+/** @param {string | undefined} type */
+export function isCategoricalPositionScale(type) {
+    return type === "band" || type === "point";
+}
+
+/** Gesture support is distinct from continuous-domain lifecycle policy.
+ * @param {string | undefined} type
+ */
+export function supportsScaleNavigation(type) {
+    return (
+        isCategoricalPositionScale(type) ||
+        (isContinuous(type) && !isDiscrete(type))
+    );
+}
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
