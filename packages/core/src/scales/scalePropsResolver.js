@@ -16,6 +16,7 @@ import {
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import {
     applyLockedProperties,
+    isCategoricalPositionScale,
     getDefaultScaleType,
     validateScaleTypeCompatibility,
 } from "./scaleRules.js";
@@ -220,6 +221,23 @@ export function resolveScalePropsBase({
     }
 
     applyLockedProperties(props, channel);
+
+    const categorical = isCategoricalPositionScale(props.type);
+    if (
+        (props.viewport !== undefined || (categorical && props.zoom)) &&
+        (!categorical || !["x", "y"].includes(channel))
+    )
+        throw new Error(
+            "Categorical viewports and navigation require a positional band or point scale."
+        );
+    if (categorical && typeof props.zoom === "object")
+        throw new Error(
+            "Categorical zoom must be boolean; its bounds are the full domain."
+        );
+    if (categorical && props.round && (props.zoom || props.viewport != null))
+        throw new Error(
+            "Categorical scale navigation does not support round: true."
+        );
 
     return props;
 }

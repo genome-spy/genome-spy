@@ -2,4 +2,4 @@
 
 # Type Alias: ScaleResolutionEventType
 
-> **ScaleResolutionEventType** = `"domain"` \| `"range"`
+> **ScaleResolutionEventType** = `"domain"` \| `"range"` \| `"viewport"`

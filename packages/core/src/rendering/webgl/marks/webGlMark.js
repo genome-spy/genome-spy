@@ -774,7 +774,16 @@ export default class WebGLMark {
                         const set = () => {
                             let domain;
                             if (isDiscrete(scale.type)) {
-                                domain = [0, scale.domain().length];
+                                domain =
+                                    "viewport" in scale
+                                        ? /** @type {import("../../../scales/scaleBand.js").CategoricalGapScale} */ (
+                                              scale
+                                          ).viewport()?.interval
+                                        : undefined;
+                                domain ??= [
+                                    0,
+                                    scaleResolution.getDomainRef().get().length,
+                                ];
                             } else if (isDiscretizing(scale.type)) {
                                 domain = getDiscretizingDomainForGlsl(scale);
                             } else {
@@ -794,6 +803,11 @@ export default class WebGLMark {
                             set
                         );
 
+                        this.registerScaleResolutionListener(
+                            scaleResolution,
+                            "viewport",
+                            set
+                        );
                         // Initial value
                         set();
                     });
@@ -1063,7 +1077,7 @@ export default class WebGLMark {
 
     /**
      * @param {import("../../../scales/scaleResolution.js").default} resolution
-     * @param {"domain" | "range"} type
+     * @param {import("../../../types/scaleResolutionApi.js").ScaleResolutionEventType} type
      * @param {() => void} listener
      */
     registerScaleResolutionListener(resolution, type, listener) {
@@ -1276,12 +1290,19 @@ export default class WebGLMark {
                         );
                     const categorical =
                         scale.type === "band" || scale.type === "point";
+                    const viewport =
+                        "viewport" in scale ? scale.viewport() : null;
                     const domain = categorical
-                        ? [0, scale.domain().length]
+                        ? (viewport?.interval ?? [
+                              0,
+                              resolution.getDomainRef().get().length,
+                          ])
                         : scale.domain().map(Number);
                     const cuts = scale.gapPositions();
                     const ranks =
-                        "gapDomain" in scale ? scale.gapDomain() : undefined;
+                        "gapDomain" in scale
+                            ? scale.gapDomain()
+                            : viewport?.gapRanks;
                     setUniforms(this.programInfo, {
                         ["uGapCuts_" + channel]:
                             this.rendererResources.getGapTexture(resolution),

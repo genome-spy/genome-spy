@@ -495,12 +495,27 @@ export default class WebGLRendererResources {
 
             this.glHelper.createRangeTexture(resolution);
             this.#updateCategoricalTexture(resolution);
+            let categoricalScale = resolution.getScale();
+            let categoricalDomain = isDiscrete(categoricalScale.type)
+                ? resolution.getDomainRef().get()
+                : undefined;
             this.#scaleResolutionRefs.set(resolution, {
                 count: 1,
                 dispose: resolution.observeMapping(() => {
                     this.#releaseDisabledGapTexture(resolution);
                     this.glHelper.createRangeTexture(resolution, true);
-                    this.#updateCategoricalTexture(resolution);
+                    const scale = resolution.getScale();
+                    const domain = isDiscrete(scale.type)
+                        ? resolution.getDomainRef().get()
+                        : undefined;
+                    if (
+                        domain !== categoricalDomain ||
+                        scale !== categoricalScale
+                    ) {
+                        categoricalDomain = domain;
+                        categoricalScale = scale;
+                        this.#updateCategoricalTexture(resolution);
+                    }
                 }),
             });
         }

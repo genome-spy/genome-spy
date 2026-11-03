@@ -32,23 +32,6 @@ int gapRank_${name}(uvec2 value, bool before) {
 }
 `;
 
-    if (categorical)
-        return (
-            shared +
-            `
-float scaleBandGaps_${name}(uint value, vec2 domain, vec2 range,
-    float paddingInner, float paddingOuter, float align, float band) {
-    float gap = uGapGeometry_${name}.x / ${axis};
-    float count = uGapGeometry_${name}.z;
-    bool reverse = range.y < range.x;
-    vec2 compressed = range - (reverse ? vec2(gap * count, 0.0) : vec2(0.0, gap * count));
-    float rank = float(gapRank_${name}(uvec2(value >> 12u, value & 4095u), false));
-    return scaleBand(value, domain, compressed, paddingInner, paddingOuter, align, band)
-        + gap * (reverse ? count - rank : rank);
-}
-`
-        );
-
     return (
         shared +
         `
@@ -57,7 +40,8 @@ float scaleGaps_${name}(uvec2 value, vec3 domain, vec2 range,
     vec4 geometry = uGapGeometry_${name};
     float gap = geometry.x / ${axis} * sign(range.y - range.x);
     float available = range.y - range.x - gap * (geometry.z - geometry.y);
-    float step = available / max(geometry.w > 0.5 ? 1e-9 : 1.0, domain.z - paddingInner + 2.0 * paddingOuter);
+    float space = max(geometry.w > 0.5 ? 1e-9 : ${categorical ? "0.0" : "1.0"}, domain.z - paddingInner + 2.0 * paddingOuter);
+    float step = available / (space > 0.0 ? space : 1.0);
     float start = range.x + (available - step * (domain.z - paddingInner)) * align;
     float inf = 1.0 / uZero;
     float hi = max(float(value.x) * 4096.0 - domain.x, -inf);
@@ -71,6 +55,17 @@ float scaleGaps_${name}(uint value, vec3 domain, vec2 range,
     return scaleGaps_${name}(uvec2(value >> 12u, value & 4095u), domain, range,
         paddingInner, paddingOuter, align, band, before);
 }
+` +
+        (categorical
+            ? `
+float scaleBandGaps_${name}(uint value, vec2 domain, vec2 range,
+    float paddingInner, float paddingOuter, float align, float band) {
+    bool reverse = range.y < range.x;
+    return scaleGaps_${name}(value, vec3(domain.x, 0.0, domain.y - domain.x), range,
+        paddingInner, paddingOuter, reverse ? 1.0 - align : align,
+        reverse ? 1.0 - band : band, false);
+}
 `
+            : "")
     );
 }

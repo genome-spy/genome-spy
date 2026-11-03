@@ -127,6 +127,7 @@ var SKIP = toSet([
     "interpolate",
     "interpolateGamma",
     "zoom",
+    "viewport",
     "fp64",
     "name",
 ]);

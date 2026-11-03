@@ -64,11 +64,11 @@ fn groupingGapsFit(range: vec2<f32>, geometry: vec4<f32>, placement: f32) -> boo
 
 fn scaleIndexGaps(value: vec2<u32>, domain: vec3<f32>, range: vec2<f32>,
     table: vec2<u32>, geometry: vec4<f32>, paddingInner: f32,
-    paddingOuter: f32, align: f32, band: f32, before: bool, placement: f32) -> f32 {
+    paddingOuter: f32, align: f32, band: f32, before: bool, placement: f32, minimumSpan: f32) -> f32 {
     let gap = geometry.x * sign(range.y - range.x) / max(placement, 1e-9);
     let available = range.y - range.x - gap * (geometry.z - geometry.y);
-    let denominator = max(select(1.0, 1e-9, geometry.w > 0.5), domain.z - paddingInner + 2.0 * paddingOuter);
-    let step = available / denominator;
+    let denominator = max(select(minimumSpan, 1e-9, geometry.w > 0.5), domain.z - paddingInner + 2.0 * paddingOuter);
+    let step = available / select(1.0, denominator, denominator > 0.0);
     let start = range.x + (available - step * (domain.z - paddingInner)) * align;
     let hi = stableSub(f32(value.x) * 4096.0, domain.x);
     let lo = stableSub(f32(value.y), domain.y);
@@ -81,12 +81,11 @@ fn scaleBandGaps(value: u32, domain: vec2<f32>, range: vec2<f32>,
     table: vec2<u32>, geometry: vec4<f32>, paddingInner: f32,
     paddingOuter: f32, align: f32, band: f32, placement: f32) -> f32 {
     let reverse = range.y < range.x;
-    let gap = geometry.x / max(placement, 1e-9);
-    let count = geometry.z - geometry.y;
-    let compressed = range - select(vec2<f32>(0.0, gap * count), vec2<f32>(gap * count, 0.0), reverse);
-    let rank = f32(cutRank(vec2<u32>(value >> 12u, value & 4095u), table, false)) - geometry.y;
-    return scaleBand(value, domain, compressed, paddingInner, paddingOuter, align, band)
-        + gap * select(rank, count - rank, reverse);
+    // Category lookup supplies a dense rank; reuse index gap projection.
+    let numericDomain = vec3<f32>(domain.x, 0.0, domain.y - domain.x);
+    return scaleIndexGaps(vec2<u32>(value >> 12u, value & 4095u),
+        numericDomain, range, table, geometry, paddingInner, paddingOuter,
+        select(align, 1.0 - align, reverse), select(band, 1.0 - band, reverse), false, placement, 0.0);
 }
 #endif
 `;

@@ -205,7 +205,10 @@ rows.
 
 ### Interval Selection
 
-Interval selections allow for selecting a range of rows along one or two axes.
+Interval selections allow for selecting a range of rows along one or two
+continuous axes. Band and point scales support
+[viewport navigation](scale.md#categorical-scale-viewports), but do not support
+interval brushing.
 They also support [brushing numeric gradient legends](legend.md#numeric-ranges)
 through a single color, fill, or stroke component with `bind: "legend"`.
 The selected range includes its start and excludes its end. For example, an

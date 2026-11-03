@@ -7,6 +7,7 @@ import {
 describe("scaleDomainUtils", () => {
     test("skips separate scale-domain serialization when a linked selection is persisted", () => {
         const resolution = {
+            getResolvedScaleType: () => "linear",
             getLinkedSelectionDomainInfo: () => ({
                 param: "brush",
                 encoding: "x",
@@ -19,6 +20,7 @@ describe("scaleDomainUtils", () => {
 
     test("serializes scale domains when the linked selection is ephemeral", () => {
         const resolution = {
+            getResolvedScaleType: () => "linear",
             getLinkedSelectionDomainInfo: () => ({
                 param: "brush",
                 encoding: "x",
@@ -36,6 +38,7 @@ describe("scaleDomainUtils", () => {
                     [
                         "linked",
                         {
+                            getResolvedScaleType: () => "index",
                             isZoomed: () => true,
                             getComplexDomain: () => [1, 2],
                             getLinkedSelectionDomainInfo: () => ({
@@ -48,6 +51,7 @@ describe("scaleDomainUtils", () => {
                     [
                         "ephemeralLinked",
                         {
+                            getResolvedScaleType: () => "index",
                             isZoomed: () => true,
                             getComplexDomain: () => [3, 4],
                             getLinkedSelectionDomainInfo: () => ({
@@ -57,9 +61,18 @@ describe("scaleDomainUtils", () => {
                             }),
                         },
                     ],
+                    ...["band", "point"].map((type) => [
+                        type,
+                        {
+                            getResolvedScaleType: () => type,
+                            isZoomed: () => true,
+                            getComplexDomain: () => [0, 1],
+                        },
+                    ]),
                     [
                         "plain",
                         {
+                            getResolvedScaleType: () => "index",
                             isZoomed: () => true,
                             getComplexDomain: () => [5, 6],
                             getLinkedSelectionDomainInfo: () => undefined,

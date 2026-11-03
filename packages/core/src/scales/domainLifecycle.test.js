@@ -93,7 +93,11 @@ describe("domain lifecycle policy", () => {
     test("early navigation protects the display while the initial reference finishes collecting", () => {
         const model = createModel({ zoomable: true });
         model.send(data([0, 10], { readiness: "pending" }));
-        model.send({ type: "navigate", domain: [2, 4], duration: 0 });
+        model.send({
+            type: "navigate",
+            target: { domain: [2, 4] },
+            duration: 0,
+        });
         expect(model.state.phase).toBe("interacted");
 
         const late = model.send(data([0, 30], { readiness: "pending" }));
@@ -118,13 +122,17 @@ describe("domain lifecycle policy", () => {
             dataExtent: [0, 400],
         });
         model.send(configured);
-        model.send({ type: "navigate", domain: [200, 211], duration: 0 });
+        model.send({
+            type: "navigate",
+            target: { domain: [200, 211] },
+            duration: 0,
+        });
         model.send({ ...configured, dataExtent: [0, 500] });
         expect(model.state.visibleDomain).toEqual([200, 211]);
         expect(model.state.dataExtent).toEqual([0, 500]);
         const reset = model.send({
             type: "navigate",
-            domain: model.state.resetDomain,
+            target: { domain: model.state.resetDomain },
             duration: 0,
         });
         expect(reset.state.visibleDomain).toEqual([190, 231]);
@@ -177,7 +185,7 @@ describe("domain lifecycle policy", () => {
         expect(model.send(data([20, 40])).syncSelection).toBe(true);
         const navigation = model.send({
             type: "navigate",
-            domain: [30, 50],
+            target: { domain: [30, 50] },
             duration: 0,
         });
         expect(navigation.syncSelection).toBe(true);
@@ -216,7 +224,7 @@ describe("domain lifecycle policy", () => {
             const frame = primary.send({
                 type: "frame",
                 id,
-                domain: [0, upper],
+                target: { domain: [0, upper] },
             });
             expect(frame.domainChanged).toBe(true);
             const result = calibrated.send(
@@ -237,7 +245,7 @@ describe("domain lifecycle policy", () => {
         model.send(data([0, 10]));
         model.send(data([0, 20]));
         const first = model.state.transition.id;
-        model.send({ type: "frame", id: first, domain: [0, 12] });
+        model.send({ type: "frame", id: first, target: { domain: [0, 12] } });
         expect(model.send(data([0, 20])).transition.type).toBe("none");
         expect(model.state.transition.id).toBe(first);
 
@@ -250,8 +258,11 @@ describe("domain lifecycle policy", () => {
         const second = model.state.transition.id;
         expect(second).not.toBe(first);
         expect(
-            model.send({ type: "frame", id: first, domain: [0, 18] })
-                .domainChanged
+            model.send({
+                type: "frame",
+                id: first,
+                target: { domain: [0, 18] },
+            }).domainChanged
         ).toBe(false);
         model.send({ type: "finish", id: first });
         expect(model.state.visibleDomain).toEqual([0, 12]);
@@ -266,7 +277,7 @@ describe("domain lifecycle policy", () => {
         const id = model.state.transition.id;
         const navigation = model.send({
             type: "navigate",
-            domain: [4, 6],
+            target: { domain: [4, 6] },
             duration: 0,
         });
         expect(navigation.transition.type).toBe("cancel");
@@ -302,7 +313,7 @@ describe("domain lifecycle policy", () => {
         model.send(data([0, 400]));
         const navigation = model.send({
             type: "navigate",
-            domain: [190, 231],
+            target: { domain: [190, 231] },
             duration: 700,
         });
         expect(navigation.transition).toMatchObject({
@@ -315,21 +326,33 @@ describe("domain lifecycle policy", () => {
     test("an authoritative selection cancels an animation even when its target matches", () => {
         const model = createModel({ zoomable: true, selectionLinked: true });
         model.send(data([0, 100]));
-        model.send({ type: "navigate", domain: [20, 40], duration: 700 });
+        model.send({
+            type: "navigate",
+            target: { domain: [20, 40] },
+            duration: 700,
+        });
         const id = model.state.transition.id;
         const brush = model.send(data([20, 40], { type: "selection" }));
         expect(brush.transition.type).toBe("cancel");
         expect(model.state.visibleDomain).toEqual([20, 40]);
-        model.send({ type: "frame", id, domain: [10, 70] });
+        model.send({ type: "frame", id, target: { domain: [10, 70] } });
         expect(model.state.visibleDomain).toEqual([20, 40]);
     });
 
     test("selection echoes of committed animation frames do not cancel the linked zoom", () => {
         const model = createModel({ zoomable: true, selectionLinked: true });
         model.send(data([0, 100]));
-        model.send({ type: "navigate", domain: [20, 40], duration: 700 });
+        model.send({
+            type: "navigate",
+            target: { domain: [20, 40] },
+            duration: 700,
+        });
         const id = model.state.transition.id;
-        const frame = model.send({ type: "frame", id, domain: [10, 70] });
+        const frame = model.send({
+            type: "frame",
+            id,
+            target: { domain: [10, 70] },
+        });
         expect(frame.syncSelection).toBe(true);
         const echo = model.send(data([10, 70], { type: "selection-sync" }));
         expect(echo.transition.type).toBe("none");
@@ -348,9 +371,13 @@ describe("domain lifecycle policy", () => {
                 selectionLinked: true,
             });
             model.send(data([0, 100]));
-            model.send({ type: "navigate", domain: [20, 40], duration: 700 });
+            model.send({
+                type: "navigate",
+                target: { domain: [20, 40] },
+                duration: 700,
+            });
             const id = model.state.transition.id;
-            model.send({ type: "frame", id, domain: [10, 70] });
+            model.send({ type: "frame", id, target: { domain: [10, 70] } });
             const refresh = model.send(
                 data([10, 70], { type, dataExtent: [0, 200] })
             );
@@ -375,7 +402,11 @@ describe("domain lifecycle policy", () => {
                 selectionLinked: true,
             });
             model.send(data([0, 100]));
-            model.send({ type: "navigate", domain: [20, 40], duration: 700 });
+            model.send({
+                type: "navigate",
+                target: { domain: [20, 40] },
+                duration: 700,
+            });
             const id = model.state.transition.id;
             const clear = model.send(data([0, 100], { type }));
             expect(clear.domainChanged).toBe(false);
@@ -389,7 +420,11 @@ describe("domain lifecycle policy", () => {
     test("explicit configuration can replace a zoomable domain without data gaining authority", () => {
         const model = createModel({ zoomable: true, animateChanges: false });
         model.send(data([0, 10]));
-        model.send({ type: "navigate", domain: [2, 4], duration: 0 });
+        model.send({
+            type: "navigate",
+            target: { domain: [2, 4] },
+            duration: 0,
+        });
         const updated = model.send(data([0, 20], { type: "configuration" }));
         expect(updated.state.visibleDomain).toEqual([0, 20]);
         model.send(data([0, 30]));

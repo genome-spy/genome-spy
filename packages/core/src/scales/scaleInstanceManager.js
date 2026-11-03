@@ -1,3 +1,4 @@
+import deepEqual from "../utils/deepEqual.js";
 import { isDiscrete } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
@@ -24,6 +25,7 @@ import {
  *   props: import("../spec/scale.js").Scale,
  *   domain: readonly any[],
  *   gapDomain: readonly number[] | undefined,
+ *   viewport: import("./scaleBand.js").CategoricalViewport | null | undefined,
  *   gapPositions: readonly number[],
  *   gapWidth: number | null,
  *   configuredRange: any[] | undefined,
@@ -50,7 +52,7 @@ export default class ScaleInstanceManager {
     /** @type {() => ViewParamRuntime} */
     #getRuntime;
 
-    /** @type {import("../paramRuntime/types.js").ParamRef<Pick<import("./domainLifecycle.js").DomainState, "visibleDomain" | "gapDomain">>} */
+    /** @type {import("../paramRuntime/types.js").ParamRef<Pick<import("./domainLifecycle.js").DomainState, "visibleDomain" | "gapDomain" | "viewport">>} */
     #domainState;
 
     /** @type {import("../paramRuntime/types.js").OperationRef<MappingConfiguration | null>} */
@@ -80,6 +82,12 @@ export default class ScaleInstanceManager {
     /** @type {(domain: any[], ranks?: readonly number[]) => void} */
     #mirrorDomain;
 
+    /** @type {(viewport: import("./scaleBand.js").CategoricalViewport | null) => void} */
+    #mirrorViewport;
+
+    /** @type {(viewport: import("./scaleBand.js").CategoricalViewport | null) => void} */
+    #onViewportChange;
+
     /** @type {() => import("../genome/genomeStore.js").default | undefined} */
     #getGenomeStore;
 
@@ -100,6 +108,7 @@ export default class ScaleInstanceManager {
      * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
      * @param {(domain: any[]) => void} options.onDomainChange
+     * @param {(viewport: import("./scaleBand.js").CategoricalViewport | null) => void} [options.onViewportChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      * @param {() => number} [options.getAxisLength]
      * @param {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} [options.validateGapExpression]
@@ -109,6 +118,9 @@ export default class ScaleInstanceManager {
         createExpression,
         onRangeChange,
         onDomainChange,
+        onViewportChange = () => {
+            throw new Error("Viewport commands are not configured.");
+        },
         getGenomeStore,
         getAxisLength = () => 0,
         validateGapExpression = () => {},
@@ -117,6 +129,7 @@ export default class ScaleInstanceManager {
         this.#createExpression = createExpression;
         this.#onRangeChange = onRangeChange;
         this.#onDomainChange = onDomainChange;
+        this.#onViewportChange = onViewportChange;
         this.#getGenomeStore = getGenomeStore;
         this.#getAxisLength = getAxisLength;
         this.#validateGapExpression = validateGapExpression;
@@ -159,7 +172,7 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
-     * @param {(domain: any[]) => import("../paramRuntime/types.js").ParamRef<Pick<import("./domainLifecycle.js").DomainState, "visibleDomain" | "gapDomain">>} initializeDomain Before range expressions bind.
+     * @param {(domain: any[]) => import("../paramRuntime/types.js").ParamRef<Pick<import("./domainLifecycle.js").DomainState, "visibleDomain" | "gapDomain" | "viewport">>} initializeDomain Before range expressions bind.
      * @returns {ScaleWithProps}
      */
     createScale(props, initializeDomain) {
@@ -183,6 +196,16 @@ export default class ScaleInstanceManager {
                 scale
             ).axisLength(this.#getAxisLength);
         this.#mirrorDomain = scale.domain;
+        if ("viewport" in scale) {
+            const categorical =
+                /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                    scale
+                );
+            this.#mirrorViewport = categorical.viewport;
+            this.#mirrorViewport(
+                props.viewport ? { interval: props.viewport } : null
+            );
+        }
         if (scale.type !== "null")
             this.#domainState = initializeDomain(scale.domain());
         this.#setRange = scale.range;
@@ -208,11 +231,28 @@ export default class ScaleInstanceManager {
                             mapping.gapPositions,
                             previous.gapPositions
                         ));
+                const viewportConfigured =
+                    previous &&
+                    !shallowArrayEquals(
+                        previous.props.viewport ?? [],
+                        mapping.props.viewport ?? []
+                    );
                 previous = mapping;
                 // Domain commands belong to terminal propagation, not operation application.
                 if (mapping.gapDomain && settingsChanged)
                     this.#onDomainChange(Array.from(mapping.domain));
-                else this.#onRangeChange();
+                else {
+                    if (
+                        mapping.viewport !== undefined &&
+                        (settingsChanged || viewportConfigured)
+                    ) {
+                        const interval = viewportConfigured
+                            ? mapping.props.viewport
+                            : mapping.viewport?.interval;
+                        this.#onViewportChange(interval ? { interval } : null);
+                    }
+                    this.#onRangeChange();
+                }
             });
         }
         this.#initializingRange = true;
@@ -335,6 +375,7 @@ export default class ScaleInstanceManager {
             if (
                 rawPositions !== previousPositions ||
                 (categorical &&
+                    previous?.domain !== domain &&
                     !shallowArrayEquals(previous?.domain ?? [], domain))
             ) {
                 gapPositions = this.#resolveGapPositions(rawPositions, domain);
@@ -366,6 +407,7 @@ export default class ScaleInstanceManager {
                 props,
                 domain,
                 gapDomain: state?.gapDomain,
+                viewport: state?.viewport,
                 gapPositions,
                 gapWidth: width(null),
                 configuredRange,
@@ -405,7 +447,14 @@ export default class ScaleInstanceManager {
     }
 
     /** @param {MappingConfiguration} configuration */
-    #applyMapping({ props, range, prepared, gapPositions, gapWidth }) {
+    #applyMapping({
+        props,
+        range,
+        prepared,
+        gapPositions,
+        gapWidth,
+        viewport,
+    }) {
         // Reset can leave a queued update behind while scale recreation fails.
         if (!this.#scale || this.#scale.type === "null") return;
         if (prepared) {
@@ -419,6 +468,8 @@ export default class ScaleInstanceManager {
                 /** @type {any} */ (this.#scale).bins = prepared.bins;
             else delete (/** @type {any} */ (this.#scale).bins);
         }
+        if (viewport !== undefined && "viewport" in this.#scale)
+            this.#mirrorViewport(viewport);
         if (range) this.#setRange(range);
         else if (
             props.scheme === undefined &&
@@ -492,6 +543,11 @@ export default class ScaleInstanceManager {
         this.#mirrorDomain(Array.from(domain), ranks);
     }
 
+    /** @param {import("./scaleBand.js").CategoricalViewport | null} viewport */
+    mirrorViewport(viewport) {
+        this.#mirrorViewport(viewport);
+    }
+
     /**
      * @param {import("../spec/scale.js").Scale} props
      * @returns {import("../spec/scale.js").Scale}
@@ -505,12 +561,14 @@ export default class ScaleInstanceManager {
             domainIndexer: _domainIndexer,
             gapPositions: _gapPositions,
             gapWidth: _gapWidth,
+            viewport: _viewport,
             ...rest
         } = propsAny;
         void _assembly;
         void _domainIndexer;
         void _gapPositions;
         void _gapWidth;
+        void _viewport;
         return rest;
     }
 
@@ -518,8 +576,22 @@ export default class ScaleInstanceManager {
         // Public mutation compatibility (including App sample layout). Internal
         // configuration uses the original setters and publishes through mapping.
         const scale = this.#scale;
-        const range = scale.range;
-        const domain = scale.domain;
+        if (scale.type === "null") return;
+
+        /**
+         * @template {(...args: any[]) => any} F
+         * @param {F} read
+         * @param {(value: any) => void} write
+         * @returns {F}
+         */
+        const intercept = (read, write) =>
+            /** @type {F} */ (
+                function (/** @type {any} */ value) {
+                    if (!arguments.length) return read();
+                    write(value);
+                    return scale;
+                }
+            );
         const setRange = (/** @type {any[]} */ values) => {
             const configuration = this.mapping.get();
             this.#rangeCommandActive = true;
@@ -530,30 +602,18 @@ export default class ScaleInstanceManager {
             });
             this.#runtime.flushNow({ afterTransaction: true });
         };
-        const updateDomain = this.#onDomainChange;
-
-        if (typeof range === "function") {
-            scale.range = /** @type {any} */ (
-                function (/** @type {any} */ _) {
-                    if (arguments.length) {
-                        setRange(_);
-                        return scale;
-                    } else {
-                        return range();
-                    }
-                }
-            );
-        }
-        if (typeof domain === "function") {
-            scale.domain = /** @type {any} */ (
-                function (/** @type {any} */ _) {
-                    if (arguments.length) {
-                        updateDomain(Array.from(_));
-                        return scale;
-                    } else {
-                        return domain();
-                    }
-                }
+        scale.range = intercept(scale.range, setRange);
+        scale.domain = intercept(scale.domain, (values) =>
+            this.#onDomainChange(Array.from(values))
+        );
+        if ("viewport" in scale) {
+            const categorical =
+                /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                    scale
+                );
+            categorical.viewport = intercept(
+                categorical.viewport,
+                this.#onViewportChange
             );
         }
     }
@@ -576,10 +636,11 @@ function equalMapping(a, b) {
             !!b &&
             a.scale === b.scale &&
             a.props === b.props &&
-            shallowArrayEquals(a.domain, b.domain) &&
+            (a.domain === b.domain || shallowArrayEquals(a.domain, b.domain)) &&
             shallowArrayEquals(a.gapDomain ?? [], b.gapDomain ?? []) &&
             shallowArrayEquals(a.gapPositions, b.gapPositions) &&
             a.gapWidth === b.gapWidth &&
+            deepEqual(a.viewport, b.viewport) &&
             equalRange(a.configuredRange, b.configuredRange) &&
             equalRange(a.range, b.range))
     );

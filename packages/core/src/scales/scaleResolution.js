@@ -33,7 +33,11 @@ import {
     validateSharedViewportDomain,
 } from "./viewportDomain.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
-import { validateScaleTypeCompatibility } from "./scaleRules.js";
+import {
+    isCategoricalPositionScale,
+    supportsScaleNavigation,
+    validateScaleTypeCompatibility,
+} from "./scaleRules.js";
 import {
     INDEX,
     LOCUS,
@@ -149,6 +153,7 @@ export default class ScaleResolution {
     #listeners = {
         domain: new Set(),
         range: new Set(),
+        viewport: new Set(),
     };
 
     /** @type {ScaleInstanceManager} */
@@ -216,6 +221,9 @@ export default class ScaleResolution {
             onDomainChange: (domain) => {
                 void this.#commitDomainUpdate({ type: "set", domain });
             },
+            onViewportChange: (viewport) => {
+                void this.#interactionController.zoomToViewport(viewport);
+            },
             getGenomeStore: () => this.#viewContext.genomeStore,
             getAxisLength: () => this.getAxisLength(),
             validateGapExpression: (expression) =>
@@ -226,26 +234,18 @@ export default class ScaleResolution {
             // Zoom level does not depend on the range, so an initialized scale
             // is safe to read while its range expression is being configured.
             getScale: () => this.#scaleManager.scale ?? this.getScale(),
-            navigate: (
-                domain,
-                duration,
-                renderImmediately = false,
-                gapDomain
-            ) =>
+            navigate: (target, duration, renderImmediately = false) =>
                 this.#commitDomainUpdate(
-                    {
-                        type: "navigate",
-                        domain,
-                        duration,
-                        gapDomain,
-                    },
+                    { type: "navigate", target, duration },
                     !renderImmediately
                 ),
             renderImmediately: () => this.#domainRuntime.renderImmediately(),
             getInitialDomainSnapshot: () =>
                 /** @type {number[]} */ (this.#domainState.initialReference),
             getDataZoomExtent: () =>
-                /** @type {number[]} */ (this.#domainState.dataExtent),
+                isCategoricalPositionScale(this.getResolvedScaleType())
+                    ? [0, this.#domainState.visibleDomain.length]
+                    : /** @type {number[]} */ (this.#domainState.dataExtent),
             getResetDomain: () =>
                 /** @type {number[]} */ (this.#domainState.resetDomain),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -1020,6 +1020,7 @@ export default class ScaleResolution {
         this.#zoomExtentListeners.clear();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
+        this.#listeners.viewport.clear();
         this.#domainRuntime?.dispose();
         this.#scaleManager.dispose();
         this.#paramRuntime?.dispose();
@@ -1422,6 +1423,25 @@ export default class ScaleResolution {
         return this.#domainRuntime.update(update, requestRender);
     }
 
+    /** @returns {[number, number] | null} */
+    getViewport() {
+        const scale = this.getScale();
+        if (!isCategoricalPositionScale(scale.type))
+            throw new Error("Scale viewports require a band or point scale.");
+        const interval = this.#domainState.viewport?.interval;
+        return interval ? [interval[0], interval[1]] : null;
+    }
+
+    /** @param {[number, number] | null} viewport
+     * @param {import("../types/scaleResolutionApi.js").ZoomToOptions} [options]
+     */
+    zoomToViewport(viewport, options) {
+        return this.#interactionController.zoomToViewport(
+            viewport === null ? null : { interval: viewport },
+            options
+        );
+    }
+
     /**
      * @returns {ScaleWithProps}
      */
@@ -1484,6 +1504,7 @@ export default class ScaleResolution {
                         renderImmediately: () =>
                             this.#viewContext.renderImmediately(),
                         notifyDomain: () => this.#notifyListeners("domain"),
+                        notifyViewport: () => this.#notifyListeners("viewport"),
                         publishZoom: () => {
                             if (this.#zoomRevisionRef) {
                                 this.#zoomRevisionRef.set(
@@ -1703,9 +1724,7 @@ export default class ScaleResolution {
             return false;
         }
 
-        return (
-            isContinuous(props.type) && !isDiscrete(props.type) && !!props.zoom
-        );
+        return supportsScaleNavigation(props.type) && !!props.zoom;
     }
 
     /**

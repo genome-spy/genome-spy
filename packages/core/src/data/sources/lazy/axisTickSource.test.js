@@ -40,6 +40,7 @@ function createViewStub({
     }
 
     const scaleResolution = {
+        getResolvedScaleType: () => scaleType,
         subscribeZoomExtent: (/** @type {() => void} */ listener) => {
             extentListener = listener;
             return () => {

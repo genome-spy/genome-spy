@@ -214,6 +214,26 @@ test("shares scale-resolution subscriptions across marks", () => {
     expect(resolution.dispose).toHaveBeenCalledTimes(1);
 });
 
+test("prepares marks with disabled scales that have no domain runtime", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{ color: "red" }] },
+        mark: "point",
+        encoding: {
+            color: { field: "color", type: "nominal", scale: null },
+        },
+    });
+    const resources = new WebGLRendererResources(createGlHelper());
+    const mark = /** @type {import("../../view/unitView.js").default} */ (view)
+        .mark;
+    try {
+        resources.prepareMarks([mark]);
+        expect(resources.getMarkEntry(mark)).toBeDefined();
+    } finally {
+        resources.dispose();
+        view.disposeSubtree();
+    }
+});
+
 test("categorical mappings refresh shared textures without re-encoding rows", async () => {
     const { view } = await createHeadlessEngine({
         params: [{ name: "order", value: ["a", "b", "c"] }],
@@ -223,7 +243,7 @@ test("categorical mappings refresh shared textures without re-encoding rows", as
             x: {
                 field: "category",
                 type: "nominal",
-                scale: { domain: { expr: "order" } },
+                scale: { domain: { expr: "order" }, zoom: true },
                 axis: null,
             },
         },
@@ -268,6 +288,9 @@ test("categorical mappings refresh shared textures without re-encoding rows", as
         resources.synchronize(entries);
         const texture = resources.getCategoricalTexture(resolution);
         expect(uploads).toEqual([[1, 2, 3, 0]]);
+        resolution.zoom(0.5, 0.5, 0, 200);
+        resources.synchronize(entries);
+        expect(uploads).toHaveLength(1);
 
         for (const order of [["c", "a"], ["b", "c", "a"], []]) {
             view.paramRuntime.setValue("order", order);
@@ -482,6 +505,7 @@ function createScaleResolution() {
         listeners,
         dispose,
         getScale: () => ({ type: "linear" }),
+        getDomainRef: () => ({ get: /** @returns {number[]} */ () => [] }),
         observeMapping: vi.fn((/** @type {() => void} */ listener) => {
             listeners.set("mapping", listener);
             return dispose;

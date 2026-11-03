@@ -205,6 +205,12 @@ export default class AxisView extends LayerView {
                 : {}),
         };
 
+        if (
+            fullAxisProps.labelSqueeze &&
+            scaleResolution.getResolvedScaleType() !== "band"
+        )
+            throw new Error("Axis labelSqueeze requires a band scale.");
+
         const axisSpec = genomeAxis
             ? createGenomeAxis(
                   fullAxisProps,
@@ -727,7 +733,7 @@ function createAxis(
         ap.labelFontSize,
         textDefaults
     );
-    const labelOverlap = getLabelOverlap(type, ap);
+    const labelOverlap = ap.labelSqueeze ? false : getLabelOverlap(type, ap);
     const labelFlush = getLabelFlush(type, ap, zoomable);
     const labelFlushZoomExtent = getLabelFlushZoomExtent(
         type,
@@ -859,6 +865,7 @@ function createAxis(
                 mark: {
                     type: "rule",
                     clip: false,
+                    clamp: main,
                     strokeDash: ap.tickDash,
                     strokeCap: ap.tickCap,
                     color: ap.tickColor,
@@ -893,6 +900,9 @@ function createAxis(
                     clip: labelClipPolicy === "anchor" ? "never" : false,
                     cullByVisibleRange:
                         labelClipPolicy === "anchor" ? main : undefined,
+                    ...(ap.labelSqueeze
+                        ? { squeeze: true, flushX: false, flushY: false }
+                        : {}),
                     align: ap.labelAlign,
                     angle: ap.labelAngle,
                     baseline: ap.labelBaseline,
@@ -906,7 +916,13 @@ function createAxis(
                     color: ap.labelColor,
                 },
                 encoding: {
-                    [main]: makeMainDomainDef(),
+                    [main]: {
+                        ...makeMainDomainDef(),
+                        ...(ap.labelSqueeze ? { band: 0 } : {}),
+                    },
+                    ...(ap.labelSqueeze
+                        ? { [main + "2"]: { ...makeMainDomainDef(), band: 1 } }
+                        : {}),
                     ...(labelFlush !== false || labelFlushZoomExtent
                         ? {
                               [main + "Offset"]: {

@@ -1,6 +1,23 @@
 import { Scalar } from "../spec/channel.js";
 import { Scale } from "../spec/scale.js";
 
+/** Internal navigation state for a band or point scale. */
+export interface CategoricalViewport {
+    /** Half-open category-rank interval; endpoints may be fractional. */
+    interval: [number, number];
+    /** Fractional gap-edge ranks. Preserve these for exact restoration through grouping gaps. */
+    gapRanks?: [number, number];
+}
+
+export function copyViewport(
+    value: CategoricalViewport | null
+): CategoricalViewport | null;
+
+export function clampViewport(
+    viewport: CategoricalViewport | null | undefined,
+    length: number
+): CategoricalViewport | null | undefined;
+
 /** Forward projection shared by categorical and index-like grouping gaps. */
 export interface GroupingGapMapping<Value = Scalar> {
     position(value: Value, band?: number, before?: boolean): number | undefined;
@@ -19,6 +36,11 @@ export interface CategoricalGapScale {
     props?: Scale;
     domain(): Scalar[];
     domain(values: Iterable<Scalar>): this;
+    viewport(): CategoricalViewport | null;
+    viewport(value: CategoricalViewport | null): this;
+    navigationMapping(
+        extent?: number
+    ): ReturnType<typeof import("./bandMapping.js").createBandMapping>;
     range(): number[];
     range(values: Iterable<number>): this;
     rangeRound(values: Iterable<number>): this;

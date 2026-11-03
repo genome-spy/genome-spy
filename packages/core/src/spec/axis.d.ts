@@ -483,6 +483,17 @@ export interface BaseAxis {
     labelOverlap?: boolean | "parity" | "greedy";
 
     /**
+     * Shrink each tick label uniformly to fit its band, accounting for label
+     * rotation. Supported only for band scales. Enables ranged text fitting
+     * and bypasses `labelOverlap`, including an explicitly configured strategy.
+     * Labels stay aligned with their bands at viewport edges.
+     * Very small labels fade out using the text mark's normal fitting behavior.
+     *
+     * __Default value:__ `false`
+     */
+    labelSqueeze?: boolean;
+
+    /**
      * The minimum separation, in pixels, between retained axis labels.
      *
      * __Default value:__ `2`

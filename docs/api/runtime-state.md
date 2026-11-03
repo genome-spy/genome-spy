@@ -235,6 +235,50 @@ await genomeScale.zoomTo([{ chrom: "chr1" }, { chrom: "chrM" }], {
 });
 ```
 
+### Categorical scale viewports
+
+For band and point scales, `getDomain()` returns the full ordered category list.
+Read and change the visible rank interval with `getViewport()` and
+`zoomToViewport()`:
+
+```js
+const categoryScale = api.getScaleResolutionByName("categories");
+if (!categoryScale) {
+  throw new Error("Missing named scale: categories");
+}
+
+await categoryScale.zoomToViewport([1, 3], { duration: 500 });
+const savedViewport = categoryScale.getViewport();
+await categoryScale.zoomToViewport(null); // Fit all categories.
+await categoryScale.zoomToViewport(savedViewport);
+```
+
+A viewport is a half-open `[start, end]` rank interval or `null` to fit all
+categories. Intervals narrower than one category expand around their midpoint
+to span one category. Fractional positions inside grouping gaps are not part of
+the interval, so restoring or linking an interval can shift the placement when
+a viewport edge lies inside a gap.
+
+Listen to `"viewport"` events for navigation changes; `"domain"` events report
+category membership or order changes.
+These methods are available only for band and point scales. See
+[categorical scale viewports](../grammar/scale.md#categorical-scale-viewports).
+
+Two embeds with the same category order can link their rank intervals:
+
+```js
+const targetScale = otherApi.getScaleResolutionByName("categories");
+if (!targetScale) {
+  throw new Error("Missing target scale: categories");
+}
+
+categoryScale.addEventListener("viewport", () => {
+  void targetScale.zoomToViewport(categoryScale.getViewport(), {
+    renderImmediately: true,
+  });
+});
+```
+
 ### Domain events
 
 Named scales emit a `"domain"` event when their domain changes. Listen to the

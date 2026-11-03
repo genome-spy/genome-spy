@@ -5,6 +5,7 @@ import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import deepEqual from "../utils/deepEqual.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { createDomainState, planDomainUpdate } from "./domainLifecycle.js";
+import { clampViewport } from "./scaleBand.js";
 
 // Streaming replay roots use their finite tree depth. Domain policy must see
 // every pending publication before making historical initialization decisions.
@@ -63,6 +64,7 @@ export default class DomainRuntime {
      * @param {import("./domainLifecycle.js").Domain} options.domain
      * @param {import("./domainLifecycle.js").Domain} options.resetDomain
      * @param {() => void} options.notifyDomain
+     * @param {() => void} [options.notifyViewport]
      * @param {() => void} options.renderImmediately
      * @param {() => void} options.publishZoom
      */
@@ -73,6 +75,7 @@ export default class DomainRuntime {
         domain,
         resetDomain,
         notifyDomain,
+        notifyViewport,
         publishZoom,
         renderImmediately,
     }) {
@@ -81,10 +84,25 @@ export default class DomainRuntime {
         this.#runtime = runtime;
         this.#manager = manager;
         this.#animator = animator;
-        this.#state = runtime.signal(
-            "domain state",
-            createDomainState(domain, resetDomain)
+        this.#state = runtime.signal("domain state", {
+            ...createDomainState(domain, resetDomain),
+            viewport:
+                "viewport" in manager.scale
+                    ? /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+                          manager.scale
+                      ).viewport()
+                    : undefined,
+        });
+        const viewport = runtime.computed(
+            "scale viewport",
+            [this.#state],
+            () => this.state.viewport,
+            { equals: deepEqual }
         );
+        if (notifyViewport)
+            runtime.effect([viewport], () => {
+                if (this.state.viewport !== undefined) notifyViewport();
+            });
         this.domain = runtime.computed(
             "displayed domain",
             [this.#state],
@@ -177,17 +195,23 @@ export default class DomainRuntime {
                     operation.resolve();
                     return;
                 }
-                if (
-                    "domain" in update &&
-                    !(
-                        (update.type === "navigate" ||
-                            update.type === "frame") &&
-                        update.gapDomain
-                    )
-                ) {
+                if (update.type === "set") {
                     update = {
                         ...update,
                         domain: this.#manager.normalizeDomain(update.domain),
+                    };
+                } else if (
+                    "target" in update &&
+                    "domain" in update.target &&
+                    !update.target.gapDomain
+                ) {
+                    update = {
+                        ...update,
+                        target: {
+                            domain: this.#manager.normalizeDomain(
+                                update.target.domain
+                            ),
+                        },
                     };
                 }
                 if ("readiness" in update && this.state.phase !== "ready") {
@@ -203,6 +227,10 @@ export default class DomainRuntime {
                 }
                 const previous = this.state;
                 const plan = planDomainUpdate(previous, update, this.policy());
+                const viewportChanged = !deepEqual(
+                    previous.viewport,
+                    plan.state.viewport
+                );
                 if (plan.transition.type !== "none") {
                     this.#cancelTransition();
                 }
@@ -211,6 +239,10 @@ export default class DomainRuntime {
                         plan.state.visibleDomain,
                         plan.state.gapDomain
                     );
+                    this.#renderRequested ||= operation.render;
+                }
+                if (viewportChanged) {
+                    this.#manager.mirrorViewport(plan.state.viewport ?? null);
                     this.#renderRequested ||= operation.render;
                 }
                 this.#state.set(plan.state);
@@ -225,6 +257,7 @@ export default class DomainRuntime {
                 }
                 if (
                     plan.domainChanged ||
+                    viewportChanged ||
                     !deepEqual(
                         previous.initialReference,
                         plan.state.initialReference
@@ -275,7 +308,14 @@ export default class DomainRuntime {
             this.#initialReady &&
             this.state.phase !== "ready"
         ) {
-            this.#state.set({ ...this.state, phase: "ready" });
+            const viewport = clampViewport(
+                this.state.viewport,
+                this.state.visibleDomain.length
+            );
+            const viewportChanged = !deepEqual(viewport, this.state.viewport);
+            if (viewportChanged) this.#manager.mirrorViewport(viewport ?? null);
+            this.#state.set({ ...this.state, phase: "ready", viewport });
+            if (viewportChanged) this.#publishZoom();
         }
     };
 
@@ -306,15 +346,20 @@ export default class DomainRuntime {
         const fc = from[0] + fw / 2;
         const tc = to[0] + tw / 2;
         const scale = this.#manager.scale;
-        const indexScale =
-            "gapMapping" in scale
-                ? /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
+        const numericScale =
+            "navigationMapping" in scale
+                ? /** @type {import("../genome/scaleIndex.js").ScaleIndex & import("./scaleBand.js").CategoricalGapScale} */ (
                       scale
                   )
                 : undefined;
-        const sourceMapping = indexScale?.gapMapping();
-        const targetMapping =
-            sourceMapping && indexScale.copy().domain(to).gapMapping();
+        const sourceMapping = numericScale?.navigationMapping();
+        const targetScale = numericScale?.copy();
+        if (targetScale) {
+            if ("viewport" in action.target)
+                targetScale.viewport(action.target.viewport);
+            else targetScale.domain(to, action.target.gapDomain);
+        }
+        const targetMapping = targetScale?.navigationMapping();
         const token = createCancelToken();
         this.#transitionToken = token;
         await this.#animator.transition({
@@ -328,8 +373,18 @@ export default class DomainRuntime {
                     void this.update({
                         type: "frame",
                         id: action.id,
-                        domain: frame.domain,
-                        gapDomain: frame.ranks,
+                        target:
+                            "viewport" in action.target
+                                ? {
+                                      viewport: {
+                                          interval: frame.domain,
+                                          gapRanks: frame.ranks,
+                                      },
+                                  }
+                                : {
+                                      domain: frame.domain,
+                                      gapDomain: frame.ranks,
+                                  },
                     });
                     return;
                 }
@@ -339,10 +394,12 @@ export default class DomainRuntime {
                 void this.update({
                     type: "frame",
                     id: action.id,
-                    domain: [
-                        from[0] === to[0] ? from[0] : c - w / 2,
-                        from[1] === to[1] ? from[1] : c + w / 2,
-                    ],
+                    target: {
+                        domain: [
+                            from[0] === to[0] ? from[0] : c - w / 2,
+                            from[1] === to[1] ? from[1] : c + w / 2,
+                        ],
+                    },
                 });
             },
         });

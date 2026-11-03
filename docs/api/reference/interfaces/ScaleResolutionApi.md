@@ -6,6 +6,43 @@ A public API for ScaleResolution
 
 ## Methods
 
+### getViewport()
+
+> **getViewport**(): \[`number`, `number`\]
+
+Return a detached half-open band/point rank interval; null fits all categories.
+Throws for other scale types. Listen to `"viewport"` events for navigation
+changes; the categorical domain continues to contain all categories.
+Fractional positions inside grouping gaps are not included.
+
+#### Returns
+
+\[`number`, `number`\]
+
+***
+
+### zoomToViewport()
+
+> **zoomToViewport**(`viewport`, `options?`): `Promise`<`void`\>
+
+Navigate a band/point scale in half-open rank coordinates, preserving its
+categorical domain. Null fits all categories. Intervals narrower than one
+category expand around their midpoint to span one category.
+Uses the same transition options as zoomTo().
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `viewport` | \[`number`, `number`\] |
+| `options?` | [`ZoomToOptions`](ZoomToOptions.md) |
+
+#### Returns
+
+`Promise`<`void`\>
+
+***
+
 ### addEventListener()
 
 > **addEventListener**(`type`, `listener`): `void`
@@ -46,7 +83,8 @@ A public API for ScaleResolution
 
 Returns the current, possibly zoomed domain. For locus scales, this is
 the internal half-open numeric interval; zoomTo() currently expects an
-inclusive upper endpoint.
+inclusive upper endpoint. Band and point scales return the full ordered
+category domain, independently of their scale viewport.
 
 #### Returns
 
@@ -157,6 +195,7 @@ are zero-based and inclusive, covering the integer bases in the viewport.
 > **zoomTo**(`domain`, `options?`): `Promise`<`void`\>
 
 Zooms to the given interval, optionally animating the transition.
+Band and point scales use zoomToViewport() instead.
 
 For locus scales, explicit numeric and chromosome-relative endpoints are
 zero-based with an inclusive upper endpoint. Subtract one from the upper

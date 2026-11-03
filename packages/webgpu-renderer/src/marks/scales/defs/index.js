@@ -187,7 +187,7 @@ function emitIndexScale({
     let v = ${key};
     return scaleIndexGaps(v, ${domainVec3(name)}, ${rangeVec2(name)}, params.gapTable_${name}, params.gapGeometry_${name},
         params.${SCALE_PADDING_INNER_PREFIX}${name}, params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name}, params.${SCALE_BAND_PREFIX}${name}, ${before}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u));
+        params.${SCALE_ALIGN_PREFIX}${name}, params.${SCALE_BAND_PREFIX}${name}, ${before}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u), 1.0);
 }`;
     }
     return `${makeFnHeader(name, "f32", functionName)} {

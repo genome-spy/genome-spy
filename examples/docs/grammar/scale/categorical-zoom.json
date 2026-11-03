@@ -1,0 +1,42 @@
+{
+  "description": [
+    "Zoomable categorical columns",
+    "Zoom and pan across categorical columns. Grouping gaps keep their pixel width."
+  ],
+
+  "data": { "sequence": { "start": 0, "stop": 78, "as": "value" } },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[datum.value % 26] + (floor(datum.value / 26) + 1)",
+      "as": "category"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.value + (datum.value % 2) * 3",
+      "as": "value"
+    }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "category",
+      "type": "nominal",
+      "scale": {
+        "type": "band",
+        "zoom": true,
+        "gapPositions": ["A2", "A3"],
+        "gapWidth": 8
+      },
+      "axis": { "labelSqueeze": true }
+    },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "legend": null
+    }
+  }
+}

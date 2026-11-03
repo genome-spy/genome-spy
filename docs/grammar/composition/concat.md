@@ -109,18 +109,19 @@ Sometimes the contents of a view are so large that they do not fit into the
 available space. In such cases, the view can be made scrollable by setting an
 explicit size for the view using the `viewportWidth` and `viewportHeight`
 properties. They accept the same values as `width` and `height` properties except
-for the step size. Scrollable viewports are particularly useful for categorical
-data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
-do not support zooming and panning.
+for the step size. These **layout viewports** are useful for showing categorical
+rows or columns at a fixed step size. Band and point scales can alternatively
+use [scale viewports](../scale.md#categorical-scale-viewports) for zooming and
+panning within the available plot size.
 
 Step-based `width` and `height` determine the full content size, including any
 grouping gaps. The viewport dimensions control how much of that content is
 visible at once.
 
 Besides using the scrollbars, you can scroll a viewport by dragging its content.
-Scrolling differs from panning: panning changes a zoomable scale's domain, such
-as the visible genomic interval, whereas scrolling moves the viewport over
-content that is already laid out, leaving the scales unchanged. A drag pans along
+Scrolling differs from panning: panning changes a continuous scale's domain or
+a band/point scale's viewport. Scrolling moves a layout viewport over content
+that is already laid out, leaving the scales unchanged. A drag pans along
 axes that have a zoomable scale and scrolls along axes that don't. For example,
 in a tall stack of tracks with a genomic x axis and a `viewportHeight`, dragging
 sideways pans the genome and dragging up or down scrolls through the tracks.

@@ -47,6 +47,7 @@ describe("createBookmarkWithCurrentState", () => {
                 [
                     "x",
                     {
+                        getResolvedScaleType: () => "linear",
                         isZoomable: () => true,
                         getComplexDomain: () => [1, 2],
                     },

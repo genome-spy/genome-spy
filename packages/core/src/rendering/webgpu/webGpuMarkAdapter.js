@@ -34,7 +34,12 @@ import { getMarkData } from "../immediate/markData.js";
 import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
-import { isDatumDef, isValueDef } from "../../encoder/encoder.js";
+import {
+    getPrimaryChannel,
+    isChannelWithScale,
+    isDatumDef,
+    isValueDef,
+} from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
 
@@ -1218,6 +1223,13 @@ function createBandPositionScale(scale, range, readDomain, band, channel) {
         }),
         readDomain
     );
+    Object.defineProperty(result, "viewport", {
+        enumerable: true,
+        get: () =>
+            /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
+                scale
+            ).viewport(),
+    });
     return retainGroupingGaps(result, scale, channel);
 }
 
@@ -2244,7 +2256,30 @@ function getCategoricalMapping(mark, channel, scale) {
     const intern = (value) =>
         readUnsignedInteger(mark, channel, indexer ? indexer(value) : value);
 
-    const readDomain = () => scale.domain().map(intern);
+    const key = /** @type {import("../../spec/channel.js").Channel} */ (
+        channel
+    );
+    const encoder = mark.encoders[key];
+    const scaleChannel =
+        encoder.branches.find((branch) => branch.accessor.scaleChannel)
+            ?.accessor.scaleChannel ?? getPrimaryChannel(key);
+    if (!isChannelWithScale(scaleChannel))
+        throw unsupported(mark, "Missing categorical scale channel.");
+    const domainRef = mark.unitView
+        .getScaleResolution(scaleChannel)
+        .getDomainRef();
+    /** @type {readonly any[] | undefined} */
+    let previous;
+    /** @type {number[]} */
+    let mapped;
+    const readDomain = () => {
+        const domain = domainRef.get();
+        if (domain !== previous) {
+            previous = domain;
+            mapped = domain.map(intern);
+        }
+        return mapped;
+    };
     return { intern, readDomain };
 }
 

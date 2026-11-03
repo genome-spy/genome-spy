@@ -120,6 +120,14 @@ Ordinary index scales allocate no gap resources. Null/empty cuts or zero/null
 width also omit gap helpers and bindings unless `gapEnabled: true` explicitly
 reserves them for later retained updates.
 
+Band scales retain categorical IDs while `viewport: { interval: [start, end] }`
+selects a continuous, half-open rank window. The retained handle's
+`setViewport({ interval, gapRanks? })` changes placement without rebuilding the
+domain map or series buffers; `setViewport(null)` fits the complete domain.
+Optional fractional `gapRanks` preserve partially visible gaps, just as index
+navigation does. Point placement uses the same band scale with `paddingInner: 1`.
+The **Categorical Grouping Gaps** scene demonstrates retained zoom and pan.
+
 The scale handle provides `setGapPositions` and `setGapWidth`.
 Domain and width updates reuse cut buffers. `setDomain(domain, [firstRank, lastRank])`
 retains fractional progress through a gap at a viewport edge; ordinary

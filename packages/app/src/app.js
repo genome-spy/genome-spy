@@ -24,7 +24,10 @@ import {
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
 import { createPlotBookmarkContext } from "./bookmark/bookmarkState.js";
-import { collectScaleDomains } from "./bookmark/scaleDomainUtils.js";
+import {
+    collectScaleDomains,
+    shouldSerializeScaleDomain,
+} from "./bookmark/scaleDomainUtils.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import {
     buildViewSettingsPayload,
@@ -567,7 +570,11 @@ export default class App {
         for (const resolution of this.genomeSpy
             .getNamedScaleResolutions()
             .values()) {
-            if (!resolution.isZoomable()) continue;
+            if (
+                !resolution.isZoomable() ||
+                !shouldSerializeScaleDomain(resolution)
+            )
+                continue;
             resolution.addEventListener("domain", this.#updateUrl);
             this.#scaleSubscriptions.push(() =>
                 resolution.removeEventListener("domain", this.#updateUrl)

@@ -1,3 +1,4 @@
+import deepEqual, { isPlainObject } from "../../utils/deepEqual.js";
 import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 import { getWebGpuCategorySelectionBinding } from "./webGpuMarkAdapter.js";
@@ -584,6 +585,13 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 true
             );
         }
+        if ("viewport" in channel.scale) {
+            add(
+                key + ":viewport",
+                () => channel.scale.viewport,
+                (viewport) => scaleSlot.setViewport(viewport)
+            );
+        }
         if ("range" in channel.scale) {
             add(
                 key + ":range",
@@ -626,7 +634,7 @@ function updateResourceBindings(bindings) {
         const value = binding.read();
         if (
             (binding.skipUndefined && value === undefined) ||
-            valuesEqual(binding.value, value)
+            deepEqual(binding.value, value)
         ) {
             continue;
         }
@@ -642,27 +650,16 @@ function updateResourceBindings(bindings) {
  * @returns {any}
  */
 function snapshotValue(value) {
-    // Typed series and selections have separate revision/copy paths and must
-    // not enter this scalar-or-ordinary-array snapshot path.
-    return Array.isArray(value) ? value.map(snapshotValue) : value;
-}
-
-/**
- * @param {unknown} previous
- * @param {unknown} next
- * @returns {boolean}
- */
-function valuesEqual(previous, next) {
-    if (previous === next) {
-        return true;
-    }
-    if (Array.isArray(previous) && Array.isArray(next)) {
-        return (
-            previous.length == next.length &&
-            previous.every((value, index) => valuesEqual(value, next[index]))
+    // Typed series and non-plain objects retain their separate identity paths.
+    if (Array.isArray(value)) return value.map(snapshotValue);
+    if (isPlainObject(value))
+        return Object.fromEntries(
+            Object.entries(value).map(([key, entry]) => [
+                key,
+                snapshotValue(entry),
+            ])
         );
-    }
-    return false;
+    return value;
 }
 
 /**

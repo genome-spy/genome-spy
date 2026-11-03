@@ -53,7 +53,7 @@ export default function deepEqual(a, b) {
  * @param {unknown} value
  * @returns {value is Record<string, any>}
  */
-function isPlainObject(value) {
+export function isPlainObject(value) {
     if (value == null || typeof value !== "object" || Array.isArray(value)) {
         return false;
     }

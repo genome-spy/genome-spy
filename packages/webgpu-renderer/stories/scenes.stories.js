@@ -365,12 +365,14 @@ export const IndexGroupingGaps = withSource(
 
 export const CategoricalGroupingGaps = withSource(
     "runBandGapScene",
-    { gapWidth: 12, reverse: false },
+    { gapWidth: 12, reverse: false, zoom: 1, pan: 0 },
     {
-        args: { gapWidth: 12, reverse: false },
+        args: { gapWidth: 12, reverse: false, zoom: 1, pan: 0 },
         argTypes: {
             gapWidth: { control: { type: "range", min: 0, max: 40 } },
             reverse: { control: "boolean" },
+            zoom: { control: { type: "range", min: 1, max: 4, step: 0.1 } },
+            pan: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
         },
         render: (args) => renderScene(runBandGapScene, args),
     }

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
             x: {
                 default: {
                     setDomain: vi.fn(),
+                    setViewport: vi.fn(),
                     setRange: vi.fn(),
                     setGapPositions: vi.fn(),
                     setGapWidth: vi.fn(),
@@ -500,6 +501,10 @@ describe("WebGpuSurface", () => {
         const definition = /** @type {any} */ ({ type: "point" });
         const scale = {
             type: "band",
+            viewport:
+                /** @type {import("../../scales/scaleBand.js").CategoricalViewport | null} */ (
+                    null
+                ),
             domain: [200, 5, 900],
             range: [0, 100],
             gapEnabled: true,
@@ -513,6 +518,40 @@ describe("WebGpuSurface", () => {
             },
         };
         useMark(surface, mark, definition, config);
+        scale.viewport = { interval: [1, 3], gapRanks: [0.5, 1] };
+        useMark(surface, mark, definition, config);
+        expect(
+            mocks.handle.scales.x.default.setViewport
+        ).toHaveBeenCalledExactlyOnceWith(scale.viewport);
+        expect(mocks.handle.scales.x.default.setDomain).not.toHaveBeenCalled();
+        useMark(surface, mark, definition, config);
+        expect(
+            mocks.handle.scales.x.default.setViewport
+        ).toHaveBeenCalledOnce();
+        // Equal snapshots are quiet; mutations must compare with detached state.
+        scale.viewport = structuredClone(scale.viewport);
+        useMark(surface, mark, definition, config);
+        expect(
+            mocks.handle.scales.x.default.setViewport
+        ).toHaveBeenCalledOnce();
+        scale.viewport.interval[0] = 1.25;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            2
+        );
+        scale.viewport.gapRanks[0] = 0.75;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            3
+        );
+        scale.viewport = null;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            4
+        );
+        expect(
+            mocks.handle.scales.x.default.setViewport
+        ).toHaveBeenLastCalledWith(null);
         scale.domain = [900, 200];
         scale.gapPositions = [1];
         scale.gapWidth = 0;

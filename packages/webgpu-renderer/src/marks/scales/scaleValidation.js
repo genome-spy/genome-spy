@@ -13,6 +13,9 @@ function isNumericScalarType(type) {
  * @returns {string | null}
  */
 export function validateScaleConfig(name, channel, analysis) {
+    if (channel.scale?.viewport != null && channel.scale.type !== "band") {
+        return `Scale viewport on "${name}" requires a band scale.`;
+    }
     const {
         scaleType,
         outputComponents,

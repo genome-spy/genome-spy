@@ -11,9 +11,13 @@ export interface ScaleIndex {
         extent?: number
     ):
         | ReturnType<
-              typeof import("./indexGapMapping.js").createIndexGapMapping
+              typeof import("../scales/bandMapping.js").createBandMapping
           >
         | undefined;
+
+    navigationMapping(
+        extent?: number
+    ): ReturnType<typeof import("../scales/bandMapping.js").createBandMapping>;
 
     gapPositions(): readonly number[];
     gapPositions(positions: readonly number[] | null): this;

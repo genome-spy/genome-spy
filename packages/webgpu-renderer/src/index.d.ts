@@ -163,6 +163,8 @@ export type ChannelCondition =
       };
 
 export type ScaleSlotHandle = {
+    /** Change a band scale's rank window without changing category IDs; null fits all. */
+    setViewport(viewport: ScaleViewport | null): void;
     /** Update the domain and optional fractional gap ranks together; omit ranks for ordinary fitting. */
     setDomain(domain: number[], gapRanks?: readonly number[]): void;
     /** Update the scale range or interpolator; shape changes require mark recreation. */
@@ -174,6 +176,11 @@ export type ScaleSlotHandle = {
     /** Update gap width in logical pixels. */
     setGapWidth(width: number | null): void;
 };
+
+export interface ScaleViewport {
+    interval: [number, number];
+    gapRanks?: [number, number];
+}
 
 export type ValueSlotHandle = {
     /** Update a dynamic value (uniform-backed). */
@@ -281,6 +288,9 @@ export type ChannelScale = {
 
     /** Domain for scale mapping; band/ordinal domains list category IDs. */
     domain?: number[];
+
+    /** Band scales only: displayed rank window, separate from category membership. */
+    viewport?: ScaleViewport | null;
 
     /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */
     range?: Array<number | number[] | string> | ColorInterpolatorFn;

@@ -110,6 +110,28 @@ test("categorical gaps retain picking across sparse-domain updates and unequal p
         for (const axis of ["x", "x2"]) mark.scales[axis].setGapWidth(0);
         draw();
         const closed = await renderer.pick(50, 25);
+        for (const axis of ["x", "x2"]) {
+            mark.scales[axis].setGapWidth(8);
+            mark.scales[axis].setViewport({ interval: [1, 3] });
+        }
+        draw();
+        const zoomed = await Promise.all([
+            renderer.pick(10, 25),
+            renderer.pick(50, 25),
+            renderer.pick(90, 25),
+        ]);
+        for (const axis of ["x", "x2"])
+            mark.scales[axis].setViewport({
+                interval: [2, 3],
+                gapRanks: [0.5, 1],
+            });
+        draw();
+        const partialGap = await Promise.all([
+            renderer.pick(2, 25),
+            renderer.pick(6, 25),
+            renderer.pick(102, 75),
+            renderer.pick(106, 75),
+        ]);
         renderer.destroy();
         canvas.remove();
         return {
@@ -120,6 +142,8 @@ test("categorical gaps retain picking across sparse-domain updates and unequal p
             exhausted,
             recovered,
             closed,
+            zoomed,
+            partialGap,
         };
     });
     expect(result).toEqual({
@@ -130,5 +154,7 @@ test("categorical gaps retain picking across sparse-domain updates and unequal p
         exhausted: [1, null],
         recovered: [2, null, 3, 2, null, 3],
         closed: 3,
+        zoomed: [2, null, 3],
+        partialGap: [null, 3, null, 3],
     });
 });
