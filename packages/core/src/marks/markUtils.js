@@ -207,6 +207,16 @@ function setResolutionChannel(channelDef, resolutionChannel) {
 }
 
 /**
+ * Copies the color definition while retaining its scale and source identity.
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @param {"fill" | "stroke"} paint
+ */
+export function applyColorToPaintChannel(encoding, paint) {
+    encoding[paint] = cloneWithSpecOrigin(encoding.color);
+    setResolutionChannel(encoding[paint], "color");
+}
+
+/**
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {boolean} filled
  */
@@ -215,8 +225,7 @@ export function fixStroke(encoding, filled) {
         if (filled) {
             encoding.stroke = { value: null };
         } else {
-            encoding.stroke = cloneWithSpecOrigin(encoding.color);
-            setResolutionChannel(encoding.stroke, "color");
+            applyColorToPaintChannel(encoding, "stroke");
             // TODO: Whattabout default strokeWidth?
         }
     }
@@ -239,8 +248,7 @@ export function fixFill(encoding, filled) {
     if (isValueDef(encoding.fill) && encoding.fill.value === null) {
         encoding.fillOpacity = { value: 0 };
     } else if (!encoding.fill) {
-        encoding.fill = cloneWithSpecOrigin(encoding.color);
-        setResolutionChannel(encoding.fill, "color");
+        applyColorToPaintChannel(encoding, "fill");
 
         if (!filled && !encoding.fillOpacity) {
             encoding.fillOpacity = { value: 0 };

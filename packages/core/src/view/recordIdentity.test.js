@@ -132,8 +132,8 @@ test.each([false, true])(
             ["A"],
         ]);
         const [picked, other] = colored.getCollector().getData();
-        expect(colored.mark.encoders.color(picked)).toBe("red");
-        expect(colored.mark.encoders.color(other)).toBe("gray");
+        expect(colored.mark.encoders.fill(picked)).toBe("red");
+        expect(colored.mark.encoders.fill(other)).toBe("gray");
         expect(ordered.mark.getOrder().predicate(picked)).toBe(true);
         expect(ordered.mark.getOrder().predicate(other)).toBe(false);
     }

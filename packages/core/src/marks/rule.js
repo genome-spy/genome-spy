@@ -1,5 +1,6 @@
 import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import Mark from "./mark.js";
+import { applyColorToPaintChannel } from "./markUtils.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
 
@@ -19,6 +20,9 @@ export default class RuleMark extends Mark {
             "x2Offset",
             "y2Offset",
             "size",
+            ...(this.getType() == "rule"
+                ? [/** @type {const} */ ("fill")]
+                : []),
         ];
     }
 
@@ -27,9 +31,17 @@ export default class RuleMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
-        return this.getType() == "tick"
-            ? this.fixTickEncoding(encoding)
-            : fixRuleLikeEncoding(encoding, "rule");
+        if (this.getType() == "tick") {
+            this.fixTickEncoding(encoding);
+            applyColorToPaintChannel(encoding, "fill");
+        } else {
+            fixRuleLikeEncoding(encoding, "rule");
+            if (!encoding.fill) {
+                applyColorToPaintChannel(encoding, "fill");
+            }
+        }
+        delete encoding.color;
+        return encoding;
     }
 
     /**

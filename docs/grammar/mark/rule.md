@@ -8,7 +8,11 @@ EXAMPLE examples/docs/grammar/mark/rule/rule-mark.json height=150
 ## Channels
 
 Rule mark supports the primary and secondary [position](./index.md#channels)
-channels and the `color`, `opacity`, and `size` channels.
+channels and the `color`, `fill`, `opacity`, and `size` channels.
+
+`fill` sets the body color and takes precedence over `color`. Both support
+constant values, fields, expressions, and conditional encodings. `size` controls
+the body thickness in logical pixels; `opacity` controls its opacity.
 
 ## Properties
 

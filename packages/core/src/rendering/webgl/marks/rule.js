@@ -48,7 +48,7 @@ export default class WebGLRuleMark extends WebGLMark {
                 "y2Offset"
             ),
             "size",
-            "color",
+            "fill",
             "opacity",
         ];
     }
