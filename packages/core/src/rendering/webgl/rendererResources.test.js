@@ -214,6 +214,26 @@ test("shares scale-resolution subscriptions across marks", () => {
     expect(resolution.dispose).toHaveBeenCalledTimes(1);
 });
 
+test("prepares marks with disabled scales that have no domain runtime", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{ color: "red" }] },
+        mark: "point",
+        encoding: {
+            color: { field: "color", type: "nominal", scale: null },
+        },
+    });
+    const resources = new WebGLRendererResources(createGlHelper());
+    const mark = /** @type {import("../../view/unitView.js").default} */ (view)
+        .mark;
+    try {
+        resources.prepareMarks([mark]);
+        expect(resources.getMarkEntry(mark)).toBeDefined();
+    } finally {
+        resources.dispose();
+        view.disposeSubtree();
+    }
+});
+
 test("categorical mappings refresh shared textures without re-encoding rows", async () => {
     const { view } = await createHeadlessEngine({
         params: [{ name: "order", value: ["a", "b", "c"] }],
