@@ -1,0 +1,107 @@
+{
+  "description": [
+    "One million points with a brushable torus",
+    "Generates a torus using sequence and formula transforms. Translate the gradient brush to move the highlighted strands. Scroll over the plot to zoom and drag to pan; point size follows geometric zoom. Selected points draw last through the order channel; brushing preserves the generated data and GPU buffers.",
+    "A torus is a doughnut-shaped surface, shown here as a tilted 2D projection. The angles u and v run around the central hole and around the tube. The wave sin(3*u + 2*v) winds bands around the surface; brushing a narrow wave range reveals interwoven strands. Moving the brush shifts those bands across the fixed points. \"Braided\" describes this band pattern. The surface uses the standard torus parameterization: https://reference.wolfram.com/language/ref/Torus.html."
+  ],
+
+  "title": {
+    "text": "Braided torus",
+    "subtitle": "1,000,000 points. Scroll to zoom; drag the plot to pan or the brush to move the bands.",
+    "anchor": "start",
+    "fontSize": 24,
+    "subtitleFontSize": 13
+  },
+
+  "width": "container",
+  "height": "container",
+
+  "theme": "dark",
+  "background": "#101622",
+
+  "data": { "sequence": { "start": 0, "stop": 1000000, "as": "i" } },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "2 * PI * ((datum.i * 0.6180339887498949) % 1)",
+      "as": "u"
+    },
+    {
+      "type": "formula",
+      "expr": "2 * PI * ((datum.i * 0.7548776662466927) % 1)",
+      "as": "v"
+    },
+    {
+      "type": "formula",
+      "expr": "(2 + 0.7 * cos(datum.v)) * (0.94 * cos(datum.u) + 0.34 * sin(datum.u))",
+      "as": "x"
+    },
+    {
+      "type": "formula",
+      "expr": "(2 + 0.7 * cos(datum.v)) * (-0.2 * cos(datum.u) + 0.55 * sin(datum.u)) + 0.574 * sin(datum.v)",
+      "as": "y"
+    },
+    {
+      "type": "formula",
+      "expr": "0.5 + 0.5 * sin(3 * datum.u + 2 * datum.v)",
+      "as": "wave"
+    }
+  ],
+
+  "params": [
+    {
+      "name": "wave_band",
+      "select": { "type": "interval", "encodings": ["color"] },
+      "bind": "legend",
+      "value": { "color": [0.4625, 0.5375] }
+    }
+  ],
+  "predicates": { "selected": { "param": "wave_band" } },
+
+  "config": {
+    "view": { "fill": "#101622", "strokeOpacity": 0 },
+    "legend": { "orient": "right" },
+    "style": { "gradient-selection-brush": { "shadowColor": "#101622" } }
+  },
+
+  "mark": {
+    "type": "point",
+    "filled": true,
+    "size": { "expr": "min(pow(zoomLevel(), 2), 200)" },
+    "strokeWidth": 0,
+    "tooltip": null
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [-3, 3], "zoom": true },
+      "axis": null
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [-2.1, 2.1], "zoom": true },
+      "axis": null
+    },
+    "color": {
+      "field": "wave",
+      "type": "quantitative",
+      "title": "Wave value",
+      "format": ".2f",
+      "scale": {
+        "domain": [0, 0.5, 1],
+        "range": ["#5ba7ff", "#67e7bf", "#fad668"]
+      }
+    },
+    "opacity": {
+      "condition": { "test": { "ref": "selected" }, "value": 0.4 },
+      "value": 0.01
+    },
+    "order": {
+      "condition": { "test": { "ref": "selected" }, "value": 1 },
+      "value": 0
+    }
+  }
+}
