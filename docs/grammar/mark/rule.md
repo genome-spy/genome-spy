@@ -31,6 +31,12 @@ may show an antialiasing hairline at the internal paint boundary.
 
 SCHEMA RuleProps
 
+`strokeCap` applies to each dash as well as the rule endpoints. Dash lengths and
+gaps are measured along the centerline in logical pixels, before cap extension.
+Round and square caps can close small gaps; a zero-length dash such as
+`strokeDash: [0, 28]` produces dots with round caps, squares with square caps,
+and no body with butt caps. Outside borders follow the combined dash silhouette.
+
 ## Examples
 
 ### Ranged rules

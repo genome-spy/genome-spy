@@ -15,9 +15,10 @@ describe("dashAtlas", () => {
      * @param {import("./dashAtlas.js").DashAtlas} atlas
      * @param {number} bin
      * @param {number} side
+     * @param {number} [table]
      */
-    const interval = (atlas, bin, side) => {
-        const i = (1 + bin * 2 + side) * 4;
+    const interval = (atlas, bin, side, table = 0) => {
+        const i = (1 + bin * 4 + table * 2 + side) * 4;
         return [
             atlas.data[i] + atlas.data[i + 1] * 256 - 256,
             atlas.data[i + 2] + atlas.data[i + 3] * 256 - 256,
@@ -30,10 +31,28 @@ describe("dashAtlas", () => {
         expect(interval(atlas, 4, 1)).toEqual([0, 1]);
     });
 
-    it("merges zero gaps and encodes solid or empty patterns", () => {
+    it("merges zero gaps and marks solid patterns", () => {
         expect(interval(buildDashAtlas([[2, 0, 2, 3]]), 2, 1)).toEqual([-2, 2]);
         expect(buildDashAtlas([[1, 0]]).data[2]).toBe(1);
-        expect(buildDashAtlas([[0, 1]]).data[2]).toBe(2);
+    });
+
+    it("retains zero-length on segments and excludes them from butt neighbors", () => {
+        const dots = buildDashAtlas([[0, 8]]);
+        expect(interval(dots, 0, 0)).toEqual([0, 0]);
+        expect(interval(dots, 0, 1)).toEqual([8, 8]);
+        expect(dots.data[2]).toBe(0);
+        expect(dots.data[3]).toBe(1);
+
+        const mixed = buildDashAtlas([[0, 4, 2, 2]]);
+        expect(interval(mixed, 1, 0)).toEqual([-1, -1]);
+        expect(interval(mixed, 1, 0, 1)).toEqual([-5, -3]);
+        expect(interval(mixed, 1, 1, 1)).toEqual([3, 5]);
+    });
+
+    it("merges painted intervals across the periodic seam", () => {
+        const atlas = buildDashAtlas([[2, 2, 2, 0]]);
+        expect(interval(atlas, 0, 0)).toEqual([-2, 2]);
+        expect(interval(atlas, 0, 1)).toEqual([-2, 2]);
     });
 
     it("represents the supported maximum period without byte overflow", () => {
