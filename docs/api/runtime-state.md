@@ -247,22 +247,24 @@ if (!categoryScale) {
   throw new Error("Missing named scale: categories");
 }
 
-await categoryScale.zoomToViewport({ interval: [1, 3] }, { duration: 500 });
+await categoryScale.zoomToViewport([1, 3], { duration: 500 });
 const savedViewport = categoryScale.getViewport();
 await categoryScale.zoomToViewport(null); // Fit all categories.
 await categoryScale.zoomToViewport(savedViewport);
 ```
 
-A viewport snapshot contains a half-open `interval` and may include `gapRanks`
-for partially visible grouping gaps. Interval-only targets expand to at least
-one category; exact snapshots with gap ranks retain fractional spans.
-Preserve the complete snapshot when linking
-or restoring the exact placement. Listen to `"viewport"` events for navigation
-changes; `"domain"` events report category membership or order changes.
+A viewport is a half-open `[start, end]` rank interval or `null` to fit all
+categories. Intervals narrower than one category expand around their midpoint
+to span one category. Fractional positions inside grouping gaps are not part of
+the interval, so restoring or linking an interval can shift the placement when
+a viewport edge lies inside a gap.
+
+Listen to `"viewport"` events for navigation changes; `"domain"` events report
+category membership or order changes.
 These methods are available only for band and point scales. See
 [categorical scale viewports](../grammar/scale.md#categorical-scale-viewports).
 
-Two embeds with the same category order can synchronize the complete snapshot:
+Two embeds with the same category order can link their rank intervals:
 
 ```js
 const targetScale = otherApi.getScaleResolutionByName("categories");

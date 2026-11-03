@@ -1,6 +1,4 @@
 import { ComplexDomain, NumericDomain } from "../spec/scale.js";
-import { CategoricalViewport } from "../scales/scaleBand.js";
-export type { CategoricalViewport } from "../scales/scaleBand.js";
 
 export type ScaleResolutionEventType = "domain" | "range" | "viewport";
 export interface ScaleResolutionEvent {
@@ -35,21 +33,21 @@ export interface ZoomToOptions {
  */
 export interface ScaleResolutionApi {
     /**
-     * Return detached band/point navigation state; null means fit all categories.
+     * Return a detached half-open band/point rank interval; null fits all categories.
      * Throws for other scale types. Listen to `"viewport"` events for navigation
      * changes; the categorical domain continues to contain all categories.
+     * Fractional positions inside grouping gaps are not included.
      */
-    getViewport(): CategoricalViewport | null;
+    getViewport(): [number, number] | null;
 
     /**
      * Navigate a band/point scale in half-open rank coordinates, preserving its
-     * categorical domain. Null fits all categories; optional gap ranks retain
-     * partially visible gaps. Ordinary interval-only targets expand to at least
-     * one category; exact snapshots with gap ranks retain fractional spans.
+     * categorical domain. Null fits all categories. Intervals narrower than one
+     * category expand around their midpoint to span one category.
      * Uses the same transition options as zoomTo().
      */
     zoomToViewport(
-        viewport: CategoricalViewport | null,
+        viewport: [number, number] | null,
         options?: ZoomToOptions
     ): Promise<void>;
     addEventListener(

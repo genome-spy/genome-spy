@@ -180,7 +180,9 @@ interaction protects the display without ending reference collection.
 
 Band and point scales retain their complete categorical domain. `DomainRuntime`
 also owns their numeric scale viewport (null means fit all categories), using
-its existing command queue and transition resource. Viewport updates publish
+its existing command queue and transition resource. Public resolution APIs
+expose only half-open rank intervals; fractional gap-edge state stays internal
+for navigation and animation. Viewport updates publish
 mapping and zoom state plus a `viewport` event, without emitting a category
 `domain` event or freezing later membership changes. `ScaleInstanceManager`
 mirrors viewport commands separately. Index, band, and point share numeric

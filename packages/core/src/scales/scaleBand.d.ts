@@ -1,7 +1,7 @@
 import { Scalar } from "../spec/channel.js";
 import { Scale } from "../spec/scale.js";
 
-/** Exact navigation snapshot for a band or point scale. */
+/** Internal navigation state for a band or point scale. */
 export interface CategoricalViewport {
     /** Half-open category-rank interval; endpoints may be fractional. */
     interval: [number, number];

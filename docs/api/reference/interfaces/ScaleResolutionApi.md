@@ -8,15 +8,16 @@ A public API for ScaleResolution
 
 ### getViewport()
 
-> **getViewport**(): [`CategoricalViewport`](CategoricalViewport.md)
+> **getViewport**(): \[`number`, `number`\]
 
-Return detached band/point navigation state; null means fit all categories.
+Return a detached half-open band/point rank interval; null fits all categories.
 Throws for other scale types. Listen to `"viewport"` events for navigation
 changes; the categorical domain continues to contain all categories.
+Fractional positions inside grouping gaps are not included.
 
 #### Returns
 
-[`CategoricalViewport`](CategoricalViewport.md)
+\[`number`, `number`\]
 
 ***
 
@@ -25,16 +26,15 @@ changes; the categorical domain continues to contain all categories.
 > **zoomToViewport**(`viewport`, `options?`): `Promise`<`void`\>
 
 Navigate a band/point scale in half-open rank coordinates, preserving its
-categorical domain. Null fits all categories; optional gap ranks retain
-partially visible gaps. Ordinary interval-only targets expand to at least
-one category; exact snapshots with gap ranks retain fractional spans.
+categorical domain. Null fits all categories. Intervals narrower than one
+category expand around their midpoint to span one category.
 Uses the same transition options as zoomTo().
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `viewport` | [`CategoricalViewport`](CategoricalViewport.md) |
+| `viewport` | \[`number`, `number`\] |
 | `options?` | [`ZoomToOptions`](ZoomToOptions.md) |
 
 #### Returns

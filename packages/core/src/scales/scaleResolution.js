@@ -1423,20 +1423,23 @@ export default class ScaleResolution {
         return this.#domainRuntime.update(update, requestRender);
     }
 
+    /** @returns {[number, number] | null} */
     getViewport() {
         const scale = this.getScale();
         if (!isCategoricalPositionScale(scale.type))
             throw new Error("Scale viewports require a band or point scale.");
-        return /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
-            scale
-        ).viewport();
+        const interval = this.#domainState.viewport?.interval;
+        return interval ? [interval[0], interval[1]] : null;
     }
 
-    /** @param {import("./scaleBand.js").CategoricalViewport | null} viewport
+    /** @param {[number, number] | null} viewport
      * @param {import("../types/scaleResolutionApi.js").ZoomToOptions} [options]
      */
     zoomToViewport(viewport, options) {
-        return this.#interactionController.zoomToViewport(viewport, options);
+        return this.#interactionController.zoomToViewport(
+            viewport === null ? null : { interval: viewport },
+            options
+        );
     }
 
     /**

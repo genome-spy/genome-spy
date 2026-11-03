@@ -89,7 +89,7 @@ test.each(/** @type {const} */ (["x", "y"]))(
             );
         }
         const x = getTopLevelSpecView(view).getScaleResolution(channel);
-        await x.zoomToViewport({ interval: [1, 3] });
+        await x.zoomToViewport([1, 3]);
         const zoomed = render(view);
         expect(
             Array.from(

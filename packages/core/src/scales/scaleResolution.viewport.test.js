@@ -35,26 +35,26 @@ test("shared categorical navigation preserves membership and reset while categor
     const viewportChanged = vi.fn();
     x.addEventListener("domain", domainChanged);
     x.addEventListener("viewport", viewportChanged);
-    expect(x.getViewport()).toEqual({ interval: [1, 3] });
+    expect(x.getViewport()).toEqual([1, 3]);
     expect(x.getZoomLevel()).toBe(2);
     expect(x.isZoomed()).toBe(false);
     x.zoom(0.5, 0.5, 0, 200);
-    expect(x.getViewport()).toEqual({ interval: [1.5, 2.5] });
+    expect(x.getViewport()).toEqual([1.5, 2.5]);
     expect(x.getDomain()).toEqual(["A", "B", "C", "D"]);
     expect(domainChanged).not.toHaveBeenCalled();
     expect(viewportChanged).toHaveBeenCalledOnce();
     expect(x.getZoomLevel()).toBe(4);
     expect(x.resetZoom()).toBe(true);
-    expect(x.getViewport()).toEqual({ interval: [1, 3] });
+    expect(x.getViewport()).toEqual([1, 3]);
 
-    await x.zoomToViewport({ interval: [2, 4] });
+    await x.zoomToViewport([2, 4]);
     view.paramRuntime.setValue("categories", ["D", "A", "C", "B", "E"]);
     await view.paramRuntime.whenPropagated();
     expect(x.getDomain()).toEqual(["D", "A", "C", "B", "E"]);
-    expect(x.getViewport()).toEqual({ interval: [2, 4] });
+    expect(x.getViewport()).toEqual([2, 4]);
     view.paramRuntime.setValue("categories", ["D", "A"]);
     await view.paramRuntime.whenPropagated();
-    expect(x.getViewport()).toEqual({ interval: [0, 2] });
+    expect(x.getViewport()).toEqual([0, 2]);
     expect(x.isZoomed()).toBe(false);
     expect(x.resetZoom()).toBe(false);
     await x.zoomToViewport(null);
@@ -75,17 +75,19 @@ test("point uses the same viewport commands even without gesture zooming", async
         x.getScale()
     );
     expect(x.isZoomable()).toBe(false);
-    scale.viewport({ interval: [1, 3] });
-    expect(x.getViewport()).toEqual({ interval: [1, 3] });
+    const interval = /** @type {[number, number]} */ ([1, 3]);
+    await x.zoomToViewport(interval);
+    interval[0] = -10;
+    expect(x.getViewport()).toEqual([1, 3]);
     expect(scale.bandwidth()).toBe(0);
     const snapshot = x.getViewport();
-    snapshot.interval[0] = -10;
-    expect(x.getViewport().interval).toEqual([1, 3]);
+    snapshot[0] = -10;
+    expect(x.getViewport()).toEqual([1, 3]);
     x.resetZoom();
     expect(x.getViewport()).toBeNull();
 });
 
-test("animated navigation retains exact gap edges and membership changes cancel stale targets", async () => {
+test("animated interval navigation cancels stale targets when gaps or categories change", async () => {
     const animator = new Animator(() => undefined);
     vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);
     const input = spec({ gapPositions: { expr: "cuts" }, gapWidth: 8 });
@@ -102,41 +104,29 @@ test("animated navigation retains exact gap edges and membership changes cancel 
         x.getScale()
     );
     scale.axisLength(200);
-    const target = {
-        interval: /** @type {[number, number]} */ ([1, 3]),
-        gapRanks: /** @type {[number, number]} */ ([0.5, 2]),
-    };
+    const target = /** @type {[number, number]} */ ([1, 3]);
     const transition = x.zoomToViewport(target, { duration: 500 });
     animator.transitions
         .splice(0)
         .forEach((frame) => frame(performance.now() + 1000));
     await transition;
     expect(x.getViewport()).toEqual(target);
-    const geometry = scale.gapMapping().position("C");
-    scale.viewport(target);
-    expect(scale.gapMapping().position("C")).toBe(geometry);
-    const changedGaps = x.zoomToViewport(
-        { interval: [0, 1] },
-        { duration: 500 }
-    );
+    const changedGaps = x.zoomToViewport([0, 1], { duration: 500 });
     view.paramRuntime.setValue("cuts", []);
     await view.paramRuntime.whenPropagated();
     animator.transitions
         .splice(0)
         .forEach((frame) => frame(performance.now() + 1000));
     await changedGaps;
-    expect(x.getViewport()).toEqual({ interval: [1, 3] });
-    const interrupted = x.zoomToViewport(
-        { interval: [0, 1] },
-        { duration: 500 }
-    );
+    expect(x.getViewport()).toEqual([1, 3]);
+    const interrupted = x.zoomToViewport([0, 1], { duration: 500 });
     view.paramRuntime.setValue("categories", ["C", "A"]);
     await view.paramRuntime.whenPropagated();
     animator.transitions
         .splice(0)
         .forEach((frame) => frame(performance.now() + 1000));
     await interrupted;
-    expect(x.getViewport()).toEqual({ interval: [0, 2] });
+    expect(x.getViewport()).toEqual([0, 2]);
 });
 
 test.each([{ zoom: { extent: "data" } }, { viewport: [0, 2], round: true }])(
@@ -175,7 +165,7 @@ test("categorical navigation updates fitted offsets without changing a step-base
     const offset = getRequiredScaleResolution(view, "xOffset").getScale();
     const width = view.coords.width;
     const before = offset.range()[1];
-    await x.zoomToViewport({ interval: [1, 3] });
+    await x.zoomToViewport([1, 3]);
     renderToLayout(view, Rectangle.create(0, 0, 300, 100));
     expect(view.coords.width).toBe(width);
     expect(offset.range()[1]).toBeGreaterThan(before);
@@ -210,7 +200,7 @@ test("replacement viewport bounds use the newly configured categorical domain", 
     });
     await view.paramRuntime.whenPropagated();
     expect(x.getDomain()).toEqual(["A", "B", "C", "D"]);
-    expect(x.getViewport()).toEqual({ interval: [2, 4] });
+    expect(x.getViewport()).toEqual([2, 4]);
     expect(x.isZoomed()).toBe(false);
 });
 
@@ -220,12 +210,12 @@ test("initial viewport reconciliation publishes the settled zoom metric", async 
     const { view } = await createHeadlessEngine(input);
     onTestFinished(() => view.disposeSubtree());
     const x = getRequiredScaleResolution(view, "x");
-    expect(x.getViewport()).toEqual({ interval: [0, 4] });
+    expect(x.getViewport()).toEqual([0, 4]);
     expect(view.paramRuntime.getValue("zoom")).toBe(1);
     expect(x.isZoomed()).toBe(false);
 });
 
-test("categorical animation retains exact gap-only targets and returns to fit-all", async () => {
+test("interval navigation animates internal gap state and returns to fit-all", async () => {
     const animator = new Animator(() => undefined);
     vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);
     const { view } = await createHeadlessEngine(
@@ -245,15 +235,15 @@ test("categorical animation retains exact gap-only targets and returns to fit-al
         interval: /** @type {[number, number]} */ ([1, 3]),
         gapRanks: /** @type {[number, number]} */ ([0.25, 1.75]),
     };
-    const to = {
-        ...from,
-        gapRanks: /** @type {[number, number]} */ ([0.75, 1.25]),
-    };
-    await x.zoomToViewport(from);
+    scale.viewport(from);
     const before = scale.gapMapping().position("B");
-    const final = scale.copy().viewport(to).gapMapping().position("B");
-    const transition = x.zoomToViewport(to, { duration: 500 });
-    expect(x.getViewport()).toEqual(from);
+    const final = scale
+        .copy()
+        .viewport({ interval: from.interval })
+        .gapMapping()
+        .position("B");
+    const transition = x.zoomToViewport(from.interval, { duration: 500 });
+    expect(x.getViewport()).toEqual(from.interval);
     const start = performance.now();
     animator.transitions.splice(0).forEach((frame) => frame(start + 250));
     const middle = scale.gapMapping().position("B");
@@ -261,11 +251,12 @@ test("categorical animation retains exact gap-only targets and returns to fit-al
     expect(middle).toBeLessThan(Math.max(before, final));
     animator.transitions.splice(0).forEach((frame) => frame(start + 1000));
     await transition;
-    expect(x.getViewport()).toEqual(to);
+    expect(x.getViewport()).toEqual(from.interval);
     expect(scale.gapMapping().position("B")).toBeCloseTo(final);
+    expect(scale.viewport().gapRanks).toBeUndefined();
 
     const reset = x.zoomToViewport(null, { duration: 500 });
-    expect(x.getViewport()).toEqual(to);
+    expect(x.getViewport()).toEqual(from.interval);
     animator.transitions
         .splice(0)
         .forEach((frame) => frame(performance.now() + 1000));
@@ -281,15 +272,15 @@ test("ordinary categorical intervals share one-band limits across authored, API,
     onTestFinished(() => view.disposeSubtree());
     const x = getRequiredScaleResolution(view, "x");
     const authored = x.getViewport();
-    expect(authored.interval[1] - authored.interval[0]).toBeCloseTo(1);
+    expect(authored[1] - authored[0]).toBeCloseTo(1);
     expect(x.isZoomed()).toBe(false);
-    await x.zoomToViewport({ interval: [0.8, 1] });
+    await x.zoomToViewport([0.8, 1]);
     const normalized = x.getViewport();
     await x.zoomToViewport(normalized);
     expect(x.getViewport()).toEqual(normalized);
-    expect(x.getMappingRef().get().viewport).toEqual(normalized);
-    await x.zoomToViewport({ interval: [0, 0.2] });
-    expect(x.getViewport()).toEqual({ interval: [0, 1] });
+    expect(x.getMappingRef().get().viewport.interval).toEqual(normalized);
+    await x.zoomToViewport([0, 0.2]);
+    expect(x.getViewport()).toEqual([0, 1]);
     x.resetZoom();
     expect(x.getViewport()).toEqual(authored);
     expect(x.isZoomed()).toBe(false);
@@ -297,12 +288,14 @@ test("ordinary categorical intervals share one-band limits across authored, API,
         interval: /** @type {[number, number]} */ ([1, 1.2]),
         gapRanks: /** @type {[number, number]} */ ([0.5, 1]),
     };
-    await x.zoomToViewport(exact);
-    expect(x.getViewport()).toEqual(exact);
+    /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+        x.getScale()
+    ).viewport(exact);
+    expect(x.getViewport()).toEqual(exact.interval);
     view.paramRuntime.setValue("categories", ["A", "B", "D", "C"]);
     await view.paramRuntime.whenPropagated();
     // Clearing stale gap ranks must normalize both owner state and live scale.
-    expect(x.getMappingRef().get().viewport).toEqual(authored);
+    expect(x.getMappingRef().get().viewport.interval).toEqual(authored);
     expect(x.getViewport()).toEqual(authored);
     x.resetZoom();
     view.paramRuntime.setValue("categories", []);
@@ -310,6 +303,6 @@ test("ordinary categorical intervals share one-band limits across authored, API,
     expect(x.getViewport()).toEqual(authored);
     view.paramRuntime.setValue("categories", ["A"]);
     await view.paramRuntime.whenPropagated();
-    expect(x.getViewport()).toEqual({ interval: [0, 1] });
+    expect(x.getViewport()).toEqual([0, 1]);
     expect(x.isZoomed()).toBe(false);
 });

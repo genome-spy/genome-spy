@@ -256,7 +256,7 @@ EXAMPLE examples/docs/grammar/scale/categorical-zoom.json height=210
 For point placement, change the x scale to `"point"`, use a point mark, and
 remove `labelSqueeze`. Point scales share the rank viewport behavior but have
 zero bandwidth. The [scale API](../api/runtime-state.md#categorical-scale-viewports)
-can read, restore, link, and animate categorical viewports.
+can read, restore, link, and animate categorical rank intervals.
 
 ### Zoom extent
 
