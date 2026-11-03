@@ -247,7 +247,8 @@ domain; `zoom.extent` options do not apply. Navigation does not support
 [scrollable layout viewport](composition/concat.md#scrollable-viewports), which
 moves over content that is already laid out.
 
-This example combines a zoomable categorical x scale with an index y scale.
+This example zooms across 26 categorical columns while two categorical rows
+remain fixed. Two inline value arrays are reshaped into the heatmap's cells.
 The axis uses [`labelSqueeze`](axis.md#ticks-and-labels) to fit each column label
 inside its band as space changes:
 

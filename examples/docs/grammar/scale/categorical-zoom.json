@@ -1,51 +1,72 @@
 {
   "description": [
-    "Zoomable categories and indices",
-    "A categorical scale viewport preserves category order while both axes zoom. Band labels squeeze to fit their columns."
+    "Zoomable categorical columns",
+    "Zoom and pan across A–Z while two categorical rows stay fixed. Grouping gaps keep their pixel width."
   ],
 
   "data": {
     "values": [
-      { "family": "Alpha family", "index": 0, "value": 1 },
-      { "family": "Beta family", "index": 0, "value": 2 },
-      { "family": "Gamma family", "index": 0, "value": 3 },
-      { "family": "Delta family", "index": 0, "value": 4 },
-      { "family": "Alpha family", "index": 1, "value": 4 },
-      { "family": "Beta family", "index": 1, "value": 3 },
-      { "family": "Gamma family", "index": 1, "value": 2 },
-      { "family": "Delta family", "index": 1, "value": 1 },
-      { "family": "Alpha family", "index": 2, "value": 2 },
-      { "family": "Beta family", "index": 2, "value": 4 },
-      { "family": "Gamma family", "index": 2, "value": 1 },
-      { "family": "Delta family", "index": 2, "value": 3 }
+      {
+        "series": "Series 1",
+        "values": [
+          0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+          20, 21, 22, 23, 24, 25
+        ]
+      },
+      {
+        "series": "Series 2",
+        "values": [
+          25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8,
+          7, 6, 5, 4, 3, 2, 1, 0
+        ]
+      }
     ]
   },
 
-  "width": 240,
-  "height": 120,
+  "transform": [
+    {
+      "type": "flatten",
+      "fields": ["values"],
+      "as": ["value"],
+      "index": "index"
+    },
+    {
+      "type": "formula",
+      "expr": "'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[datum.index]",
+      "as": "category"
+    }
+  ],
 
   "mark": "rect",
 
   "encoding": {
     "x": {
-      "field": "family",
+      "field": "category",
       "type": "nominal",
       "scale": {
         "type": "band",
-        "domain": [
-          "Alpha family",
-          "Beta family",
-          "Gamma family",
-          "Delta family"
-        ],
+        "domain": { "expr": "split('ABCDEFGHIJKLMNOPQRSTUVWXYZ', '')" },
         "zoom": true,
-        "viewport": [1, 3],
-        "gapPositions": ["Gamma family"],
+        "gapPositions": ["I", "Q"],
         "gapWidth": 8
       },
       "axis": { "labelAngle": 0, "labelSqueeze": true, "title": null }
     },
-    "y": { "field": "index", "type": "index", "scale": { "domain": [0, 2] } },
-    "color": { "field": "value", "type": "quantitative", "legend": null }
+    "y": {
+      "field": "series",
+      "type": "nominal",
+      "scale": {
+        "type": "band",
+        "domain": ["Series 1", "Series 2"],
+        "zoom": false
+      },
+      "axis": { "title": null }
+    },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "scale": { "domain": [0, 25] },
+      "legend": null
+    }
   }
 }
