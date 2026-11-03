@@ -281,5 +281,9 @@ deferred: no measured regression justifies extra static-encoding machinery here.
 The earlier raw proof evidence remains historical; the current acceptance
 contract is the native Canvas decision and outside-only implementation above.
 No remaining cap blocker or feature task in this slice; shared alignment and
-other mark work remain deferred. Delivery review, exact size reporting and plan
-retirement before merge remain required. No PR has been opened.
+other mark work remain deferred. Delivery review and exact size reporting are complete: the incremental diff
+against #644 is 24 files, +1,061/-95, excluding this temporary plan. The reviewed
+cap fix and bounded cleanup are committed. PR #644 remains open, so delivery
+will target its branch to preserve this scope. All feature tasks in this slice
+are completed or explicitly deferred above. Retire this reconciled plan in the
+next commit before opening the non-draft PR; no temporary plan may merge.
