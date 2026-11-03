@@ -45,7 +45,6 @@
       "type": "nominal",
       "scale": {
         "type": "band",
-        "domain": { "expr": "split('ABCDEFGHIJKLMNOPQRSTUVWXYZ', '')" },
         "zoom": true,
         "gapPositions": ["I", "Q"],
         "gapWidth": 8
