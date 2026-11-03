@@ -194,20 +194,29 @@ function renderRule(baseMark, options) {
     const mark = /** @type {import("../../../../marks/rule.js").default} */ (
         baseMark
     );
-    return visitRuleInstances(
-        mark,
-        resolveRuleProperties(mark),
-        options,
-        (instance) =>
-            options.rasterizer.strokeSegment(
-                getPickingId(mark, instance.datum),
-                instance.x1,
-                instance.y1,
-                instance.x2,
-                instance.y2,
-                Math.max(instance.strokeWidth, MIN_RULE_PICKING_WIDTH)
+    const properties = resolveRuleProperties(mark);
+    return visitRuleInstances(mark, properties, options, (instance) => {
+        const dx = instance.x2 - instance.x1;
+        const dy = instance.y2 - instance.y1;
+        // The rasterizer's axis-aligned end squares can miss rotated square-cap corners.
+        // Extend only outlined square caps; retain the existing body/tick picking policy.
+        const cap =
+            properties.strokeCap === "square" && instance.strokeWidth > 0
+                ? (instance.size / 2 + instance.strokeWidth) /
+                  Math.hypot(dx, dy)
+                : 0;
+        options.rasterizer.strokeSegment(
+            getPickingId(mark, instance.datum),
+            instance.x1 - dx * cap,
+            instance.y1 - dy * cap,
+            instance.x2 + dx * cap,
+            instance.y2 + dy * cap,
+            Math.max(
+                instance.size + 2 * instance.strokeWidth,
+                MIN_RULE_PICKING_WIDTH
             )
-    );
+        );
+    });
 }
 
 /**

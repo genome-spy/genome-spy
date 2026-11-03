@@ -1445,12 +1445,7 @@ describe("Canvas2DViewRenderingContext", () => {
             const mark =
                 /** @type {import("../../view/unitView.js").default} */ (view)
                     .mark;
-            const channels =
-                type == "link"
-                    ? ["color"]
-                    : type == "rule"
-                      ? ["fill"]
-                      : ["fill", "stroke"];
+            const channels = type == "link" ? ["color"] : ["fill", "stroke"];
             const encoders =
                 /** @type {Record<string, import("../../types/encoder.js").Encoder>} */ (
                     mark.encoders
@@ -1467,11 +1462,10 @@ describe("Canvas2DViewRenderingContext", () => {
             const initial = createRecordingContext();
             render(view, initial.context);
             for (const spy of spies) expect(spy).toHaveBeenCalledOnce();
-            expect(initial.calls.strokes.map(([, color]) => color)).toEqual([
-                "black",
-                "black",
-                "black",
-            ]);
+            const strokeCount = type === "rule" ? 6 : 3;
+            expect(initial.calls.strokes.map(([, color]) => color)).toEqual(
+                Array(strokeCount).fill("black")
+            );
 
             view.paramRuntime.setValue("defaultThemeColors", {
                 foreground: "white",
@@ -1480,11 +1474,9 @@ describe("Canvas2DViewRenderingContext", () => {
             const updated = createRecordingContext();
             render(view, updated.context);
             for (const spy of spies) expect(spy).toHaveBeenCalledTimes(2);
-            expect(updated.calls.strokes.map(([, color]) => color)).toEqual([
-                "white",
-                "white",
-                "white",
-            ]);
+            expect(updated.calls.strokes.map(([, color]) => color)).toEqual(
+                Array(strokeCount).fill("white")
+            );
             if (type == "point" || type == "arrow") {
                 expect(updated.calls.fills.map(([, color]) => color)).toEqual([
                     "white",

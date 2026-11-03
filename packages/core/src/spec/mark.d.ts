@@ -537,7 +537,7 @@ export interface RuleProps
         SecondaryPositionProps,
         SizeProps,
         StrokeStyleProps,
-        Pick<FillAndStrokeProps, "fill"> {
+        FillAndStrokeProps {
     type: "rule";
 }
 

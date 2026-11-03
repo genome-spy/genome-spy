@@ -69,7 +69,7 @@ describe("SVG view backgrounds", () => {
         ).toBe("#abcdef");
         expect(
             strokeView
-                ?.querySelector('[data-mark-type="rule"]')
+                ?.querySelector('[data-mark-type="rule"] line')
                 ?.getAttribute("stroke-opacity")
         ).toBe("0.6");
         expect(

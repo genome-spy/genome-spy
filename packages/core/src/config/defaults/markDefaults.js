@@ -87,6 +87,10 @@ export const ARROW_STYLE_DEFAULTS = {
 
 /** @type {import("../../spec/config.js").RuleConfig} */
 export const RULE_MARK_DEFAULTS = {
+    filled: true,
+    fillOpacity: 1,
+    strokeOpacity: 1,
+    strokeWidth: 1,
     x2: undefined,
     y2: undefined,
     size: 1,

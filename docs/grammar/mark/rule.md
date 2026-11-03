@@ -8,11 +8,24 @@ EXAMPLE examples/docs/grammar/mark/rule/rule-mark.json height=150
 ## Channels
 
 Rule mark supports the primary and secondary [position](./index.md#channels)
-channels and the `color`, `fill`, `opacity`, and `size` channels.
+channels and the `color`, `fill`, `fillOpacity`, `stroke`, `strokeWidth`,
+`strokeOpacity`, `opacity`, and `size` channels.
 
 `fill` sets the body color and takes precedence over `color`. Both support
 constant values, fields, expressions, and conditional encodings. `size` controls
-the body thickness in logical pixels; `opacity` controls its opacity.
+the body thickness in logical pixels. `stroke` adds an outside border whose full
+thickness is `strokeWidth` (default `1`). A four-pixel body with a one-pixel border
+has a total thickness of six pixels. Borders are absent by default. `fillOpacity`
+and `strokeOpacity` control the paints separately; `opacity` affects both.
+Setting `filled: false` routes `color` to the border and leaves the body unfilled,
+unless an explicit fill is provided.
+
+Canvas rendering and Canvas-backed exports approximate borders by painting a
+wider native stroke followed by the body. The border can show through a
+translucent body, and per-rule opacity can produce a different combined color
+and alpha. Native caps/dashes may leave butt endpoints and dash cuts without a
+complete border. GPU rendering resolves the paints together. Vector SVG export
+may show an antialiasing hairline at the internal paint boundary.
 
 ## Properties
 

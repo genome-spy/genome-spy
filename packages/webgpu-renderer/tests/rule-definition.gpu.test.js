@@ -501,7 +501,9 @@ for (const dpr of [1, 2]) {
                 ).toBeLessThanOrEqual(1);
             });
         expect(result.noBorderPicks).toEqual(rowsExpectedIds());
-        expect(result.opaque[1]).toEqual([17, 0, 21, 37]);
+        // The nominal endpoint has .125 coverage; its thin width does not fade the outside band.
+        // (.125 * .8 red + .875 blue) * .65 common opacity.
+        expect(result.opaque[1]).toEqual([17, 0, 145, 162]);
         expect(result.borderPicks).toEqual([1, 2, 3, 4, 5, null, null]);
     });
 }

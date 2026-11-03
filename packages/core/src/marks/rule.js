@@ -21,7 +21,13 @@ export default class RuleMark extends Mark {
             "y2Offset",
             "size",
             ...(this.getType() == "rule"
-                ? [/** @type {const} */ ("fill")]
+                ? /** @type {const} */ ([
+                      "fill",
+                      "fillOpacity",
+                      "stroke",
+                      "strokeWidth",
+                      "strokeOpacity",
+                  ])
                 : []),
         ];
     }
@@ -36,8 +42,23 @@ export default class RuleMark extends Mark {
             applyColorToPaintChannel(encoding, "fill");
         } else {
             fixRuleLikeEncoding(encoding, "rule");
+            const filled = /** @type {import("../spec/mark.js").RuleProps} */ (
+                this.properties
+            ).filled;
             if (!encoding.fill) {
-                applyColorToPaintChannel(encoding, "fill");
+                if (filled) applyColorToPaintChannel(encoding, "fill");
+                else encoding.fill = { value: null };
+            }
+            if (!encoding.stroke && !filled) {
+                applyColorToPaintChannel(encoding, "stroke");
+            }
+            encoding.stroke ??= { value: null };
+            if (
+                "value" in encoding.stroke &&
+                encoding.stroke.value === null &&
+                !("condition" in encoding.stroke)
+            ) {
+                encoding.strokeWidth = { value: 0 };
             }
         }
         delete encoding.color;

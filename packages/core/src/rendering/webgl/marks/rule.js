@@ -26,6 +26,8 @@ export default class WebGLRuleMark extends WebGLMark {
         /** @type {WebGLTexture | undefined} */
         this.dashTexture = undefined;
         this.dashTextureSize = 0;
+        /** @type {WebGLTexture | undefined} */
+        this.dashIntervalTexture = undefined;
     }
 
     /**
@@ -50,6 +52,14 @@ export default class WebGLRuleMark extends WebGLMark {
             "size",
             "fill",
             "opacity",
+            ...(this.mark.getType() === "rule"
+                ? /** @type {const} */ ([
+                      "fillOpacity",
+                      "stroke",
+                      "strokeWidth",
+                      "strokeOpacity",
+                  ])
+                : []),
         ];
     }
 
@@ -67,10 +77,40 @@ export default class WebGLRuleMark extends WebGLMark {
             src: textureData,
             height: 1,
         });
+        if (textureData.length > 0 && this.mark.getType() === "rule") {
+            // Two neighboring painted intervals preserve borders at finite dash cuts.
+            const intervals = new Float32Array(textureData.length * 4);
+            const on = (/** @type {number} */ x) =>
+                textureData[
+                    ((x % textureData.length) + textureData.length) %
+                        textureData.length
+                ] > 0;
+            for (let x = 0; x < textureData.length; x++) {
+                for (const side of [0, 1]) {
+                    let at = side ? x : x - 1;
+                    while (!on(at)) at += side ? 1 : -1;
+                    let start = at,
+                        end = at + 1;
+                    while (on(start - 1)) start--;
+                    while (on(end)) end++;
+                    intervals.set([start - x, end - x], x * 4 + side * 2);
+                }
+            }
+            this.dashIntervalTexture = createTexture(gl, {
+                level: 0,
+                minMag: gl.NEAREST,
+                internalFormat: gl.RGBA32F,
+                format: gl.RGBA,
+                type: gl.FLOAT,
+                src: intervals,
+                height: 1,
+            });
+        }
         this.dashTextureSize = textureData.length; // Not needed with WebGL2
 
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
             COMMON_SHADER,
+            ...(this.mark.getType() === "rule" ? ["#define RULE_STROKE"] : []),
         ]);
     }
 
@@ -90,6 +130,7 @@ export default class WebGLRuleMark extends WebGLMark {
 
         setBlockUniforms(this.markUniformInfo, {
             uDashTextureSize: +this.dashTextureSize,
+            uStrokeDashOffset: props.strokeDashOffset,
         });
         this.markUniformsAltered = true;
     }
@@ -125,6 +166,9 @@ export default class WebGLRuleMark extends WebGLMark {
             // an incompatible texture from an earlier program.
             setUniforms(this.programInfo, {
                 uDashTexture: this.dashTexture,
+                ...(this.dashIntervalTexture
+                    ? { uDashIntervals: this.dashIntervalTexture }
+                    : {}),
             })
         );
 
@@ -163,6 +207,8 @@ export default class WebGLRuleMark extends WebGLMark {
             this.gl.deleteTexture(this.dashTexture);
             this.dashTexture = undefined;
         }
+        if (this.dashIntervalTexture)
+            this.gl.deleteTexture(this.dashIntervalTexture);
         super.dispose();
     }
 }

@@ -3,6 +3,9 @@ import { intersectsBounds } from "../bounds.js";
 import clipSegment from "../../../utils/clipSegment.js";
 import {
     encodeNumber,
+    getDrawConstantPaint,
+    getPaintOpacityAccessor,
+    toPaintString,
     prepareRangeProjection,
     resolveMarkProperty,
 } from "../markEncoding.js";
@@ -14,18 +17,24 @@ import {
  * @prop {number} y1
  * @prop {number} x2
  * @prop {number} y2
+ * @prop {number} size
  * @prop {number} strokeWidth
+ * @prop {string} stroke
+ * @prop {number} strokeOpacity
  */
 
 /** @param {import("../../../marks/rule.js").default} mark */
 export function resolveRuleProperties(mark) {
-    return { minLength: resolveMarkProperty(mark, mark.properties.minLength) };
+    return {
+        minLength: resolveMarkProperty(mark, mark.properties.minLength),
+        strokeCap: resolveMarkProperty(mark, mark.properties.strokeCap),
+    };
 }
 
 /**
  * @param {import("../../../marks/rule.js").default} mark
  * @param {ReturnType<typeof resolveRuleProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, start?: number, end?: number}} options
  * @param {(instance: RuleInstance) => void} visitor
  */
 export function visitRuleInstances(mark, properties, options, visitor) {
@@ -34,20 +43,22 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
+    if (start === end) {
         return 0;
     }
     const projectXRange = prepareRangeProjection(
         coords,
         encoders,
         "x",
-        data[0]
+        data[start]
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[start]
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
@@ -58,21 +69,41 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         y1: 0,
         x2: 0,
         y2: 0,
+        size: 0,
         strokeWidth: 0,
+        stroke: "none",
+        strokeOpacity: 0,
     };
     const clampX = isMarkClamped(mark, "x");
     const clampY = isMarkClamped(mark, "y");
     /** @type {[number, number, number, number]} */
     const segment = [0, 0, 0, 0];
     let instanceCount = 0;
+    const isRule = mark.getType() === "rule";
+    const constantStroke = isRule
+        ? getDrawConstantPaint(encoders.stroke, options)
+        : "none";
+    const strokeAlpha = isRule
+        ? getPaintOpacityAccessor(encoders.stroke)
+        : () => 0;
 
-    for (const datum of data) {
+    for (let index = start; index < end; index++) {
+        const datum = data[index];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
         let [x1, x2] = xRange;
         let [y1, y2] = yRange;
-        const strokeWidth = encodeNumber(encoders.size, datum);
-        const padding = strokeWidth + properties.minLength + 1;
+        const size = encodeNumber(encoders.size, datum);
+        if (size <= 0) continue;
+        const stroke = constantStroke ?? toPaintString(encoders.stroke(datum));
+        const strokeOpacity = isRule
+            ? encodeNumber(encoders.strokeOpacity, datum)
+            : 0;
+        const strokeWidth =
+            isRule && strokeOpacity * strokeAlpha(stroke) > 0
+                ? Math.max(0, encodeNumber(encoders.strokeWidth, datum))
+                : 0;
+        const padding = size + 2 * strokeWidth + properties.minLength + 1;
         const marginX = Math.max(visibleBounds.x2 - visibleBounds.x1, padding);
         const marginY = Math.max(visibleBounds.y2 - visibleBounds.y1, padding);
         if (
@@ -105,7 +136,17 @@ export function visitRuleInstances(mark, properties, options, visitor) {
             x2 += ux * expansion;
             y2 += uy * expansion;
         }
-        if (!intersectsBounds(visibleBounds, x1, y1, x2, y2, strokeWidth / 2)) {
+        if (
+            !intersectsBounds(
+                visibleBounds,
+                x1,
+                y1,
+                x2,
+                y2,
+                (size / 2 + strokeWidth) *
+                    (properties.strokeCap === "square" ? Math.SQRT2 : 1)
+            )
+        ) {
             continue;
         }
 
@@ -115,7 +156,10 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         instance.y1 = y1;
         instance.x2 = x2;
         instance.y2 = y2;
+        instance.size = size;
         instance.strokeWidth = strokeWidth;
+        instance.stroke = stroke;
+        instance.strokeOpacity = strokeOpacity;
         visitor(instance);
     }
     return instanceCount;
