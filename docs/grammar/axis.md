@@ -108,9 +108,10 @@ zooming. These behaviors support axis-aligned labels; culling a label does not
 remove its tick mark.
 
 On a band axis, `labelSqueeze: true` shrinks each label uniformly to fit its
-own band, including rotated labels. It bypasses `labelOverlap`, including an
-explicit strategy, while offscreen labels and ticks are still culled. Very small
-labels fade out using the [text mark's range fitting](mark/text.md) behavior.
+own band, including rotated labels. Labels stay aligned with their bands at
+viewport edges. Squeezing bypasses `labelOverlap`, including an explicit strategy,
+while offscreen labels and ticks are still culled. Very small labels fade out
+using the [text mark's range fitting](mark/text.md) behavior.
 Point, index, and locus axes do not support label squeezing. See the
 [categorical zoom example](scale.md#categorical-scale-viewports).
 

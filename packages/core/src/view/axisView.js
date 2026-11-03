@@ -900,7 +900,9 @@ function createAxis(
                     clip: labelClipPolicy === "anchor" ? "never" : false,
                     cullByVisibleRange:
                         labelClipPolicy === "anchor" ? main : undefined,
-                    ...(ap.labelSqueeze ? { squeeze: true } : {}),
+                    ...(ap.labelSqueeze
+                        ? { squeeze: true, flushX: false, flushY: false }
+                        : {}),
                     align: ap.labelAlign,
                     angle: ap.labelAngle,
                     baseline: ap.labelBaseline,

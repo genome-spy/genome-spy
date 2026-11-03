@@ -108,6 +108,40 @@ test.each(/** @type {const} */ (["x", "y"]))(
     }
 );
 
+test("squeezed axis labels remain aligned with ticks near viewport edges", async () => {
+    const { view } = await createHeadlessEngine(
+        {
+            width: 180,
+            height: 70,
+            data: { values: ["A", "B", "C"].map((category) => ({ category })) },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "category",
+                    type: "nominal",
+                    scale: { type: "band", viewport: [0.49, 2.49] },
+                    axis: { labelSqueeze: true, labelAngle: -90, title: null },
+                },
+            },
+        },
+        { contextOptions }
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const svg = render(view);
+    const labels = Array.from(
+        svg.querySelectorAll('[data-name="labels_main"] text')
+    );
+    const ticks = Array.from(svg.querySelectorAll('[data-name="ticks"] line'));
+    expect(labels.map((label) => label.textContent)).toEqual(["A", "B"]);
+    for (const [index, label] of labels.entries()) {
+        // A partially visible band must not slide its label toward the viewport.
+        const x = Number(
+            label.getAttribute("transform").match(/translate\(([-\d.]+)/)[1]
+        );
+        expect(x).toBeCloseTo(Number(ticks[index].getAttribute("x1")), 4);
+    }
+});
+
 test("point axes cull offscreen ticks while retaining zero bandwidth", async () => {
     const { view } = await createHeadlessEngine(
         {
