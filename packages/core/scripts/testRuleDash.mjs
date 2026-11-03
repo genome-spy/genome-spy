@@ -28,6 +28,14 @@ await testRenderers(
                 `${renderer} DPR ${dpr}: ${row.name}: ${JSON.stringify(row.firstMismatch)}`
             );
         }
+        assert(
+            Math.abs(result.thinCoverage.fill - 0.5) <= 2 / 255,
+            `${renderer} DPR ${dpr}: thin dashed body coverage`
+        );
+        assert(
+            Math.abs(result.thinCoverage.outer - (6 * dpr + 0.5)) <= 2 / 255,
+            `${renderer} DPR ${dpr}: thin dashed outside coverage`
+        );
         // Picking intentionally follows the retained extruded quad through dash gaps.
         assert.deepEqual(result.picked, ["hit", "empty"]);
     }
@@ -105,6 +113,12 @@ async function renderRules({ renderer, dpr }) {
             rise: 10,
             offset: -8.5,
         },
+        {
+            name: "thin square dash with border",
+            cap: "square",
+            border: 3,
+            size: 0.5 / dpr,
+        },
     ];
     const height = cases.length * rowHeight;
     const api = await embed(
@@ -123,7 +137,7 @@ async function renderRules({ renderer, dpr }) {
                 return {
                     mark: {
                         type: "rule",
-                        size: 14,
+                        size: item.size ?? 14,
                         fill: "red",
                         fillOpacity: item.hollow ? 0 : 1,
                         stroke: "blue",
@@ -240,6 +254,14 @@ async function renderRules({ renderer, dpr }) {
                 firstMismatch,
             };
         });
+        // The red body and blue outside band share coverage over an opaque white export.
+        const thinCoverage = { fill: 0, outer: 0 };
+        const thinY = (cases.length - 0.5) * rowHeight;
+        for (let py = (thinY - 10) * dpr; py < (thinY + 10) * dpr; py++) {
+            const at = (py * physicalWidth + (x + 8) * dpr) * 4;
+            thinCoverage.fill += (actual[at] - actual[at + 1]) / 255;
+            thinCoverage.outer += (255 - actual[at + 1]) / 255;
+        }
         const picked = [];
         for (const point of [
             { x: x + 30, y: 20 },
@@ -249,6 +271,7 @@ async function renderRules({ renderer, dpr }) {
         }
         return {
             rows,
+            thinCoverage,
             picked,
             loadingErrors,
             warnings: vector.warnings,

@@ -27,39 +27,53 @@ in float vNormalLengthInPixels;
 out lowp vec4 fragColor;
 
 #ifdef RULE_STROKE
-// Cap the clipped centerline interval, so every finite dash gets its own ends.
-float ribbonDistance(vec2 interval, float radius) {
-    vec2 p = vec2(vPosInPixels.x, vNormalLengthInPixels);
+// Cap the closest clipped dash using its signed longitudinal distance.
+float ribbonDistance(float along, float radius) {
     if (uStrokeCap == ROUND) {
-        return length(vec2(p.x - clamp(p.x, interval.x, interval.y), p.y)) - radius;
+        return length(vec2(max(along, 0.0), vNormalLengthInPixels)) - radius;
     }
     float end = uStrokeCap == SQUARE ? 0.5 * vNominalSize : 0.0;
-    vec2 q = vec2(max(interval.x - p.x, p.x - interval.y) - end, abs(p.y) - radius);
+    vec2 q = vec2(along - end, abs(vNormalLengthInPixels) - radius);
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
 }
 
-float boundaryCoverage(vec2 interval, float outset) {
+float boundaryCoverage(float along, float outset) {
     float width = vNominalSize + 2.0 * outset;
     float radius = 0.5 * max(width, 1.0 / uDevicePixelRatio) - outset;
-    float distance = ribbonDistance(interval, radius) - outset;
+    float distance = ribbonDistance(along, radius) - outset;
     return clamp(0.5 - distance * uDevicePixelRatio, 0.0, 1.0) * min(1.0, width * uDevicePixelRatio);
 }
 
-vec2 intervalCoverage(vec2 interval) {
-    if (interval.x > interval.y || (interval.x == interval.y && uStrokeCap == BUTT)) return vec2(0.0);
-    return vec2(boundaryCoverage(interval, 0.0), boundaryCoverage(interval, vBorderWidth));
+vec2 ribbonCoverage(float along) {
+    float body = boundaryCoverage(along, 0.0);
+    if (vBorderWidth == 0.0) return vec2(body);
+    return vec2(body, boundaryCoverage(along, vBorderWidth));
 }
 
 vec2 ruleCoverage() {
     vec2 bounds = vec2(0.0, vSpan);
-    if (uDashTextureSize == 0.0) return intervalCoverage(bounds);
+    if (uDashTextureSize == 0.0) {
+        return ribbonCoverage(max(-vPosInPixels.x, vPosInPixels.x - vSpan));
+    }
     float query = clamp(vPosInPixels.x, bounds.x, bounds.y);
     float local = mod(query + uStrokeDashOffset, uDashTextureSize);
     if (local == uDashTextureSize) local = 0.0;
     vec4 intervals = texelFetch(uDashTexture,
         ivec2(int(floor(local)), uStrokeCap == BUTT ? 1 : 0), 0) + query - fract(local);
-    return max(intervalCoverage(vec2(max(bounds.x, intervals.x), min(bounds.y, intervals.y))),
-        intervalCoverage(vec2(max(bounds.x, intervals.z), min(bounds.y, intervals.w))));
+    vec2 left = vec2(max(bounds.x, intervals.x), min(bounds.y, intervals.y));
+    vec2 right = vec2(max(bounds.x, intervals.z), min(bounds.y, intervals.w));
+    bool leftValid = left.x <= left.y && (left.x < left.y || uStrokeCap != BUTT);
+    bool rightValid = right.x <= right.y && (right.x < right.y || uStrokeCap != BUTT);
+    if (!leftValid && !rightValid) return vec2(0.0);
+
+    float leftAlong = max(left.x - vPosInPixels.x, vPosInPixels.x - left.y);
+    float rightAlong = max(right.x - vPosInPixels.x, vPosInPixels.x - right.y);
+    float along = leftValid ? leftAlong : rightAlong;
+    if (rightValid) along = min(along, rightAlong);
+
+    // Both cap distances are monotone in along. Their minimum gives the coverage
+    // union for each boundary, including its independent thin-width compensation.
+    return ribbonCoverage(along);
 }
 #endif
 
