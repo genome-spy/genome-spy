@@ -29,28 +29,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { bisectRight } from "d3-array";
-import { scaleOrdinal } from "d3-scale";
 import { bandSpace } from "vega-scale";
 import clamp from "../utils/clamp.js";
-import {
-    gapRank,
-    installGroupingGapProperties,
-} from "../genome/indexGapMapping.js";
+import { installGroupingGapProperties } from "../genome/indexGapMapping.js";
+import { createBandMapping } from "./bandMapping.js";
 
 /**
- * Band layout with occurrence-local grouping gaps. Numeric cuts address the
- * active domain's dense ranks; scale resolution owns category-to-cut conversion.
+ * Category identity wraps the same numeric geometry used by index scales.
+ * Rank lookup changes only with membership/order, never during navigation.
  * @returns {import("./scaleBand.js").CategoricalGapScale}
  */
 export default function scaleBand() {
-    /** @type {import("d3-scale").ScaleOrdinal<import("../spec/channel.js").Scalar, number, undefined>} */
-    const ordinal = scaleOrdinal().unknown(undefined);
+    /** @type {import("../spec/channel.js").Scalar[]} */
+    let domain = [];
+    /** @type {Map<import("../spec/channel.js").Scalar, number>} */
+    let ranks = new Map();
     let range = [0, 1];
     let round = false;
+    /** @type {import("./scaleBand.js").CategoricalViewport | null} */
+    let viewport = null;
     const padding = { paddingInner: 0, paddingOuter: 0, align: 0.5 };
 
-    /** @type {Map<number | undefined, import("./scaleBand.js").CategoricalGapMapping>} */
+    /** @type {Map<number, ReturnType<typeof createMapping>>} */
     const mappings = new Map();
     const scale = /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
         (/** @type {import("../spec/channel.js").Scalar} */ value) =>
@@ -65,8 +65,22 @@ export default function scaleBand() {
 
     // @ts-expect-error Getter/setter overloads.
     scale.domain = function (values) {
-        if (!arguments.length) return ordinal.domain();
-        ordinal.domain(values);
+        if (!arguments.length) return domain.slice();
+        ranks = new Map();
+        for (const value of values) {
+            if (!ranks.has(value)) ranks.set(value, ranks.size);
+        }
+        domain = Array.from(ranks.keys());
+        return invalidate();
+    };
+    // @ts-expect-error Getter/setter overloads.
+    scale.viewport = function (value) {
+        if (!arguments.length) return copyViewport(viewport);
+        if (value !== null && round)
+            throw new Error(
+                "Categorical scale viewports do not support round: true."
+            );
+        viewport = copyViewport(value);
         return invalidate();
     };
     // @ts-expect-error Getter/setter overloads.
@@ -80,6 +94,10 @@ export default function scaleBand() {
     // @ts-expect-error Getter/setter overloads.
     scale.round = function (value) {
         if (!arguments.length) return round;
+        if (value && viewport)
+            throw new Error(
+                "Categorical scale viewports do not support round: true."
+            );
         round = !!value;
         return invalidate();
     };
@@ -104,94 +122,109 @@ export default function scaleBand() {
         return invalidate();
     };
 
-    /** Ordinary geometry has its own cache entry and never reads layout extent.
-     * @param {number} [extent]
-     */
+    /** @param {number} [extent] */
     function getMapping(extent) {
+        // Disabled gaps must not read layout; ordinary mappings have one entry.
         const enabled = gaps.enabled();
-        extent = enabled ? (extent ?? gaps.axisLength()) : undefined;
-        let mapping = mappings.get(extent);
-        if (mapping) return mapping;
-
-        const domain = ordinal.domain();
-        const n = domain.length;
-        const { paddingInner, paddingOuter, align } = padding;
-        const cuts = enabled ? gaps.positions : [];
-        const reverse = range[1] < range[0];
-        const low = Math.min(...range);
-        const high = Math.max(...range);
-        const gap = extent > 0 ? gaps.width / extent : 0;
-        const available = high - low - cuts.length * gap;
-        const fits = !enabled || (extent > 0 && available > 0);
-        let step =
-            (fits ? available : 0) /
-            (bandSpace(n, paddingInner, paddingOuter) || 1);
-        if (round) step = Math.floor(step);
-        let start = low + (available - step * (n - paddingInner)) * align;
-        let bandwidth = step * (1 - paddingInner);
-        if (round) {
-            start = Math.round(start);
-            bandwidth = Math.round(bandwidth);
+        const length = enabled ? (extent ?? gaps.axisLength()) : 0;
+        let mapping = mappings.get(length);
+        if (!mapping) {
+            mapping = createMapping(length, enabled);
+            mappings.set(length, mapping);
         }
-        const starts = domain.map((value, rank) => {
-            const preceding = gapRank(cuts, rank);
-            return fits
-                ? start +
-                      (reverse ? n - 1 - rank : rank) * step +
-                      (reverse ? cuts.length - preceding : preceding) * gap
-                : NaN;
-        });
-        const lookup = ordinal.copy().range(starts);
-        if (reverse) starts.reverse();
-
-        /** @param {import("../spec/channel.js").Scalar} value @param {number} [band] */
-        const position = (value, band = 0) => {
-            const start = lookup(value);
-            return start === undefined ? undefined : start + bandwidth * band;
-        };
-        /** @param {readonly number[]} bounds */
-        const invertRange = (bounds) => {
-            if (
-                !fits ||
-                (enabled && !n) ||
-                bounds[0] == null ||
-                bounds[1] == null
-            )
-                return;
-            const lo = Math.min(bounds[0], bounds[1]);
-            const hi = Math.max(bounds[0], bounds[1]);
-            if (Number.isNaN(lo) || Number.isNaN(hi)) return;
-            if (hi < starts[0] || lo > high) return;
-
-            let a = Math.max(0, bisectRight(starts, lo) - 1);
-            let b = lo === hi ? a : bisectRight(starts, hi) - 1;
-            if (lo - starts[a] > bandwidth + 1e-10) ++a;
-            if (reverse) [a, b] = [n - 1 - b, n - 1 - a];
-            return a > b ? undefined : domain.slice(a, b + 1);
-        };
-        mapping = { position, invertRange, fits, step, bandwidth };
-        mappings.set(extent, mapping);
         return mapping;
     }
 
+    /** @param {number} extent @param {boolean} enabled */
+    function createMapping(extent, enabled) {
+        const categories = domain;
+        const lookup = ranks;
+        const n = categories.length;
+        const reverse = range[1] < range[0];
+        const numeric = createBandMapping({
+            domain: viewport?.interval ?? [0, n],
+            range,
+            cuts: enabled ? gaps.positions : [],
+            width: extent > 0 ? gaps.width / extent : 0,
+            ranks: viewport?.gapRanks,
+            ...padding,
+            // Numeric geometry starts at the rank-leading edge; band starts
+            // stay at the physical low edge, including noncentral alignment.
+            align: reverse ? 1 - padding.align : padding.align,
+            minimumSpan: 0,
+            round,
+        });
+        const fits = !enabled || (extent > 0 && numeric.fits);
+        const bandwidth = fits ? numeric.bandwidth : 0;
+        /** @param {number} rank @param {number} [band] */
+        const positionAt = (rank, band = 0) =>
+            fits ? numeric.position(rank, reverse ? 1 - band : band) : NaN;
+        /** @param {import("../spec/channel.js").Scalar} value @param {number} [band] */
+        const position = (value, band = 0) => {
+            const rank = lookup.get(value);
+            return rank === undefined ? undefined : positionAt(rank, band);
+        };
+        /** Find the last physical band start at/below a range coordinate.
+         * @param {number} value
+         */
+        const rankAt = (value) => {
+            let lo = 0;
+            let hi = n;
+            while (lo < hi) {
+                const mid = (lo + hi) >>> 1;
+                if (positionAt(reverse ? n - 1 - mid : mid) <= value)
+                    lo = mid + 1;
+                else hi = mid;
+            }
+            return lo - 1;
+        };
+        /** @param {readonly number[]} bounds */
+        const invertRange = (bounds) => {
+            if (!fits || bounds[0] == null || bounds[1] == null) return;
+            if (!n) return enabled ? undefined : [];
+            const lo = Math.min(bounds[0], bounds[1]);
+            const hi = Math.max(bounds[0], bounds[1]);
+            if (Number.isNaN(lo) || Number.isNaN(hi)) return;
+            let a = Math.max(0, rankAt(lo));
+            const start = positionAt(reverse ? n - 1 - a : a);
+            if (lo - start > bandwidth + 1e-10) ++a;
+            let b = Math.min(n - 1, rankAt(hi));
+            if (reverse) [a, b] = [n - 1 - b, n - 1 - a];
+            return a > b ? undefined : categories.slice(a, b + 1);
+        };
+        return {
+            position,
+            invertRange,
+            fits,
+            step: fits ? Math.abs(numeric.step) : 0,
+            bandwidth,
+            numeric,
+        };
+    }
+
+    scale.navigationMapping = (extent) => getMapping(extent).numeric;
     scale.gapMapping = (extent) =>
         gaps.enabled() ? getMapping(extent) : undefined;
-    scale.sizeForStep = (step) => {
-        const n = ordinal.domain().length;
-        return n
-            ? step * bandSpace(n, padding.paddingInner, padding.paddingOuter) +
-                  (gaps.enabled() ? gaps.width * gaps.positions.length : 0)
+    scale.sizeForStep = (step) =>
+        domain.length
+            ? step *
+                  bandSpace(
+                      domain.length,
+                      padding.paddingInner,
+                      padding.paddingOuter
+                  ) +
+              (gaps.enabled() ? gaps.width * gaps.positions.length : 0)
             : 0;
-    };
     scale.step = () => getMapping().step;
     scale.bandwidth = () => getMapping().bandwidth;
     scale.invertRange = (bounds) => getMapping().invertRange(bounds);
     scale.invert = (value) => scale.invertRange([value, value])?.[0];
     scale.copy = () => {
         const copy = scaleBand()
-            .domain(ordinal.domain())
+            .domain(domain)
             .range(range)
             .round(round)
+            .viewport(viewport)
             .paddingInner(padding.paddingInner)
             .paddingOuter(padding.paddingOuter)
             .align(padding.align)
@@ -203,6 +236,41 @@ export default function scaleBand() {
         return copy;
     };
     return scale;
+}
+
+/** Validate and detach one complete navigation snapshot.
+ * @param {import("./scaleBand.js").CategoricalViewport | null} value
+ * @returns {import("./scaleBand.js").CategoricalViewport | null}
+ */
+export function copyViewport(value) {
+    if (value === null) return null;
+    const { interval, gapRanks } = value;
+    if (
+        !Array.isArray(interval) ||
+        interval.length !== 2 ||
+        !interval.every(Number.isFinite) ||
+        interval[1] < interval[0] ||
+        (!gapRanks && interval[0] === interval[1]) ||
+        (gapRanks &&
+            (gapRanks.length !== 2 ||
+                !gapRanks.every(Number.isFinite) ||
+                gapRanks[1] < gapRanks[0]))
+    ) {
+        throw new Error(
+            "A categorical viewport requires an increasing finite rank interval and optional finite gap ranks."
+        );
+    }
+    return {
+        interval: [interval[0], interval[1]],
+        ...(gapRanks
+            ? {
+                  gapRanks: /** @type {[number, number]} */ ([
+                      gapRanks[0],
+                      gapRanks[1],
+                  ]),
+              }
+            : {}),
+    };
 }
 
 /** @param {import("./scaleBand.js").CategoricalGapScale} scale */

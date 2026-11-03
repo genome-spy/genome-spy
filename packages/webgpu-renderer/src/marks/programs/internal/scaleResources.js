@@ -1,3 +1,4 @@
+import { normalizeScaleViewport } from "../../scales/scaleViewport.js";
 import { validateStorageBufferSize } from "../../../utils/bufferLimits.js";
 import {
     getScaleStopLengths,
@@ -60,7 +61,7 @@ export class ScaleResourceManager {
     /** @type {Map<string, ChannelResources>} */
     #channelResources = new Map();
 
-    /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }>} */
+    /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }>} */
     #scaleUpdaters = new Map();
 
     /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
@@ -351,7 +352,7 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
+     * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }}
      */
     getScaleUpdater(name) {
         const updater = this.#scaleUpdaters.get(name);
@@ -367,7 +368,7 @@ export class ScaleResourceManager {
      * @param {ChannelConfigResolved} params.channel
      * @param {ChannelScale} params.scale
      * @param {ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} params.analysis
-     * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean }}
+     * @returns {{ updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }}
      */
     #buildScaleUpdater({ name, channel, scale, analysis }) {
         const useRangeTexture = analysis.useRangeTexture;
@@ -555,6 +556,22 @@ export class ScaleResourceManager {
             }
         }
 
+        let viewport = normalizeScaleViewport(scale.viewport ?? null);
+        let categoryCount = scale.domain?.length ?? 0;
+        /** @param {import("../../../index.d.ts").ScaleViewport | null} value */
+        const updateViewport = (value) => {
+            if (scale.type !== "band")
+                throw new Error("Scale viewport requires a band scale.");
+            viewport = normalizeScaleViewport(value);
+            const interval = viewport?.interval ?? [0, categoryCount];
+            this.#setUniformValue(domainUniformName, interval);
+            const gaps = this.#gapScales.get(name);
+            if (gaps) {
+                gaps.domain = interval;
+                gaps.ranks = viewport?.gapRanks;
+                this.#updateGapGeometry(name);
+            }
+        };
         /** @type {(domain: unknown) => boolean} */
         const updateDomain = (domain) => {
             const mapUpdate = updateDomainMap?.(domain);
@@ -643,6 +660,11 @@ export class ScaleResourceManager {
         return {
             updateDomain: (domain, ranks) => {
                 const result = updateDomain(domain);
+                if (scale.type === "band") {
+                    categoryCount = /** @type {number[]} */ (domain).length;
+                    updateViewport(viewport);
+                    return result;
+                }
                 const gaps = this.#gapScales.get(name);
                 if (gaps) {
                     // Categorical IDs address the map; gap cuts address dense slots.
@@ -657,6 +679,7 @@ export class ScaleResourceManager {
                 return result;
             },
             updateRange,
+            updateViewport,
         };
     }
 

@@ -838,6 +838,7 @@ export default class BaseProgram {
         const attachScaleSlot = (group, slot) => {
             group.default = slot;
             group.setDomain = slot.setDomain;
+            group.setViewport = slot.setViewport;
             group.setRange = slot.setRange;
             group.setGapPositions = slot.setGapPositions;
             group.setGapWidth = slot.setGapWidth;
@@ -935,6 +936,11 @@ export default class BaseProgram {
     #createScaleSlot(name) {
         const updater = this.#scaleResources.getScaleUpdater(name);
         return {
+            setViewport: (viewport) => {
+                this._assertAlive();
+                updater.updateViewport(viewport);
+                this._queueSlotUpdate(false);
+            },
             setGapPositions: (values) => {
                 this._assertAlive();
                 this._queueSlotUpdate(

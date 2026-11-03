@@ -1,11 +1,8 @@
+import { createBandMapping } from "../scales/bandMapping.js";
 import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
 import { bandSpace } from "vega-scale";
-import {
-    createIndexGapMapping,
-    gapRank,
-    installGroupingGapProperties,
-} from "./indexGapMapping.js";
+import { gapRank, installGroupingGapProperties } from "./indexGapMapping.js";
 
 const minimumDomainSpan = 1;
 
@@ -18,7 +15,6 @@ export default function scaleIndex() {
     let range = [0, 1];
 
     let domainSpan = 1;
-    let rangeSpan = 1;
 
     let paddingInner = 0;
     let paddingOuter = 0;
@@ -27,19 +23,20 @@ export default function scaleIndex() {
     /** @type {readonly number[] | undefined} */
     let gapDomain;
 
-    /** @type {Map<number, ReturnType<typeof createIndexGapMapping>>} */
+    /** @type {Map<number, ReturnType<typeof createBandMapping>>} */
     const gapMappings = new Map();
 
     /** @param {number} [extent] */
-    const getGapMapping = (extent = gaps.axisLength()) => {
-        if (!gaps.enabled() || extent <= 0) return;
+    const getMapping = (extent) => {
+        const enabled = gaps.enabled();
+        extent = enabled ? (extent ?? gaps.axisLength()) : 0;
         let mapping = gapMappings.get(extent);
         if (!mapping) {
-            mapping = createIndexGapMapping({
+            mapping = createBandMapping({
                 domain,
                 range,
-                cuts: gaps.positions,
-                width: gaps.width / extent,
+                cuts: enabled ? gaps.positions : [],
+                width: extent > 0 ? gaps.width / extent : 0,
                 ranks: gapDomain,
                 paddingInner,
                 paddingOuter,
@@ -53,26 +50,8 @@ export default function scaleIndex() {
     /** The offset added when formatting tick labels. */
     let numberingOffset = 0;
 
-    // Keep this calculation in sync with scaleBandHp in scales.glsl so that
-    // CPU-side scaling and inversion match WebGL mark placement.
-    const getStep = () =>
-        getGapMapping()?.step ??
-        rangeSpan / Math.max(1, domainSpan - paddingInner + paddingOuter * 2);
-
-    const getStart = (step = getStep()) => {
-        const mapping = getGapMapping();
-        if (mapping) return mapping.start;
-        return (
-            range[0] + (rangeSpan - step * (domainSpan - paddingInner)) * align
-        );
-    };
-
-    const scaleFunction = (/** @type {number} */ x) => {
-        const mapping = getGapMapping();
-        if (mapping) return mapping.position(x);
-        const step = getStep();
-        return getStart(step) + (Math.floor(x) - domain[0]) * step;
-    };
+    const getStep = () => getMapping().step;
+    const scaleFunction = (/** @type {number} */ x) => getMapping().position(x);
 
     /**
      * Returns band starts, like a band scale. Encoders apply within-band
@@ -84,11 +63,12 @@ export default function scaleIndex() {
     const scale = /** @type {any} */ (scaleFunction);
     const gaps = installGroupingGapProperties(scale, () => gapMappings.clear());
 
-    scale.invert = (y) =>
-        getGapMapping()?.invertPoint(y).value ??
-        (y - getStart()) / getStep() + domain[0];
-
-    scale.gapMapping = getGapMapping;
+    scale.invert = (y) => getMapping().invertPoint(y).value;
+    scale.navigationMapping = getMapping;
+    scale.gapMapping = (extent) =>
+        gaps.enabled() && (extent ?? gaps.axisLength()) > 0
+            ? getMapping(extent)
+            : undefined;
 
     scale.sizeForStep = (step) => {
         if (!gaps.enabled())
@@ -140,7 +120,6 @@ export default function scaleIndex() {
         if (arguments.length) {
             gapMappings.clear();
             range = [..._];
-            rangeSpan = range[1] - range[0];
             return scale;
         } else {
             return range;

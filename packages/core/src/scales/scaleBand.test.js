@@ -159,3 +159,65 @@ test("reactive empty gaps retain native geometry, while exhausted placements rec
     expect(scale(false)).toBe(0);
     expect(scale.bandwidth()).toBe(0.5);
 });
+
+test("viewports navigate numeric categories without changing membership and copy independently", () => {
+    const scale = create()
+        .domain([10, 20, 30, 40])
+        .range([100, 0])
+        .viewport({ interval: [1, 3] });
+    expect(scale.domain()).toEqual([10, 20, 30, 40]);
+    expect(scale(20)).toBe(50);
+    expect(scale(30)).toBe(0);
+    expect(scale.invert(75)).toBe(20);
+    expect(scale.invertRange([0.001, 99.999])).toEqual([20, 30]);
+
+    const copy = scale.copy();
+    const snapshot = scale.viewport();
+    snapshot.interval[0] = 0;
+    expect(scale.viewport().interval).toEqual([1, 3]);
+    scale.domain([10, 20, 30, 40, 50]);
+    expect(scale(20)).toBe(50);
+    scale.viewport(null);
+    expect(scale.step()).toBe(20);
+    expect(copy.step()).toBe(50);
+    expect(() => copy.round(true)).toThrow("round");
+
+    const point = create("point")
+        .domain(["A", "B", "C", "D"])
+        .viewport({ interval: [1, 3] });
+    expect(point("B")).toBe(0);
+    expect(point("C")).toBe(1);
+    expect(point.bandwidth()).toBe(0);
+    expect(point.copy().viewport()).toEqual(point.viewport());
+});
+
+test("categorical navigation retains pointer anchors and fixed partially visible gaps", () => {
+    const scale = create()
+        .domain(["A", "B", "C", "D"])
+        .gapPositions([2])
+        .gapWidth(8)
+        .axisLength(88);
+    const mapping = scale.navigationMapping();
+    const anchor = 0.5;
+    const before = mapping.invertPoint(anchor);
+    const next = mapping.navigate(0.5, anchor, 0);
+    scale.viewport({
+        interval: /** @type {[number, number]} */ (next.domain),
+        gapRanks: /** @type {[number, number]} */ (next.ranks),
+    });
+    expect(scale.navigationMapping().invertPoint(anchor).value).toBe(
+        before.value
+    );
+    expect(scale.navigationMapping().invertPoint(anchor).rank).toBeCloseTo(
+        before.rank
+    );
+    expect(scale("C") - scale.gapMapping().position("B", 1)).toBeCloseTo(
+        8 / 88
+    );
+    expect(scale.invert(anchor)).toBeUndefined();
+    expect(
+        scale.copy().navigationMapping().invertPoint(anchor).rank
+    ).toBeCloseTo(before.rank);
+    expect(scale.domain()).toEqual(["A", "B", "C", "D"]);
+    expect(() => scale.viewport({ interval: [2, 1] })).toThrow("viewport");
+});

@@ -1,6 +1,11 @@
 import { Scalar } from "../spec/channel.js";
 import { Scale } from "../spec/scale.js";
 
+export interface CategoricalViewport {
+    interval: [number, number];
+    gapRanks?: [number, number];
+}
+
 /** Forward projection shared by categorical and index-like grouping gaps. */
 export interface GroupingGapMapping<Value = Scalar> {
     position(value: Value, band?: number, before?: boolean): number | undefined;
@@ -19,6 +24,11 @@ export interface CategoricalGapScale {
     props?: Scale;
     domain(): Scalar[];
     domain(values: Iterable<Scalar>): this;
+    viewport(): CategoricalViewport | null;
+    viewport(value: CategoricalViewport | null): this;
+    navigationMapping(
+        extent?: number
+    ): ReturnType<typeof import("./bandMapping.js").createBandMapping>;
     range(): number[];
     range(values: Iterable<number>): this;
     rangeRound(values: Iterable<number>): this;

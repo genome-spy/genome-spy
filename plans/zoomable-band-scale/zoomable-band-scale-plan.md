@@ -1,7 +1,7 @@
 # Zoomable categorical scales
 
-Status: proposed design, revised after KISS/DRY review and axis discussion,
-2026-11-03. No feature implementation.
+Status: implementation in progress, 2026-11-03. Milestone 1 is implemented;
+Core grammar, resolution/controller integration, guides, and documentation remain.
 Baseline: `482e9a1d42d5b6bb1c293737a9cf0b647f229f3e`.
 Issues: [zoomable band scale #647](https://github.com/genome-spy/genome-spy/issues/647),
 [SampleView follow-up #573](https://github.com/genome-spy/genome-spy/issues/573).
@@ -374,6 +374,10 @@ Renderer-generic retained viewport updates belong in the renderer README/story.
 
 ### 1. Shared numeric layout and categorical viewport
 
+Implemented: shared CPU numeric mapping, standalone categorical viewports, and
+the renderer's retained viewport API/story. Focused Core and renderer tests,
+type checks, and GPU picking cover the foundation before its milestone commit.
+
 Outcome: index, band, and point use one numeric mapping/navigation path, with
 categorical lookup separated from camera geometry. Existing index/locus behavior
 and ordinary band/point output remain compatible.
@@ -455,10 +459,9 @@ reorder/filter. SampleView may later provide identity anchoring and row-height
 policy. Confirm exact public method/type spellings during implementation, while
 keeping one viewport meaning across band and point.
 
-This plan-only contribution has no release impact and needs no changeset.
-Retain the plan on the feature branch for discussion; reconcile and retire it
-before merge under `plan-genomespy-change`. Implementation is not authorized by
-the request to revise and commit this plan. The requested independent KISS review
+The feature has minor Core release impact; reuse its categorical-scale changeset
+across milestones. Retain the plan on the feature branch for discussion; reconcile
+and retire it before merge under `plan-genomespy-change`. The requested independent KISS review
 is complete; its shared-transition and scrolling-documentation findings are
 incorporated above. The subsequent axis discussion simplifies categorical ticks
 and zoom configuration and adds optional label squeezing through existing text

@@ -4,14 +4,14 @@ import { bandScale } from "../src/scales/band.js";
 
 /**
  * A categorical matrix with retained sparse IDs and pixel-sized group gaps.
- * Reordering the domain changes positions without replacing the input series.
+ * Reordering and viewport navigation retain the input series and category IDs.
  * @param {HTMLCanvasElement} canvas
- * @param {{gapWidth?: number, reverse?: boolean}} [options]
- * @returns {Promise<{cleanup: () => void, update: (next: {gapWidth?: number, reverse?: boolean}) => void}>}
+ * @param {{gapWidth?: number, reverse?: boolean, zoom?: number, pan?: number}} [options]
+ * @returns {Promise<{cleanup: () => void, update: (next: {gapWidth?: number, reverse?: boolean, zoom?: number, pan?: number}) => void}>}
  */
 export default async function runBandGapScene(
     canvas,
-    { gapWidth = 12, reverse = false } = {}
+    { gapWidth = 12, reverse = false, zoom = 1, pan = 0 } = {}
 ) {
     const renderer = await createExampleRenderer(canvas);
     const columns = [200, 5, 900, 11];
@@ -64,21 +64,29 @@ export default async function runBandGapScene(
         });
     });
     const update = (
-        /** @type {{gapWidth?: number, reverse?: boolean}} */ next
+        /** @type {{gapWidth?: number, reverse?: boolean, zoom?: number, pan?: number}} */ next
     ) => {
         gapWidth = next.gapWidth ?? gapWidth;
         reverse = next.reverse ?? reverse;
+        zoom = next.zoom ?? zoom;
+        pan = next.pan ?? pan;
+        const span = columns.length / zoom;
+        const start = (columns.length - span) * pan;
         handle.batchUpdates(() => {
             for (const axis of ["x", "x2", "y", "y2"])
                 handle.scales[axis].setGapWidth(gapWidth);
-            for (const axis of ["x", "x2"])
+            for (const axis of ["x", "x2"]) {
                 handle.scales[axis].setDomain(
                     reverse ? columns.toReversed() : columns
                 );
+                handle.scales[axis].setViewport(
+                    zoom === 1 ? null : { interval: [start, start + span] }
+                );
+            }
         });
         renderer.render();
     };
-    update({ gapWidth, reverse });
+    update({ gapWidth, reverse, zoom, pan });
     return {
         update,
         cleanup() {

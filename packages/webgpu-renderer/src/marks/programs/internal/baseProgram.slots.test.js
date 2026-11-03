@@ -44,6 +44,48 @@ class ExtraSlotProgram extends SlotProgram {
 }
 
 describe("BaseProgram slot handles", () => {
+    it("moves a categorical viewport without rebuilding category or series buffers", () => {
+        const renderer = createMockRenderer();
+        const program = createSlotProgram(renderer, {
+            channels: {
+                uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                x: {
+                    data: new Uint32Array([200, 900]),
+                    type: "u32",
+                    scale: {
+                        type: "band",
+                        domain: [200, 5, 900, 11],
+                        range: [0, 100],
+                        viewport: { interval: [1, 3] },
+                        gapPositions: [2],
+                        gapWidth: 8,
+                    },
+                },
+                size: { value: 1, type: "f32" },
+                fill: { value: [0, 0, 0, 1], type: "f32", components: 4 },
+            },
+        });
+        const entry = program._uniformBufferState.entries.get("uDomain_x");
+        const readDomain = () =>
+            [entry.offset, entry.offset + entry.stride].map((offset) =>
+                new DataView(program._uniformBufferState.data).getFloat32(
+                    offset,
+                    true
+                )
+            );
+        expect(readDomain()).toEqual([1, 3]);
+        const createBuffer = vi.spyOn(renderer.device, "createBuffer");
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+        program
+            .getSlotHandles()
+            .scales.x.setViewport({ interval: [1.5, 3.5], gapRanks: [0, 1] });
+        expect(readDomain()).toEqual([1.5, 3.5]);
+        expect(createBuffer).not.toHaveBeenCalled();
+        expect(writeBuffer).toHaveBeenCalledOnce();
+        program.getSlotHandles().scales.x.setViewport(null);
+        expect(readDomain()).toEqual([0, 4]);
+    });
+
     it("updates interval targets atomically through a retained slot", () => {
         const renderer = createMockRenderer();
         const program = createSlotProgram(renderer, {
