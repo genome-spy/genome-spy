@@ -21,6 +21,7 @@ export function renderRuleSvg(baseMark, options) {
         baseMark
     );
     const properties = resolveRuleProperties(mark);
+    const align = properties.strokeAlign;
     const { coords, data, group, viewOpacity, visibleBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
@@ -85,15 +86,21 @@ export function renderRuleSvg(baseMark, options) {
                         d: path,
                         fill: "none",
                         stroke: instance.stroke,
-                        "stroke-width": 2 * instance.strokeWidth,
+                        "stroke-width":
+                            (align === "center" ? 1 : 2) * instance.strokeWidth,
+                        ...(align === "center"
+                            ? {}
+                            : {
+                                  mask: options.getRuleStrokeMaskUrl(
+                                      path,
+                                      length,
+                                      instance.size / 2,
+                                      instance.strokeWidth + 1,
+                                      align === "inside"
+                                  ),
+                              }),
                         "stroke-opacity": instance.strokeOpacity,
                         "stroke-linejoin": "round",
-                        mask: options.getRuleStrokeMaskUrl(
-                            path,
-                            length,
-                            instance.size / 2,
-                            instance.strokeWidth + 1
-                        ),
                     }),
                     createSvgElement("path", {
                         d: path,
@@ -102,6 +109,8 @@ export function renderRuleSvg(baseMark, options) {
                         stroke: "none",
                     })
                 );
+                if (align !== "outside")
+                    paints.insertBefore(paints.lastChild, paints.firstChild);
                 group.appendChild(paints);
                 return;
             }

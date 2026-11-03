@@ -109,6 +109,78 @@ describe("SVG rule renderer", () => {
         }
     });
 
+    test("resolves configured and reactive alignment without changing the nominal contour", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "alignment", value: "center" }],
+            config: { rule: { strokeAlign: "inside" } },
+            data: { values: [{}] },
+            layer: [
+                {
+                    name: "configured",
+                    mark: {
+                        type: "rule",
+                        size: 8,
+                        fill: "red",
+                        stroke: "blue",
+                        strokeWidth: 2,
+                    },
+                },
+                {
+                    name: "reactive",
+                    mark: {
+                        type: "rule",
+                        size: 8,
+                        fill: "red",
+                        stroke: "blue",
+                        strokeWidth: 2,
+                        strokeAlign: { expr: "alignment" },
+                    },
+                },
+            ],
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.5 },
+            },
+        });
+        const render = () =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+                background: null,
+            }).svg;
+        try {
+            const initial = render();
+            const border = (
+                /** @type {SVGSVGElement} */ svg,
+                /** @type {string} */ name
+            ) => svg.querySelector(`[data-name="${name}"] path[stroke="blue"]`);
+            const configured = border(initial, "configured");
+            const reactive = border(initial, "reactive");
+            expect(configured.getAttribute("stroke-width")).toBe("4");
+            expect(configured.hasAttribute("mask")).toBe(true);
+            expect(reactive.getAttribute("stroke-width")).toBe("2");
+            expect(reactive.hasAttribute("mask")).toBe(false);
+            const nominal = reactive.getAttribute("d");
+            for (const alignment of ["inside", "outside"]) {
+                view.paramRuntime.setValue("alignment", alignment);
+                await view.paramRuntime.whenPropagated();
+                const svg = render();
+                const updated = border(svg, "reactive");
+                expect(updated.getAttribute("d")).toBe(nominal);
+                expect(updated.getAttribute("stroke-width")).toBe("4");
+                const paints = Array.from(updated.parentElement.children);
+                expect(paints.indexOf(updated)).toBe(
+                    alignment === "inside" ? 1 : 0
+                );
+                expect(svg.querySelector("image, filter")).toBeNull();
+            }
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("expands short rules to their expression-valued minimum length", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "minimum", value: 10 }],

@@ -5,6 +5,7 @@ import { testRenderers } from "./testRenderers.mjs";
 await testRenderers(
     [{ deviceScaleFactor: 1 }, { deviceScaleFactor: 2 }],
     async (page, renderer, variant) => {
+        await checkAlignment(page, renderer, variant.deviceScaleFactor);
         const result = await page.evaluate(renderFrames, {
             renderer,
             dpr: variant.deviceScaleFactor,
@@ -353,5 +354,327 @@ async function renderFrames({ renderer, dpr }) {
         return frames;
     } finally {
         api.finalize();
+    }
+}
+
+/**
+ * Exercise alignment updates through public Core rendering/export, not shader substitution.
+ * @param {import("playwright").Page} page
+ * @param {"canvas" | "webgl" | "webgpu"} renderer
+ * @param {number} dpr
+ */
+async function checkAlignment(page, renderer, dpr) {
+    const { frames, unionChecks } = await page.evaluate(
+        async ({ renderer, dpr }) => {
+            const { embed } = await import("/index.js");
+            await import("/rendering/webgpu/register.js");
+            /** @param {Blob} blob @param {number[][]} points */
+            async function capture(blob, points) {
+                const image = new globalThis.Image(),
+                    url = globalThis.URL.createObjectURL(blob);
+                try {
+                    image.src = url;
+                    await image.decode();
+                    const canvas = new globalThis.OffscreenCanvas(
+                            80 * dpr,
+                            80 * dpr
+                        ),
+                        ctx = canvas.getContext("2d");
+                    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    return points.map(([x, y]) =>
+                        Array.from(
+                            ctx.getImageData(x * dpr, y * dpr, 1, 1).data
+                        )
+                    );
+                } finally {
+                    globalThis.URL.revokeObjectURL(url);
+                }
+            }
+            const api = await embed(
+                globalThis.document.body,
+                {
+                    width: 80,
+                    height: 80,
+                    padding: 0,
+                    config: {
+                        background: null,
+                        view: { stroke: null, strokeWidth: 0 },
+                    },
+                    data: { values: [{}] },
+                    params: [
+                        { name: "align", value: "outside" },
+                        { name: "alpha", value: 1 },
+                        { name: "common", value: 1 },
+                        { name: "width", value: 6 },
+                        { name: "body", value: 16 },
+                    ],
+                    mark: {
+                        type: "rule",
+                        size: { expr: "body" },
+                        fill: "red",
+                        stroke: "blue",
+                        strokeWidth: { expr: "width" },
+                        strokeAlign: { expr: "align" },
+                        strokeOpacity: { expr: "alpha" },
+                        opacity: { expr: "common" },
+                    },
+                    encoding: {
+                        x: { value: 0.125 },
+                        x2: { value: 0.875 },
+                        y: { value: 0.5 },
+                    },
+                },
+                { renderer }
+            );
+            try {
+                const frames = [];
+                for (const [alpha, common, width, body = 16] of [
+                    [1, 1, 6],
+                    [0.5, 0.5, 6],
+                    [0, 1, 6],
+                    [1, 1, 20],
+                    [1, 1, 6, 0.5],
+                ]) {
+                    let cf = 0;
+                    if (body < 1) {
+                        api.getParam("body").setValue(body);
+                        api.getParam("alpha").setValue(0);
+                        await new Promise((resolve) =>
+                            globalThis.requestAnimationFrame(() =>
+                                globalThis.requestAnimationFrame(resolve)
+                            )
+                        );
+                        const [control] = await capture(
+                            (
+                                await api.imageExport.raster({
+                                    background: "white",
+                                    pixelRatio: dpr,
+                                })
+                            ).blob,
+                            [[40, 40]]
+                        );
+                        cf = 1 - control[1] / 255;
+                    }
+                    for (const align of ["inside", "center", "outside"]) {
+                        for (const [name, value] of Object.entries({
+                            alpha,
+                            common,
+                            width,
+                            body,
+                            align,
+                        }))
+                            api.getParam(name).setValue(value);
+                        await new Promise((resolve) =>
+                            globalThis.requestAnimationFrame(() =>
+                                globalThis.requestAnimationFrame(resolve)
+                            )
+                        );
+                        const exports = [
+                            await api.imageExport.raster({
+                                background: "white",
+                                pixelRatio: dpr,
+                            }),
+                        ];
+                        if (renderer === "canvas" && body >= 1)
+                            exports.push(
+                                await api.imageExport.svg({
+                                    background: "white",
+                                })
+                            );
+                        const captures = [];
+                        for (const { blob } of exports) {
+                            captures.push(
+                                await capture(blob, [
+                                    [40, 33],
+                                    [40, 40],
+                                    [11, 40],
+                                    [5, 40],
+                                ])
+                            );
+                        }
+                        const pick = await api.views
+                            .root()
+                            .marks.pick({ x: 40, y: 27 });
+                        frames.push({
+                            alpha,
+                            common,
+                            width,
+                            body,
+                            cf,
+                            align,
+                            captures,
+                            picked: pick.status === "hit",
+                        });
+                    }
+                }
+                const unionChecks = [];
+                if (renderer === "canvas") {
+                    // Independent solid interiors must not acquire borders from overlapping dash caps.
+                    const union = await embed(
+                        globalThis.document.body,
+                        {
+                            width: 80,
+                            height: 80,
+                            padding: 0,
+                            config: {
+                                background: null,
+                                view: { stroke: null, strokeWidth: 0 },
+                            },
+                            data: { values: [{}] },
+                            params: [{ name: "alignment", value: "inside" }],
+                            encoding: {
+                                x: { value: 0.125 },
+                                x2: { value: 0.875 },
+                            },
+                            layer: [
+                                {
+                                    mark: {
+                                        type: "rule",
+                                        size: 8,
+                                        fill: "red",
+                                        stroke: "blue",
+                                        strokeWidth: 2,
+                                        strokeOpacity: 0.5,
+                                        strokeAlign: { expr: "alignment" },
+                                        strokeCap: "square",
+                                        strokeDash: [8, 2],
+                                    },
+                                    encoding: { y: { value: 0.75 } },
+                                },
+                                {
+                                    mark: {
+                                        type: "rule",
+                                        size: 8,
+                                        fill: "red",
+                                        stroke: "blue",
+                                        strokeWidth: 2,
+                                        strokeOpacity: 0.5,
+                                        strokeAlign: { expr: "alignment" },
+                                        strokeCap: "round",
+                                        strokeDash: [0, 4],
+                                    },
+                                    encoding: { y: { value: 0.25 } },
+                                },
+                            ],
+                        },
+                        { renderer }
+                    );
+                    try {
+                        for (const alignment of ["inside", "center"]) {
+                            union.getParam("alignment").setValue(alignment);
+                            await new Promise((resolve) =>
+                                globalThis.requestAnimationFrame(() =>
+                                    globalThis.requestAnimationFrame(resolve)
+                                )
+                            );
+                            unionChecks.push(
+                                ...(await capture(
+                                    (
+                                        await union.imageExport.svg({
+                                            background: null,
+                                        })
+                                    ).blob,
+                                    [
+                                        [22, 20],
+                                        [14, 60],
+                                        [40, alignment === "inside" ? 17 : 16],
+                                    ]
+                                ))
+                            );
+                        }
+                    } finally {
+                        union.finalize();
+                    }
+                }
+                return { frames, unionChecks };
+            } finally {
+                api.finalize();
+            }
+        },
+        { renderer, dpr }
+    );
+    for (let i = 0; i < unionChecks.length; i++) {
+        const expected = i % 3 === 2 ? [128, 0, 128, 255] : [255, 0, 0, 255];
+        assert(
+            unionChecks[i].every((v, c) => Math.abs(v - expected[c]) <= 2),
+            `SVG: dash union paint ${i}: ${unionChecks[i]} vs ${expected}`
+        );
+    }
+    for (const frame of frames) {
+        if (frame.body < 1) {
+            // Use the original body export as the geometric coverage reference:
+            // layout may snap the centerline. Inward paint cannot add coverage.
+            if (renderer !== "canvas") {
+                const cf = frame.cf;
+                assert(
+                    cf > 0 && cf < 1,
+                    `${renderer}: fractional nominal coverage`
+                );
+                const expected =
+                    frame.align === "inside"
+                        ? [255 * (1 - cf), 255 * (1 - cf), 255, 255]
+                        : frame.align === "center"
+                          ? [0, 0, 255, 255]
+                          : [255 * cf, 0, 255 * (1 - cf), 255];
+                assert(
+                    frame.captures[0][1].every(
+                        (v, c) => Math.abs(v - expected[c]) <= 2
+                    ),
+                    `${renderer}/${frame.align}: thin aligned ribbon ${frame.captures[0][1]} vs ${expected}`
+                );
+            }
+            continue;
+        }
+        for (const [index, pixels] of frame.captures.entries()) {
+            const native = renderer === "canvas" && index === 0;
+            const inside = !native && frame.align !== "outside";
+            const red = [255, 0, 0, 255],
+                blue = [0, 0, 255, 255],
+                white = [255, 255, 255, 255];
+            let expected;
+            if (frame.alpha === 0) expected = [red, red, red, white];
+            else if (frame.common === 0.5) {
+                // S over F inside the body, then common opacity once. Canvas keeps two native paints.
+                const overlap = native
+                    ? [223, 96, 128, 255]
+                    : [191, 128, 191, 255];
+                const fill = native
+                    ? [223, 96, 128, 255]
+                    : [255, 128, 128, 255];
+                expected = [
+                    inside ? overlap : fill,
+                    fill,
+                    inside ? overlap : fill,
+                    !native && frame.align === "outside"
+                        ? [191, 191, 255, 255]
+                        : white,
+                ];
+            } else {
+                expected = [
+                    inside ? blue : red,
+                    frame.width === 20 && inside ? blue : red,
+                    inside ? blue : red,
+                    !native &&
+                    (frame.align === "outside" ||
+                        (frame.width === 20 && frame.align === "center"))
+                        ? blue
+                        : white,
+                ];
+            }
+            for (let i = 0; i < pixels.length; i++)
+                assert(
+                    pixels[i].every(
+                        (v, c) => Math.abs(v - expected[i][c]) <= 2
+                    ),
+                    `${renderer}/${index}/${frame.align} alpha=${frame.alpha} width=${frame.width} sample=${i}: ${pixels[i]} vs ${expected[i]}`
+                );
+        }
+        if (frame.width === 6)
+            assert.equal(
+                frame.picked,
+                frame.alpha > 0 &&
+                    (renderer === "canvas" || frame.align === "outside"),
+                `${renderer}: alignment-dependent border picking`
+            );
     }
 }

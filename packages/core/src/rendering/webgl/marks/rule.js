@@ -113,6 +113,19 @@ export default class WebGLRuleMark extends WebGLMark {
             (cap) => ["butt", "square", "round"].indexOf(cap)
         );
 
+        if (this.mark.getType() === "rule") {
+            this.registerMarkUniformValue(
+                "uStrokeAlign",
+                this.properties.strokeAlign,
+                (align) => {
+                    const code = ["inside", "center", "outside"].indexOf(align);
+                    if (code < 0)
+                        throw new Error("Invalid strokeAlign: " + align);
+                    return code;
+                }
+            );
+        }
+
         setBlockUniforms(this.markUniformInfo, {
             uDashTextureSize: +this.dashTextureSize,
             uStrokeDashOffset: props.strokeDashOffset,

@@ -86,5 +86,21 @@ standalone WebGPU implementation from #615. No third-party code is introduced.
   Round boundary samples include native antialiasing and are not treated as
   fully covered paint samples. Canvas raster arrays are identical for all three
   requested alignments. Canvas painter and its interactive cost are unchanged.
-- [ ] Implementation, regression coverage and documentation.
-- [ ] Final verification, exact diff and plan retirement.
+- [x] Implementation, regression coverage and documentation. Default outside;
+  Core WebGPU public channel mapping; WebGL inner/fill/outer coverage and
+  post-composition opacity; SVG native union boundary and inside mask. Canvas
+  painter/picking unchanged. Shared immediate culling remains conservatively
+  outside-sized, so native bounds cannot hide borders. No other mark changes.
+- [x] Final independent review: no blocking architecture/correctness findings.
+  Reviewer requested qualifying the six-pixel example as outside alignment;
+  corrected. No generic geometry helper or forwarding abstraction was added.
+- [x] Verification: actual Core raster/export/picking checks at DPR 1/2 pass for
+  all live backends and vector SVG, including original outside regressions.
+  Subpixel inside/center checks derive nominal coverage from the unoutlined
+  export, avoiding assumptions about layout snapping. Original rule/tick browser
+  checks and all three standalone WebGPU rule GPU tests also pass.
+  312 focused tests across 29 files pass (SVG, adapter, configuration/precedence,
+  Canvas picking). Core types, targeted ESLint/Prettier, schema generation,
+  generated documentation type index and release checks pass. Release plan is
+  a Core minor bump propagated through the configured fixed group.
+- [ ] Final exact diff, commit and plan retirement before PR delivery.

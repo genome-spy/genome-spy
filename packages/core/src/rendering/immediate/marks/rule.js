@@ -26,6 +26,15 @@ import {
 /** @param {import("../../../marks/rule.js").default} mark */
 export function resolveRuleProperties(mark) {
     return {
+        strokeAlign:
+            mark.getType() === "rule"
+                ? resolveMarkProperty(
+                      mark,
+                      /** @type {import("../../../spec/mark.js").RuleProps} */ (
+                          mark.properties
+                      ).strokeAlign
+                  )
+                : "outside",
         minLength: resolveMarkProperty(mark, mark.properties.minLength),
         strokeCap: resolveMarkProperty(mark, mark.properties.strokeCap),
     };
