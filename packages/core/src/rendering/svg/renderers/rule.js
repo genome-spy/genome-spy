@@ -35,10 +35,6 @@ export function renderRuleSvg(baseMark, options) {
     );
     const encodeStyles = createSvgAttributeEncoder(group, {
         stroke: { encoder: encoders.fill, transform: toPaintString },
-        "stroke-opacity": {
-            encoder: encoders.opacity,
-            transform: (value) => +value * viewOpacity,
-        },
         "stroke-width": {
             encoder: encoders.size,
             transform: (value) => formatSvgNumber(+value),

@@ -79,7 +79,9 @@ test("paints stacked legend backgrounds and strokes around padded content", asyn
         expect(titleX - Number(rect.getAttribute("x"))).toBe(6);
         expect(fill.getAttribute("fill-opacity")).toBe("0.8");
         expect(strokes[index].querySelectorAll("line")).toHaveLength(4);
-        expect(strokes[index].getAttribute("stroke-opacity")).toBe("0.7");
+        expect(
+            strokes[index].querySelector("line").getAttribute("stroke-opacity")
+        ).toBe("0.7");
         expect(strokes[index].getAttribute("stroke-width")).toBe("2");
         expect(
             fill.compareDocumentPosition(symbols[index]) &

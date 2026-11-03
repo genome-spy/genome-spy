@@ -166,8 +166,9 @@ They do not constrain the newly accepted approximate Canvas implementation.
   0.2 / 16.7 ms unoutlined, decisively failing the same provisional gates.
   These failures reject those implementations, not mathematical feasibility.
 
-No release impact from this plan/proof-only branch. Retire this temporary plan
-before any implementation PR is merged, following the planning skill.
+The historical proof-only commits had no release impact. The implementation
+below carries the Core minor release fragment. Retire this temporary plan before
+merge, following the planning skill.
 
 ## Implementation progress
 
@@ -179,8 +180,8 @@ before any implementation PR is merged, following the planning skill.
   paint; existing software picking expands in the same traversal.
 - SVG-specific native contours and a luminance cutout keep overlapping dash caps
   unioned by nonzero fill. The outside stroke uses native round joins. No generic
-  contour union, image or filter was introduced. Actual SVG end/dash qualification
-  remains in progress under the accepted internal-edge limitation.
+  contour union, image or filter was introduced. Actual SVG end/dash/dotted and
+  rotated qualification passes under the accepted internal-edge limitation.
 - WebGL keeps its existing nominal/no-border path and four-vertex occurrence;
   outside borders use finite shared coverage with a backend-owned interval lookup.
   WebGPU receives only public paint channels. Thin-width compensation is applied
@@ -191,9 +192,8 @@ before any implementation PR is merged, following the planning skill.
   regressions cover CSS-alpha border removal, datum identity and offscreen-border
   culling. Composed/end/dash checks, cost qualification and applicable static
   checks are now complete.
-- Follow-up verification must include the existing fill/tick regression and
-  standalone rule GPU tests. Shared alignment migration and other marks remain
-  out of scope. No dependency or manifest changes.
+- Existing fill/tick and standalone rule GPU checks pass. Shared alignment
+  migration and other marks remain out of scope. No dependency or manifest changes.
 
 ### Completed integration gate
 
@@ -243,28 +243,43 @@ Git under `rule-stroke-implementation/` in this chat's artifact directory. Keep
 this plan until delivery review, reconcile any remaining delivery tasks, then
 retire it before merge. Do not include proof runners or measurements in the PR.
 
-## Review corrections in progress
+## Review resolution
 
-Three independent Sol reviews found appropriate architecture/ownership and no
-new dependencies. Resolve the confirmed thin square-cap excess before delivery:
-minimum transverse raster width must not lengthen square caps. Use nominal
-`size / 2` for their finite endpoints in both vertex emission and coverage,
-including unoutlined bodies, so paint visibility does not select body geometry.
-This corrects a subpixel cap bug; ordinary full-pixel rule/tick caps are unchanged.
-Add a public Core raster regression against an equivalent rounded rectangle at
-DPR 1/2, preserving the existing thin-width and transparent-paint checks.
+Three independent Sol reviews found appropriate architecture/ownership, no
+framework or dependency concerns, and one confirmed thin square-cap defect.
+Commit `6c950931d` fixes nominal square-cap length in vertex emission and finite
+coverage on both GPUs. Minimum transverse raster width no longer elongates
+square caps, including unoutlined bodies, so visibility does not select body
+geometry. Ordinary full-pixel rule/tick caps and round/butt calculations are
+unchanged. The rendering reviewer independently rechecked the fix: no findings.
 
-Apply only bounded cleanup: shorten the local browser fixture/capture plumbing,
-check renderer-independent SVG on Canvas at both DPRs, retain live raster/picking
-on all three backends, and remove overwritten SVG opacity evaluation. Retain
-all distinct headless picking, structured SVG and standalone GPU regressions.
-The optional interval-texture initialization optimization is deferred: no
-measured regression justifies additional static-encoding machinery in this fix.
+The public Core regression fails on the reviewed implementation and passes after
+correction at DPR 1/2. It compares the endpoint alpha profile of a `.2 / DPR`
+square rule with an outside border of `2 / DPR` to an independently rendered
+rounded rectangle of the nominal outer silhouette. No shader substitution,
+readback workaround, new browser harness or dependency is involved.
 
-Cap correction verified: the new public Core regression fails on the reviewed
-implementation and passes on WebGL/WebGPU at DPR 1/2 after correcting both
-vertex cap emission and finite coverage bounds. It compares the endpoint alpha
-profile to an independent filled rounded rectangle with the nominal outside
-silhouette. Body-width compensation and round/butt cap calculations are retained.
-The existing standalone rule GPU compatibility checks also pass. Small cleanup
-and final size measurement remain before delivery.
+Bounded cleanup reduces the browser runner from 406 to 357 lines while retaining
+all distinct pixel/picking contracts and the new cap regression. Renderer-neutral
+SVG checks run on Canvas at both DPRs (six exports rather than eighteen), while
+live raster/picking checks remain on all three backends. The local capture helper
+replaces repeated decoding/read plumbing; no shared test framework was added.
+Removed the unused SVG opacity attribute encoder (four lines); actual painted
+lines still receive the composed opacity. Two existing SVG decoration tests now
+query that painted line, preserving their opacity contracts without requiring
+an unused parent-group attribute. The headless vector-only assertion remains;
+the browser no longer serializes/checks the same SVG structure every frame.
+
+Verification after review fixes: actual Core rendering script passes on all
+three live backends at DPR 1/2, including the independent cap oracle. All 194 SVG
+subsystem tests, all three standalone rule GPU tests, Core/WebGPU type checks,
+targeted lint/formatting and existing minor-release policy checks pass. The
+existing feature fragment remains accurate; no additional fragment is needed.
+
+The optional no-border interval-texture initialization optimization is explicitly
+deferred: no measured regression justifies extra static-encoding machinery here.
+The earlier raw proof evidence remains historical; the current acceptance
+contract is the native Canvas decision and outside-only implementation above.
+No remaining cap blocker or feature task in this slice; shared alignment and
+other mark work remain deferred. Delivery review, exact size reporting and plan
+retirement before merge remain required. No PR has been opened.
