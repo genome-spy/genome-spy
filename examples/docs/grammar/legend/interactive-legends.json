@@ -29,11 +29,12 @@
   "config": {
     "legend": {
       "orient": "right",
+      "symbolSize": 70,
       "layout": { "right": { "direction": "vertical", "wrap": false } }
     }
   },
 
-  "mark": { "type": "point", "filled": true, "size": 45 },
+  "mark": { "type": "point", "filled": false, "size": 31.5 },
 
   "encoding": {
     "x": {
@@ -54,7 +55,10 @@
     "shape": {
       "field": "Sex",
       "type": "nominal",
-      "scale": { "domain": ["FEMALE", "MALE"] }
+      "scale": {
+        "domain": ["FEMALE", "MALE"],
+        "range": ["circle", "triangle-up"]
+      }
     },
     "opacity": {
       "condition": {
