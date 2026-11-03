@@ -1,7 +1,8 @@
 import { createNormalizedScale } from "../../scales/legendGradientMapping.js";
 import { IntervalSelectionController } from "../gridView/intervalSelectionController.js";
 import Rectangle from "../layout/rectangle.js";
-import { format as numberFormat } from "d3-format";
+import { tickFormat } from "../../scale/ticks.js";
+import { DEFAULT_GRADIENT_TICK_COUNT } from "../../config/defaults/legendDefaults.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /** @param {import("./legendBinding.js").LegendBinding} binding */
@@ -97,13 +98,18 @@ export function bindGradientLegend(legend, binding, units, format) {
         name: "legendBrushCursor",
         value: horizontal ? "text" : "vertical-text",
     });
-    const formatBound = numberFormat(format ?? ".3~g");
     legend.paramRuntime.registerComputed(
         "legendBrush",
         () => [runtime.getParamRef(name), resolution.getMappingRef()],
         () => {
             const bounds = runtime.findValue(name).intervals[component];
             const scale = getScale();
+            const formatBound = tickFormat(
+                resolution.getScale(),
+                legend.legendProps.tickCount ?? DEFAULT_GRADIENT_TICK_COUNT,
+                format,
+                false
+            );
             const [min, max] = getDomain();
             const visible = (/** @type {number} */ value) =>
                 Math.max(min, Math.min(max, value));

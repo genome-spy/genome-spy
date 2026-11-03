@@ -730,3 +730,78 @@ test.each([false, true])(
         expect(extents[0] - extents[1]).toBe(20);
     }
 );
+
+test.each(
+    /** @type {const} */ ([
+        {
+            type: "linear",
+            domain: [2500, 6500],
+            bounds: [4290, 5450],
+            format: undefined,
+            tick: "4,000",
+            label: "4,290 to <5,450",
+            open: ">= 4,290",
+        },
+        {
+            type: "linear",
+            domain: [0, 1],
+            bounds: [0.25, 0.75],
+            format: ".1%",
+            tick: "20.0%",
+            label: "25.0% to <75.0%",
+            open: ">= 25.0%",
+        },
+        {
+            type: "log",
+            domain: [1, 100],
+            bounds: [3, 30],
+            format: undefined,
+            tick: "10",
+            label: "3 to <30",
+            open: ">= 3",
+        },
+    ])
+)(
+    "range readout follows tick formatting ($type, $format)",
+    async ({ type, domain, bounds, format, tick, label, open }) => {
+        const input = spec(type);
+        Object.assign(input.encoding.color, {
+            scale: { type, domain: Array.from(domain) },
+            format,
+        });
+        input.params[0].value = { color: Array.from(bounds) };
+        const { root, views } = await createTestEmbed(input, {
+            contextOptions: {
+                baseConfig,
+                viewFactoryOptions: { wrapRoot: true },
+            },
+        });
+        renderToLayout(root);
+        const svg = () =>
+            createSvg({
+                viewRoot: root,
+                logicalWidth: 600,
+                logicalHeight: 400,
+                background: null,
+            }).svg;
+        const initial = svg();
+        expect(
+            Array.from(
+                initial.querySelectorAll('[data-name="gradientLabels"] text'),
+                (node) => node.textContent
+            )
+        ).toContain(tick);
+        expect(
+            initial.querySelector('[data-name="gradientSelectionFeedback"]')
+                .textContent
+        ).toContain(label);
+        views
+            .get({ scope: [], view: "cells" })
+            .params.get("scores")
+            .setValue(intervalSelection({ color: [bounds[0], Infinity] }));
+        expect(
+            svg().querySelector('[data-name="gradientSelectionFeedback"]')
+                .textContent
+        ).toContain(open);
+    }
+);

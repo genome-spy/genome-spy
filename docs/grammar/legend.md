@@ -149,7 +149,8 @@ the theme's foreground and background colors, with white as the glow fallback
 for transparent backgrounds. Set shared defaults with
 `config.style["gradient-selection-brush"]`.
 
-Clearing hides the range readout while reserving its space to keep layout stable.
+The range readout uses the tick label format. Clearing hides it while reserving
+its space to keep layout stable.
 Set `legend.selectionLabel: false` to hide it and reclaim the space, or use
 `config.legend.selectionLabel: false` globally. Ticks and brushing remain available.
 

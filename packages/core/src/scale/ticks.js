@@ -131,9 +131,11 @@ function binValues(bins, count) {
  * @param {*} [count] - The approximate number of desired ticks.
  * @param {string} [specifier] - The format specifier. Must be a legal d3
  *   specifier string (see https://github.com/d3/d3-format#formatSpecifier).
+ * @param {boolean} [filterLogTicks=true] - Hide minor logarithmic tick labels.
+ *   Disable for readouts that must display arbitrary numeric values.
  * @return {function(*):string} - The generated label formatter.
  */
-export function tickFormat(scale, count, specifier) {
+export function tickFormat(scale, count, specifier, filterLogTicks = true) {
     // d3-format interprets a zero or invalid count as a request for six
     // fractional digits. Expression-based axis counts can temporarily be
     // zero while a view is waiting for its first layout pass, so use the
@@ -150,7 +152,8 @@ export function tickFormat(scale, count, specifier) {
 
     if (isLogarithmic(scale.type)) {
         var logfmt = variablePrecision(specifier);
-        format = scale.bins ? logfmt : filter(format, logfmt);
+        format =
+            scale.bins || !filterLogTicks ? logfmt : filter(format, logfmt);
     }
 
     return format;
