@@ -56,7 +56,8 @@ vec2 intervalCoverage(vec2 interval) {
 }
 
 vec2 ruleCoverage() {
-    float end = uStrokeCap == BUTT ? 0.0 : vSize * 0.5;
+    float capSize = uStrokeCap == SQUARE ? vNominalSize : vSize;
+    float end = uStrokeCap == BUTT ? 0.0 : capSize * 0.5;
     vec2 bounds = vec2(-end, vSpan + end);
     if (uDashTextureSize == 0.0) return intervalCoverage(bounds);
     vec2 p = vec2(vPosInPixels.x, vNormalLengthInPixels);

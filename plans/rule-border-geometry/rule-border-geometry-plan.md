@@ -242,3 +242,29 @@ Raw measurements, temporary qualification scripts and logs are archived outside
 Git under `rule-stroke-implementation/` in this chat's artifact directory. Keep
 this plan until delivery review, reconcile any remaining delivery tasks, then
 retire it before merge. Do not include proof runners or measurements in the PR.
+
+## Review corrections in progress
+
+Three independent Sol reviews found appropriate architecture/ownership and no
+new dependencies. Resolve the confirmed thin square-cap excess before delivery:
+minimum transverse raster width must not lengthen square caps. Use nominal
+`size / 2` for their finite endpoints in both vertex emission and coverage,
+including unoutlined bodies, so paint visibility does not select body geometry.
+This corrects a subpixel cap bug; ordinary full-pixel rule/tick caps are unchanged.
+Add a public Core raster regression against an equivalent rounded rectangle at
+DPR 1/2, preserving the existing thin-width and transparent-paint checks.
+
+Apply only bounded cleanup: shorten the local browser fixture/capture plumbing,
+check renderer-independent SVG on Canvas at both DPRs, retain live raster/picking
+on all three backends, and remove overwritten SVG opacity evaluation. Retain
+all distinct headless picking, structured SVG and standalone GPU regressions.
+The optional interval-texture initialization optimization is deferred: no
+measured regression justifies additional static-encoding machinery in this fix.
+
+Cap correction verified: the new public Core regression fails on the reviewed
+implementation and passes on WebGL/WebGPU at DPR 1/2 after correcting both
+vertex cap emission and finite coverage bounds. It compares the endpoint alpha
+profile to an independent filled rounded rectangle with the nominal outside
+silhouette. Body-width compensation and round/butt cap calculations are retained.
+The existing standalone rule GPU compatibility checks also pass. Small cleanup
+and final size measurement remain before delivery.

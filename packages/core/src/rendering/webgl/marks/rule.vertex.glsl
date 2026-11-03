@@ -74,6 +74,8 @@ void main(void) {
 #endif
     float bodyFactor = min(1.0, size / pixelSize);
     size = max(size, pixelSize);
+    // Minimum raster width must not elongate the nominal square caps.
+    float capSize = uStrokeCap == SQUARE ? nominalSize : size;
 
     vec2 a = applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
@@ -118,7 +120,7 @@ void main(void) {
 
         // Add line caps
         if (uStrokeCap != BUTT) {
-            diff += size;
+            diff += capSize;
         }
 
         if (border > 0.0) diff += 2.0 * border + pixelSize;
@@ -154,7 +156,7 @@ void main(void) {
     vNormalLengthInPixels = side * (size + aaPadding);
 
     vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
-        vec2((uStrokeCap != BUTT ? size / 2.0 : 0.0) + (border > 0.0 ? border + 0.5 * pixelSize : 0.0));
+        vec2((uStrokeCap != BUTT ? capSize / 2.0 : 0.0) + (border > 0.0 ? border + 0.5 * pixelSize : 0.0));
     
     setupPicking();
 }

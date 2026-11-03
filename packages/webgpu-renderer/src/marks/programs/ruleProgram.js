@@ -184,7 +184,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let strokeCap = u32(getScaled_strokeCap(i));
     let span = max(len, getScaled_minLength(i));
     let halfWidth = 0.5 * width;
-    let end = select(0.0, halfWidth, strokeCap != BUTT);
+    // Minimum raster width affects transverse coverage, not square-cap length.
+    let capRadius = select(halfWidth, 0.5 * nominalWidth, strokeCap == SQUARE);
+    let end = select(0.0, capRadius, strokeCap != BUTT);
     let padding = expansion + 0.5 * pixelSize;
     let along = mix(-end - padding, span + end + padding, local.x);
     let across = (local.y - 0.5) * (width + 2.0 * padding);
@@ -273,7 +275,8 @@ fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
 
 fn ruleCoverage(in: VSOut) -> vec3<f32> {
     let span = in.span;
-    let end = select(0.0, in.halfWidth, in.strokeCap != BUTT);
+    let capRadius = select(in.halfWidth, 0.5 * in.nominalWidth, in.strokeCap == SQUARE);
+    let end = select(0.0, capRadius, in.strokeCap != BUTT);
     let bounds = vec2<f32>(-end, span + end);
     if (params.uDashPatternCount == 0u || in.dashIndex >= params.uDashPatternCount) {
         return intervalCoverage(in, bounds);

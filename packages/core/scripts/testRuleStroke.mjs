@@ -127,6 +127,53 @@ await testRenderers(
                                     y: { value: 0.875 },
                                 },
                             },
+                            // A square ribbon's outside offset is an independently rendered rounded rectangle.
+                            ...["rule", "rect"].map((type, index) => {
+                                const y = 50 + index * 20;
+                                const radius = 2.1 / dpr;
+                                const positions =
+                                    type === "rule"
+                                        ? { x: 20, x2: 44, y, y2: y }
+                                        : {
+                                              x: 20 - radius,
+                                              x2: 44 + radius,
+                                              y: y + radius,
+                                              y2: y - radius,
+                                          };
+                                return {
+                                    data: { values: [{}] },
+                                    mark:
+                                        type === "rule"
+                                            ? {
+                                                  type,
+                                                  size: 0.2 / dpr,
+                                                  fill: "blue",
+                                                  stroke: "blue",
+                                                  strokeWidth: 2 / dpr,
+                                                  strokeCap: "square",
+                                              }
+                                            : {
+                                                  type,
+                                                  fill: "blue",
+                                                  stroke: null,
+                                                  cornerRadius: 2 / dpr,
+                                              },
+                                    encoding: Object.fromEntries(
+                                        Object.entries(positions).map(
+                                            ([channel, value]) => [
+                                                channel,
+                                                {
+                                                    value: channel.startsWith(
+                                                        "y"
+                                                    )
+                                                        ? 1 - value / 80
+                                                        : value / 80,
+                                                },
+                                            ]
+                                        )
+                                    ),
+                                };
+                            }),
                         ],
                     },
                     { renderer }
@@ -157,6 +204,7 @@ await testRenderers(
                         const captures = [];
                         let narrowAlpha = 0;
                         let edge;
+                        let capProfiles;
                         for (const { blob } of [raster, vector]) {
                             const image = new globalThis.Image();
                             const url = globalThis.URL.createObjectURL(blob);
@@ -170,6 +218,20 @@ await testRenderers(
                                 const ctx = canvas.getContext("2d");
                                 ctx.drawImage(image, 0, 0, 80 * dpr, 80 * dpr);
                                 if (captures.length === 0) {
+                                    if (frames.length === 0) {
+                                        capProfiles = [50, 70].map((y) =>
+                                            Array.from(
+                                                ctx.getImageData(
+                                                    20 * dpr - 5,
+                                                    y * dpr,
+                                                    10,
+                                                    1
+                                                ).data
+                                            ).filter(
+                                                (_, index) => index % 4 === 3
+                                            )
+                                        );
+                                    }
                                     edge = Array.from(
                                         ctx.getImageData(
                                             40 * dpr,
@@ -220,6 +282,7 @@ await testRenderers(
                             fa,
                             common,
                             edge,
+                            capProfiles,
                             captures,
                             picked: hit.status === "hit",
                             vector: await vector.blob.text(),
@@ -232,6 +295,14 @@ await testRenderers(
             },
             { renderer, dpr: variant.deviceScaleFactor }
         );
+
+        if (renderer !== "canvas") {
+            const [rule, reference] = result[0].capProfiles;
+            assert(
+                rule.every((alpha, i) => Math.abs(alpha - reference[i]) <= 1),
+                `${renderer}: nominal thin square-cap extent`
+            );
+        }
 
         // The horizontal DPR-2 fixture lands on pixel edges; DPR 1 exercises fractional coverage.
         if (renderer !== "canvas" && variant.deviceScaleFactor === 1) {
