@@ -2,6 +2,7 @@
 
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
+import { createSinglePointSelection } from "../../../selection/selection.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import SoftwarePickingBuffer from "./softwarePickingBuffer.js";
 import SoftwarePickingRasterizer from "./softwarePickingRasterizer.js";
@@ -34,6 +35,70 @@ describe("SoftwarePickingViewRenderingContext", () => {
             const transparent = render(view);
             expect(transparent.read(50, 50)).toBe(id);
             expect(transparent.read(50, 54)).toBe(0);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("reactive conditional strokes retain their width with a null fallback", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "picked", select: { type: "point", toggle: false } },
+            ],
+            data: { values: [{}] },
+            mark: { type: "rule", size: 4, strokeWidth: 3 },
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.5 },
+                stroke: {
+                    condition: { param: "picked", empty: false, value: "blue" },
+                    value: null,
+                },
+            },
+        });
+        try {
+            expect(render(view).read(50, 54)).toBe(0);
+            const [datum] =
+                /** @type {import("../../../view/unitView.js").default} */ (
+                    view
+                )
+                    .getCollector()
+                    .getData();
+            view.paramRuntime.setValue(
+                "picked",
+                createSinglePointSelection(datum)
+            );
+            await view.paramRuntime.whenPropagated();
+            const visible = render(view);
+            expect(visible.read(50, 54)).toBe(visible.read(50, 50));
+            expect(visible.read(50, 54)).toBeGreaterThan(0);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("picks the visible outside corner of a diagonal square rule cap", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                size: 4,
+                stroke: "blue",
+                strokeWidth: 3,
+                strokeCap: "square",
+            },
+            encoding: {
+                x: { value: 0.4 },
+                x2: { value: 0.6 },
+                y: { value: 0.6 },
+                y2: { value: 0.4 },
+            },
+        });
+        try {
+            const buffer = render(view);
+            expect(buffer.read(60, 66)).toBe(buffer.read(50, 50));
+            expect(buffer.read(60, 66)).toBeGreaterThan(0);
         } finally {
             view.disposeSubtree();
         }

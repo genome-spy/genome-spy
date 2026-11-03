@@ -42,7 +42,7 @@ await testRenderers(
                         size: 0.5 / dpr,
                         width: 0.125 / dpr,
                     },
-                ];
+                ].map((row) => ({ ...row, ink: "blue" }));
                 const api = await embed(
                     globalThis.document.body,
                     {
@@ -56,42 +56,78 @@ await testRenderers(
                         data: { values },
                         params: [
                             { name: "alpha", value: 1 },
+                            { name: "outline", select: { type: "point" } },
                             { name: "fa", value: 1 },
                             { name: "common", value: 1 },
                         ],
-                        mark: {
-                            type: "rule",
-                            fill: "red",
-                            stroke: "blue",
-                            strokeOpacity: { expr: "alpha" },
-                            fillOpacity: { expr: "fa" },
-                            opacity: { expr: "common" },
-                        },
-                        encoding: {
-                            ...Object.fromEntries(
-                                ["x", "x2", "y", "y2"].map((field) => [
-                                    field,
-                                    {
-                                        field,
+                        layer: [
+                            {
+                                mark: {
+                                    type: "rule",
+                                    fill: "red",
+                                    stroke: "blue",
+                                    strokeOpacity: { expr: "alpha" },
+                                    fillOpacity: { expr: "fa" },
+                                    opacity: { expr: "common" },
+                                },
+                                encoding: {
+                                    stroke: {
+                                        condition: {
+                                            param: "outline",
+                                            field: "ink",
+                                            type: "nominal",
+                                            legend: null,
+                                            scale: {
+                                                domain: ["blue"],
+                                                range: ["blue"],
+                                            },
+                                        },
+                                        value: null,
+                                        legend: null,
+                                    },
+                                    ...Object.fromEntries(
+                                        ["x", "x2", "y", "y2"].map((field) => [
+                                            field,
+                                            {
+                                                field,
+                                                type: "quantitative",
+                                                scale: null,
+                                                axis: null,
+                                            },
+                                        ])
+                                    ),
+                                    size: {
+                                        field: "size",
                                         type: "quantitative",
                                         scale: null,
-                                        axis: null,
+                                        legend: null,
                                     },
-                                ])
-                            ),
-                            size: {
-                                field: "size",
-                                type: "quantitative",
-                                scale: null,
-                                legend: null,
+                                    strokeWidth: {
+                                        field: "width",
+                                        type: "quantitative",
+                                        scale: null,
+                                        legend: null,
+                                    },
+                                },
                             },
-                            strokeWidth: {
-                                field: "width",
-                                type: "quantitative",
-                                scale: null,
-                                legend: null,
+                            {
+                                data: { values: [{}] },
+                                mark: {
+                                    type: "rule",
+                                    size: 6,
+                                    fill: "red",
+                                    stroke: "blue",
+                                    strokeWidth: 2,
+                                    strokeDash: [8, 8],
+                                    strokeDashOffset: 2,
+                                },
+                                encoding: {
+                                    x: { value: 0.1 },
+                                    x2: { value: 0.9 },
+                                    y: { value: 0.875 },
+                                },
                             },
-                        },
+                        ],
                     },
                     { renderer }
                 );
@@ -157,6 +193,9 @@ await testRenderers(
                                         [40, 55],
                                         [40, 39],
                                         [40, 20],
+                                        [7, 10],
+                                        [15, 10],
+                                        [18, 10],
                                     ].map(([x, y]) =>
                                         Array.from(
                                             ctx.getImageData(
@@ -252,6 +291,26 @@ await testRenderers(
                     pixels[3],
                     [255, 0, 0, 255],
                     `${renderer}: zero-width border`
+                );
+                // Native Canvas intentionally omits complete butt/dash-end borders.
+                const end =
+                    renderer === "canvas" && index === 0
+                        ? [0, 0, 0, 0]
+                        : [0, 0, 255, 255];
+                assert.deepEqual(
+                    pixels[4],
+                    end,
+                    `${renderer}: finite butt border`
+                );
+                assert.deepEqual(
+                    pixels[5],
+                    end,
+                    `${renderer}: dash-cut border`
+                );
+                assert.deepEqual(
+                    pixels[6],
+                    [0, 0, 0, 0],
+                    `${renderer}: genuine dash gap`
                 );
                 if (frame.alpha && index === 0)
                     assert(

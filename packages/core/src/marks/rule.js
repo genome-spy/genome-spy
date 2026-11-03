@@ -21,15 +21,13 @@ export default class RuleMark extends Mark {
             "y2Offset",
             "size",
             ...(this.getType() == "rule"
-                ? [
-                      .../** @type {const} */ ([
-                          "fill",
-                          "fillOpacity",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeOpacity",
-                      ]),
-                  ]
+                ? /** @type {const} */ ([
+                      "fill",
+                      "fillOpacity",
+                      "stroke",
+                      "strokeWidth",
+                      "strokeOpacity",
+                  ])
                 : []),
         ];
     }
@@ -56,9 +54,9 @@ export default class RuleMark extends Mark {
             }
             encoding.stroke ??= { value: null };
             if (
-                encoding.stroke &&
                 "value" in encoding.stroke &&
-                encoding.stroke.value === null
+                encoding.stroke.value === null &&
+                !("condition" in encoding.stroke)
             ) {
                 encoding.strokeWidth = { value: 0 };
             }

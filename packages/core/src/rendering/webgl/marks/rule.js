@@ -130,6 +130,7 @@ export default class WebGLRuleMark extends WebGLMark {
 
         setBlockUniforms(this.markUniformInfo, {
             uDashTextureSize: +this.dashTextureSize,
+            uStrokeDashOffset: props.strokeDashOffset,
         });
         this.markUniformsAltered = true;
     }

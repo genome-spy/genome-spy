@@ -1,5 +1,3 @@
-import { formatSvgNumber as n } from "./svgNumber.js";
-
 /**
  * Native ribbon contours for SVG's outside stroke and nominal-fill cutout.
  * Nonzero filling unions overlapping dash caps without tracing a polygon union.
@@ -10,6 +8,9 @@ import { formatSvgNumber as n } from "./svgNumber.js";
  * @param {number} offset
  */
 export function rulePath(length, size, cap, dash, offset) {
+    if (dash?.some((value) => value < 0 || !Number.isFinite(value))) {
+        throw new Error("Invalid stroke dash pattern: " + JSON.stringify(dash));
+    }
     const radius = size / 2;
     let path = "";
     /** @param {number} a @param {number} b */
@@ -19,11 +20,11 @@ export function rulePath(length, size, cap, dash, offset) {
             a -= radius;
             b += radius;
         }
-        path += `M${n(a)} ${n(-radius)}H${n(b)}`;
+        path += `M${a} ${-radius}H${b}`;
         if (cap === "round") {
-            path += `A${n(radius)} ${n(radius)} 0 0 1 ${n(b)} ${n(radius)}H${n(a)}A${n(radius)} ${n(radius)} 0 0 1 ${n(a)} ${n(-radius)}Z`;
+            path += `A${radius} ${radius} 0 0 1 ${b} ${radius}H${a}A${radius} ${radius} 0 0 1 ${a} ${-radius}Z`;
         } else {
-            path += `V${n(radius)}H${n(a)}Z`;
+            path += `V${radius}H${a}Z`;
         }
     };
     const count = dash?.length ?? 0;

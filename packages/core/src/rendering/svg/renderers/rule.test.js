@@ -13,7 +13,7 @@ describe("SVG rule renderer", () => {
             mark: {
                 type: "rule",
                 filled: false,
-                color: "red",
+                color: { expr: "ink" },
                 size: 4,
                 strokeCap: "round",
                 strokeDash: [0, 8],
@@ -22,7 +22,6 @@ describe("SVG rule renderer", () => {
                 x: { value: 0.1 },
                 x2: { value: 0.9 },
                 y: { value: 0.5 },
-                stroke: { value: { expr: "ink" } },
                 strokeWidth: {
                     field: "width",
                     type: "quantitative",

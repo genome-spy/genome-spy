@@ -73,7 +73,7 @@ export function renderRuleSvg(baseMark, options) {
                 );
                 const path = rulePath(
                     length,
-                    instance.size,
+                    formatSvgNumber(instance.size),
                     cap,
                     strokeDash,
                     dashOffset

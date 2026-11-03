@@ -256,14 +256,18 @@ fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
     if (interval.x >= interval.y) { return vec3<f32>(0.0); }
     let cf = boundaryCoverage(in, interval, 0.0);
     if (in.inset == 0.0 && in.outset == 0.0) { return vec3<f32>(cf); }
-    var maxInset = min(in.nominalWidth * 0.5, (interval.y - interval.x) * 0.5);
-    if (in.strokeCap == ROUND) {
-        maxInset = min(maxInset, min(interval.y + in.nominalWidth * 0.5,
-            in.span + in.nominalWidth * 0.5 - interval.x) * 0.5);
+    var co = cf;
+    if (in.outset > 0.0) { co = boundaryCoverage(in, interval, in.outset); }
+    var ci = cf;
+    if (in.inset > 0.0) {
+        var maxInset = min(in.nominalWidth * 0.5, (interval.y - interval.x) * 0.5);
+        if (in.strokeCap == ROUND) {
+            maxInset = min(maxInset, min(interval.y + in.nominalWidth * 0.5,
+                in.span + in.nominalWidth * 0.5 - interval.x) * 0.5);
+        }
+        ci = select(boundaryCoverage(in, interval, -in.inset),
+            0.0, in.inset >= maxInset);
     }
-    let co = boundaryCoverage(in, interval, in.outset);
-    let ci = select(boundaryCoverage(in, interval, -in.inset),
-        0.0, in.inset > 0.0 && in.inset >= maxInset);
     return vec3<f32>(ci, cf, co);
 }
 

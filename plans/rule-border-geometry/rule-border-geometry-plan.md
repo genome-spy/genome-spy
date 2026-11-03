@@ -1,7 +1,7 @@
 # Shared rule strokes: native Canvas decision and implementation scope
 
-Status: shared paint wiring implemented on `codex/core-rule-stroke`; integration
-qualification in progress, no implementation PR opened. PR #644 is the separate explicit-fill
+Status: outside-stroke wiring and bounded integration qualification complete on
+`codex/core-rule-stroke`; no implementation PR opened. PR #644 is the separate explicit-fill
 prerequisite, based at `0feee7824`.
 
 Requirements: [#604](https://github.com/genome-spy/genome-spy/issues/604).
@@ -189,7 +189,56 @@ before any implementation PR is merged, following the planning skill.
 - Initial actual Core export/picking checks pass on Canvas/WebGL/WebGPU at DPR
   1/2. Invisible WebGPU borders no longer enlarge the picking quad. Headless
   regressions cover CSS-alpha border removal, datum identity and offscreen-border
-  culling; broader composed/end/dash checks and final cost/static checks remain.
+  culling. Composed/end/dash checks, cost qualification and applicable static
+  checks are now complete.
 - Follow-up verification must include the existing fill/tick regression and
   standalone rule GPU tests. Shared alignment migration and other marks remain
   out of scope. No dependency or manifest changes.
+
+### Completed integration gate
+
+- Implementation commit `468bc6514` wires all four consumers. Follow-up fixes
+  preserve indexed native ranges, avoid rounding subpixel SVG contour coordinates
+  a second time, connect the existing WebGL dash-phase uniform, retain conditional
+  border widths with null fallbacks, and cover
+  the visible diagonal square-cap corner in software picking. The latter two
+  regressions fail with the old behavior and pass after correction; the cap
+  pixel is visibly blue (alpha 140) and is hit through the public Canvas API.
+- Core's full suite: 4,204 passing, one existing skip and two TODOs. Subsequent
+  focused checks cover the added cap/conditional regressions (60 passing tests). Existing standalone
+  rule GPU tests pass (three tests), including aligned strokes, caps/dash cuts,
+  crossing order, transparent updates, picking and nominal thin-body preservation.
+  Updated the old opaque-border expectation using its coverage equation rather
+  than retaining the global thin-width fade.
+- `testRuleStroke.mjs` uses ordinary conditional field-driven stroke encoding with
+  a null fallback and explicit color-scale domain/range. Actual selected-backend
+  raster and rasterized vector SVG checks pass at DPR 1/2. They cover narrow/wide
+  subpixel bands, body size, shared-edge fractional/common opacity, visibility,
+  finite butt/dash borders with nonzero phase, real dash gaps and border-only picking. Original
+  `testRuleFill.mjs` also passes on all three live backends, including ticks.
+- Separate bounded actual-path checks confirm both crossing orders with common
+  opacity and a 45-degree round rule. All 220 nominal-edge samples are fully
+  opaque on each live backend; SVG reaches alpha 192 only at the accepted
+  internal edge. Dotted native vector SVG is painted, not silently discarded.
+- Final Canvas source, 1,000 rules: hardware/software outlined repaint 0.3 ms;
+  PNG 16.7/16.3 ms versus unoutlined 0.2/16.6 ms. Default repaint/PNG remains
+  0.2/16.6 ms. Both existing budgets pass. Public pan/zoom outlined CPU medians
+  are 1.0/0.7 ms and next-frame p95 is 18.7/17.6 ms, respectively. These remain
+  local CPU/wall/scheduling measurements, not GPU completion timings.
+- Core/WebGPU types, targeted lint/formatting, generated Core schema and grammar
+  type docs, release policy and minor release assessment pass. No manifest,
+  dependency or lockfile changes. User docs and one Core minor fragment describe
+  outside widths and the accepted Canvas/SVG limits.
+
+Scope limits retained: no shared alignment migration, text or other-mark work;
+existing native per-dash caps versus GPU whole-ribbon cap behavior stays unchanged.
+This slice does not complete all of #604. Fractional GPU composition is checked
+against an opaque export background to separate shader correctness from the
+pre-existing WebGL transparent-PNG encoding: its export readback defaults to
+premultiplied RGB without conversion to straight alpha. That unrelated export
+plumbing is unchanged, and transparent-PNG RGB parity is not claimed here.
+
+Raw measurements, temporary qualification scripts and logs are archived outside
+Git under `rule-stroke-implementation/` in this chat's artifact directory. Keep
+this plan until delivery review, reconcile any remaining delivery tasks, then
+retire it before merge. Do not include proof runners or measurements in the PR.

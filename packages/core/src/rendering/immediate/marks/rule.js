@@ -34,7 +34,7 @@ export function resolveRuleProperties(mark) {
 /**
  * @param {import("../../../marks/rule.js").default} mark
  * @param {ReturnType<typeof resolveRuleProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, start?: number, end?: number}} options
  * @param {(instance: RuleInstance) => void} visitor
  */
 export function visitRuleInstances(mark, properties, options, visitor) {
@@ -43,20 +43,22 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
+    if (start === end) {
         return 0;
     }
     const projectXRange = prepareRangeProjection(
         coords,
         encoders,
         "x",
-        data[0]
+        data[start]
     );
     const projectYRange = prepareRangeProjection(
         coords,
         encoders,
         "y",
-        data[0]
+        data[start]
     );
     const xRange = /** @type {[number, number]} */ ([0, 0]);
     const yRange = /** @type {[number, number]} */ ([0, 0]);
@@ -85,7 +87,8 @@ export function visitRuleInstances(mark, properties, options, visitor) {
         ? getPaintOpacityAccessor(encoders.stroke)
         : () => 0;
 
-    for (const datum of data) {
+    for (let index = start; index < end; index++) {
+        const datum = data[index];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
         let [x1, x2] = xRange;
