@@ -82,6 +82,11 @@ test("domain() clamps the minimum domain span to one", () => {
     scale.domain([1.75, 2.25]);
     expect(scale.domain()).toEqual([1.5, 2.5]);
 
+    scale.domain([0, 0.2]);
+    expect(scale.domain()).toEqual([-0.4, 0.6]);
+    scale.domain([0, 0]);
+    expect(scale.domain()).toEqual([0, 0]);
+
     // Navigation can leave a gap at the viewport edge with less than one data band.
     scale.domain([10, 10.5], [0.5, 1]);
     expect(scale.copy().domain()).toEqual([10, 10.5]);

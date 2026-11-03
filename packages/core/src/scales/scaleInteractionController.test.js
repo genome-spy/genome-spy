@@ -269,7 +269,7 @@ describe("ScaleInteractionController", () => {
         await controller.zoomTo([2, 8], { duration: 0 });
 
         expect(scale.domain()).toEqual([2, 8]);
-        expect(navigate).toHaveBeenCalledWith([2, 8], 0, false);
+        expect(navigate).toHaveBeenCalledWith([2, 8], 0, false, undefined);
     });
 
     test("zoomTo still accepts direct duration for compatibility", async () => {
@@ -281,7 +281,7 @@ describe("ScaleInteractionController", () => {
 
         await controller.zoomTo([2, 8], 500);
 
-        expect(navigate).toHaveBeenCalledWith([2, 8], 500, false);
+        expect(navigate).toHaveBeenCalledWith([2, 8], 500, false, undefined);
     });
 
     test("zoomTo can render immediately without requesting animation frame", async () => {
@@ -303,7 +303,7 @@ describe("ScaleInteractionController", () => {
 
         expect(scale.domain()).toEqual([2, 8]);
         expect(renderImmediately).toHaveBeenCalledTimes(1);
-        expect(navigate).toHaveBeenCalledWith([2, 8], 0, true);
+        expect(navigate).toHaveBeenCalledWith([2, 8], 0, true, undefined);
     });
 
     test("zoomTo rejects immediate rendering for animated zooms", async () => {

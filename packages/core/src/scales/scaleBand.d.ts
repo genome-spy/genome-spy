@@ -13,6 +13,11 @@ export function copyViewport(
     value: CategoricalViewport | null
 ): CategoricalViewport | null;
 
+export function clampViewport(
+    viewport: CategoricalViewport | null | undefined,
+    length: number
+): CategoricalViewport | null | undefined;
+
 /** Forward projection shared by categorical and index-like grouping gaps. */
 export interface GroupingGapMapping<Value = Scalar> {
     position(value: Value, band?: number, before?: boolean): number | undefined;

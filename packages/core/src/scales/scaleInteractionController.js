@@ -1,4 +1,4 @@
-import { copyViewport } from "./scaleBand.js";
+import { clampViewport, copyViewport } from "./scaleBand.js";
 import {
     isCategoricalPositionScale,
     supportsScaleNavigation,
@@ -125,14 +125,17 @@ export default class ScaleInteractionController {
                     scale
                 ).viewport();
             const extent = this.getZoomExtent();
-            const reset = scale.props.viewport;
+            const reset = clampViewport(
+                scale.props.viewport
+                    ? { interval: scale.props.viewport }
+                    : null,
+                extent[1]
+            );
             return (
                 !!viewport?.gapRanks ||
                 !shallowArrayEquals(
                     viewport?.interval ?? extent,
-                    reset && extent[1] > 0
-                        ? clampRange(reset, 0, extent[1])
-                        : (reset ?? extent)
+                    reset?.interval ?? extent
                 )
             );
         }
@@ -217,8 +220,6 @@ export default class ScaleInteractionController {
      *      Passing the duration directly as a boolean or number is deprecated.
      */
     async zoomTo(domain, options = false) {
-        const { duration, renderImmediately } = normalizeZoomToOptions(options);
-
         if (!this.isZoomingSupported()) {
             throw new Error("Not a zoomable scale!");
         }
@@ -233,17 +234,7 @@ export default class ScaleInteractionController {
         );
 
         // TODO: Intersect the domain with zoom extent
-
-        if (duration > 0 && renderImmediately) {
-            throw new Error(
-                "renderImmediately is not supported for animated zooms."
-            );
-        }
-        const transition = this.#navigate(to, duration, renderImmediately);
-        if (renderImmediately) {
-            this.#renderImmediately();
-        }
-        return transition;
+        return this.#dispatchNavigation(to, options);
     }
 
     /** @returns {number[]} */
@@ -266,23 +257,25 @@ export default class ScaleInteractionController {
         const scale = this.#getScale();
         if (!isCategoricalPositionScale(scale.type))
             throw new Error("Scale viewports require a band or point scale.");
-        const target = copyViewport(viewport);
+        const target = clampViewport(
+            copyViewport(viewport),
+            this.getZoomExtent()[1]
+        );
+        return this.#dispatchNavigation(
+            target?.interval ?? null,
+            options,
+            target?.gapRanks
+        );
+    }
+
+    /** @param {number[] | null} domain
+     * @param {ZoomToOptions | boolean | number | undefined} options
+     * @param {readonly number[]} [ranks]
+     */
+    #dispatchNavigation(domain, options, ranks) {
         const { duration, renderImmediately } = normalizeZoomToOptions(options);
-        if (duration > 0 && renderImmediately)
-            throw new Error(
-                "renderImmediately is not supported for animated zooms."
-            );
-        const extent = this.getZoomExtent();
-        const interval =
-            target && extent[1] > 0
-                ? clampRange(target.interval, 0, extent[1])
-                : target?.interval;
-        const ranks =
-            target && shallowArrayEquals(interval, target.interval)
-                ? target.gapRanks
-                : undefined;
         const transition = this.#navigate(
-            interval ?? null,
+            domain,
             duration,
             renderImmediately,
             ranks
@@ -340,33 +333,17 @@ export default class ScaleInteractionController {
  * @param {ZoomToOptions | boolean | number | undefined} options
  * @returns {{ duration: number, renderImmediately: boolean }}
  */
-function normalizeZoomToOptions(options) {
-    if (options === undefined) {
-        return {
-            duration: 0,
-            renderImmediately: false,
-        };
-    }
-
-    if (isBoolean(options)) {
-        return {
-            duration: options ? 700 : 0,
-            renderImmediately: false,
-        };
-    }
-
-    if (typeof options === "number") {
-        return {
-            duration: options,
-            renderImmediately: false,
-        };
-    }
-
-    const duration = options.duration ?? 0;
-    return {
-        duration: isBoolean(duration) ? (duration ? 700 : 0) : duration,
-        renderImmediately: options.renderImmediately === true,
-    };
+function normalizeZoomToOptions(options = {}) {
+    if (isBoolean(options) || typeof options === "number")
+        options = { duration: options };
+    let duration = options.duration ?? 0;
+    if (isBoolean(duration)) duration = duration ? 700 : 0;
+    const renderImmediately = options.renderImmediately === true;
+    if (duration > 0 && renderImmediately)
+        throw new Error(
+            "renderImmediately is not supported for animated zooms."
+        );
+    return { duration, renderImmediately };
 }
 
 /**

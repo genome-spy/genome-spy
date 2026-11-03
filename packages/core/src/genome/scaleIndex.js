@@ -1,10 +1,11 @@
-import { createBandMapping } from "../scales/bandMapping.js";
+import {
+    createBandMapping,
+    normalizeBandInterval,
+} from "../scales/bandMapping.js";
 import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
 import { bandSpace } from "vega-scale";
 import { gapRank, installGroupingGapProperties } from "./indexGapMapping.js";
-
-const minimumDomainSpan = 1;
 
 /**
  * Creates a "index" scale, which works similarly to d3's band scale but the domain
@@ -93,21 +94,10 @@ export default function scaleIndex() {
         if (arguments.length) {
             gapMappings.clear();
             gapDomain = ranks;
-            domain = extent(_);
+            // Exact gap edges may span less than one data band.
+            const interval = extent(_);
+            domain = ranks ? interval : normalizeBandInterval(interval);
             domainSpan = domain[1] - domain[0];
-            const uninitializedDomain = domain[0] === 0 && domain[0] === 0;
-
-            // Fractional edge ranks preserve exact navigation through a gap.
-            if (
-                !ranks &&
-                domainSpan < minimumDomainSpan &&
-                !uninitializedDomain
-            ) {
-                domainSpan = minimumDomainSpan;
-                const centroid = (domain[0] + domain[1]) / 2;
-                domain[0] = centroid - domainSpan / 2;
-                domain[1] = centroid + domainSpan / 2;
-            }
 
             return scale;
         } else {

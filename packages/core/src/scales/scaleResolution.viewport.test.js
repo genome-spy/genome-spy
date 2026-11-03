@@ -224,3 +224,83 @@ test("initial viewport reconciliation publishes the settled zoom metric", async 
     expect(view.paramRuntime.getValue("zoom")).toBe(1);
     expect(x.isZoomed()).toBe(false);
 });
+
+test("gap-only viewport changes animate intermediate geometry and retain exact final ranks", async () => {
+    const animator = new Animator(() => undefined);
+    vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);
+    const { view } = await createHeadlessEngine(
+        spec({ gapPositions: ["B", "D"], gapWidth: 8 }),
+        { contextOptions: { animator } }
+    );
+    onTestFinished(() => {
+        view.disposeSubtree();
+        animator.finalize();
+    });
+    const x = getRequiredScaleResolution(view, "x");
+    const scale = /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+        x.getScale()
+    );
+    scale.axisLength(100);
+    const from = {
+        interval: /** @type {[number, number]} */ ([1, 3]),
+        gapRanks: /** @type {[number, number]} */ ([0.25, 1.75]),
+    };
+    const to = {
+        ...from,
+        gapRanks: /** @type {[number, number]} */ ([0.75, 1.25]),
+    };
+    await x.zoomToViewport(from);
+    const before = scale.gapMapping().position("B");
+    const final = scale.copy().viewport(to).gapMapping().position("B");
+    const transition = x.zoomToViewport(to, { duration: 500 });
+    expect(x.getViewport()).toEqual(from);
+    const start = performance.now();
+    animator.transitions.splice(0).forEach((frame) => frame(start + 250));
+    const middle = scale.gapMapping().position("B");
+    expect(middle).toBeGreaterThan(Math.min(before, final));
+    expect(middle).toBeLessThan(Math.max(before, final));
+    animator.transitions.splice(0).forEach((frame) => frame(start + 1000));
+    await transition;
+    expect(x.getViewport()).toEqual(to);
+    expect(scale.gapMapping().position("B")).toBeCloseTo(final);
+});
+
+test("ordinary categorical intervals share one-band limits across authored, API, and reset bounds", async () => {
+    const { view } = await createHeadlessEngine(
+        spec({ viewport: [1, 1.2], gapPositions: ["B"], gapWidth: 8 })
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const x = getRequiredScaleResolution(view, "x");
+    const authored = x.getViewport();
+    expect(authored.interval[1] - authored.interval[0]).toBeCloseTo(1);
+    expect(x.isZoomed()).toBe(false);
+    await x.zoomToViewport({ interval: [0.8, 1] });
+    const normalized = x.getViewport();
+    await x.zoomToViewport(normalized);
+    expect(x.getViewport()).toEqual(normalized);
+    expect(x.getMappingRef().get().viewport).toEqual(normalized);
+    await x.zoomToViewport({ interval: [0, 0.2] });
+    expect(x.getViewport()).toEqual({ interval: [0, 1] });
+    x.resetZoom();
+    expect(x.getViewport()).toEqual(authored);
+    expect(x.isZoomed()).toBe(false);
+    const exact = {
+        interval: /** @type {[number, number]} */ ([1, 1.2]),
+        gapRanks: /** @type {[number, number]} */ ([0.5, 1]),
+    };
+    await x.zoomToViewport(exact);
+    expect(x.getViewport()).toEqual(exact);
+    view.paramRuntime.setValue("categories", ["A", "B", "D", "C"]);
+    await view.paramRuntime.whenPropagated();
+    // Clearing stale gap ranks must normalize both owner state and live scale.
+    expect(x.getMappingRef().get().viewport).toEqual(authored);
+    expect(x.getViewport()).toEqual(authored);
+    x.resetZoom();
+    view.paramRuntime.setValue("categories", []);
+    await view.paramRuntime.whenPropagated();
+    expect(x.getViewport()).toEqual(authored);
+    view.paramRuntime.setValue("categories", ["A"]);
+    await view.paramRuntime.whenPropagated();
+    expect(x.getViewport()).toEqual({ interval: [0, 1] });
+    expect(x.isZoomed()).toBe(false);
+});

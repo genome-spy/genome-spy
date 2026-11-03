@@ -188,3 +188,18 @@ export function createBandMapping({
         gap,
     };
 }
+
+/** Expand ordinary intervals to one band, preserving the empty startup domain.
+ * @param {number[]} interval
+ * @returns {number[]}
+ */
+export function normalizeBandInterval(interval) {
+    if (
+        interval[1] - interval[0] < 1 - Number.EPSILON &&
+        (interval[0] !== 0 || interval[1] !== 0)
+    ) {
+        const center = (interval[0] + interval[1]) / 2;
+        return [center - 0.5, center + 0.5];
+    }
+    return interval;
+}

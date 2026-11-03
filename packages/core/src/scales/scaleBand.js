@@ -29,10 +29,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import { clampRange } from "vega-util";
+import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { bandSpace } from "vega-scale";
 import clamp from "../utils/clamp.js";
 import { installGroupingGapProperties } from "../genome/indexGapMapping.js";
-import { createBandMapping } from "./bandMapping.js";
+import { createBandMapping, normalizeBandInterval } from "./bandMapping.js";
 
 /**
  * Category identity wraps the same numeric geometry used by index scales.
@@ -260,8 +262,9 @@ export function copyViewport(value) {
             "A categorical viewport requires an increasing finite rank interval and optional finite gap ranks."
         );
     }
+    const bounds = gapRanks ? interval : normalizeBandInterval(interval);
     return {
-        interval: [interval[0], interval[1]],
+        interval: [bounds[0], bounds[1]],
         ...(gapRanks
             ? {
                   gapRanks: /** @type {[number, number]} */ ([
@@ -271,6 +274,23 @@ export function copyViewport(value) {
               }
             : {}),
     };
+}
+
+/** Clamp rank positions, dropping exact gap edges and enforcing ordinary limits if bounds change.
+ * @param {import("./scaleBand.js").CategoricalViewport | null | undefined} viewport
+ * @param {number} length
+ */
+export function clampViewport(viewport, length) {
+    if (!viewport) return viewport;
+    const normalized = viewport.gapRanks
+        ? viewport.interval
+        : normalizeBandInterval(viewport.interval);
+    const interval = /** @type {[number, number]} */ (
+        length ? clampRange(normalized, 0, length) : normalized
+    );
+    if (viewport.gapRanks && !shallowArrayEquals(interval, viewport.interval))
+        return clampViewport({ interval }, length);
+    return { ...viewport, interval };
 }
 
 /** @param {import("./scaleBand.js").CategoricalGapScale} scale */

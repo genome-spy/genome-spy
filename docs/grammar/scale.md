@@ -232,6 +232,8 @@ change a **scale viewport** in category-rank coordinates. For a domain of
 `["A", "B", "C", "D"]`, `viewport: [1, 3]` shows B and C. Bounds are half-open
 and may be fractional, so `[1.5, 3.5]` pans by half a category. Numeric categories
 remain category values; viewport bounds always refer to ranks in domain order.
+Intervals narrower than one category expand around their midpoint to span one
+category.
 
 Omitting `viewport`, or setting it to `null`, fits all categories and follows
 later domain changes. An explicit interval sets the initial and reset window.

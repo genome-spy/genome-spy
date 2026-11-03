@@ -667,13 +667,10 @@ export class ScaleResourceManager {
                 }
                 const gaps = this.#gapScales.get(name);
                 if (gaps) {
-                    // Categorical IDs address the map; gap cuts address dense slots.
-                    const values = /** @type {number[]} */ (domain);
-                    gaps.domain =
-                        scale.type === "band"
-                            ? [0, values.length]
-                            : this.#unpackDomain(values);
-                    gaps.ranks = scale.type === "index" ? ranks : undefined;
+                    gaps.domain = this.#unpackDomain(
+                        /** @type {number[]} */ (domain)
+                    );
+                    gaps.ranks = ranks;
                     this.#updateGapGeometry(name);
                 }
                 return result;

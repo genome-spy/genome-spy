@@ -4,11 +4,8 @@ import { createCancelToken } from "../utils/transition.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import deepEqual from "../utils/deepEqual.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
-import {
-    createDomainState,
-    planDomainUpdate,
-    reconcileViewport,
-} from "./domainLifecycle.js";
+import { createDomainState, planDomainUpdate } from "./domainLifecycle.js";
+import { clampViewport } from "./scaleBand.js";
 
 // Streaming replay roots use their finite tree depth. Domain policy must see
 // every pending publication before making historical initialization decisions.
@@ -317,7 +314,7 @@ export default class DomainRuntime {
             this.#initialReady &&
             this.state.phase !== "ready"
         ) {
-            const viewport = reconcileViewport(
+            const viewport = clampViewport(
                 this.state.viewport,
                 this.state.visibleDomain.length
             );

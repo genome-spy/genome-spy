@@ -1,4 +1,4 @@
-import { clampRange } from "vega-util";
+import { clampViewport } from "./scaleBand.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 /**
@@ -294,7 +294,11 @@ function applyDomain(
         Number.isFinite(+domain[1] - +domain[0]) &&
         Number.isFinite(+from[1] - +from[0]) &&
         (+domain[1] - +domain[0]) * (+from[1] - +from[0]) > 0 &&
-        !shallowArrayEquals(domain, from)
+        (!shallowArrayEquals(domain, from) ||
+            !shallowArrayEquals(
+                gapDomain ?? [],
+                (viewport ? state.viewport?.gapRanks : state.gapDomain) ?? []
+            ))
     ) {
         const id = state.transitionSerial + 1;
         return {
@@ -376,7 +380,7 @@ function commitDomain(
                   gapDomain,
                   viewport:
                       state.phase === "ready"
-                          ? reconcileViewport(
+                          ? clampViewport(
                                 state.viewport
                                     ? { interval: state.viewport.interval }
                                     : state.viewport,
@@ -405,18 +409,4 @@ function unchanged(state) {
         syncSelection: false,
         transition: { type: "none" },
     };
-}
-
-/** Preserve rank positions while reconciling a settled category membership change.
- * @param {import("./scaleBand.js").CategoricalViewport | null | undefined} viewport
- * @param {number} length
- */
-export function reconcileViewport(viewport, length) {
-    if (!viewport || !length) return viewport;
-    const interval = clampRange(viewport.interval, 0, length);
-    return shallowArrayEquals(interval, viewport.interval)
-        ? viewport
-        : {
-              interval: /** @type {[number, number]} */ (interval),
-          };
 }

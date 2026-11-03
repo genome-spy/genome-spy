@@ -222,7 +222,7 @@ export default class ScaleResolution {
                 void this.#commitDomainUpdate({ type: "set", domain });
             },
             onViewportChange: (viewport) => {
-                void this.#navigateViewport(viewport);
+                void this.#interactionController.zoomToViewport(viewport);
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
             getAxisLength: () => this.getAxisLength(),
@@ -1435,11 +1435,6 @@ export default class ScaleResolution {
      */
     #commitDomainUpdate(update, requestRender = true) {
         return this.#domainRuntime.update(update, requestRender);
-    }
-
-    /** @param {import("./scaleBand.js").CategoricalViewport | null} viewport */
-    #navigateViewport(viewport) {
-        return this.#interactionController.zoomToViewport(viewport);
     }
 
     getViewport() {

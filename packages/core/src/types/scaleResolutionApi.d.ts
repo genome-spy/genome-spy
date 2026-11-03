@@ -44,7 +44,9 @@ export interface ScaleResolutionApi {
     /**
      * Navigate a band/point scale in half-open rank coordinates, preserving its
      * categorical domain. Null fits all categories; optional gap ranks retain
-     * partially visible gaps. Uses the same transition options as zoomTo().
+     * partially visible gaps. Ordinary interval-only targets expand to at least
+     * one category; exact snapshots with gap ranks retain fractional spans.
+     * Uses the same transition options as zoomTo().
      */
     zoomToViewport(
         viewport: CategoricalViewport | null,

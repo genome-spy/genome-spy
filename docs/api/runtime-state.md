@@ -254,7 +254,9 @@ await categoryScale.zoomToViewport(savedViewport);
 ```
 
 A viewport snapshot contains a half-open `interval` and may include `gapRanks`
-for partially visible grouping gaps. Preserve the complete snapshot when linking
+for partially visible grouping gaps. Interval-only targets expand to at least
+one category; exact snapshots with gap ranks retain fractional spans.
+Preserve the complete snapshot when linking
 or restoring the exact placement. Listen to `"viewport"` events for navigation
 changes; `"domain"` events report category membership or order changes.
 These methods are available only for band and point scales. See

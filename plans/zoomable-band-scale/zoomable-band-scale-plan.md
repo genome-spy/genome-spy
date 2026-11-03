@@ -472,6 +472,22 @@ not storage of categorical viewports.
 - Release checks pass: Core minor, propagated through the fixed release group
   from 1.2.0 to 1.3.0. App bookmark/URL viewport persistence remains deferred.
 
+### Implementation review follow-up
+
+The independent KISS/DRY review identified a gap-only animation bug and repeated
+navigation dispatch/retained-value comparison. The follow-up compares complete
+interval-plus-gap-rank targets, shares dispatch/options handling, binds viewport
+snapshots directly with the existing deep equality helper, and removes dead
+renderer branches. Snapshot copies still detect nested mutations.
+
+Ordinary index and categorical intervals now share one-band normalization;
+exact gap snapshots remain exempt. Shared categorical clamping keeps authored,
+API, reset, startup, and membership-change state consistent. Publication and
+mapping mirroring remain separate because they support immediate zoom metrics
+and scale recreation respectively. The follow-up adds focused regressions and
+passes the full suite (5,500 tests), affected type/lint checks, and three GPU
+picking tests.
+
 ## Risks and delivery
 
 The main risks are accidentally freezing categorical membership, changing

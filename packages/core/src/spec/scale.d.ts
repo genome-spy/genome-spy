@@ -295,7 +295,9 @@ export interface Scale {
     /**
      * Initial and reset scale viewport for positional band or point scales,
      * expressed as a half-open rank interval. Fractional endpoints allow smooth
-     * navigation. The categorical domain retains its membership and order.
+     * navigation. Intervals narrower than one category expand around their
+     * midpoint to span one category. The categorical domain retains its
+     * membership and order.
      * Categorical zoom uses boolean `zoom` and is bounded by the full domain.
      *
      * This scale viewport differs from a layout viewport, which scrolls

@@ -528,6 +528,30 @@ describe("WebGpuSurface", () => {
         expect(
             mocks.handle.scales.x.default.setViewport
         ).toHaveBeenCalledOnce();
+        // Equal snapshots are quiet; mutations must compare with detached state.
+        scale.viewport = structuredClone(scale.viewport);
+        useMark(surface, mark, definition, config);
+        expect(
+            mocks.handle.scales.x.default.setViewport
+        ).toHaveBeenCalledOnce();
+        scale.viewport.interval[0] = 1.25;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            2
+        );
+        scale.viewport.gapRanks[0] = 0.75;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            3
+        );
+        scale.viewport = null;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            4
+        );
+        expect(
+            mocks.handle.scales.x.default.setViewport
+        ).toHaveBeenLastCalledWith(null);
         scale.domain = [900, 200];
         scale.gapPositions = [1];
         scale.gapWidth = 0;
