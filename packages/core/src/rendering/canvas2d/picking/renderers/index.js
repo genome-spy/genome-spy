@@ -205,7 +205,10 @@ function renderRule(baseMark, options) {
                 instance.y1,
                 instance.x2,
                 instance.y2,
-                Math.max(instance.strokeWidth, MIN_RULE_PICKING_WIDTH)
+                Math.max(
+                    instance.size + 2 * instance.strokeWidth,
+                    MIN_RULE_PICKING_WIDTH
+                )
             )
     );
 }

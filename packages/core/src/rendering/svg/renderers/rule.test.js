@@ -6,6 +6,60 @@ import { createSinglePointSelection } from "../../../selection/selection.js";
 import { createSvg } from "../index.js";
 
 describe("SVG rule renderer", () => {
+    test("uses shared paint channels and filled color routing for vector rule borders", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "ink", value: "blue" }],
+            data: { values: [{ width: 3 }] },
+            mark: {
+                type: "rule",
+                filled: false,
+                color: "red",
+                size: 4,
+                strokeCap: "round",
+                strokeDash: [0, 8],
+            },
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.5 },
+                stroke: { value: { expr: "ink" } },
+                strokeWidth: {
+                    field: "width",
+                    type: "quantitative",
+                    scale: null,
+                    legend: null,
+                },
+            },
+        });
+        const render = () =>
+            createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+                background: null,
+            }).svg;
+        try {
+            const svg = render();
+            const border = svg.querySelector(
+                '[data-mark-type="rule"] path[mask]'
+            );
+            expect(border?.getAttribute("stroke")).toBe("blue");
+            expect(border?.getAttribute("stroke-width")).toBe("6");
+            expect(border?.getAttribute("d")).toContain("A2 2"); // Zero-on round dashes remain circles.
+            expect(svg.querySelector("mask path")?.getAttribute("fill")).toBe(
+                "black"
+            );
+            expect(svg.querySelector("image, filter")).toBeNull();
+            view.paramRuntime.setValue("ink", "rgba(0,0,255,0)");
+            await view.paramRuntime.whenPropagated();
+            expect(
+                render().querySelector('[data-mark-type="rule"] path[mask]')
+            ).toBeNull();
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("expands short rules to their expression-valued minimum length", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "minimum", value: 10 }],

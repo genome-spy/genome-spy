@@ -8,6 +8,55 @@ import SoftwarePickingRasterizer from "./softwarePickingRasterizer.js";
 import SoftwarePickingViewRenderingContext from "./softwarePickingViewRenderingContext.js";
 
 describe("SoftwarePickingViewRenderingContext", () => {
+    test("rule borders share datum identity and stop picking when transparent", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "border", value: "blue" }],
+            data: { values: [{}] },
+            mark: {
+                type: "rule",
+                size: 4,
+                strokeWidth: 3,
+                stroke: { expr: "border" },
+            },
+            encoding: {
+                x: { value: 0.1 },
+                x2: { value: 0.9 },
+                y: { value: 0.5 },
+            },
+        });
+        try {
+            const initial = render(view);
+            const id = initial.read(50, 50);
+            expect(id).toBeGreaterThan(0);
+            expect(initial.read(50, 54)).toBe(id);
+            view.paramRuntime.setValue("border", "rgba(0,0,255,0)");
+            await view.paramRuntime.whenPropagated();
+            const transparent = render(view);
+            expect(transparent.read(50, 50)).toBe(id);
+            expect(transparent.read(50, 54)).toBe(0);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("keeps visible rule borders whose centerline is outside the view", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            mark: { type: "rule", size: 2, stroke: "blue", strokeWidth: 3 },
+            encoding: {
+                x: { value: -0.02 },
+                x2: { value: -0.02 },
+                y: { value: 0.1 },
+                y2: { value: 0.9 },
+            },
+        });
+        try {
+            expect(render(view).read(0, 50)).toBeGreaterThan(0);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("uses indexed source-row bounds for picking", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },

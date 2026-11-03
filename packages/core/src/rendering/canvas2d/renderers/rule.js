@@ -30,6 +30,7 @@ export function renderRuleCanvas(baseMark, options) {
         mark,
         mark.properties.strokeDashOffset
     );
+    const isRule = mark.getType() === "rule";
     const constantStroke = getDrawConstantPaint(encoders.fill, options);
     /** @type {string | undefined} */
     let strokeStyle;
@@ -44,18 +45,31 @@ export function renderRuleCanvas(baseMark, options) {
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
                 options.viewOpacity;
-            if (stroke == "none" || opacity <= 0 || instance.strokeWidth <= 0) {
+            if (opacity <= 0) {
                 return;
             }
-            if (strokeStyle != stroke) {
-                context.strokeStyle = stroke;
-                strokeStyle = stroke;
-            }
-            context.globalAlpha = opacity;
-            context.lineWidth = instance.strokeWidth;
             context.beginPath();
             context.moveTo(instance.x1, instance.y1);
             context.lineTo(instance.x2, instance.y2);
+            // Keep the two native paints together in logical occurrence order.
+            if (instance.strokeWidth > 0) {
+                context.strokeStyle = instance.stroke;
+                strokeStyle = instance.stroke;
+                context.globalAlpha = opacity * instance.strokeOpacity;
+                context.lineWidth = instance.size + 2 * instance.strokeWidth;
+                context.stroke();
+            }
+            if (stroke === "none") return;
+            if (strokeStyle !== stroke) {
+                context.strokeStyle = stroke;
+                strokeStyle = stroke;
+            }
+            context.globalAlpha =
+                opacity *
+                (isRule
+                    ? encodeNumber(encoders.fillOpacity, instance.datum)
+                    : 1);
+            context.lineWidth = instance.size;
             context.stroke();
         }
     );

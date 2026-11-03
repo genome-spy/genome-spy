@@ -876,7 +876,7 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.channels.fill.value).toEqual([0, 0, 0, 1]);
         expect(config.channels).not.toHaveProperty("color");
-        expect(config.channels).not.toHaveProperty("strokeWidth");
+        expect(config.channels.strokeWidth).toEqual(dynamicValue(0));
         expect(config.dashPatterns).toEqual([[3, 2]]);
         expect(config.channels.strokeDashOffset).toEqual(dynamicValue(1));
     });
@@ -2449,7 +2449,14 @@ function createMark(type, data, encoders, properties = {}) {
                   strokeOpacity: createConstantEncoder(1),
                   angle: createConstantEncoder(0),
               }
-            : {};
+            : type == "rule"
+              ? {
+                    fillOpacity: createConstantEncoder(1),
+                    stroke: createConstantEncoder(null),
+                    strokeWidth: createConstantEncoder(0),
+                    strokeOpacity: createConstantEncoder(1),
+                }
+              : {};
     /** @type {Record<"configuration" | "resources", number>} */
     const revisions = { configuration: 0, resources: 0 };
     return /** @type {import("../../marks/mark.js").default} */ (

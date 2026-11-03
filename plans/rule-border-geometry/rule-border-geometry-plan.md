@@ -1,7 +1,7 @@
 # Shared rule strokes: native Canvas decision and implementation scope
 
-Status: native Canvas correctness/cost proof passes its bounded checks; production
-rule borders remain unimplemented. PR #644 is the separate explicit-fill
+Status: shared paint wiring implemented on `codex/core-rule-stroke`; integration
+qualification in progress, no implementation PR opened. PR #644 is the separate explicit-fill
 prerequisite, based at `0feee7824`.
 
 Requirements: [#604](https://github.com/genome-spy/genome-spy/issues/604).
@@ -168,3 +168,28 @@ They do not constrain the newly accepted approximate Canvas implementation.
 
 No release impact from this plan/proof-only branch. Retire this temporary plan
 before any implementation PR is merged, following the planning skill.
+
+## Implementation progress
+
+- Shared channels/defaults and `filled` color routing are wired; body `size` and
+  border width are now distinct native occurrence fields. Ticks retain their
+  previous channels and paint behavior.
+- Native Canvas uses adjacent strokes and the existing paint-alpha cache. The
+  shared immediate visitor expands conservative culling only for visible border
+  paint; existing software picking expands in the same traversal.
+- SVG-specific native contours and a luminance cutout keep overlapping dash caps
+  unioned by nonzero fill. The outside stroke uses native round joins. No generic
+  contour union, image or filter was introduced. Actual SVG end/dash qualification
+  remains in progress under the accepted internal-edge limitation.
+- WebGL keeps its existing nominal/no-border path and four-vertex occurrence;
+  outside borders use finite shared coverage with a backend-owned interval lookup.
+  WebGPU receives only public paint channels. Thin-width compensation is applied
+  separately to each geometric boundary, preserving nominal body coverage while
+  avoiding global border fading. Narrow and wide physical-pixel checks pass.
+- Initial actual Core export/picking checks pass on Canvas/WebGL/WebGPU at DPR
+  1/2. Invisible WebGPU borders no longer enlarge the picking quad. Headless
+  regressions cover CSS-alpha border removal, datum identity and offscreen-border
+  culling; broader composed/end/dash checks and final cost/static checks remain.
+- Follow-up verification must include the existing fill/tick regression and
+  standalone rule GPU tests. Shared alignment migration and other marks remain
+  out of scope. No dependency or manifest changes.

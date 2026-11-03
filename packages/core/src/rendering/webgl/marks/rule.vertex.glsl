@@ -13,6 +13,13 @@ flat out vec4 vColor;
 
 /** Stroke width */
 flat out float vSize;
+flat out float vBodyFactor;
+#ifdef RULE_STROKE
+flat out vec4 vStroke;
+flat out float vBorderWidth;
+flat out float vNominalSize;
+flat out float vSpan;
+#endif
 
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;
@@ -52,13 +59,21 @@ void main(void) {
 
     // Stroke width in pixels
     float size = getScaled_size();
+    float nominalSize = size;
     float opacity = getScaled_opacity() * uViewOpacity;
-
-    // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
-    if (size < pixelSize) {
-        opacity *= size / pixelSize;
-        size = pixelSize;
+    float border = 0.0;
+#ifdef RULE_STROKE
+    vec4 stroke = getScaled_stroke();
+    if (stroke.a * getScaled_strokeOpacity() > 0.0) {
+        border = max(0.0, getScaled_strokeWidth());
     }
+    if (size <= 0.0) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
+    float bodyFactor = min(1.0, size / pixelSize);
+    size = max(size, pixelSize);
 
     vec2 a = applyOffset(
         applySampleFacet(vec2(getScaled_x(), getScaled_y())),
@@ -75,7 +90,7 @@ void main(void) {
     vec2 upper = (vec2(1.0) - uViewOffset) / uViewScale;
     // Keep artificial caps outside the viewport, including thick strokes.
     vec2 margin = max(upper - lower,
-        vec2(size + uMinLength + pixelSize) / uViewportSize);
+        vec2(size + 2.0 * border + uMinLength + pixelSize) / uViewportSize);
     vec2 xBounds = vec2(lower.x - margin.x, upper.x + margin.x);
     vec2 yBounds = vec2(lower.y - margin.y, upper.y + margin.y);
 #ifdef CLAMP_X
@@ -94,7 +109,7 @@ void main(void) {
 
     float offset = 0.0;
     float relativeDiff = 0.0;
-    if (uMinLength > 0.0 || uStrokeCap != BUTT) {
+    if (uMinLength > 0.0 || uStrokeCap != BUTT || border > 0.0) {
         float len = length(tangent * uViewportSize);
 
         // Elongate to reach the minimum length.
@@ -106,6 +121,7 @@ void main(void) {
             diff += size;
         }
 
+        if (border > 0.0) diff += 2.0 * border + pixelSize;
         relativeDiff = diff / len;
         offset = relativeDiff * (pos - 0.5);
     }
@@ -116,7 +132,7 @@ void main(void) {
         : b + tangent * offset;
 
     // Add an extra pixel to stroke width to accommodate edge antialiasing
-    float aaPadding = pixelSize;
+    float aaPadding = pixelSize + 2.0 * border;
 
     // Extrude
     vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
@@ -124,12 +140,21 @@ void main(void) {
 
     gl_Position = unitToNdc(p);
 
+#ifdef RULE_STROKE
+    vColor = premultiplyColor(getScaled_fill(), opacity * getScaled_fillOpacity());
+    vStroke = premultiplyColor(stroke, opacity * getScaled_strokeOpacity());
+    vBorderWidth = border;
+    vNominalSize = nominalSize;
+    vSpan = max(length(tangent * uViewportSize), uMinLength);
+#else
     vColor = premultiplyColor(getScaled_fill(), opacity);
+#endif
+    vBodyFactor = bodyFactor;
     vSize = size;
     vNormalLengthInPixels = side * (size + aaPadding);
 
     vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
-        vec2(uStrokeCap != BUTT ? size / 2.0 : 0.0);
+        vec2((uStrokeCap != BUTT ? size / 2.0 : 0.0) + (border > 0.0 ? border + 0.5 * pixelSize : 0.0));
     
     setupPicking();
 }

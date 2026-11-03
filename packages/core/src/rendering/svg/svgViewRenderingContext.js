@@ -79,6 +79,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
  * @prop {(gradient: SvgLegendGradient) => string} getLegendGradientUrl
+ * @prop {(path: string, length: number, radius: number, padding: number) => string} getRuleStrokeMaskUrl
  * @prop {(message: string) => void} warn
  */
 
@@ -436,6 +437,13 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                         this.#countingInstances
                             ? ""
                             : this.getShadowFilterUrl(shadow),
+                    getRuleStrokeMaskUrl: (path, length, radius, padding) =>
+                        this.getRuleStrokeMaskUrl(
+                            path,
+                            length,
+                            radius,
+                            padding
+                        ),
                     getShadowClipPathUrl: (cutoutPath) =>
                         this.#countingInstances
                             ? ""
@@ -715,6 +723,36 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.#shadowFilters.set(key, id);
         }
 
+        return `url(#${id})`;
+    }
+
+    /**
+     * Subtract the nominal ribbon union, including overlapping native dash caps.
+     * @param {string} path
+     * @param {number} length
+     * @param {number} radius
+     * @param {number} padding
+     */
+    getRuleStrokeMaskUrl(path, length, radius, padding) {
+        const id = "rule-stroke-" + this.#nextClipId++;
+        const bounds = {
+            x: -radius - padding,
+            y: -radius - padding,
+            width: length + 2 * (radius + padding),
+            height: 2 * (radius + padding),
+        };
+        const mask = createSvgElement("mask", {
+            id,
+            ...bounds,
+            maskUnits: "userSpaceOnUse",
+            maskContentUnits: "userSpaceOnUse",
+            "mask-type": "luminance",
+        });
+        mask.append(
+            createSvgElement("rect", { ...bounds, fill: "white" }),
+            createSvgElement("path", { d: path, fill: "black", stroke: "none" })
+        );
+        this.#defs.appendChild(mask);
         return `url(#${id})`;
     }
 

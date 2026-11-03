@@ -64,6 +64,7 @@ struct VSOut {
     @location(9) @interpolate(flat) stroke: vec4<f32>,
     @location(10) @interpolate(flat) outset: f32,
     @location(12) @interpolate(flat) inset: f32,
+    @location(13) @interpolate(flat) nominalWidth: f32,
 };
 
 fn culledRule() -> VSOut {
@@ -84,6 +85,7 @@ fn culledRule() -> VSOut {
     out.stroke = vec4<f32>(0.0);
     out.outset = 0.0;
     out.inset = 0.0;
+    out.nominalWidth = 0.0;
     out.pickId = 0u;
     return out;
 }
@@ -137,16 +139,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // Stroke width in pixels.
     var width = getScaled_size(i);
     if (width <= 0.0) { return culledRule(); }
-    let borderWidth = max(getScaled_strokeWidth(i), 0.0);
+    var borderWidth = max(getScaled_strokeWidth(i), 0.0);
+    if (getScaled_stroke(i).a * getScaled_strokeOpacity(i) <= 0.0) { borderWidth = 0.0; }
     // Numeric alignment: inside=0, center=1, outside=2.
     let expansion = borderWidth * f32(getScaled_strokeAlign(i)) * 0.5;
-    var opacity = getScaled_opacity(i);
-
-    // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively.
-    if (width < pixelSize) {
-        opacity *= width / pixelSize;
-        width = pixelSize;
-    }
+    let nominalWidth = width;
+    // Each boundary gets its own thin-width compensation in coverage space.
+    // A thin body must not reduce the opacity of an independently opaque border.
+    width = max(width, pixelSize);
 
     // Place the endpoints before extruding the stroke so that occurrence
     // scaling does not also scale pixel-sized widths, offsets, or line caps.
@@ -207,7 +207,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.inset = borderWidth - expansion;
     out.normalDistance = across;
     out.halfWidth = halfWidth;
-    out.opacity = opacity;
+    out.opacity = getScaled_opacity(i);
+    out.nominalWidth = nominalWidth;
     out.along = along;
     out.span = span;
     out.strokeCap = strokeCap;
@@ -222,10 +223,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
 // Signed distance to a finite rectangle or a capsule clipped by a dash interval.
 // The closest point uses the actual clipped contour, including acute cap cuts.
-fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
-    if (interval.x >= interval.y) { return vec3<f32>(0.0); }
+fn intervalDistance(in: VSOut, interval: vec2<f32>, radius: f32) -> f32 {
     let p = vec2<f32>(in.along, in.normalDistance);
-    let radius = in.halfWidth;
     let span = in.span;
     var nearest = vec2<f32>(clamp(p.x, interval.x, interval.y), clamp(p.y, -radius, radius));
     var interior = min(radius - abs(p.y), min(p.x - interval.x, interval.y - p.x));
@@ -241,15 +240,29 @@ fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
         nearest.y = clamp(p.y, -height, height);
         interior = min(radius - distance, min(p.x - interval.x, interval.y - p.x));
     }
-    let distance = select(length(p - nearest), -interior, interior >= 0.0);
-    let cf = clamp(0.5 - distance * globals.dpr, 0.0, 1.0);
+    return select(length(p - nearest), -interior, interior >= 0.0);
+}
+
+fn boundaryCoverage(in: VSOut, interval: vec2<f32>, offset: f32) -> f32 {
+    let width = max(0.0, in.nominalWidth + 2.0 * offset);
+    if (width == 0.0) { return 0.0; }
+    let rasterWidth = max(width, 1.0 / globals.dpr);
+    let radius = 0.5 * rasterWidth - offset;
+    let distance = intervalDistance(in, interval, radius) - offset;
+    return clamp(0.5 - distance * globals.dpr, 0.0, 1.0) * min(1.0, width * globals.dpr);
+}
+
+fn intervalCoverage(in: VSOut, interval: vec2<f32>) -> vec3<f32> {
+    if (interval.x >= interval.y) { return vec3<f32>(0.0); }
+    let cf = boundaryCoverage(in, interval, 0.0);
     if (in.inset == 0.0 && in.outset == 0.0) { return vec3<f32>(cf); }
-    var maxInset = min(radius, (interval.y - interval.x) * 0.5);
+    var maxInset = min(in.nominalWidth * 0.5, (interval.y - interval.x) * 0.5);
     if (in.strokeCap == ROUND) {
-        maxInset = min(maxInset, min(interval.y + radius, span + radius - interval.x) * 0.5);
+        maxInset = min(maxInset, min(interval.y + in.nominalWidth * 0.5,
+            in.span + in.nominalWidth * 0.5 - interval.x) * 0.5);
     }
-    let co = clamp(0.5 - (distance - in.outset) * globals.dpr, 0.0, 1.0);
-    let ci = select(clamp(0.5 - (distance + in.inset) * globals.dpr, 0.0, 1.0),
+    let co = boundaryCoverage(in, interval, in.outset);
+    let ci = select(boundaryCoverage(in, interval, -in.inset),
         0.0, in.inset > 0.0 && in.inset >= maxInset);
     return vec3<f32>(ci, cf, co);
 }

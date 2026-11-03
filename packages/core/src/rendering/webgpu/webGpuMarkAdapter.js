@@ -814,6 +814,26 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             size: createNumericChannel(mark, "size", data),
             fill: createColorChannel(mark, "fill", data),
+            ...(mark.getType() === "rule"
+                ? {
+                      fillOpacity: createNumericChannel(
+                          mark,
+                          "fillOpacity",
+                          data
+                      ),
+                      stroke: createColorChannel(mark, "stroke", data),
+                      strokeWidth: createNumericChannel(
+                          mark,
+                          "strokeWidth",
+                          data
+                      ),
+                      strokeOpacity: createNumericChannel(
+                          mark,
+                          "strokeOpacity",
+                          data
+                      ),
+                  }
+                : {}),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
             minLength: liveValue(() => readNumericProperty(mark, "minLength")),
             strokeCap: liveValue(
