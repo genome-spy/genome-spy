@@ -123,7 +123,11 @@ for (const extent of /** @type {const} */ (["view", "container"])) {
                 for (const guide of guides) {
                     expect(guide.getAttribute("stroke")).toBe("black");
                     expect(guide.getAttribute("stroke-width")).toBe("1");
-                    expect(guide.getAttribute("stroke-opacity")).toBe("0.8");
+                    const paint =
+                        display === "line"
+                            ? guide.querySelector("line")
+                            : guide;
+                    expect(paint.getAttribute("stroke-opacity")).toBe("0.8");
                     if (display === "band") {
                         expect(guide.getAttribute("fill")).toBe("blue");
                         expect(guide.getAttribute("fill-opacity")).toBe("0.2");
