@@ -26,10 +26,11 @@ import { isInChromeSubtree } from "../view/viewChrome.js";
 
 /**
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
- * @typedef {"configuration" | "resources"} RenderingRevisionKind
+ * @typedef {"configuration" | "resources" | "resourceExpressions"} RenderingRevisionKind
  * @typedef {object} RenderingRevisionState
  * @prop {number} configuration
  * @prop {number} resources
+ * @prop {number} resourceExpressions
  * @prop {Set<string>} expressions
  */
 
@@ -506,12 +507,13 @@ export default class Mark {
             (this.#renderingRevisionState = {
                 configuration: 0,
                 resources: 0,
+                resourceExpressions: 0,
                 expressions: new Set(),
             });
 
         /**
          * @param {string | import("../spec/parameter.js").ExprRef} expression
-         * @param {RenderingRevisionKind} kind
+         * @param {"configuration" | "resources"} kind
          */
         const watchExpression = (expression, kind) => {
             const key =
@@ -523,6 +525,7 @@ export default class Mark {
             }
             this.unitView.paramRuntime.watchExpression(expression, () => {
                 state[kind]++;
+                if (kind === "resources") state.resourceExpressions++;
                 this.unitView.context.animator.requestRender();
             });
             state.expressions.add(key);
@@ -602,6 +605,8 @@ export default class Mark {
 
     /**
      * Returns a renderer-facing revision, or zero before tracking is initialized.
+     * Resource expressions exclude mapping-only changes so renderers can retain
+     * unrelated live values during scale navigation.
      *
      * @param {RenderingRevisionKind} kind
      * @returns {number}

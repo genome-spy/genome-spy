@@ -180,14 +180,17 @@ describe("mark rendering revisions", () => {
         expect(watchExpression).toHaveBeenCalledTimes(2);
         expect(view.mark.getRenderingRevision("configuration")).toBe(0);
         expect(view.mark.getRenderingRevision("resources")).toBe(0);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
 
         view.paramRuntime.setValue("offset", 1);
         expect(view.mark.getRenderingRevision("configuration")).toBe(1);
         expect(view.mark.getRenderingRevision("resources")).toBe(0);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
 
         view.paramRuntime.setValue("headWidth", 3);
         expect(view.mark.getRenderingRevision("configuration")).toBe(1);
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
     });
 
     test("tracks selection predicates as resource revisions", async () => {
@@ -216,6 +219,7 @@ describe("mark rendering revisions", () => {
         view.paramRuntime.setValue("selected", { ...selection });
 
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
@@ -245,16 +249,22 @@ describe("mark rendering revisions", () => {
         view.paramRuntime.setValue("picked", { ...selection });
 
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
-    test("deduplicates scale dependencies", async () => {
+    test("deduplicates scale dependencies and distinguishes simultaneous style changes", async () => {
         const view = await create(
             {
-                data: { values: [{ start: 8, end: 32 }] },
-                mark: "rule",
+                data: { values: [{ start: "A", end: "C" }] },
+                params: [{ name: "cap", value: "butt" }],
+                mark: { type: "rule", strokeCap: { expr: "cap" } },
                 encoding: {
-                    x: { field: "start", type: "quantitative" },
+                    x: {
+                        field: "start",
+                        type: "nominal",
+                        scale: { type: "band", domain: ["A", "B", "C"] },
+                    },
                     x2: { field: "end" },
                     y: { value: 0.5 },
                 },
@@ -263,14 +273,25 @@ describe("mark rendering revisions", () => {
         );
         const resolution = view.getScaleResolution("x");
         view.mark.initializeEncoders();
-        view.mark.initializeRenderingRevisions([]);
+        view.mark.initializeRenderingRevisions(["strokeCap"]);
 
         view.paramRuntime.runInTransaction(() => {
-            resolution.scale.domain([0, 20]);
+            resolution.scale.domain(["A", "B", "C", "D"]);
             resolution.scale.range([0, 2]);
         });
         view.paramRuntime.flushNow();
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
+
+        // Coherent publication must retain both kinds of invalidation.
+        view.paramRuntime.runInTransaction(() => {
+            void resolution.zoomToViewport([1, 3]);
+            view.paramRuntime.setValue("cap", "square");
+        });
+        view.paramRuntime.flushNow();
+        expect(resolution.getViewport()).toEqual([1, 3]);
+        expect(view.mark.getRenderingRevision("resources")).toBe(3);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
         view.disposeSubtree();
     });
 });

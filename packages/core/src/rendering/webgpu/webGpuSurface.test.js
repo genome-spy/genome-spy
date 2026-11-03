@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
     const handle = {
@@ -60,7 +60,8 @@ vi.mock("@genome-spy/webgpu-renderer", () => ({
     createRenderer: mocks.createRenderer,
 }));
 
-vi.mock("./webGpuMarkAdapter.js", () => ({
+vi.mock("./webGpuMarkAdapter.js", async (importOriginal) => ({
+    ...(await importOriginal()),
     /** @param {unknown} _mark @param {string} name */
     getWebGpuCategorySelectionBinding: (_mark, name) =>
         name === "categorySet" ? { param: "chosen", input: "fill" } : undefined,
@@ -83,6 +84,9 @@ vi.mock("../canvasSizeHelper.js", () => ({
 }));
 
 import WebGpuSurface from "./webGpuSurface.js";
+import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import Rectangle from "../../view/layout/rectangle.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -137,6 +141,9 @@ function configureMockMark(mark, definition) {
     mark.unitView ??= {};
     mark.unitView.getPathString ??= () => "root/test-view";
     mark.getType ??= () => definition.type;
+    mark.getRenderingRevision ??= /** @type {() => undefined} */ (
+        () => undefined
+    );
 }
 
 describe("WebGpuSurface", () => {
@@ -565,6 +572,172 @@ describe("WebGpuSurface", () => {
         surface.finalize();
     });
 
+    test("scale-only updates retain unrelated values while style transactions and replacements stay live", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "dotSize", value: 4 }],
+            data: {
+                values: [
+                    { x: 0, score: 0.25 },
+                    { x: 4, score: 0.75 },
+                ],
+            },
+            mark: { type: "point", semanticZoomFraction: 0.25 },
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 4], zoom: true },
+                    axis: null,
+                },
+                y: { value: 0.5 },
+                fill: { value: "black" },
+                stroke: { value: null },
+                size: { value: { expr: "dotSize" } },
+                semanticScore: {
+                    field: "score",
+                    type: "quantitative",
+                },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const point = /** @type {import("../../view/unitView.js").default} */ (
+            view
+        );
+        point.mark.initializeData();
+        const coords = Rectangle.create(0, 0, 100, 50);
+        const translated = createWebGpuMarkConfig(point.mark, {}, coords);
+        const config = /** @type {any} */ (translated.config);
+        const thresholdSet = vi.fn();
+        mocks.handle.scalarSlots = { semanticThreshold: { set: thresholdSet } };
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        const readSize = vi.spyOn(config.channels.size, "value", "get");
+        const resolution = point.getScaleResolution("x");
+
+        // Exercise native Mark revisions and adapter getters together, rather
+        // than synthesizing a scale-only revision in the surface mock.
+        await resolution.zoomTo([0, 2]);
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        expect(readSize).not.toHaveBeenCalled();
+        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
+            0, 2,
+        ]);
+        expect(thresholdSet).toHaveBeenCalledExactlyOnceWith(0.5);
+
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("dotSize", 8);
+            resolution.getScale().domain([0, 1]);
+        });
+        await view.paramRuntime.whenPropagated();
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        expect(readSize).toHaveBeenCalled();
+        expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(8);
+
+        const replacement = createWebGpuMarkConfig(point.mark, {}, coords);
+        const readReplacementSize = vi.spyOn(
+            /** @type {any} */ (replacement.config).channels.size,
+            "value",
+            "get"
+        );
+        surface.updateMark(
+            point.mark,
+            replacement.definition,
+            replacement.config,
+            translated.properties
+        );
+        expect(readReplacementSize).toHaveBeenCalled();
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+    });
+
+    test("scale-only synchronization re-evaluates conditional constant branches", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "picked", select: "point" }],
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                fill: { value: "black" },
+                stroke: { value: null },
+                size: {
+                    condition: {
+                        param: "picked",
+                        datum: 0.5,
+                        type: "quantitative",
+                        scale: { domain: [0, 1], range: [0, 100] },
+                    },
+                    value: 7,
+                },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const point = /** @type {import("../../view/unitView.js").default} */ (
+            view
+        );
+        const translated = createWebGpuMarkConfig(
+            point.mark,
+            {},
+            Rectangle.create(0, 0, 100, 50)
+        );
+        const config = /** @type {any} */ (translated.config);
+        const conditionalSet = vi.fn();
+        /** @type {any} */ (mocks.handle.values.size).conditions = [
+            { set: conditionalSet },
+        ];
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+
+        // Constant appearance branches can depend on a scale without exposing
+        // a renderer scale object; their live value getter must still run.
+        const branch = config.channels.size.conditions[0].channel;
+        expect(branch.scale).toBeUndefined();
+        const readBranch = vi.spyOn(branch, "value", "get");
+        const readFallback = vi.spyOn(config.channels.size, "value", "get");
+        point.getScaleResolution("size").getScale().domain([0, 2]);
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        expect(readBranch).toHaveBeenCalledOnce();
+        expect(readFallback).not.toHaveBeenCalled();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+    });
+
     test("does not inspect config structure again when identity is stable", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(
@@ -948,8 +1121,11 @@ describe("WebGpuSurface", () => {
             })
         );
         await surface.initialize();
+        let expressionRevision = 0;
         const mark = /** @type {import("../../marks/mark.js").default} */ (
-            /** @type {unknown} */ ({})
+            /** @type {unknown} */ ({
+                getRenderingRevision: () => expressionRevision,
+            })
         );
         const definition =
             /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
@@ -960,14 +1136,30 @@ describe("WebGpuSurface", () => {
             channels: {},
         };
 
-        useMark(surface, mark, definition, config, undefined, {
-            headWidth: { value: 3 },
-        });
-        useMark(surface, mark, definition, config, undefined, {
-            headWidth: { value: 5 },
-        });
+        let headWidth = 3;
+        const readHeadWidth = vi.fn(() => headWidth);
+        const properties = {
+            headWidth: {
+                get value() {
+                    return readHeadWidth();
+                },
+            },
+        };
+        useMark(surface, mark, definition, config, undefined, properties);
+        readHeadWidth.mockClear();
+        useMark(surface, mark, definition, config, undefined, properties);
+        expect(readHeadWidth).not.toHaveBeenCalled();
 
+        headWidth = 5;
+        expressionRevision++;
+        useMark(surface, mark, definition, config, undefined, properties);
+
+        expect(readHeadWidth).toHaveBeenCalledOnce();
         expect(headWidthSet).toHaveBeenCalledWith(5);
+        useMark(surface, mark, definition, config, undefined, {
+            headWidth: { value: 7 },
+        });
+        expect(headWidthSet).toHaveBeenLastCalledWith(7);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
     });
 
