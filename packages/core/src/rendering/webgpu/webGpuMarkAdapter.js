@@ -46,6 +46,16 @@ import forEachInBatch from "../../utils/forEachInBatch.js";
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
 
+/** Values evaluated by Core can depend on scales without a renderer scale slot.
+ * @type {WeakSet<object>}
+ */
+const SCALE_DEPENDENT_VALUES = new WeakSet();
+
+/** @param {object} channel */
+export function isWebGpuScaleDependentValue(channel) {
+    return SCALE_DEPENDENT_VALUES.has(channel);
+}
+
 /** @param {import("../../marks/mark.js").default} mark @param {string} slot */
 export function getWebGpuCategorySelectionBinding(mark, slot) {
     return CATEGORY_SELECTION_BINDINGS.get(mark)?.get(slot);
@@ -370,15 +380,21 @@ function createConditionalChannel(mark, channel, data, build) {
         throw unsupported(mark, `Channel "${channel}" has no fallback branch.`);
     }
 
-    const fallbackEncoder = createBranchEncoder(mark, encoder, fallback);
-    const result = build(fallbackEncoder, fallback);
+    /** @param {import("../../types/encoder.js").EncodingBranch} branch */
+    const buildBranch = (branch) => {
+        const branchEncoder = createBranchEncoder(mark, encoder, branch);
+        const config = build(branchEncoder, branch);
+        if (branchEncoder.scale && !isValueDef(branchEncoder.channelDef))
+            SCALE_DEPENDENT_VALUES.add(config);
+        return config;
+    };
+    const result = buildBranch(fallback);
     if (branches.length == 1) {
         return result;
     }
 
     const conditions = branches.slice(0, -1).map((branch) => {
-        const branchEncoder = createBranchEncoder(mark, encoder, branch);
-        const branchConfig = build(branchEncoder, branch);
+        const branchConfig = buildBranch(branch);
         const when = createSelectionCondition(mark, branch.predicate.selection);
         return { when, channel: branchConfig };
     });

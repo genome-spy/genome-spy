@@ -1,7 +1,10 @@
 import deepEqual, { isPlainObject } from "../../utils/deepEqual.js";
 import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
-import { getWebGpuCategorySelectionBinding } from "./webGpuMarkAdapter.js";
+import {
+    getWebGpuCategorySelectionBinding,
+    isWebGpuScaleDependentValue,
+} from "./webGpuMarkAdapter.js";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
@@ -291,6 +294,9 @@ export default class WebGpuSurface {
 
         this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
+        const resourceExpressionsRevision = mark.getRenderingRevision(
+            "resourceExpressions"
+        );
         const programKey = definition.getProgramKey?.(config);
         const gapKey = groupingGapKey(mark.encoders);
         if (
@@ -316,12 +322,20 @@ export default class WebGpuSurface {
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
+                resourceExpressionsRevision: undefined,
             };
             this.#marks.set(mark, retained);
         }
         let writes = 0;
         retained.handle.batchUpdates(() => {
             const configChanged = retained.config !== config;
+            // Scale changes leave unrelated resource expressions unchanged.
+            const scalesOnly =
+                !configChanged &&
+                retained.properties === properties &&
+                resourceExpressionsRevision !== undefined &&
+                retained.resourceExpressionsRevision ===
+                    resourceExpressionsRevision;
             if (configChanged && hasSeriesChanges(retained, config)) {
                 retained.series = collectSeries(config);
                 retained.count = config.count;
@@ -340,8 +354,11 @@ export default class WebGpuSurface {
                 retained.config = config;
                 retained.properties = properties;
             }
-            writes += updateResourceBindings(retained.bindings);
+            writes += updateResourceBindings(
+                scalesOnly ? retained.bindings.scales : retained.bindings.all
+            );
             writes += updateRetainedSelections(retained, mark);
+            retained.resourceExpressionsRevision = resourceExpressionsRevision;
         });
         return writes;
     }
@@ -475,33 +492,41 @@ function equalFloat32Arrays(first, second) {
  * Compiles Core's live leaves into direct renderer-slot updates. Reusing the
  * previous values preserves change detection when a translated config is
  * replaced while keeping dirty-frame work flat and reflection-free.
+ * Scale-only publications use the subset that depends on mappings.
  *
  * @param {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @param {any} config
  * @param {Record<string, {value: any}>} properties
- * @param {ResourceBinding[]} [previousBindings]
- * @returns {ResourceBinding[]}
+ * @param {ResourceBindings} [previousBindings]
+ * @returns {ResourceBindings}
  */
 function compileResourceBindings(
     handle,
     config,
     properties,
-    previousBindings = []
+    previousBindings = { all: [], scales: [] }
 ) {
     const previousValues = new Map(
-        previousBindings.map((binding) => [binding.key, binding.value])
+        previousBindings.all.map((binding) => [binding.key, binding.value])
     );
-    /** @type {ResourceBinding[]} */
-    const bindings = [];
+    /** @type {ResourceBindings} */
+    const bindings = { all: [], scales: [] };
 
     /**
      * @param {string} key
      * @param {() => any} read
      * @param {(value: any) => void} write
      * @param {boolean} [skipUndefined]
+     * @param {boolean} [scaleDependent]
      */
-    const add = (key, read, write, skipUndefined = false) => {
-        bindings.push({
+    const add = (
+        key,
+        read,
+        write,
+        skipUndefined = false,
+        scaleDependent = false
+    ) => {
+        const binding = {
             key,
             read,
             write,
@@ -509,7 +534,9 @@ function compileResourceBindings(
                 ? previousValues.get(key)
                 : snapshotValue(read()),
             skipUndefined,
-        });
+        };
+        bindings.all.push(binding);
+        if (scaleDependent) bindings.scales.push(binding);
     };
 
     for (const [name, channel] of Object.entries(config.channels)) {
@@ -552,10 +579,13 @@ function compileResourceBindings(
     for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
         const slot = handle.scalarSlots?.[name];
         if (slot) {
+            // Point semantic thresholds depend on zoom, outside channel scales.
             add(
                 `scalar:${name}`,
                 () => scalar.value,
-                (value) => slot.set(value)
+                (value) => slot.set(value),
+                false,
+                true
             );
         }
     }
@@ -563,7 +593,7 @@ function compileResourceBindings(
 }
 
 /**
- * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean) => void} add
+ * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean, scaleDependent?: boolean) => void} add
  * @param {string} key
  * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
@@ -571,14 +601,22 @@ function compileResourceBindings(
  */
 function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
     if (scaleSlot && channel.scale) {
+        /**
+         * @param {string} name
+         * @param {() => any} read
+         * @param {(value: any) => void} write
+         * @param {boolean} [skipUndefined]
+         */
+        const addScale = (name, read, write, skipUndefined = false) =>
+            add(name, read, write, skipUndefined, true);
         if (channel.scale.gapEnabled && channel.scale.type === "index") {
-            add(
+            addScale(
                 key + ":domain",
                 () => [channel.scale.domain, channel.scale.gapDomain],
                 ([domain, ranks]) => scaleSlot.setDomain(domain, ranks)
             );
         } else if ("domain" in channel.scale) {
-            add(
+            addScale(
                 key + ":domain",
                 () => channel.scale.domain,
                 (value) => scaleSlot.setDomain(value),
@@ -586,14 +624,14 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             );
         }
         if ("viewport" in channel.scale) {
-            add(
+            addScale(
                 key + ":viewport",
                 () => channel.scale.viewport,
                 (viewport) => scaleSlot.setViewport(viewport)
             );
         }
         if ("range" in channel.scale) {
-            add(
+            addScale(
                 key + ":range",
                 () => channel.scale.range,
                 (value) => scaleSlot.setRange(value),
@@ -601,12 +639,12 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             );
         }
         if (channel.scale.gapEnabled) {
-            add(
+            addScale(
                 key + ":gapPositions",
                 () => channel.scale.gapPositions,
                 (value) => scaleSlot.setGapPositions(value)
             );
-            add(
+            addScale(
                 key + ":gapWidth",
                 () => channel.scale.gapWidth,
                 (value) => scaleSlot.setGapWidth(value)
@@ -619,7 +657,8 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             key + ":value",
             () => channel.value,
             (value) => valueSlot.set(value),
-            true
+            true,
+            isWebGpuScaleDependentValue(channel)
         );
     }
 }
@@ -875,10 +914,15 @@ function getLogicalChannelSeries(channel) {
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
  * @prop {Record<string, {value: any}>} properties
- * @prop {ResourceBinding[]} bindings
+ * @prop {ResourceBindings} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | SelectionSnapshot | IntegerSetSnapshot>} selections
+ * @prop {number | undefined} resourceExpressionsRevision
+ */
+
+/**
+ * @typedef {{all: ResourceBinding[], scales: ResourceBinding[]}} ResourceBindings
  */
 
 /**
