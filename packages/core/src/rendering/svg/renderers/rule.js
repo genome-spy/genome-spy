@@ -27,7 +27,6 @@ export function renderRuleSvg(baseMark, options) {
             mark.encoders
         );
     const isRule = mark.getType() === "rule";
-    const cap = resolveMarkProperty(mark, mark.properties.strokeCap);
     const strokeDash = resolveMarkProperty(mark, mark.properties.strokeDash);
     const dashOffset = resolveMarkProperty(
         mark,
@@ -40,7 +39,7 @@ export function renderRuleSvg(baseMark, options) {
             transform: (value) => formatSvgNumber(+value),
         },
     });
-    group.setAttribute("stroke-linecap", cap);
+    group.setAttribute("stroke-linecap", properties.strokeCap);
     if (strokeDash) {
         group.setAttribute(
             "stroke-dasharray",
@@ -59,6 +58,8 @@ export function renderRuleSvg(baseMark, options) {
             if (options.countOnly) {
                 return;
             }
+            const opacity =
+                encodeNumber(encoders.opacity, instance.datum) * viewOpacity;
             const fillOpacity = isRule
                 ? encodeNumber(encoders.fillOpacity, instance.datum)
                 : 1;
@@ -70,17 +71,14 @@ export function renderRuleSvg(baseMark, options) {
                 const path = rulePath(
                     length,
                     formatSvgNumber(instance.size),
-                    cap,
+                    properties.strokeCap,
                     strokeDash,
                     dashOffset
                 );
                 const paints = createSvgElement("g", {
                     transform: `translate(${formatSvgNumber(instance.x1)} ${formatSvgNumber(instance.y1)}) rotate(${angle})`,
-                    opacity:
-                        encodeNumber(encoders.opacity, instance.datum) *
-                        viewOpacity,
+                    opacity,
                     "stroke-dasharray": "none",
-                    "stroke-opacity": 1,
                 });
                 paints.append(
                     createSvgElement("path", {
@@ -114,10 +112,7 @@ export function renderRuleSvg(baseMark, options) {
                     x2: formatSvgNumber(instance.x2),
                     y2: formatSvgNumber(instance.y2),
                     ...encodeStyles(instance.datum),
-                    "stroke-opacity":
-                        encodeNumber(encoders.opacity, instance.datum) *
-                        viewOpacity *
-                        fillOpacity,
+                    "stroke-opacity": opacity * fillOpacity,
                 })
             );
         }
