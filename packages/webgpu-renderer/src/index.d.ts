@@ -939,9 +939,12 @@ export type TextChannelName =
     | "align"
     | "baseline"
     | "fill"
+    | "fillOpacity"
     | "stroke"
+    /** Common foreground opacity, applied once after label fill/stroke composition. */
     | "opacity"
     | "strokeOpacity"
+    /** Full outside border width in logical pixels, with round contour offsets. */
     | "strokeWidth"
     | "shadowColor"
     | "shadowOpacity"

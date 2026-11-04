@@ -13,13 +13,14 @@ replacement append missing glyphs in batches of at most 32; geometric texture
 growth copies old texels at unchanged coordinates and synchronously rebinds
 every borrower. No CPU bitmap, GPU readback, or full-font atlas is involved.
 
-Outline text derives separate fill and centered stroke-band coverages from the
-same MSDF sample. A zero-width stroke has exactly zero band coverage. Fill is
-painted first and the premultiplied stroke is composited over it with
-source-over blending, matching SVG and Canvas paint order without another draw
-pass. Fill and stroke coverage then use the same color-dependent gamma
-compensation: dark edges are narrowed slightly and light edges are strengthened
-against dark backgrounds.
+Outline text resolves fill and full-width outside strokes together once per
+label. RGB samples reconstruct sharp nominal fill; the true-distance alpha
+channel supplies round offsets from each original glyph contour, including
+overlapping glyphs. A zero-width stroke has exactly zero band coverage. Coverage
+uses the same color-dependent gamma compensation before the combined
+premultiplied paint receives common foreground opacity. Existing per-glyph
+shadows remain separate draws. Stroke reach is bounded by the existing padded
+atlas tiles and distance range.
 
 The font allocator starts with a 512-by-128 texture and grows dimensions by
 1.5 times when needed. This keeps enough horizontal room for ordinary glyph
