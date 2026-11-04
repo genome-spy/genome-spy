@@ -6,6 +6,7 @@ flat in float vRadiusWithPadding;
 
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
+flat in lowp float vOpacityFactor;
 flat in lowp float vShape;
 flat in lowp float vHalfStrokeWidth;
 
@@ -116,6 +117,7 @@ void main() {
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
+        fragColor *= vOpacityFactor;
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
