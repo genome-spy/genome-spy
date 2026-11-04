@@ -20,13 +20,6 @@ and `strokeOpacity` control the paints separately; `opacity` affects both.
 Setting `filled: false` routes `color` to the border and leaves the body unfilled,
 unless an explicit fill is provided.
 
-Canvas rendering and Canvas-backed exports approximate borders by painting a
-wider native stroke followed by the body. The border can show through a
-translucent body, and per-rule opacity can produce a different combined color
-and alpha. Native caps/dashes may leave butt endpoints and dash cuts without a
-complete border. GPU rendering resolves the paints together. Vector SVG export
-may show an antialiasing hairline at the internal paint boundary.
-
 ## Properties
 
 SCHEMA RuleProps
@@ -42,6 +35,24 @@ and no body with butt caps. Outside borders follow the combined dash silhouette.
 ### Ranged rules
 
 EXAMPLE examples/docs/grammar/mark/rule/ranged-rules.json height=150
+
+### Outlined rules
+
+Solid, dashed, and dotted rules can share the same fill and outside border:
+
+EXAMPLE examples/docs/grammar/mark/rule/outlined-rules.json height=220
+
+!!! note "Rendering caveats"
+
+    The Canvas renderer and Canvas-backed exports approximate outlines with native
+    strokes to maintain interactive performance. Borders can show through
+    translucent fills, opacity can blend differently, and butt endpoints or dash
+    cuts may lack a complete border.
+
+    SVG export expands each dash into path geometry and uses a mask for each
+    outlined rule. Large numbers of outlined dashes can produce large SVG files
+    that are slow to render. SVG viewers may also show a thin antialiasing seam
+    between the fill and border.
 
 ### Human-mouse synteny
 
