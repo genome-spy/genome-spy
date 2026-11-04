@@ -54,6 +54,69 @@ describe("SVG arrow renderer", () => {
         expect(warnings).toEqual([]);
     });
 
+    test("applies nested view opacity once per arrow, separately from paint alpha", async () => {
+        const { view } = await createHeadlessEngine({
+            opacity: 0.5,
+            data: {
+                values: [
+                    { color: "red", fillAlpha: 0.6, strokeAlpha: 0.5 },
+                    { color: "green", fillAlpha: 0.4, strokeAlpha: 0.8 },
+                ],
+            },
+            layer: [
+                {
+                    opacity: 0.5,
+                    mark: {
+                        type: "arrow",
+                        size: 10,
+                        stroke: "blue",
+                        strokeWidth: 6,
+                    },
+                    encoding: {
+                        x: { value: 0.2 },
+                        x2: { value: 0.8 },
+                        y: { value: 0.5 },
+                        fill: { field: "color", type: "nominal", scale: null },
+                        fillOpacity: {
+                            field: "fillAlpha",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                        strokeOpacity: {
+                            field: "strokeAlpha",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                    },
+                },
+            ],
+        });
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const group = svg.querySelector('[data-mark-type="arrow"]');
+        const paths = Array.from(group.children);
+
+        // Overlapping occurrences keep their own opacity and paint order.
+        expect(group.getAttribute("opacity")).toBeNull();
+        expect(
+            paths.map((path) => [
+                path.tagName,
+                path.getAttribute("fill"),
+                path.getAttribute("fill-opacity"),
+                path.getAttribute("stroke-opacity"),
+                path.getAttribute("opacity"),
+            ])
+        ).toEqual([
+            ["path", "red", "0.6", "0.5", "0.25"],
+            ["path", "green", "0.4", "0.8", "0.25"],
+        ]);
+        expect(svg.querySelector("image")).toBeNull();
+    });
+
     test("exports an open arrowhead without a stem", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

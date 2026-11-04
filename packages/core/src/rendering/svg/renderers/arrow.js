@@ -5,7 +5,7 @@ import {
 import { createSvgElement } from "../svgElement.js";
 import { toPaintString } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
-import { formatSvgNumber } from "../svgNumber.js";
+import { formatSvgNumber, formatSvgUnitless } from "../svgNumber.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -24,12 +24,12 @@ export function renderArrowSvg(baseMark, options) {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
             encoder: encoders.fillOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         stroke: { encoder: encoders.stroke, transform: toPaintString },
         "stroke-opacity": {
             encoder: encoders.strokeOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         "stroke-width": {
             encoder: encoders.strokeWidth,
@@ -60,6 +60,10 @@ export function renderArrowSvg(baseMark, options) {
             }
             group.appendChild(
                 createSvgElement("path", {
+                    // SVG opacity fades the completed occurrence, including paint overlap.
+                    ...(viewOpacity == 1
+                        ? {}
+                        : { opacity: formatSvgUnitless(viewOpacity) }),
                     d: instance.boundaryLoops.map(polygon).join(" "),
                     ...encodeStyles(instance.datum),
                 })
