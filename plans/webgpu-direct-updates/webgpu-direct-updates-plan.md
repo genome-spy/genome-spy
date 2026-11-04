@@ -106,10 +106,9 @@ migration.
 
 - [x] Reuse the retained program key while definition and Core-owned structural
       config identity remain unchanged; replacement still recomputes it.
-- [x] Compile fixed-shape viewport comparison/copy operations into the existing
-      binding. Reuse its owned detached snapshot instead of generic object
-      traversal and allocation. Other mutable bindings retain their existing
-      semantics. Initialize with an owned copy even for frozen input tuples.
+- [x] Use Core-owned viewport publications directly. The continued
+      simplification below removes the intermediate fixed-shape viewport
+      comparison/copy helpers and all duplicate private Surface snapshots.
 - [x] Capture gap state and its uniform writer once; choose plain/band/gapped
       domain publication once and use the already captured continuous-domain
       writer. Keep renderer boundary validation and viewport detachment intact.
@@ -118,9 +117,9 @@ migration.
 
 Affected files: Core `webGpuSurface.js` and renderer `scaleResources.js`, plus
 the reverted upload-guard files. Existing tests cover config replacement,
-mutable and frozen inputs, null/rank transitions, live/picking/export behavior,
-exact gaps, growth and disposal. No new routing framework or renderer API is
-needed.
+producer-owned inputs, public mutable renderer inputs, null/rank transitions,
+live/picking/export behavior, exact gaps, growth and disposal. No new routing
+framework or renderer API is needed.
 
 ### 3. Verify CPU benefit and integration
 
@@ -144,17 +143,17 @@ Tentative implementation commit:
 
 ## Complete input-data audit
 
-| Input class                             | Current disposition                                                                                                    |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Expression-backed styles/properties     | Reuse subscribed evaluators; no per-read parse/codegen/binding                                                         |
-| Numeric/color channel values            | Existing compiled encoders and retained setters; no added payload guards                                               |
-| Scale domains/ranges/viewports/gaps     | Existing change filtering plus native mapping snapshots, specialized viewport tracking and captured renderer writers   |
-| Selection uniforms/hash tables          | Existing Core change filtering and renderer capacity reuse; no new cache/sharing contract                              |
-| Palettes/ordinal/domain/cut tables      | Normalize on dispatched updates; Core already filters unchanged leaves; callable palettes and mutable ranges stay live |
-| Occurrence globals/composite opacity    | Straightforward packing/upload restored; no extra CPU scan to save transfers                                           |
-| Placement/text lookup buffers           | Existing topology/geometry/series revision updates and capacity reuse                                                  |
-| Font/path atlases and generation inputs | Existing shared/append-only atlas and retained scratch resources; no redraw-time generation added                      |
-| Dash textures                           | Initialization-only build/upload; per-mark sharing deferred without a creation-heavy CPU workload                      |
+| Input class                             | Current disposition                                                                                                     |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Expression-backed styles/properties     | Reuse subscribed evaluators; no per-read parse/codegen/binding                                                          |
+| Numeric/color channel values            | Existing compiled encoders and retained setters; no added payload guards                                                |
+| Scale domains/ranges/viewports/gaps     | Existing change filtering plus native mapping snapshots, producer-owned viewport identity and captured renderer writers |
+| Selection uniforms/hash tables          | Existing Core change filtering and renderer capacity reuse; no new cache/sharing contract                               |
+| Palettes/ordinal/domain/cut tables      | Normalize on dispatched updates; Core already filters unchanged leaves; callable palettes and mutable ranges stay live  |
+| Occurrence globals/composite opacity    | Straightforward packing/upload restored; no extra CPU scan to save transfers                                            |
+| Placement/text lookup buffers           | Existing topology/geometry/series revision updates and capacity reuse                                                   |
+| Font/path atlases and generation inputs | Existing shared/append-only atlas and retained scratch resources; no redraw-time generation added                       |
+| Dash textures                           | Initialization-only build/upload; per-mark sharing deferred without a creation-heavy CPU workload                       |
 
 Additional shared preparation, more granular notifications, uniform dirty spans,
 shader specialization and explicit identical-input guards are deferred. Do not
@@ -219,13 +218,11 @@ control.
 - Public renderer declarations and entry points are unchanged. Direct mutations,
   batching, scope disposal and resource ownership remain intact.
 
-Across the six affected runtime files, source grows from 7,651 to 7,744 raw
-lines against the original foundation (+93), and from 7,735 to 7,744 against the
-misdirected upload commit (+9). The growth is justified by measured CPU removal,
-explicit snapshot ownership and one retained evaluator source of truth, rather
-than new tracking layers. Guard-specific upload tests were removed; existing
-behavior tests were extended and one real headless multi-mark expression test
-protects zero recompilation during retained reads.
+The first CPU correction grew six runtime files by 93 raw lines against the
+foundation. That intermediate size is superseded by the continued simplification
+below, whose hard gate is no production SLOC growth. Existing real headless
+tests protect zero recompilation during retained reads; guard-specific upload
+tests were removed.
 
 ## Delivery and remaining coordination
 
@@ -249,3 +246,95 @@ implementation:
 - Update remote PR validation/measurement claims when publishing; merge #659
   first and retarget #660 afterward. No remote writes or merges have been
   performed.
+
+## Continued simplification: producer-owned inputs
+
+The next acceptance baseline is `d8e083bb7`. The public renderer API remains
+fixed. Runtime production SLOC must not increase, and native measured CPU must
+not regress. Remove duplicate private Surface snapshots and unnecessary renderer
+setter plumbing; keep boundary validation and caller-input detachment.
+
+Core's completed mapping owns domain, viewport and grouping-gap publications.
+Resource expression getters return computed numeric/color values. The large
+index pair and link-distance vector producers now detach their mutable outputs;
+Surface can retain prior results without recursive copies. Private Surface fake
+config mutation is not a new public contract. Preserve actual parameter/scale
+updates, config replacement, export/live transitions, selections and disposal.
+Do not add another subscription registry or input-mask system.
+
+Independent design review identified two constraints: configured ranges can be
+new but semantically unchanged on navigation, and adapter getters can close over
+a physical scale. Any producer-based skipping must account for both; retain
+existing semantic filtering where identity alone is insufficient.
+
+- [x] Delete `equalViewports`, `snapshotViewport`, `snapshotValue`, frozen-array
+      inspection and per-binding copy policies. Retain Core-owned/computed
+      results; adopt equal new results once during config compilation, not on
+      every update.
+- [x] Retain interval-selection publications directly; inspect component pairs
+      only on new publications, preserving quiet equal updates without tuple
+      copies.
+- [x] Specialize literal numeric/shadow properties through the existing constant
+      path, remove duplicate retained-value wrappers and merge numeric readers.
+- [x] Collapse renderer-internal viewport and selection dispatch while retaining
+      the existing public validation and mutation behavior.
+- [x] Review and simplify private implementation tests; verify real producer and
+      renderer contracts with existing focused coverage.
+- [x] Compare native CPU and byte-identical output with `d8e083bb7` in
+      scale-only, style-plus-scale and real heatmap traces. Keep only
+      non-regressing changes.
+- [x] Verify types, focused tests/GPU checks, independent review, release impact
+      and exact runtime SLOC before committing.
+
+Independent implementation review found and fixed one vector-validation issue:
+copy the full link-distance array so malformed live lengths still reach renderer
+validation. A real headless layered point/link test protects both mutable-vector
+producer exceptions. Static literal specialization and all renderer-internal
+changes preserve the current public API.
+
+Focused verification: 531 tests in 55 files and eight native GPU tests pass.
+Scoped ESLint and release policy/status checks pass; unpublished WebGPU work
+still uses the existing empty no-release changeset. Final types, CPU and size
+gates are recorded below when complete.
+
+### Continued CPU and size results
+
+Six alternating pairs per scene keep the baseline and candidate embeds alive,
+after 180 warmup frames each, and alternate foreground measurement order. Each
+sample measures 120 updates. Both versions substitute the same changed-module
+paths, using baseline `d8e083bb7` versus the candidate source. Headed native
+Chrome uses Metal; context DPR is emulated as 1, while the display's physical
+content-box measurement supplies a 2× backing canvas. No CPU sampler or
+application profiler is enabled during acceptance runs.
+
+| Workload                   | Baseline thread CPU | Candidate thread CPU | Change | Synchronous update/render change |
+| -------------------------- | ------------------: | -------------------: | -----: | -------------------------------: |
+| Style plus scale, 32 marks |           255.34 ms |            227.82 ms | −10.8% |                           −12.4% |
+| Scale only, 32 marks       |           225.35 ms |            212.94 ms |  −5.5% |                            −3.0% |
+| Real clustered heatmap     |           176.72 ms |            174.73 ms |  −1.1% |                            −0.5% |
+
+All six style pairs favor the candidate. Scale-only pairs have mixed signs,
+although five of six favor it. Heatmap differences have mixed signs and are
+within ordinary variation; claim no heatmap speedup. Early, shorter runs were
+noisy and one heatmap control was a few percent slower; removing unconditional
+retained-state assignments resolved the avoidable work. Keep the raw earlier
+results in ignored output, rather than dropping unfavorable samples.
+
+A separate diagnostic wraps the exact served Surface modules: each heatmap
+sample calls `updateMark` 600 times and makes 1,160 retained writes in both
+versions. Mean measured update-block time falls from 16.90 to 14.33 ms. This
+instrumented result explains work reduction; acceptance uses the uninstrumented
+measurements above. All three baseline/candidate exported PNG pairs are byte
+identical, with no page errors. Temporary drivers/results remain under ignored
+`output/webgpu-snapshot-removal/`; no benchmark framework was added.
+
+The six changed runtime files shrink by 184 raw lines (6,676 → 6,492), before
+excluding comments and blank lines. Exact parser-based JavaScript counts under
+`packages/`, excluding tests/declarations, are 120 added and 268 deleted: **−148
+production lines** against `d8e083bb7`. Including tests gives 261 added and 364
+deleted (**−103**). The cumulative branch against `origin/master` is 434 added
+and 501 deleted (**−67 production lines**), so both comparisons meet the size
+gate. No declaration files changed. Both Core/renderer type checks, scoped
+lint/format, independent final review, 531 focused tests, eight native GPU tests
+and release checks pass. There is no public renderer API change or
+released-package version bump.

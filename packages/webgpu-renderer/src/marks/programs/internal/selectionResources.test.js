@@ -12,6 +12,13 @@ import {
 } from "../../../wgsl/prefixes.js";
 
 class SelectionResourceManager extends DefinedSelectionResourceManager {
+    /** @param {string} name */
+    selection(name) {
+        const def = this.selectionDefs.find((def) => def.name === name);
+        if (!def) throw new Error("Unknown fixture selection: " + name);
+        return def;
+    }
+
     /**
      * @param {Omit<ConstructorParameters<typeof DefinedSelectionResourceManager>[0], "analysisByChannel">} params
      */
@@ -303,54 +310,42 @@ describe("SelectionResourceManager", () => {
         manager.initializeSelections(extraBuffers);
 
         manager.updateSelection(
-            "unrelated",
-            { type: "single", id: 1 },
+            manager.selection("unrelated"),
+            1,
             extraBuffers
         );
         expect(manager.orderActive).toBe(false);
 
+        manager.updateSelection(manager.selection("picked"), 1, extraBuffers);
         manager.updateSelection(
-            "picked",
-            { type: "single", id: 1 },
-            extraBuffers
-        );
-        manager.updateSelection(
-            "chosen",
-            { type: "multi", ids: new Uint32Array([2]) },
+            manager.selection("chosen"),
+            new Uint32Array([2]),
             extraBuffers
         );
         expect(manager.orderActive).toBe(true);
 
-        manager.updateSelection(
-            "picked",
-            { type: "single", id: 0 },
-            extraBuffers
-        );
+        manager.updateSelection(manager.selection("picked"), 0, extraBuffers);
         expect(manager.orderActive).toBe(true);
 
         manager.updateSelection(
-            "chosen",
-            { type: "multi", ids: new Uint32Array() },
+            manager.selection("chosen"),
+            new Uint32Array(),
             extraBuffers
         );
         expect(manager.orderActive).toBe(false);
         manager.updateSelection(
-            "brush",
-            { type: "interval", intervals: { x: [0, 1] } },
+            manager.selection("brush"),
+            { x: [0, 1] },
             extraBuffers
         );
         expect(manager.orderActive).toBe(false);
         manager.updateSelection(
-            "brush",
-            { type: "interval", intervals: { x: [0, 1], y: [0, 1] } },
+            manager.selection("brush"),
+            { x: [0, 1], y: [0, 1] },
             extraBuffers
         );
         expect(manager.orderActive).toBe(true);
-        manager.updateSelection(
-            "brush",
-            { type: "interval", intervals: {} },
-            extraBuffers
-        );
+        manager.updateSelection(manager.selection("brush"), {}, extraBuffers);
         expect(manager.orderActive).toBe(false);
     });
 
@@ -470,11 +465,8 @@ describe("SelectionResourceManager", () => {
 
         expect(
             manager.updateSelection(
-                "brush",
-                {
-                    type: "interval",
-                    intervals: { x: [4, 1], y: null },
-                },
+                manager.selection("brush"),
+                { x: [4, 1], y: null },
                 new Map()
             )
         ).toBe(false);
@@ -507,25 +499,25 @@ describe("SelectionResourceManager", () => {
 
         expect(() =>
             manager.updateSelection(
-                "brush",
-                {
-                    type: "interval",
-                    intervals: { unknown: [0, 1] },
-                },
+                manager.selection("brush"),
+                { unknown: [0, 1] },
                 new Map()
             )
         ).toThrow('cannot update unknown component "unknown"');
         expect(setUniformValue).not.toHaveBeenCalled();
 
         const invalidUpdate =
-            /** @type {import("./selectionResources.js").SelectionUpdate} */ (
+            /** @type {import("./selectionResources.js").SelectionValue} */ (
                 /** @type {unknown} */ ({
-                    type: "interval",
-                    intervals: { x: [0] },
+                    x: [0],
                 })
             );
         expect(() =>
-            manager.updateSelection("brush", invalidUpdate, new Map())
+            manager.updateSelection(
+                manager.selection("brush"),
+                invalidUpdate,
+                new Map()
+            )
         ).toThrow("requires two numeric bounds or null");
         expect(setUniformValue).not.toHaveBeenCalled();
     });
@@ -612,8 +604,8 @@ describe("SelectionResourceManager", () => {
         manager.initializeSelections(new Map());
         setUniformValue.mockClear();
         manager.updateSelection(
-            "brush",
-            { type: "interval", intervals: { range0: [2, 4] } },
+            manager.selection("brush"),
+            { range0: [2, 4] },
             new Map()
         );
         expect(setUniformValue).toHaveBeenCalledTimes(1);
@@ -703,8 +695,8 @@ describe("SelectionResourceManager", () => {
         const lower = 2 ** 32 + 1;
         const upper = 2 ** 32 + 3;
         manager.updateSelection(
-            "brush",
-            { type: "interval", intervals: { range0: [lower, upper] } },
+            manager.selection("brush"),
+            { range0: [lower, upper] },
             new Map()
         );
         expect(setUniformValue).toHaveBeenCalledWith(
@@ -714,8 +706,8 @@ describe("SelectionResourceManager", () => {
         setUniformValue.mockClear();
         expect(() =>
             manager.updateSelection(
-                "brush",
-                { type: "interval", intervals: { range0: [-1, upper] } },
+                manager.selection("brush"),
+                { range0: [-1, upper] },
                 new Map()
             )
         ).toThrow("High-precision values must be non-negative safe integers");
@@ -745,8 +737,8 @@ describe("SelectionResourceManager", () => {
         manager.initializeSelections(extraBuffers);
 
         const needsRebind = manager.updateSelection(
-            "chosen",
-            { type: "multi", ids: new Uint32Array([1, 2, 3, 4]) },
+            manager.selection("chosen"),
+            new Uint32Array([1, 2, 3, 4]),
             extraBuffers
         );
 
@@ -796,15 +788,15 @@ describe("SelectionResourceManager", () => {
         const extraBuffers = new Map();
         manager.initializeSelections(extraBuffers);
         manager.updateSelection(
-            "chosen",
-            { type: "multi", ids: new Uint32Array([10000, 10001, 10002]) },
+            manager.selection("chosen"),
+            new Uint32Array([10000, 10001, 10002]),
             extraBuffers
         );
 
         expect(
             manager.updateSelection(
-                "chosen",
-                { type: "multi", ids: new Uint32Array([10000, 10002]) },
+                manager.selection("chosen"),
+                new Uint32Array([10000, 10002]),
                 extraBuffers
             )
         ).toBe(false);
