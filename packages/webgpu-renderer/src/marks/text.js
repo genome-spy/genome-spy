@@ -1,8 +1,8 @@
 import TextProgram from "./programs/textProgram.js";
 import { isTrueTypeFont } from "../fonts/outlineTextLayout.js";
-import { resolveTextEffectFlags } from "./programs/textRenderItems.js";
+import { hasTextShadow } from "./programs/textRenderItems.js";
 
-/** @type {WeakMap<object, object[]>} */
+/** @type {WeakMap<object, object>} */
 const outlineProgramKeys = new WeakMap();
 
 /** @param {import("../index.d.ts").MarkConfig<"text">} config */
@@ -11,16 +11,15 @@ function getOutlineProgramKey(config) {
         throw new TypeError("Text marks require a TrueType outline font.");
     }
     const font = config.font;
-    const effectFlags = resolveTextEffectFlags(config.channels);
-    if (effectFlags === 0) {
+    if (!hasTextShadow(config.channels)) {
         return font;
     }
-    let keys = outlineProgramKeys.get(font);
-    if (!keys) {
-        keys = [{}, {}, {}, {}];
-        outlineProgramKeys.set(font, keys);
+    let key = outlineProgramKeys.get(font);
+    if (!key) {
+        key = {};
+        outlineProgramKeys.set(font, key);
     }
-    return keys[effectFlags];
+    return key;
 }
 
 /**

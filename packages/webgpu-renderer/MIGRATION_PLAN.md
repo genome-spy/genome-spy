@@ -77,9 +77,13 @@ BMFont measurement. Canonical msdfgen is maintained in a separate repository
 and downloaded only by explicit oracle tests, comparison scripts, and the
 Storybook comparison control.
 
-The glyph-based text-effects PoC adds one outline and one scalar-SDF
-shadow/glow in label-major order without per-label textures. Text program keys
-are constant time and never serialize label contents during zoom or pan.
+Text resolves original-glyph outside stroke bands and nominal fill once per label,
+then applies common foreground opacity. Outside widths are full logical pixels
+with round offsets; shadows retain their existing separate label-major draws.
+A layout-time glyph lookup bounds fragment work without per-label textures or
+passes. Text program keys distinguish shadows only and never inspect label data
+during zoom or pan. Shared Core text grammar/alignment and existing atlas-range
+limits remain separate work.
 
 Remaining path/font follow-up includes a compact wide-range tier for tiny
 stroked points, portable Core/Canvas/SVG text effects, and public contract

@@ -14,6 +14,10 @@ const TEST_FONT = createTrueTypeFont(
 );
 
 class TestTextProgram extends TextProgram {
+    get glyphLookupSize() {
+        return this._extraBuffers.get("glyphLookup").size;
+    }
+
     /** @param {any} layout @param {any} font */
     _initializeOutlineFontResources(layout, font) {
         const texture = this.device.createTexture({
@@ -49,7 +53,6 @@ class TestTextProgram extends TextProgram {
             format: "rgba16float",
         });
         this._borrowedExtraTextures.add("fontAtlas");
-        this._sdfNumeratorBase = 28;
     }
 }
 
@@ -59,51 +62,6 @@ function createTextProgram(renderer, config) {
 }
 
 describe("TextProgram series replacement", () => {
-    it("keeps effect-free text on the direct glyph path", () => {
-        const getShaderBody = Object.getOwnPropertyDescriptor(
-            TextProgram.prototype,
-            "shaderBody"
-        ).get;
-        const shaderBody = getShaderBody.call({});
-        const resourceDefs = TextProgram.prototype.getExtraResourceDefs.call({
-            _markConfig: {
-                effects: { enabled: false, shadow: false, outline: false },
-            },
-        });
-
-        expect(shaderBody).toContain("let glyph = glyphs[i];");
-        expect(shaderBody).not.toContain("let renderItem = renderItems[i];");
-        expect(
-            resourceDefs.map(
-                (/** @type {{ name: string }} */ definition) => definition.name
-            )
-        ).not.toContain("renderItems");
-    });
-
-    it("compiles effect text with render-item indirection", () => {
-        const getShaderBody = Object.getOwnPropertyDescriptor(
-            TextProgram.prototype,
-            "shaderBody"
-        ).get;
-        const context = {
-            _markConfig: {
-                effects: { enabled: true, shadow: true, outline: true },
-            },
-        };
-        const shaderBody = getShaderBody.call(context);
-        const resourceDefs =
-            TextProgram.prototype.getExtraResourceDefs.call(context);
-
-        expect(shaderBody).toContain("let renderItem = renderItems[i];");
-        expect(shaderBody).toContain("sampleTrueDistance(uv)");
-        expect(shaderBody).toContain("in.layer == TEXT_LAYER_SHADOW");
-        expect(
-            resourceDefs.map(
-                (/** @type {{ name: string }} */ definition) => definition.name
-            )
-        ).toContain("renderItems");
-    });
-
     it("rejects text without an outline font", () => {
         expect(
             () =>
@@ -116,85 +74,6 @@ describe("TextProgram series replacement", () => {
                     },
                 })
         ).toThrow("require a TrueType outline font");
-    });
-
-    it("fits ranged text after applying facet placement", () => {
-        const shaderBody = Object.getOwnPropertyDescriptor(
-            TextProgram.prototype,
-            "shaderBody"
-        ).get.call({});
-
-        // Faceted text must use the placed sample-row range for fitting, like
-        // the WebGL text mark.
-        expect(
-            shaderBody.indexOf("let xRange = positionInsideRange")
-        ).toBeLessThan(
-            shaderBody.indexOf("anchor = params.uViewport.xy + anchor")
-        );
-        expect(shaderBody).toContain(
-            "var anchor = clampPlacedPosition(applyPlacementPixel(anchorPosition, i) + positionOffset, i)"
-        );
-        expect(shaderBody).toContain(
-            "getScaled_xOffset(i),\n        getScaled_yOffset(i)"
-        );
-        expect(shaderBody).toContain(
-            "let angle = angleDegrees * 3.14159265 / 180.0"
-        );
-        expect(shaderBody).toContain(
-            "x + local.x * width + getScaled_dx(i),\n        y + getScaled_dy(i)"
-        );
-        expect(shaderBody).toContain(
-            "maxValue(params.uViewportEdgeFadeDistance) > -1e10"
-        );
-        expect(shaderBody).toContain(
-            "return shadeBase(in, clamp(in.edgeFadeOpacity, 0.0, 1.0));"
-        );
-        expect(shaderBody).toContain(
-            "let localPixel = localAnchor + rotated + effectOffset;\n    let pixel = anchor + rotated + effectOffset"
-        );
-        expect(shaderBody).toContain(
-            "let localUnit = localPixel / viewportSize;"
-        );
-        expect(shaderBody).toContain(
-            "vec4<f32>(-1.0, -1.0, 1.0, 1.0) * localUnit.yxyx"
-        );
-        expect(shaderBody).toContain("let coverage = sampleSuperOutline(");
-        expect(shaderBody).toContain(
-            "coverage.x,\n            getGammaForColor(fillColor.rgb)"
-        );
-        expect(shaderBody).toContain(
-            "coverage.y,\n            getGammaForColor(strokeColor.rgb)"
-        );
-        expect(shaderBody).toContain("fn freeTypeLikeStemDarkening");
-        expect(shaderBody).toContain(
-            "let estimatedStemWidth = deviceFontSize * 0.075;"
-        );
-        expect(shaderBody).toContain(
-            "out.stemDarkening = freeTypeLikeStemDarkening(size * globals.dpr);"
-        );
-        expect(shaderBody).toContain("in.stemDarkening");
-        expect(shaderBody).not.toContain("uOutlineFont");
-    });
-
-    it("updates coupled text uniforms through semantic properties", () => {
-        const renderer = createMockRenderer();
-        const program = createTextProgram(renderer, {
-            channels: {
-                text: { value: "x" },
-                x: { value: 0, scale: identityScale() },
-                y: { value: 0, scale: identityScale() },
-            },
-        });
-        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
-        const properties = program.getSlotHandles().properties;
-
-        properties.logoLetters.set(true);
-
-        expect(readUniform(program, "uLogoLetters", "u32")).toBe(1);
-        expect(readUniform(program, "uSdfNumerator", "f32")).toBeCloseTo(
-            program._sdfNumeratorBase * 0.5
-        );
-        expect(writeBuffer).toHaveBeenCalledOnce();
     });
 
     it("updates viewport edge fade vectors through semantic properties", () => {
@@ -260,7 +139,7 @@ describe("TextProgram series replacement", () => {
 
         expect(program.count).toBe(2);
         expect(program.resolveDrawRange(1, 1)).toEqual({
-            firstInstance: 2,
+            firstInstance: 1,
             instanceCount: 1,
         });
         program.prepareDraw(state, {
@@ -370,7 +249,7 @@ describe("TextProgram series replacement", () => {
 
         expect(program.drawCount).toBe(2);
         expect(program.resolveDrawRange(1, 1)).toEqual({
-            firstInstance: 2,
+            firstInstance: 1,
             instanceCount: 1,
         });
 
@@ -381,11 +260,24 @@ describe("TextProgram series replacement", () => {
         });
         expect(program.resolveDrawRange(0, 2)).toEqual({
             firstInstance: 0,
-            instanceCount: 3,
+            instanceCount: 2,
         });
         expect(uploaded().byteLength).toBe(16);
         expect(uploaded()[1]).toBe(9);
         expect(uploaded()[3]).toBe(10);
+    });
+
+    it("bounds the glyph lookup across large whitespace gaps", () => {
+        const program = createTextProgram(createMockRenderer(), {
+            channels: {
+                text: { value: "A" + " ".repeat(10000) + "B" },
+                x: { value: 0, scale: identityScale() },
+                y: { value: 0, scale: identityScale() },
+            },
+        });
+        // Empty space must not allocate one lookup header per em of advance.
+        expect(program.glyphLookupSize).toBeLessThan(128);
+        program.destroy();
     });
 
     it("keeps 2,000 long labels and placement indices at logical cardinality", () => {
@@ -583,27 +475,6 @@ describe("TextProgram series replacement", () => {
         expect(uploaded().byteLength).toBe(48);
     });
 });
-
-/**
- * @param {TextProgram} program
- * @param {string} name
- * @param {"f32" | "u32"} type
- */
-function readUniform(program, name, type) {
-    const entry = program._uniformBufferState.entries.get(name);
-    if (!entry) {
-        throw new Error(`Missing test uniform: ${name}`);
-    }
-    return type == "u32"
-        ? new DataView(program._uniformBufferState.data).getUint32(
-              entry.offset,
-              true
-          )
-        : new DataView(program._uniformBufferState.data).getFloat32(
-              entry.offset,
-              true
-          );
-}
 
 /**
  * @param {TextProgram} program

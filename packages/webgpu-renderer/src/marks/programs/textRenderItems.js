@@ -1,8 +1,5 @@
 export const TEXT_LAYER_SHADOW = 0;
-export const TEXT_LAYER_OUTLINE = 1;
-export const TEXT_LAYER_FILL = 2;
-export const TEXT_EFFECT_OUTLINE = 1;
-export const TEXT_EFFECT_SHADOW = 2;
+export const TEXT_LAYER_FOREGROUND = 1;
 
 /**
  * @param {import("../../index.js").ChannelConfigInput | import("../../index.js").ConditionalChannelConfigInput | undefined} channel
@@ -51,33 +48,15 @@ function hasPositiveAlpha(value) {
 }
 
 /**
- * Resolve which effect layers can become visible without scanning current
- * series values. Series, conditional, and dynamic channels remain provisioned
- * for retained updates even when their initial values are zero.
- *
+ * Provision shadow resources for series, conditional and dynamic channels even
+ * when their initial values are invisible. Foreground paint needs no variant.
  * @param {import("../../index.js").TextChannels} [channels]
- * @returns {number}
  */
-export function resolveTextEffectFlags(channels) {
-    const outline =
-        channelMayMatch(channels?.strokeWidth, 0, isPositive) &&
-        channelMayMatch(channels?.strokeOpacity, 1, isPositive) &&
-        channelMayMatch(channels?.stroke, [0, 0, 0, 1], hasPositiveAlpha);
-    const shadow =
+export function hasTextShadow(channels) {
+    return (
         channelMayMatch(channels?.shadowOpacity, 0, isPositive) &&
-        channelMayMatch(channels?.shadowColor, [0, 0, 0, 1], hasPositiveAlpha);
-    return +outline * TEXT_EFFECT_OUTLINE + +shadow * TEXT_EFFECT_SHADOW;
-}
-
-/**
- * @param {import("../../index.js").TextChannels} [channels]
- * @returns {{ shadow: boolean, outline: boolean, enabled: boolean }}
- */
-export function resolveTextEffectLayers(channels) {
-    const flags = resolveTextEffectFlags(channels);
-    const outline = (flags & TEXT_EFFECT_OUTLINE) !== 0;
-    const shadow = (flags & TEXT_EFFECT_SHADOW) !== 0;
-    return { shadow, outline, enabled: shadow || outline };
+        channelMayMatch(channels?.shadowColor, [0, 0, 0, 1], hasPositiveAlpha)
+    );
 }
 
 /**
@@ -98,51 +77,38 @@ export function buildGlyphOffsets(textLayout) {
 }
 
 /**
- * Build label-major glyph-layer items. Each pair contains a glyph index and a
- * layer code. The returned offsets translate logical-string draw ranges to the
- * flattened item stream.
- *
+ * Schedule each label's existing glyph shadows before one combined foreground.
+ * Offsets address logical strings, including empty strings, for draw subranges.
  * @param {import("../../index.js").TextLayout} textLayout
- * @param {{ shadow: boolean, outline: boolean }} effects
- * @returns {{ data: Uint32Array, offsets: Uint32Array }}
+ * @param {boolean} shadow
  */
-export function buildTextRenderItems(textLayout, effects) {
+export function buildTextRenderItems(textLayout, shadow) {
     const glyphOffsets = buildGlyphOffsets(textLayout);
-    const layerCount = 1 + +effects.shadow + +effects.outline;
-    const data = new Uint32Array(textLayout.glyphIds.length * layerCount * 2);
-    const offsets = new Uint32Array(textLayout.textWidth.length + 1);
-    let itemIndex = 0;
-
-    /**
-     * @param {number} glyphStart
-     * @param {number} glyphEnd
-     * @param {number} layer
-     */
-    const appendLayer = (glyphStart, glyphEnd, layer) => {
-        for (let glyphIndex = glyphStart; glyphIndex < glyphEnd; glyphIndex++) {
-            const offset = itemIndex * 2;
-            data[offset] = glyphIndex;
-            data[offset + 1] = layer;
-            itemIndex++;
-        }
-    };
-
-    for (
-        let stringIndex = 0;
-        stringIndex < textLayout.textWidth.length;
-        stringIndex++
-    ) {
-        const glyphStart = glyphOffsets[stringIndex];
-        const glyphEnd = glyphOffsets[stringIndex + 1];
-        if (effects.shadow) {
-            appendLayer(glyphStart, glyphEnd, TEXT_LAYER_SHADOW);
-        }
-        if (effects.outline) {
-            appendLayer(glyphStart, glyphEnd, TEXT_LAYER_OUTLINE);
-        }
-        appendLayer(glyphStart, glyphEnd, TEXT_LAYER_FILL);
-        offsets[stringIndex + 1] = itemIndex;
+    let labelCount = 0;
+    for (let i = 1; i < glyphOffsets.length; i++) {
+        if (glyphOffsets[i] > glyphOffsets[i - 1]) labelCount++;
     }
-
+    const data = new Uint32Array(
+        (labelCount + (shadow ? textLayout.glyphIds.length : 0)) * 2
+    );
+    const offsets = new Uint32Array(textLayout.textWidth.length + 1);
+    let item = 0;
+    for (let i = 0; i < textLayout.textWidth.length; i++) {
+        const start = glyphOffsets[i],
+            end = glyphOffsets[i + 1];
+        if (shadow) {
+            for (let glyph = start; glyph < end; glyph++) {
+                data[item * 2] = glyph;
+                data[item * 2 + 1] = TEXT_LAYER_SHADOW;
+                item++;
+            }
+        }
+        if (start < end) {
+            data[item * 2] = start;
+            data[item * 2 + 1] = TEXT_LAYER_FOREGROUND;
+            item++;
+        }
+        offsets[i + 1] = item;
+    }
     return { data, offsets };
 }
