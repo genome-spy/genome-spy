@@ -23,6 +23,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 45
         permissions:
+            actions: read
             contents: write
             id-token: write
         outputs:
@@ -40,6 +41,11 @@ jobs:
               with:
                   node-version: 24
                   package-manager-cache: false
+
+            - name: Require successful CI for the release commit
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: node scripts/verifyReleaseCi.mjs
 
             # Trusted publishing requires npm >=11.5.1, regardless of Node's bundle.
             - name: Install npm with trusted publishing support
@@ -60,13 +66,6 @@ jobs:
                   echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
                   npm run --silent release:notes -- --github > "$RUNNER_TEMP/release-notes.md"
 
-            - run: npm run lint
-            - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/verifyPackedPackages.mjs scripts/release.test.mjs
-            - run: npx eslint scripts/changelog.mjs scripts/changelog.test.mjs
-            - run: npm --workspaces run test:tsc --if-present
-            # Bundle smoke tests rebuild App's dist without its generated schema.
-            # The complete production build must be the last writer before packing.
-            - run: npm test -- --reporter=agent
             - run: npm -w @genome-spy/embed-examples run build:smoke
             - run: npm run build
 

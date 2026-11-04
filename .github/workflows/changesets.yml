@@ -24,6 +24,6 @@ jobs:
             - run: npm ci
             - run: npx eslint scripts/release.mjs scripts/checkChangesets.mjs scripts/verifyPackedPackages.mjs scripts/release.test.mjs
             - run: npx eslint scripts/changelog.mjs scripts/changelog.test.mjs
+            - run: npx eslint scripts/verifyReleaseCi.mjs scripts/verifyReleaseCi.test.mjs
             - name: Validate changesets and release package policy
               run: npm run release:check
-            - run: npx vitest run --project release-tools --reporter=agent
