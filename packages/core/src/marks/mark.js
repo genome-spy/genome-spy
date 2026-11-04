@@ -619,12 +619,12 @@ export default class Mark {
     }
 
     /**
-     * Evaluates a live property using its existing revision subscription.
+     * Returns the live property's existing subscribed evaluator for capture.
      *
      * @param {import("../spec/parameter.js").ExprRef} expression
-     * @returns {any}
+     * @returns {import("../paramRuntime/types.js").ExprRefFunction}
      */
-    evaluateRenderingExpression(expression) {
+    getRenderingExpression(expression) {
         const evaluate = this.#renderingRevisionState?.expressions.get(
             "resources:" + expression.expr
         );
@@ -634,7 +634,7 @@ export default class Mark {
                     expression.expr
             );
         }
-        return evaluate();
+        return evaluate;
     }
 
     /**

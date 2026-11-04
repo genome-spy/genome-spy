@@ -197,11 +197,13 @@ describe("BaseProgram slot handles", () => {
             channels: {
                 uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
                 x: {
-                    data: new Float32Array([0, 1]),
-                    type: "f32",
+                    value: [1048576, 4],
+                    type: "u32",
+                    inputComponents: 2,
+                    dynamic: true,
                     scale: {
-                        type: "linear",
-                        domain: [0, 1],
+                        type: "index",
+                        domain: [2 ** 32, 2 ** 32 + 10],
                         range: [0, 1],
                     },
                 },
@@ -228,6 +230,16 @@ describe("BaseProgram slot handles", () => {
                 },
             },
         });
+
+        const xEntry = program._uniformBufferState.entries.get("u_x");
+        const xWords = new Uint32Array(
+            program._uniformBufferState.data,
+            xEntry.offset,
+            2
+        );
+        expect(Array.from(xWords)).toEqual([1048576, 4]);
+        program.getSlotHandles().values.x.set([1048576, 9]);
+        expect(Array.from(xWords)).toEqual([1048576, 9]);
 
         const sizeEntry = program._uniformBufferState.entries.get("u_size");
         program.getSlotHandles().values.size.set(5);

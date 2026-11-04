@@ -12,7 +12,7 @@ import {
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
-import { packHighPrecisionU32 } from "../../../utils/highPrecision.js";
+import { packHighPrecisionU32Array } from "../../../utils/highPrecision.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -569,9 +569,7 @@ export class SelectionResourceManager {
                 const bounds = representation
                     ? active
                         ? representation.inputComponents === 2
-                            ? Array.from(interval).flatMap((value) =>
-                                  Array.from(packHighPrecisionU32(value))
-                              )
+                            ? Array.from(packHighPrecisionU32Array(interval))
                             : Array.from(interval)
                         : representation.inputComponents === 2
                           ? INACTIVE_PACKED_BOUNDS

@@ -179,7 +179,7 @@ const PLACEMENT_INDEX_CACHE = new WeakMap();
  * @param {number | (() => number)} [viewOpacity]
  * @param {object[]} [dataOverride]
  * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} [placementIndex]
- * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object, properties: Record<string, {value: any}>} | undefined}
+ * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object, properties: Record<string, {value: any, dynamic?: boolean}>} | undefined}
  */
 export function createWebGpuMarkConfig(
     mark,
@@ -554,6 +554,7 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
         "shadowColor",
         "hatch",
     ]);
+    const readShadowOpacity = createPropertyReader(mark, "shadowOpacity");
     return {
         count: data.length,
         channels: {
@@ -581,25 +582,18 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
                 viewOpacity
             ),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
-            cornerRadiusTopRight: staticOrLivePropertyValue(
+            cornerRadiusTopRight: cornerRadiusValue(
                 mark,
-                ["cornerRadius", "cornerRadiusTopRight"],
-                () => readCornerRadii(mark).topRight
+                "cornerRadiusTopRight"
             ),
-            cornerRadiusBottomRight: staticOrLivePropertyValue(
+            cornerRadiusBottomRight: cornerRadiusValue(
                 mark,
-                ["cornerRadius", "cornerRadiusBottomRight"],
-                () => readCornerRadii(mark).bottomRight
+                "cornerRadiusBottomRight"
             ),
-            cornerRadiusTopLeft: staticOrLivePropertyValue(
+            cornerRadiusTopLeft: cornerRadiusValue(mark, "cornerRadiusTopLeft"),
+            cornerRadiusBottomLeft: cornerRadiusValue(
                 mark,
-                ["cornerRadius", "cornerRadiusTopLeft"],
-                () => readCornerRadii(mark).topLeft
-            ),
-            cornerRadiusBottomLeft: staticOrLivePropertyValue(
-                mark,
-                ["cornerRadius", "cornerRadiusBottomLeft"],
-                () => readCornerRadii(mark).bottomLeft
+                "cornerRadiusBottomLeft"
             ),
             minWidth: numericPropertyValue(mark, "minWidth"),
             minHeight: numericPropertyValue(mark, "minHeight"),
@@ -611,8 +605,12 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
                 mark,
                 ["shadowOpacity"],
                 () =>
-                    readNumericProperty(mark, "shadowOpacity", 0) *
-                    viewOpacity(),
+                    readNumericProperty(
+                        mark,
+                        "shadowOpacity",
+                        0,
+                        readShadowOpacity
+                    ) * viewOpacity(),
                 undefined,
                 !staticViewOpacity
             ),
@@ -773,7 +771,7 @@ function createPointVisibilityConfig(mark, data) {
             },
         },
         scalarSlots: {
-            semanticThreshold: retainedValue(
+            semanticThreshold: liveValue(
                 () =>
                     /** @type {import("../../marks/point.js").default} */ (
                         mark
@@ -873,14 +871,9 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createTextConfig(mark, data, coords, viewOpacity) {
+    const viewport = [coords.x, coords.y, coords.x2, coords.y2];
     const retainedProperties = {
-        // The view rectangle can change while a retained mark is reused.
-        viewport: retainedValue(() => [
-            coords.x,
-            coords.y,
-            coords.x2,
-            coords.y2,
-        ]),
+        viewport: { value: viewport },
         ...createDynamicNumericVectorProperty(
             mark,
             "viewportEdgeFadeWidth",
@@ -970,7 +963,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         fontStyle: readProperty(mark, "fontStyle"),
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
-        viewport: [coords.x, coords.y, coords.x2, coords.y2],
+        viewport,
         viewportEdgeFadeWidth: readNumericPropertyVector(
             mark,
             TEXT_EDGE_FADE_WIDTH_PROPERTIES,
@@ -1000,7 +993,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
  */
 function createLinkConfig(mark, data, coords, viewOpacity) {
     const retainedProperties = createDynamicProperties(mark, {
-        arcFadingDistance: (value) => (value ? value.slice() : [0, 0]),
+        arcFadingDistance: (value) => value || [0, 0],
         noFadingOnSecondPass: (value) => !!value,
         arcHeightFactor: (value) => value,
         minArcHeight: (value) => value,
@@ -2024,24 +2017,16 @@ function createNumericScale(mark, channel, scale, range, domain) {
  * @param {(() => any)} [readRange]
  */
 function retainScaleLeaves(scale, readDomain, readRange) {
-    Object.defineProperties(scale, {
-        ...(readDomain
-            ? {
-                  domain: {
-                      enumerable: true,
-                      get: readDomain,
-                  },
-              }
-            : {}),
-        ...(readRange
-            ? {
-                  range: {
-                      enumerable: true,
-                      get: readRange,
-                  },
-              }
-            : {}),
-    });
+    if (readDomain)
+        Object.defineProperty(scale, "domain", {
+            enumerable: true,
+            get: readDomain,
+        });
+    if (readRange)
+        Object.defineProperty(scale, "range", {
+            enumerable: true,
+            get: readRange,
+        });
     return scale;
 }
 
@@ -2264,10 +2249,13 @@ function createIndexValue(mark, channel, read, large) {
     // Reuse the packing buffers when a parameter-backed datum changes.
     const source = [0];
     const packed = new Uint32Array(2);
+    const value = [0, 0];
     return liveValue(() => {
         source[0] = readIndexValue(mark, channel, read());
         packHighPrecisionU32ArrayInto(source, packed);
-        return [packed[0], packed[1]];
+        value[0] = packed[0];
+        value[1] = packed[1];
+        return value;
     }, "u32");
 }
 
@@ -2367,21 +2355,35 @@ function getCachedSeries(mark, channel, data, accessor, create) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string[]} properties
  * @param {number[]} fallbacks
+ * @param {number[]} [target]
+ * @param {(() => any)[]} [readers]
  * @returns {number[]}
  */
-function readNumericPropertyVector(mark, properties, fallbacks) {
-    return properties.map((property, index) =>
-        readNumericProperty(mark, property, fallbacks[index])
-    );
+function readNumericPropertyVector(
+    mark,
+    properties,
+    fallbacks,
+    target = fallbacks.slice(),
+    readers
+) {
+    for (let i = 0; i < properties.length; i++)
+        target[i] = readNumericProperty(
+            mark,
+            properties[i],
+            fallbacks[i],
+            readers?.[i]
+        );
+    return target;
 }
 
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
  * @param {number} [fallback]
+ * @param {() => any} [read]
  */
-function readNumericProperty(mark, property, fallback) {
-    const value = readProperty(mark, property) ?? fallback;
+function readNumericProperty(mark, property, fallback, read) {
+    const value = (read ? read() : readProperty(mark, property)) ?? fallback;
     if (typeof value != "number") {
         throw unsupported(
             mark,
@@ -2430,19 +2432,23 @@ function readDistancePair(mark, property) {
     return /** @type {[number, number]} */ (value);
 }
 
-/** @param {import("../../marks/mark.js").default} mark */
-function readCornerRadii(mark) {
-    const radius = readNumericProperty(mark, "cornerRadius");
-    return {
-        topRight: readNumericProperty(mark, "cornerRadiusTopRight", radius),
-        bottomRight: readNumericProperty(
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ */
+function cornerRadiusValue(mark, property) {
+    if (/** @type {Record<string, any>} */ (mark.properties)[property] == null)
+        return numericPropertyValue(mark, "cornerRadius");
+    const readRadius = createPropertyReader(mark, "cornerRadius");
+    const readCorner = createPropertyReader(mark, property);
+    return staticOrLivePropertyValue(mark, ["cornerRadius", property], () =>
+        readNumericProperty(
             mark,
-            "cornerRadiusBottomRight",
-            radius
-        ),
-        topLeft: readNumericProperty(mark, "cornerRadiusTopLeft", radius),
-        bottomLeft: readNumericProperty(mark, "cornerRadiusBottomLeft", radius),
-    };
+            property,
+            readNumericProperty(mark, "cornerRadius", undefined, readRadius),
+            readCorner
+        )
+    );
 }
 
 /**
@@ -2468,17 +2474,20 @@ function readProperty(mark, property) {
     const value = /** @type {Record<string, any>} */ (mark.properties)[
         property
     ];
-    return isExprRef(value) ? mark.evaluateRenderingExpression(value) : value;
+    return isExprRef(value) ? mark.getRenderingExpression(value)() : value;
 }
 
 /**
- * Exposes a retained numeric leaf without rebuilding its surrounding config.
- *
- * @param {() => number | number[]} read
- * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
+ * Captures the existing expression owner once, without another subscription.
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @returns {() => any}
  */
-function liveValue(read, type) {
-    return Object.assign(retainedValue(read, type), { dynamic: true });
+function createPropertyReader(mark, property) {
+    const value = /** @type {Record<string, any>} */ (mark.properties)[
+        property
+    ];
+    return isExprRef(value) ? mark.getRenderingExpression(value) : () => value;
 }
 
 /**
@@ -2487,9 +2496,13 @@ function liveValue(read, type) {
  * @param {number} [fallback]
  */
 function numericPropertyValue(mark, property, fallback) {
-    return staticOrLivePropertyValue(mark, [property], () =>
-        readNumericProperty(mark, property, fallback)
-    );
+    const value = /** @type {Record<string, any>} */ (mark.properties)[
+        property
+    ];
+    if (!isExprRef(value))
+        return { value: readNumericProperty(mark, property, fallback) };
+    const read = mark.getRenderingExpression(value);
+    return liveValue(() => readNumericProperty(mark, property, fallback, read));
 }
 
 /**
@@ -2529,11 +2542,12 @@ function staticOrLivePropertyValue(
  * @param {() => T} read
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
  */
-function retainedValue(read, type) {
+function liveValue(read, type) {
     return {
         get value() {
             return read();
         },
+        dynamic: true,
         ...(type ? { type } : {}),
     };
 }
@@ -2544,11 +2558,11 @@ function retainedValue(read, type) {
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {Record<string, (value: any) => any>} definitions
- * @returns {Record<string, {value: any}>}
+ * @returns {Record<string, {value: any, dynamic?: boolean}>}
  */
 function createDynamicProperties(mark, definitions) {
     mark.initializeRenderingRevisions(Object.keys(definitions));
-    /** @type {Record<string, {value: any}>} */
+    /** @type {Record<string, {value: any, dynamic?: boolean}>} */
     const properties = {};
     for (const [property, adjust] of Object.entries(definitions)) {
         const value = /** @type {Record<string, any>} */ (mark.properties)[
@@ -2557,9 +2571,8 @@ function createDynamicProperties(mark, definitions) {
         if (!isExprRef(value)) {
             continue;
         }
-        properties[property] = retainedValue(() =>
-            adjust(readProperty(mark, property))
-        );
+        const read = mark.getRenderingExpression(value);
+        properties[property] = liveValue(() => adjust(read()));
     }
     return properties;
 }
@@ -2583,9 +2596,19 @@ function createDynamicNumericVectorProperty(mark, name, properties, fallbacks) {
     if (expressionProperties.length == 0) {
         return {};
     }
+    const vector = fallbacks.slice();
+    const readers = properties.map((property) =>
+        createPropertyReader(mark, property)
+    );
     return {
-        [name]: retainedValue(() =>
-            readNumericPropertyVector(mark, properties, fallbacks)
+        [name]: liveValue(() =>
+            readNumericPropertyVector(
+                mark,
+                properties,
+                fallbacks,
+                vector,
+                readers
+            )
         ),
     };
 }

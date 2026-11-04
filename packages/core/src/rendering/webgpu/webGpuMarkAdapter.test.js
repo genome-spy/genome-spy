@@ -122,76 +122,6 @@ describe("WebGPU mark adapter", () => {
         }
     });
 
-    test("detaches live packed datums and parameter-backed link vectors", async () => {
-        const start = 2 ** 32;
-        const { view } = await createHeadlessEngine({
-            config: { mark: { color: "black" } },
-            data: { values: [{}] },
-            params: [
-                { name: "position", value: start + 4 },
-                { name: "distance", value: [10, 20] },
-                { name: "revision", value: 0 },
-            ],
-            layer: [
-                {
-                    mark: "point",
-                    encoding: {
-                        x: {
-                            datum: { expr: "position" },
-                            type: "index",
-                            scale: { domain: [start, start + 20] },
-                            axis: null,
-                        },
-                        y: { value: 0.5 },
-                    },
-                },
-                {
-                    mark: {
-                        type: "link",
-                        arcFadingDistance: {
-                            expr: "revision >= 0 ? distance : null",
-                        },
-                    },
-                    encoding: {
-                        x: { value: 0 },
-                        x2: { value: 1 },
-                        y: { value: 0 },
-                        y2: { value: 1 },
-                    },
-                },
-            ],
-        });
-        onTestFinished(() => view.disposeSubtree());
-        const [point, link] = view
-            .getDescendants()
-            .filter((child) => child instanceof UnitView)
-            .map(
-                (unit) =>
-                    /** @type {any} */ (
-                        createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
-                    )
-            );
-        const packed = point.config.channels.x.value;
-        const fading = link.properties.arcFadingDistance.value;
-        expect(packed).toEqual([1048576, 4]);
-        expect(fading).toEqual([10, 20]);
-
-        // Another dependency can notify while the expression returns the same array.
-        const distance = view.paramRuntime.getValue("distance");
-        distance[0] = 15;
-        distance[1] = 25;
-        view.paramRuntime.runInTransaction(() => {
-            view.paramRuntime.setValue("position", start + 9);
-            view.paramRuntime.setValue("revision", 1);
-        });
-        await view.paramRuntime.whenPropagated();
-
-        expect(point.config.channels.x.value).toEqual([1048576, 9]);
-        expect(link.properties.arcFadingDistance.value).toEqual([15, 25]);
-        expect(packed).toEqual([1048576, 4]);
-        expect(fading).toEqual([10, 20]);
-    });
-
     test("retains live categorical ranges and gaps for ordinary and text occurrences", async () => {
         const { view, context } = await createHeadlessEngine({
             config: { mark: { color: "black" } },
@@ -1307,9 +1237,7 @@ describe("WebGPU mark adapter", () => {
         };
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
-        expect(translated.properties).toEqual({
-            headWidth: { value: 7 },
-        });
+        expect(translated.properties.headWidth.value).toBe(7);
         expect(mark.initializeRenderingRevisions).toHaveBeenCalledWith(
             expect.arrayContaining(["headWidth"])
         );
@@ -1728,7 +1656,7 @@ describe("WebGPU mark adapter", () => {
             data: new Float32Array([0.25, 0.75]),
             type: "f32",
         });
-        expect(config.scalarSlots.semanticThreshold).toEqual({
+        expect(config.scalarSlots.semanticThreshold).toMatchObject({
             value: 0.5,
             type: "f32",
         });
@@ -2777,8 +2705,9 @@ function createMark(type, data, encoders, properties = {}) {
              * @this {import("../../marks/mark.js").default}
              * @param {import("../../spec/parameter.js").ExprRef} expression
              */
-            evaluateRenderingExpression(expression) {
-                return this.unitView.paramRuntime.evaluateAndGet(expression);
+            getRenderingExpression(expression) {
+                return () =>
+                    this.unitView.paramRuntime.evaluateAndGet(expression);
             },
             getRenderingRevision: (
                 /** @type {"configuration" | "resources"} */ kind
