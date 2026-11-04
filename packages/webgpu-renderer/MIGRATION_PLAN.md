@@ -77,8 +77,8 @@ BMFont measurement. Canonical msdfgen is maintained in a separate repository
 and downloaded only by explicit oracle tests, comparison scripts, and the
 Storybook comparison control.
 
-Text resolves original-glyph outside stroke bands and nominal fill once per label,
-then applies common foreground opacity. Outside widths are full logical pixels
+Text resolves original-glyph stroke bands and nominal fill once per label,
+then applies common foreground opacity. Inside/center/outside widths are full logical pixels
 with round offsets; shadows retain their existing separate label-major draws.
 A layout-time glyph lookup bounds fragment work without per-label textures or
 passes. Text program keys distinguish shadows only and never inspect label data

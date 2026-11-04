@@ -118,6 +118,7 @@ export const TextEffects = withSource(
         opacity: 1,
         stroke: "#14213d",
         strokeWidth: 4,
+        strokeAlign: 2,
         strokeOpacity: 1,
         shadowColor: "#2457ff",
         shadowOpacity: 0.55,
@@ -135,6 +136,7 @@ export const TextEffects = withSource(
             opacity: 1,
             stroke: "#14213d",
             strokeWidth: 4,
+            strokeAlign: 2,
             strokeOpacity: 1,
             shadowColor: "#2457ff",
             shadowOpacity: 0.55,
@@ -156,6 +158,13 @@ export const TextEffects = withSource(
             stroke: { control: "color" },
             strokeWidth: {
                 control: { type: "range", min: 0, max: 24, step: 0.5 },
+            },
+            strokeAlign: {
+                control: {
+                    type: "select",
+                    labels: { 0: "Inside", 1: "Center", 2: "Outside" },
+                },
+                options: [0, 1, 2],
             },
             strokeOpacity: {
                 control: { type: "range", min: 0, max: 1, step: 0.01 },

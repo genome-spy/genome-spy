@@ -944,8 +944,10 @@ export type TextChannelName =
     /** Common foreground opacity, applied once after label fill/stroke composition. */
     | "opacity"
     | "strokeOpacity"
-    /** Full outside border width in logical pixels, with round contour offsets. */
+    /** Full border width in logical pixels, with round contour offsets. */
     | "strokeWidth"
+    /** Alignment: 0 inside, 1 center, 2 outside (default). */
+    | "strokeAlign"
     | "shadowColor"
     | "shadowOpacity"
     | "shadowOffsetX"
