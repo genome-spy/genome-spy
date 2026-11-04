@@ -1,12 +1,20 @@
 uniform sampler2D uTexture;
 
 in vec2 vTexCoord;
-in float vEdgeFadeOpacity;
+in vec2 vUnitPos;
 flat in vec4 vColor;
 flat in float vSlope;
 flat in float vGamma;
 
 out lowp vec4 fragColor;
+
+float minValue(vec4 v) {
+    return min(min(v.x, v.y), min(v.z, v.w));
+}
+
+float maxValue(vec4 v) {
+    return max(max(v.x, v.y), max(v.z, v.w));
+}
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
@@ -55,7 +63,13 @@ void main() {
     }
 
     float opa = clamp((sigDist - 0.5) * slope + 0.5, 0.0, 1.0);
-    opa *= clamp(vEdgeFadeOpacity, 0.0, 1.0);
+    // Evaluate opposing viewport fades per fragment so central ink stays visible.
+    if (maxValue(uViewportEdgeFadeDistance) > -1e10) {
+        float fade = minValue(
+            ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * vUnitPos.yxyx) *
+                uViewportSize.yxyx - uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);
+        opa *= clamp(fade, 0.0, 1.0);
+    }
 
     opa = pow(opa, vGamma);
 
