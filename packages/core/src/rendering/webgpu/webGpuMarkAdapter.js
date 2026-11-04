@@ -932,7 +932,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
                 value: mapProperty(mark, "baseline", BASELINE_CODES),
                 type: "u32",
             },
-            fill: createColorChannel(mark, "color", data),
+            fill: createColorChannel(mark, "fill", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
         font: outlineFont,

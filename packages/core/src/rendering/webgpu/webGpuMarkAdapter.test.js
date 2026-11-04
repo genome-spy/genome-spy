@@ -436,7 +436,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createEncoder((datum) => datum.offset),
                 yOffset: createConstantEncoder(9),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {
@@ -496,7 +496,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {
@@ -545,7 +545,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {
@@ -603,7 +603,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {
@@ -651,7 +651,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {
@@ -694,7 +694,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {
@@ -1954,7 +1954,7 @@ describe("WebGPU mark adapter", () => {
                 angle: createConstantEncoder(0),
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
-                color: createConstantEncoder("black"),
+                fill: createConstantEncoder("black"),
                 opacity: createConstantEncoder(1),
             },
             {

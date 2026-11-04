@@ -235,7 +235,7 @@ void main(void) {
     // Controls antialiasing of the SDF
     vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator * uDevicePixelRatio);
 
-    vec4 color = getScaled_color();
+    vec4 color = getScaled_fill();
 
     // Premultiply alpha
     vColor = premultiplyColor(color, opacity);

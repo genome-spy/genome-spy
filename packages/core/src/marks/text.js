@@ -1,5 +1,9 @@
 import Mark from "./mark.js";
-import { fixCoveragePositional, fixHalfOpenRangedText } from "./markUtils.js";
+import {
+    applyColorToPaintChannel,
+    fixCoveragePositional,
+    fixHalfOpenRangedText,
+} from "./markUtils.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 import { requestFont } from "../fonts/textMetrics.js";
 import { resolveInitOnlyExprRef } from "../paramRuntime/paramUtils.js";
@@ -44,6 +48,7 @@ export default class TextMark extends Mark {
             "x2Offset",
             "y2Offset",
             "size",
+            "fill",
             "text",
             "angle",
         ];
@@ -54,6 +59,11 @@ export default class TextMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
+        if (!encoding.fill) {
+            applyColorToPaintChannel(encoding, "fill");
+        }
+        delete encoding.color;
+
         for (const channel of primaryPositionalChannels) {
             if (this.#fitToBand) {
                 fixCoveragePositional(encoding, channel);
