@@ -3,9 +3,7 @@ import {
     countPerformance,
     measurePerformance,
 } from "@genome-spy/core/debug/performanceProfiler.js";
-import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
-import { mapToPixelCoords } from "@genome-spy/core/view/layout/flexLayout.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import smoothstep from "@genome-spy/core/utils/smoothstep.js";
 import transition, {
@@ -13,6 +11,10 @@ import transition, {
 } from "@genome-spy/core/utils/transition.js";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import { getFlattenedGroupHierarchy } from "./state/sampleSlice.js";
+
+/** @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize */
+/** @typedef {{step: number, inset: number, gap: number, origin: number, summary: number}} RowGeometry */
+/** @typedef {{start: number, end: number, firstLeaf: number, lastLeaf: number, locSize: LocSize}} SampleInterval */
 
 const DEFAULT_SAMPLE_HEIGHT = 35;
 const DEFAULT_GROUP_SPACING = 5;
@@ -23,10 +25,6 @@ const DEFAULT_SAMPLE_SPACING_FACTOR = 0.2;
 const EMPTY_SAMPLE_IDS = [];
 
 export class LocationManager {
-    /**
-     * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
-     */
-
     /**
      * 0: Bird's eye view, 1: Closeup view, (0, 1): Transitioning between the two
      */
@@ -58,15 +56,19 @@ export class LocationManager {
     /** @type {Float32Array} */
     #placementRectangles = new Float32Array();
 
-    #facetCount = 0;
     /** @type {import("./sampleViewTypes.js").Locations} */
     #locations = undefined;
 
-    /** @type {{fitted: import("./sampleViewTypes.js").Locations, scrollable: import("./sampleViewTypes.js").Locations}} */
-    #baseLocations = undefined;
+    /** @type {ReturnType<typeof createSampleTopology>} */
+    #topology;
 
-    /** @type {import("./sampleViewTypes.js").Locations} */
-    #scrollableLocations;
+    #fittedStep = 0;
+
+    #closeupStep = 0;
+
+    #rowGeometry = { step: 0, inset: 0, gap: 0, origin: 0, summary: 0 };
+
+    #geometryRevision = 0;
 
     /** @type {import("./sampleViewTypes.js").LocationContext} */
     #locationContext;
@@ -125,8 +127,6 @@ export class LocationManager {
         // Layout inputs changed; force a structural rebuild on the next access.
         this.#structuralDirty = true;
         this.#locations = undefined;
-        this.#baseLocations = undefined;
-        this.#scrollableLocations = undefined;
         this.#baseLayoutVersion += 1;
         this.#dynamicInputs.baseVersion = -1;
     }
@@ -138,6 +138,17 @@ export class LocationManager {
 
     getPeekState() {
         return this.#peekState;
+    }
+
+    /** Padded fitted row height, independent of peek animation and scrolling. */
+    getOverviewSampleHeight() {
+        if (!this.#ensureBaseLayout()) return 0;
+        const factor =
+            this.#locationContext.sampleLayout?.sampleSpacingFactor ??
+            DEFAULT_SAMPLE_SPACING_FACTOR;
+        return (
+            this.#fittedStep - 2 * getSampleRowInset(this.#fittedStep, factor)
+        );
     }
 
     getScrollOffset() {
@@ -153,6 +164,7 @@ export class LocationManager {
             this.#scrollableHeight - this.#locationContext.getHeight()
         );
         this.#scrollOffset = clamp(value, 0, maxScrollOffset);
+        this.#ensureDynamicLocations();
     }
 
     getScrollableHeight() {
@@ -214,14 +226,6 @@ export class LocationManager {
         );
     }
 
-    #callOnLocationUpdate() {
-        const sampleHeight = this.#locations.samples[0]?.locSize.size ?? 0;
-        this.#locationContext.onLocationUpdate({
-            // TODO: Refactor to make acquiring sampleHeight easier
-            sampleHeight,
-        });
-    }
-
     /**
      * @param {boolean} [open] open if true, close if false, toggle if undefined
      * @param {number} [mouseY] Mouse position in pixels
@@ -270,23 +274,29 @@ export class LocationManager {
         if (this.#peekState == 0) {
             let target;
             if (sampleId) {
-                /** @param {LocSize} locSize */
-                const getCentroid = (locSize) =>
-                    locSize.location + locSize.size / 2;
-
-                target = getCentroid(
-                    this.#scrollableLocations.samples.find(
-                        (sampleLocation) => sampleLocation.key == sampleId
-                    ).locSize
-                );
+                const index = this.#topology.sampleIds.indexOf(sampleId);
+                const leaf = this.#topology.sampleLeaves[index];
+                target =
+                    this.#layoutInputs.summaryHeight +
+                    (index + 0.5) * this.#closeupStep +
+                    leaf *
+                        (this.#layoutInputs.summaryHeight +
+                            (this.#locationContext.sampleLayout
+                                ?.peekGroupSpacing ??
+                                DEFAULT_PEEK_GROUP_SPACING));
             } else {
                 // Match sample summaries
                 const groupInfo = this.getSummaryAt(mouseY);
                 if (groupInfo) {
                     // TODO: Simplify now that target is available in groupLocations
+                    const interval = this.#topology.leaves[groupInfo.index];
                     target =
-                        this.#scrollableLocations.summaries[groupInfo.index]
-                            .locSize.location -
+                        interval.start * this.#closeupStep +
+                        groupInfo.index *
+                            (this.#layoutInputs.summaryHeight +
+                                (this.#locationContext.sampleLayout
+                                    ?.peekGroupSpacing ??
+                                    DEFAULT_PEEK_GROUP_SPACING)) -
                         (groupInfo.location.locSize.location - mouseY);
                 }
             }
@@ -389,7 +399,6 @@ export class LocationManager {
         const sampleIds = sampleData?.ids ?? EMPTY_SAMPLE_IDS;
 
         const sampleCount = sampleIds.length;
-        this.#facetCount = sampleCount;
         const requiredLength = sampleCount * 4;
         // Sample state is immutable: a new ids array is the topology revision
         // signal. Do not compare every member during geometry-only updates.
@@ -487,29 +496,6 @@ export class LocationManager {
     }
 
     /**
-     * Returns the same normalized sample position that is uploaded into the
-     * facet texture, without requiring a WebGL operation.
-     *
-     * @param {number} index
-     * @returns {LocSize | undefined}
-     */
-    getSampleFacetPosition(index) {
-        this.#updatePlacementGeometry();
-        if (
-            !Number.isInteger(index) ||
-            index < 0 ||
-            index >= this.#facetCount
-        ) {
-            return undefined;
-        }
-
-        return {
-            location: this.#placementRectangles[index * 4 + 1],
-            size: this.#placementRectangles[index * 4 + 3],
-        };
-    }
-
-    /**
      * @param {number} pos
      */
     getSummaryAt(pos) {
@@ -539,406 +525,285 @@ export class LocationManager {
         return coords;
     }
 
+    /** Requested row camera for Core's viewport and repeated plot placement. */
+    getBandLayout() {
+        if (!this.#ensureDynamicLocations()) return undefined;
+        const { step, inset, gap, origin, summary } = this.#rowGeometry;
+        return {
+            sampleIds: this.#topology.sampleIds,
+            cuts: this.#topology.cuts,
+            gap,
+            inset,
+            step,
+            summaryHeight: summary,
+            origin,
+            revision: this.#geometryRevision,
+        };
+    }
+
+    /** @param {import("./state/sampleState.js").Group} group */
+    getGroupSampleBounds(group) {
+        this.#ensureDynamicLocations();
+        const interval = this.#topology.groupBounds.get(group);
+        return {
+            startRank: interval.start,
+            endRank: interval.end,
+            firstLeaf: interval.firstLeaf,
+            lastLeaf: interval.lastLeaf,
+        };
+    }
+
+    /** Half-open display-rank interval, retaining exact viewport-edge contact. */
+    getVisibleSampleRange() {
+        if (!this.#ensureDynamicLocations() || this.#rowGeometry.step === 0)
+            return [0, 0];
+        const samples = this.#locations.samples;
+        let lo = 0;
+        let hi = samples.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >>> 1;
+            const row = samples[mid].locSize;
+            if (row.location + row.size < 0) lo = mid + 1;
+            else hi = mid;
+        }
+        const first = lo;
+        hi = samples.length;
+        const height = this.#layoutInputs.height;
+        while (lo < hi) {
+            const mid = (lo + hi) >>> 1;
+            if (samples[mid].locSize.location <= height) lo = mid + 1;
+            else hi = mid;
+        }
+        return [first, lo];
+    }
+
     #ensureBaseLayout() {
         const height = this.#locationContext.getHeight();
-        if (!height) {
-            return false;
-        }
+        if (!(height > 0)) return false;
 
         const sampleHierarchy = this.#locationContext.getSampleHierarchy();
         const summaryHeight = this.#locationContext.getSummaryHeight();
-
-        if (!this.#structuralDirty) {
-            if (
-                this.#layoutInputs.height === height &&
-                this.#layoutInputs.summaryHeight === summaryHeight &&
-                this.#layoutInputs.sampleHierarchy === sampleHierarchy
-            ) {
-                return true;
-            }
-        }
-
-        const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
-
-        // Locations squeezed into the viewport height.
-        const sampleLayout = this.#locationContext.sampleLayout ?? {};
-        const fittedLocations = calculateLocations(flattened, {
-            viewHeight: height,
-            groupSpacing: sampleLayout.groupSpacing ?? DEFAULT_GROUP_SPACING,
-            sampleSpacingFactor:
-                sampleLayout.sampleSpacingFactor ??
-                DEFAULT_SAMPLE_SPACING_FACTOR,
-            summaryHeight,
-        });
-
-        // Scrollable locations that are shown when "peek" activates.
-        const scrollableLocations = calculateLocations(flattened, {
-            sampleHeight: sampleLayout.sampleHeight ?? DEFAULT_SAMPLE_HEIGHT,
-            groupSpacing:
-                sampleLayout.peekGroupSpacing ?? DEFAULT_PEEK_GROUP_SPACING,
-            sampleSpacingFactor:
-                sampleLayout.sampleSpacingFactor ??
-                DEFAULT_SAMPLE_SPACING_FACTOR,
-            summaryHeight,
-        });
-
-        this.#baseLocations = {
-            fitted: fittedLocations,
-            scrollable: scrollableLocations,
-        };
-
-        /** Store for scroll offset calculation when peek fires */
-        this.#scrollableLocations = scrollableLocations;
-
-        // TODO: Use groups to calculate
-        this.#scrollableHeight = scrollableLocations.summaries
-            .map((d) => d.locSize.location + d.locSize.size)
-            .reduce((a, b) => Math.max(a, b), 0);
-
-        this.setScrollOffset(this.#scrollOffset);
-
-        this.#layoutInputs = {
-            height,
-            summaryHeight,
-            sampleHierarchy,
-        };
-        this.#structuralDirty = false;
-        this.#locations = undefined;
-        this.#baseLayoutVersion += 1;
-
-        return true;
-    }
-
-    // Builds and updates interpolated locations from the cached base layouts.
-    #ensureDynamicLocations() {
-        if (!this.#ensureBaseLayout()) {
-            return false;
-        }
-
-        if (!this.#locations) {
-            this.#locations = createInterpolatedLocations(
-                this.#baseLocations.fitted
-            );
-            this.#dynamicInputs.baseVersion = -1;
-        }
-
-        const peekState = this.#peekState;
-        const scrollOffset = this.#scrollOffset;
-        const baseVersion = this.#baseLayoutVersion;
-
-        const baseUpdated = this.#dynamicInputs.baseVersion !== baseVersion;
-        const peekChanged = this.#dynamicInputs.peekState !== peekState;
-        const scrollChanged = this.#dynamicInputs.scrollOffset !== scrollOffset;
-
-        if (!baseUpdated && !peekChanged && !scrollChanged) {
+        if (
+            !this.#structuralDirty &&
+            this.#layoutInputs.height === height &&
+            this.#layoutInputs.summaryHeight === summaryHeight &&
+            this.#layoutInputs.sampleHierarchy === sampleHierarchy
+        )
             return true;
-        }
 
-        updateInterpolatedLocations(
-            this.#locations,
-            this.#baseLocations,
-            peekState,
-            -scrollOffset
+        if (
+            this.#structuralDirty ||
+            this.#layoutInputs.sampleHierarchy?.rootGroup !==
+                sampleHierarchy.rootGroup
+        ) {
+            this.#topology = createSampleTopology(
+                getFlattenedGroupHierarchy(sampleHierarchy),
+                this.#rowGeometry
+            );
+        }
+        this.#locations = this.#topology.locations;
+
+        const layout = this.#locationContext.sampleLayout ?? {};
+        const count = this.#topology.sampleIds.length;
+        const leaves = this.#topology.leaves.length;
+        const spacing = layout.groupSpacing ?? DEFAULT_GROUP_SPACING;
+        const peekSpacing =
+            layout.peekGroupSpacing ?? DEFAULT_PEEK_GROUP_SPACING;
+        this.#fittedStep = count
+            ? Math.max(
+                  0,
+                  height -
+                      leaves * summaryHeight -
+                      Math.max(0, leaves - 1) * spacing
+              ) / count
+            : 0;
+        this.#closeupStep = layout.sampleHeight ?? DEFAULT_SAMPLE_HEIGHT;
+        this.#scrollableHeight =
+            count * this.#closeupStep +
+            leaves * summaryHeight +
+            Math.max(0, leaves - 1) * peekSpacing;
+        this.#scrollOffset = clamp(
+            this.#scrollOffset,
+            0,
+            Math.max(0, this.#scrollableHeight - height)
         );
-        this.#dynamicInputs.peekState = peekState;
-        this.#dynamicInputs.scrollOffset = scrollOffset;
-        this.#dynamicInputs.baseVersion = baseVersion;
 
-        // Sample height can change when the base layout or peek state changes.
-        if (baseUpdated || peekChanged) {
-            this.#callOnLocationUpdate();
-        }
+        this.#layoutInputs = { height, summaryHeight, sampleHierarchy };
+        this.#structuralDirty = false;
+        this.#baseLayoutVersion += 1;
+        return true;
+    }
 
+    #ensureDynamicLocations() {
+        if (!this.#ensureBaseLayout()) return false;
+        const ratio = this.#peekState;
+        const baseUpdated =
+            this.#dynamicInputs.baseVersion !== this.#baseLayoutVersion;
+        if (
+            !baseUpdated &&
+            this.#dynamicInputs.peekState === ratio &&
+            this.#dynamicInputs.scrollOffset === this.#scrollOffset
+        )
+            return true;
+
+        const layout = this.#locationContext.sampleLayout ?? {};
+        const summary = this.#layoutInputs.summaryHeight;
+        const factor =
+            layout.sampleSpacingFactor ?? DEFAULT_SAMPLE_SPACING_FACTOR;
+        const geometry = this.#rowGeometry;
+        geometry.step =
+            this.#fittedStep * (1 - ratio) + this.#closeupStep * ratio;
+        geometry.inset =
+            getSampleRowInset(this.#fittedStep, factor) * (1 - ratio) +
+            getSampleRowInset(this.#closeupStep, factor) * ratio;
+        geometry.gap =
+            summary +
+            (layout.groupSpacing ?? DEFAULT_GROUP_SPACING) * (1 - ratio) +
+            (layout.peekGroupSpacing ?? DEFAULT_PEEK_GROUP_SPACING) * ratio;
+        geometry.origin = summary - ratio * this.#scrollOffset;
+        geometry.summary = summary;
+
+        this.#dynamicInputs = {
+            peekState: ratio,
+            scrollOffset: this.#scrollOffset,
+            baseVersion: this.#baseLayoutVersion,
+        };
+        this.#geometryRevision += 1;
+        this.#locationContext.onLocationUpdate({
+            sampleHeight: geometry.step - 2 * geometry.inset,
+        });
         return true;
     }
 }
 
+/** @param {number} step @param {number} spacingFactor */
+function getSampleRowInset(step, spacingFactor) {
+    return step * spacingFactor * 0.5 * smoothstep(15, 22, step);
+}
+
 /**
- * Creates mutable locations with fitted positions as a baseline for interpolation.
- *
- * @param {import("./sampleViewTypes.js").Locations} fittedLocations
- * @returns {import("./sampleViewTypes.js").Locations}
+ * Build identity and group intervals once; all frame geometry is derived from
+ * these display ranks, never from two independently cached layouts.
+ * @param {import("./state/sampleState.js").Group[][]} paths
+ * @param {RowGeometry} geometry
  */
-function createInterpolatedLocations(fittedLocations) {
+function createSampleTopology(paths, geometry) {
     /** @type {import("./sampleViewTypes.js").Locations} */
-    const locations = {
-        samples: [],
-        summaries: [],
-        groups: [],
-    };
-
-    for (const fittedLocation of fittedLocations.samples) {
-        locations.samples.push({
-            key: fittedLocation.key,
-            locSize: {
-                location: fittedLocation.locSize.location,
-                size: fittedLocation.locSize.size,
-            },
-        });
-    }
-
-    for (const fittedLocation of fittedLocations.summaries) {
-        locations.summaries.push({
-            key: fittedLocation.key,
-            locSize: {
-                location: fittedLocation.locSize.location,
-                size: fittedLocation.locSize.size,
-            },
-        });
-    }
-
-    for (const fittedLocation of fittedLocations.groups) {
-        locations.groups.push({
-            key: fittedLocation.key,
-            locSize: {
-                location: fittedLocation.locSize.location,
-                size: fittedLocation.locSize.size,
-            },
-        });
-    }
-
-    return locations;
-}
-
-/**
- * Updates locations in place. Kept stateless for easier testing.
- *
- * @param {import("./sampleViewTypes.js").Locations} target
- * @param {{fitted: import("./sampleViewTypes.js").Locations, scrollable: import("./sampleViewTypes.js").Locations}} base
- * @param {number} ratio
- * @param {number} offset
- */
-function updateInterpolatedLocations(target, base, ratio, offset) {
-    const { fitted, scrollable } = base;
-
-    interpolateLocations(
-        target.samples,
-        fitted.samples,
-        scrollable.samples,
-        ratio,
-        offset
-    );
-    interpolateLocations(
-        target.summaries,
-        fitted.summaries,
-        scrollable.summaries,
-        ratio,
-        offset
-    );
-    interpolateLocations(
-        target.groups,
-        fitted.groups,
-        scrollable.groups,
-        ratio,
-        offset
-    );
-}
-
-/**
- * Writes interpolated locations into the existing target array to avoid
- * per-frame allocations.
- *
- * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} target
- * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} fitted
- * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} scrollable
- * @param {number} ratio
- * @param {number} offset
- */
-function interpolateLocations(target, fitted, scrollable, ratio, offset) {
-    if (ratio === 0) {
-        for (let i = 0; i < target.length; i++) {
-            const targetLoc = target[i].locSize;
-            const fromLoc = fitted[i].locSize;
-            targetLoc.location = fromLoc.location;
-            targetLoc.size = fromLoc.size;
+    const locations = { samples: [], summaries: [], groups: [] };
+    /** @type {string[]} */
+    const sampleIds = [];
+    /** @type {number[]} */
+    const sampleLeaves = [];
+    /** @type {string[]} */
+    const cuts = [];
+    /** @type {SampleInterval[]} */
+    const leaves = [];
+    /** @type {Map<import("./state/sampleState.js").Group, SampleInterval & { group: import("./state/sampleState.js").Group, depth: number }>} */
+    const groups = new Map();
+    for (const path of paths) {
+        const samples =
+            /** @type {import("./state/sampleState.js").SampleGroup} */ (
+                path.at(-1)
+            ).samples;
+        if (!samples.length) continue;
+        const firstLeaf = leaves.length;
+        const start = sampleIds.length;
+        const end = start + samples.length;
+        if (firstLeaf) cuts.push(samples[0]);
+        const leaf = createSampleInterval(start, end, firstLeaf, geometry);
+        leaves.push(leaf);
+        locations.summaries.push({ key: path, locSize: leaf.locSize });
+        for (const id of samples) {
+            const rank = sampleIds.length;
+            sampleIds.push(id);
+            sampleLeaves.push(firstLeaf);
+            locations.samples.push({
+                key: id,
+                // Retained rectangles read this completed scalar frame directly.
+                locSize: {
+                    get location() {
+                        return (
+                            geometry.origin +
+                            rank * geometry.step +
+                            firstLeaf * geometry.gap +
+                            geometry.inset
+                        );
+                    },
+                    get size() {
+                        return geometry.step - 2 * geometry.inset;
+                    },
+                },
+            });
         }
-        return;
-    }
-
-    if (ratio === 1) {
-        for (let i = 0; i < target.length; i++) {
-            const targetLoc = target[i].locSize;
-            const toLoc = scrollable[i].locSize;
-            targetLoc.location = toLoc.location + offset;
-            targetLoc.size = toLoc.size;
-        }
-        return;
-    }
-
-    const inverse = 1 - ratio;
-
-    for (let i = 0; i < target.length; i++) {
-        const targetLoc = target[i].locSize;
-        const fromLoc = fitted[i].locSize;
-        const toLoc = scrollable[i].locSize;
-        targetLoc.location =
-            ratio * (toLoc.location + offset) + inverse * fromLoc.location;
-        targetLoc.size = ratio * toLoc.size + inverse * fromLoc.size;
-    }
-}
-
-/**
- * Calculates locations for samples and groups.
- *
- * @param {Group[][]} flattenedGroupHierarchy Flattened sample groups
- * @param {object} object All measures are in pixels
- * @param {number} [object.viewHeight] Height reserved for all the samples
- * @param {number} [object.sampleHeight] Height of single sample
- * @param {number} [object.groupSpacing] Space between groups
- * @param {number} [object.sampleSpacingFactor] Fraction of sample height used as spacing between rendered samples
- * @param {number} [object.summaryHeight] Height of group summaries
- *
- */
-export function calculateLocations(
-    flattenedGroupHierarchy,
-    {
-        viewHeight = 0,
-        sampleHeight = 0,
-        groupSpacing = 5,
-        sampleSpacingFactor = DEFAULT_SAMPLE_SPACING_FACTOR,
-        summaryHeight = 0,
-    }
-) {
-    /**
-     * @typedef {import("./state/sampleState.js").Group} Group
-     * @typedef {import("./sampleViewTypes.js").GroupLocation} GroupLocation
-     * @typedef {import("./sampleViewTypes.js").SampleLocation} SampleLocation
-     * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
-     */
-
-    if (!viewHeight && !sampleHeight) {
-        throw new Error("viewHeight or sampleHeight must be provided!");
-    }
-
-    /** @param {Group[]} path */
-    const getSampleGroup = (path) =>
-        /** @type {import("./state/sampleSlice.js").SampleGroup} */ (
-            peek(path)
-        );
-
-    const sampleGroupEntries = flattenedGroupHierarchy
-        .map((path) => ({
-            path,
-            sampleGroup: getSampleGroup(path),
-            samples: getSampleGroup(path).samples,
-        }))
-        // Skip empty groups
-        .filter((entry) => entry.samples.length);
-
-    /** @type {function(string[]):import("@genome-spy/core/view/layout/flexLayout.js").SizeDef} */
-    const sizeDefGenerator = sampleHeight
-        ? (group) => ({
-              px: group.length * sampleHeight + summaryHeight,
-              grow: 0,
-          })
-        : (group) => ({ px: summaryHeight, grow: group.length });
-
-    /** @type {GroupLocation[]}} */
-    const groupLocations = [];
-
-    mapToPixelCoords(
-        sampleGroupEntries.map((entry) => sizeDefGenerator(entry.samples)),
-        viewHeight,
-        { spacing: groupSpacing }
-    ).forEach((location, i) => {
-        groupLocations.push({
-            key: sampleGroupEntries[i].path,
-            locSize: location,
-        });
-    });
-
-    /** @type {SampleLocation[]} */
-    const sampleLocations = [];
-
-    for (const [gi, entry] of sampleGroupEntries.entries()) {
-        const sizeDef = { grow: 1 };
-        const samples = entry.samples;
-        mapToPixelCoords(
-            samples.map((d) => sizeDef),
-            Math.max(0, groupLocations[gi].locSize.size - summaryHeight),
-            {
-                offset: groupLocations[gi].locSize.location + summaryHeight,
+        path.forEach((group, depth) => {
+            let interval = groups.get(group);
+            if (!interval) {
+                interval = Object.assign(
+                    createSampleInterval(start, end, firstLeaf, geometry),
+                    { group, depth }
+                );
+                groups.set(group, interval);
             }
-        ).forEach((locSize, i) => {
-            const { size, location } = locSize;
-
-            const padding =
-                size * sampleSpacingFactor * 0.5 * smoothstep(15, 22, size);
-
-            locSize.location = location + padding;
-            locSize.size = size - 2 * padding;
-
-            sampleLocations.push({
-                key: samples[i],
-                locSize: locSize,
+            interval.end = end;
+            interval.lastLeaf = firstLeaf;
+        });
+    }
+    Array.from(groups.values())
+        .sort((a, b) => a.depth - b.depth)
+        .forEach((interval, index) => {
+            locations.groups.push({
+                key: {
+                    index,
+                    group: interval.group,
+                    depth: interval.depth,
+                    n: interval.end - interval.start,
+                },
+                locSize: interval.locSize,
             });
         });
-    }
-
-    function* extract() {
-        /** @type {{group: Group, locSize: LocSize, depth: number, n: number}[]} */
-        const stack = [];
-        for (const entry of groupLocations) {
-            const path = entry.key;
-            const last =
-                /** @type {import("./state/sampleSlice.js").SampleGroup} */ (
-                    peek(path)
-                );
-
-            while (
-                stack.length <= path.length &&
-                stack.length &&
-                path[stack.length - 1] != stack[stack.length - 1].group
-            ) {
-                yield stack.pop();
-            }
-
-            for (let i = 0; i < stack.length; i++) {
-                const stackItem = stack[i];
-                stackItem.locSize.size =
-                    entry.locSize.location -
-                    stackItem.locSize.location +
-                    entry.locSize.size;
-            }
-
-            for (let i = stack.length; i < path.length; i++) {
-                stack.push({
-                    group: path[i],
-                    locSize: { ...entry.locSize },
-                    depth: stack.length,
-                    n: 0,
-                });
-            }
-
-            for (const group of stack) {
-                group.n += last.samples.length;
-            }
-        }
-
-        while (stack.length) {
-            yield stack.pop();
-        }
-    }
-
-    /** @type {import("./sampleViewTypes.js").HierarchicalGroupLocation[]} */
-    const groups = [...extract()]
-        .sort((a, b) => a.depth - b.depth)
-        .map((entry, index) => ({
-            key: {
-                index,
-                group: entry.group,
-                depth: entry.depth,
-                n: entry.n,
-                attributeLabel: /** @type {string} */ (undefined),
-            },
-            locSize: entry.locSize,
-        }));
-
     return {
-        samples: sampleLocations,
-        summaries: groupLocations,
-        groups,
+        locations,
+        sampleIds,
+        sampleLeaves,
+        cuts,
+        leaves,
+        groupBounds: groups,
     };
+}
+
+/**
+ * @param {number} start
+ * @param {number} end
+ * @param {number} firstLeaf
+ * @param {RowGeometry} geometry
+ * @returns {SampleInterval}
+ */
+function createSampleInterval(start, end, firstLeaf, geometry) {
+    /** @type {SampleInterval} */
+    const interval = {
+        start,
+        end,
+        firstLeaf,
+        lastLeaf: firstLeaf,
+        locSize: {
+            get location() {
+                return (
+                    geometry.origin +
+                    interval.start * geometry.step +
+                    interval.firstLeaf * geometry.gap -
+                    geometry.summary
+                );
+            },
+            get size() {
+                return (
+                    (interval.end - interval.start) * geometry.step +
+                    (interval.lastLeaf - interval.firstLeaf) * geometry.gap +
+                    geometry.summary
+                );
+            },
+        },
+    };
+    return interval;
 }
 
 /**
@@ -947,8 +812,9 @@ export function calculateLocations(
  * @param {import("./sampleViewTypes.js").SampleLocation[]} [sampleLocations]
  */
 export function getSampleLocationAt(pos, sampleLocations) {
-    // TODO: Matching should be done without paddings
-    return sampleLocations.find((sl) => locSizeEncloses(sl.locSize, pos));
+    const index = sampleRankAt(pos, sampleLocations);
+    const sample = sampleLocations[index];
+    return sample && locSizeEncloses(sample.locSize, pos) ? sample : undefined;
 }
 
 /**
@@ -959,31 +825,45 @@ export function getSampleLocationAt(pos, sampleLocations) {
  *
  * @param {number} pos Coordinate on unit scale
  * @param {import("./sampleViewTypes.js").SampleLocation[]} [sampleLocations]
+ * @param {number} [epsilon] Prefer the upper row for distances within this tolerance.
  */
-export function getClosestSampleLocationAt(pos, sampleLocations) {
+export function getClosestSampleLocationAt(pos, sampleLocations, epsilon = 0) {
     if (!sampleLocations?.length || !Number.isFinite(pos)) {
         return undefined;
     }
 
-    const exactMatch = getSampleLocationAt(pos, sampleLocations);
-    if (exactMatch) {
-        return exactMatch;
+    const rank = sampleRankAt(pos - epsilon, sampleLocations);
+    const upper = sampleLocations[Math.max(0, rank)];
+    const lower =
+        sampleLocations[Math.min(sampleLocations.length - 1, rank + 1)];
+    const closest =
+        distanceToLocSize(pos, upper.locSize) <=
+        distanceToLocSize(pos, lower.locSize) + epsilon
+            ? upper
+            : lower;
+    // Exhausted fits can place several zero-height rows at the same coordinate.
+    return closest.locSize.size === 0
+        ? sampleLocations[
+              sampleRankAt(closest.locSize.location, sampleLocations, true) + 1
+          ]
+        : closest;
+}
+
+/** Invert monotonically ordered row starts without scanning or allocating.
+ * @param {number} pos
+ * @param {import("./sampleViewTypes.js").SampleLocation[]} samples
+ * @param {boolean} [before] Stop before equal row starts.
+ */
+function sampleRankAt(pos, samples, before = false) {
+    let lo = 0;
+    let hi = samples.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        const start = samples[mid].locSize.location;
+        if (start < pos || (!before && start === pos)) lo = mid + 1;
+        else hi = mid;
     }
-
-    let closestSample = sampleLocations[0];
-    let closestDistance = distanceToLocSize(pos, closestSample.locSize);
-
-    for (let i = 1; i < sampleLocations.length; i++) {
-        const sampleLocation = sampleLocations[i];
-        const distance = distanceToLocSize(pos, sampleLocation.locSize);
-
-        if (distance < closestDistance) {
-            closestSample = sampleLocation;
-            closestDistance = distance;
-        }
-    }
-
-    return closestSample;
+    return lo - 1;
 }
 
 /**

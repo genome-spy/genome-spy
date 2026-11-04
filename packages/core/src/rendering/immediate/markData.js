@@ -57,33 +57,6 @@ export class SampleFacetCoordsResolver {
     }
 
     /**
-     * Resolves placement-backed coordinates without allocating an intermediate
-     * location object.
-     *
-     * @param {Rectangle} coords
-     * @param {import("../../view/layout/placementSource.js").default | undefined} source
-     * @param {number} index
-     * @returns {Rectangle | undefined}
-     */
-    resolvePlacement(coords, source, index) {
-        if (!source) {
-            return undefined;
-        }
-        const rectangles = source.getSnapshot().rectangles;
-        const offset = index * 4;
-        if (offset + 3 >= rectangles.length) {
-            return undefined;
-        }
-
-        this.#resolveSource(coords);
-        this.#resolveFacet(rectangles[offset + 1], rectangles[offset + 3], 1);
-        this.#location = NaN;
-        this.#size = NaN;
-        this.#pixelToUnit = NaN;
-        return this.#coords;
-    }
-
-    /**
      * @param {Rectangle} coords
      */
     #resolveSource(coords) {
@@ -144,45 +117,23 @@ export function getMarkData(mark, options) {
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {SampleFacetCoordsResolver} sampleFacetCoords
  * @param {(coords: import("../../view/layout/rectangle.js").default, data: object[]) => void} visitor
- * @param {(facetIndex: number) => void} onMissingFacet
  */
 export function visitMarkOccurrences(
     mark,
     options,
     coords,
     sampleFacetCoords,
-    visitor,
-    onMissingFacet
+    visitor
 ) {
     const data = getMarkData(mark, options);
-    if (options.sampleFacetRenderingOptions) {
-        const occurrenceCoords = sampleFacetCoords.resolveFacet(
-            coords,
-            options.sampleFacetRenderingOptions
-        );
-        if (isOccurrenceVisible(mark, occurrenceCoords)) {
-            visitor(occurrenceCoords, data);
-        }
-    } else if (mark.encoders.facetIndex) {
-        for (const [facetIndex, facetData] of groupDataByFacetIndex(
-            mark.encoders.facetIndex,
-            data
-        )) {
-            const occurrenceCoords = sampleFacetCoords.resolvePlacement(
-                coords,
-                options.placement?.source,
-                facetIndex
-            );
-            if (occurrenceCoords) {
-                if (isOccurrenceVisible(mark, occurrenceCoords)) {
-                    visitor(occurrenceCoords, facetData);
-                }
-            } else {
-                onMissingFacet(facetIndex);
-            }
-        }
-    } else if (isOccurrenceVisible(mark, coords)) {
-        visitor(coords, data);
+    const occurrenceCoords = options.sampleFacetRenderingOptions
+        ? sampleFacetCoords.resolveFacet(
+              coords,
+              options.sampleFacetRenderingOptions
+          )
+        : coords;
+    if (isOccurrenceVisible(mark, occurrenceCoords)) {
+        visitor(occurrenceCoords, data);
     }
 }
 
@@ -199,24 +150,4 @@ function isOccurrenceVisible(mark, coords) {
         }
     }
     return true;
-}
-
-/**
- * @param {import("../../types/encoder.js").Encoder} facetIndexEncoder
- * @param {object[]} data
- * @returns {Map<number, object[]>}
- */
-function groupDataByFacetIndex(facetIndexEncoder, data) {
-    /** @type {Map<number, object[]>} */
-    const facets = new Map();
-    for (const datum of data) {
-        const index = +facetIndexEncoder(datum);
-        let facet = facets.get(index);
-        if (!facet) {
-            facet = [];
-            facets.set(index, facet);
-        }
-        facet.push(datum);
-    }
-    return facets;
 }

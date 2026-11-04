@@ -144,7 +144,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
-                facetIndexed: mark.encoders.facetIndex !== undefined,
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
                 xQueryEnabled: false,
@@ -341,12 +340,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #compileMarkState(state, canvas) {
         const explicitSources = new Set(
             state.occurrences
-                .map((occurrence) => {
-                    const placement = occurrence.options.placement;
-                    return state.facetIndexed || placement?.index !== undefined
-                        ? placement?.source
-                        : undefined;
-                })
+                .map((occurrence) => occurrence.options.placement?.source)
                 .filter(Boolean)
         );
         if (explicitSources.size > 1) {
@@ -371,13 +365,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         } else {
             state.source = resolvedSource;
             state.ownerCoords = state.occurrences[0].markCoords;
-        }
-
-        if (state.facetIndexed && !state.source) {
-            throw createViewError(
-                state.mark,
-                "Indexed placement requires a placement source."
-            );
         }
 
         if (state.source) {
@@ -421,15 +408,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const packed = getPackedMarkData(
             state.mark,
-            state.facetIndexed || !state.generatedSource
-                ? state.source
-                : undefined
+            state.generatedSource ? undefined : state.source
         );
         if (!packed.data.length) {
             return;
         }
         state.xQueryEnabled =
-            !state.facetIndexed &&
             !!packed.xIndexSpec &&
             resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
         if (!state.xQueryEnabled) {
@@ -582,17 +566,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             }
         }
 
-        const occurrencePlacementIndex = state.generatedSource
+        const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        const placementIndex = state.facetIndexed
-            ? undefined
-            : occurrencePlacementIndex;
-        if (
-            state.source &&
-            !state.facetIndexed &&
-            placementIndex === undefined
-        ) {
+        if (state.source && placementIndex === undefined) {
             throw createViewError(
                 state.mark,
                 "Draw-level placement requires a resolved placement index."
@@ -600,10 +577,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         if (
             state.source &&
-            occurrencePlacementIndex !== undefined &&
+            placementIndex !== undefined &&
             !isPlacementVisible(
                 state.source,
-                occurrencePlacementIndex,
+                placementIndex,
                 state.viewport,
                 draw.scissor,
                 canvas
@@ -838,7 +815,7 @@ function createOccurrenceDraw(occurrence, state) {
  * @returns {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"] | undefined}
  */
 function createPlacementIndexConfig(state) {
-    if (!state.facetIndexed && state.source) {
+    if (state.source) {
         return { source: "draw" };
     }
     return undefined;
@@ -975,7 +952,6 @@ function writeScopeBounds(command, target) {
  * @property {import("./webGpuMarkData.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
- * @property {boolean} facetIndexed
  * @property {[number, number]} xQueryDomain
  * @property {[number, number]} xIndexedRange
  * @property {boolean} xQueryEnabled

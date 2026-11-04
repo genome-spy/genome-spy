@@ -221,3 +221,45 @@ test("categorical navigation retains pointer anchors and fixed partially visible
     expect(scale.domain()).toEqual(["A", "B", "C", "D"]);
     expect(() => scale.viewport({ interval: [2, 1] })).toThrow("viewport");
 });
+
+test("custom camera inversion retains gaps when leaving exhausted or gap-only mappings", () => {
+    const height = 100;
+    const step = 35;
+    const gap = 150;
+    const scale = create()
+        .domain(Array.from({ length: 12 }, (_, rank) => rank))
+        .range([1, 0])
+        .gapPositions([6])
+        .gapWidth(gap)
+        .axisLength(height);
+
+    /** @param {number} rowOrigin */
+    function setCamera(rowOrigin) {
+        const mapping = scale.navigationMapping();
+        const slope = -step / height;
+        const origin =
+            1 -
+            (rowOrigin + mapping.domainStart * step + mapping.firstRank * gap) /
+                height;
+        const first = mapping.invertPoint(1, slope, origin, gap / height);
+        const last = mapping.invertPoint(0, slope, origin, gap / height);
+        scale.viewport({
+            interval: [first.value, last.value],
+            gapRanks: [first.rank, last.rank],
+        });
+    }
+
+    // Neither source can supply its suppressed gap width to the target camera.
+    expect(scale.gapMapping().fits).toBe(false);
+    setCamera(-240);
+    expect(scale.viewport().interval).toEqual([6, 6]);
+    expect(scale.viewport().gapRanks[0]).toBeCloseTo(0.2);
+    expect(scale.viewport().gapRanks[1]).toBeCloseTo(13 / 15);
+    expect(scale.gapMapping().fits).toBe(false);
+
+    setCamera(-120);
+    expect(scale.gapMapping().fits).toBe(true);
+    expect((1 - scale.gapMapping().position(4, 1)) * height).toBeCloseTo(20);
+    expect((1 - scale.gapMapping().position(5, 1)) * height).toBeCloseTo(55);
+    expect((1 - scale.gapMapping().position(6, 1)) * height).toBeCloseTo(240);
+});

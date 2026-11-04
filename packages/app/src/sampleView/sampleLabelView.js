@@ -7,7 +7,6 @@ import { createDefaultValuesProvider } from "./attributeValues.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const SAMPLE_NAME = "SAMPLE_NAME";
-const INDEX_NUMBER_FIELD = "_indexNumber";
 const LABEL_WIDTH_FIELD = "_labelWidth";
 const LABEL_TITLE_FIELD = "_labelTitle";
 const LABEL_TITLE_WIDTH_FIELD = "_labelTitleWidth";
@@ -122,7 +121,6 @@ export class SampleLabelView extends UnitView {
             samples.map((sample) => ({
                 id: sample.id,
                 displayName: sample.displayName ?? sample.id,
-                [INDEX_NUMBER_FIELD]: sample.indexNumber,
                 [LABEL_TITLE_FIELD]: labelTitle,
             }))
         );
@@ -255,14 +253,16 @@ function createLabelViewSpec(sampleDef, metadataDef) {
             fontStyle: sampleDef.labelFontStyle,
             fontWeight: sampleDef.labelFontWeight,
             align: sampleDef.labelAlign ?? "left",
+            fitToBand: true,
             flushY: false,
+            yOffset: { expr: "-_sampleRowInset" },
+            y2Offset: { expr: "_sampleRowInset" },
         },
+        opacity: { expr: "_sampleRowStep > 0 ? 1 : 0" },
         encoding: {
-            facetIndex: { field: INDEX_NUMBER_FIELD },
             x: { value: 0 },
             x2: { value: 1 },
-            y: { value: 0 },
-            y2: { value: 1 },
+            y: { field: "id", type: "nominal", axis: null },
             text: { field: "displayName" },
         },
     };

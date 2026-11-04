@@ -1174,16 +1174,6 @@ describe("Canvas2DViewRenderingContext", () => {
         });
         expect(xEncoder).toHaveBeenCalledOnce();
 
-        encoders.facetIndex = Object.assign(() => 0, originalXEncoder, {
-            constant: true,
-        });
-        view.arrange(context, coords, {
-            sampleFacetRenderingOptions: {
-                locSize: { location: 101, size: 20 },
-                pixelToUnit: 0.01,
-            },
-        });
-        expect(xEncoder).toHaveBeenCalledTimes(2);
         expect(profiler.snapshot().countTotals).toMatchObject({
             canvasSampleFacetOccurrences: 2,
             canvasCulledSampleFacetOccurrences: 1,

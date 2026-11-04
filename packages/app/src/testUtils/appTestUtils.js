@@ -106,7 +106,21 @@ export function createStoreStub(initialState) {
  */
 export function createSampleViewStub(options) {
     const view = new ConcatView(
-        { hconcat: [] },
+        {
+            hconcat: [],
+            params: [
+                {
+                    name: "_sampleRowIds",
+                    value: Object.keys(
+                        options.sampleHierarchy.sampleData.entities
+                    ),
+                },
+                { name: "_sampleRowCuts", value: [] },
+                { name: "_sampleRowGap", value: 0 },
+                { name: "_sampleRowInset", value: 0 },
+                { name: "_sampleRowStep", value: 1 },
+            ],
+        },
         options.context,
         null,
         null,
