@@ -323,6 +323,8 @@ export class Renderer {
 
     #globalUniformCapacity = 1;
 
+    #uploadedGlobalCount = 0;
+
     /** @type {ReturnType<typeof createGlobalUniformStaging>} */
     #globalUniformStaging;
 
@@ -552,6 +554,7 @@ export class Renderer {
             ],
         });
         this.#globalUniformCapacity = capacity;
+        this.#uploadedGlobalCount = 0;
         oldBuffer.destroy();
     }
 
@@ -568,27 +571,64 @@ export class Renderer {
 
         this.#ensureGlobalUniformCapacity(draws.length);
         const { buffer, floats, integers } = this.#globalUniformStaging;
+        let changed = draws.length > this.#uploadedGlobalCount;
         for (let i = 0; i < draws.length; i++) {
             const offset = (i * this.#globalUniformStride) / 4;
-            const draw = draws[i];
-            floats[offset] = draw.viewport.width;
-            floats[offset + 1] = draw.viewport.height;
+            const { viewport, visibleRange, placement, orderPass } = draws[i];
+            const cullX = visibleRange.cullX ? 1 : 0;
+            const cullY = visibleRange.cullY ? 1 : 0;
+            const placementIndex = placement?.index ?? 0;
+            const clipMode = placement?.clipMode ?? 0;
+            const placementCount = placement?.count ?? 0;
+            const order = forceAll ? 0 : orderPass;
+
+            // Staging describes the last uploaded prefix, across live, picking
+            // and detached targets. Compare encoded values, not caller identity.
+            if (
+                i < this.#uploadedGlobalCount &&
+                Object.is(floats[offset], Math.fround(viewport.width)) &&
+                Object.is(floats[offset + 1], Math.fround(viewport.height)) &&
+                Object.is(floats[offset + 2], Math.fround(this._globals.dpr)) &&
+                Object.is(floats[offset + 4], Math.fround(visibleRange.x1)) &&
+                Object.is(floats[offset + 5], Math.fround(visibleRange.y1)) &&
+                Object.is(floats[offset + 6], Math.fround(visibleRange.x2)) &&
+                Object.is(floats[offset + 7], Math.fround(visibleRange.y2)) &&
+                floats[offset + 8] === cullX &&
+                floats[offset + 9] === cullY &&
+                Object.is(floats[offset + 12], Math.fround(viewport.x)) &&
+                Object.is(floats[offset + 13], Math.fround(viewport.y)) &&
+                integers[offset + 16] === placementIndex &&
+                integers[offset + 17] === clipMode &&
+                integers[offset + 18] === placementCount &&
+                integers[offset + 19] === order
+            ) {
+                continue;
+            }
+
+            changed = true;
+            floats[offset] = viewport.width;
+            floats[offset + 1] = viewport.height;
             floats[offset + 2] = this._globals.dpr;
-            floats[offset + 4] = draw.visibleRange.x1;
-            floats[offset + 5] = draw.visibleRange.y1;
-            floats[offset + 6] = draw.visibleRange.x2;
-            floats[offset + 7] = draw.visibleRange.y2;
-            floats[offset + 8] = draw.visibleRange.cullX ? 1 : 0;
-            floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
-            floats[offset + 12] = draw.viewport.x;
-            floats[offset + 13] = draw.viewport.y;
-            floats[offset + 14] = draw.viewport.width;
-            floats[offset + 15] = draw.viewport.height;
-            integers[offset + 16] = draw.placement?.index ?? 0;
-            integers[offset + 17] = draw.placement?.clipMode ?? 0;
-            integers[offset + 18] = draw.placement?.count ?? 0;
-            integers[offset + 19] = forceAll ? 0 : draw.orderPass;
+            floats[offset + 4] = visibleRange.x1;
+            floats[offset + 5] = visibleRange.y1;
+            floats[offset + 6] = visibleRange.x2;
+            floats[offset + 7] = visibleRange.y2;
+            floats[offset + 8] = cullX;
+            floats[offset + 9] = cullY;
+            floats[offset + 12] = viewport.x;
+            floats[offset + 13] = viewport.y;
+            floats[offset + 14] = viewport.width;
+            floats[offset + 15] = viewport.height;
+            integers[offset + 16] = placementIndex;
+            integers[offset + 17] = clipMode;
+            integers[offset + 18] = placementCount;
+            integers[offset + 19] = order;
         }
+        if (!changed) {
+            finishPhase("drawGlobals", phaseStart);
+            return;
+        }
+
         this.device.queue.writeBuffer(
             this.#globalUniformBuffer,
             0,
@@ -596,6 +636,7 @@ export class Renderer {
             0,
             draws.length * this.#globalUniformStride
         );
+        this.#uploadedGlobalCount = draws.length;
         addCount("drawGlobalWrites");
         addCount("drawGlobalBytes", draws.length * this.#globalUniformStride);
         finishPhase("drawGlobals", phaseStart);
