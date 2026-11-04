@@ -806,6 +806,7 @@ export type RectChannelName =
 export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
 
 export type PointChannelName =
+    | "opacity"
     | "xClampRange"
     | "yClampRange"
     | "uniqueId"

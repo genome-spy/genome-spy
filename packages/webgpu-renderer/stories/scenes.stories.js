@@ -98,6 +98,7 @@ export const PositionClamping = withSource(
 );
 
 const pointStrokeControls = {
+    opacity: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
     strokeAlign: {
         control: {
             type: "select",
@@ -109,16 +110,21 @@ const pointStrokeControls = {
 };
 
 export const Points = withSource("runPointScene", null, {
-    args: { strokeAlign: 1, strokeOpacity: 1 },
+    args: { opacity: 1, strokeAlign: 1, strokeOpacity: 1 },
     argTypes: pointStrokeControls,
     render: (args) => renderScene(runPointScene, args),
 });
 
 export const PathPoints = withSource(
     "runPathPointScene",
-    { backend: "wgsl" },
+    { backend: "wgsl", opacity: 1 },
     {
-        args: { backend: "wgsl", strokeAlign: 1, strokeOpacity: 0.5 },
+        args: {
+            backend: "wgsl",
+            opacity: 1,
+            strokeAlign: 1,
+            strokeOpacity: 0.5,
+        },
         argTypes: {
             ...pointStrokeControls,
             backend: {
