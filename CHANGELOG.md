@@ -4,6 +4,215 @@ All notable changes to this project will be documented in this file.
 Releases after v1.0.0 use user-written [Changesets](.changeset/README.md) notes.
 Earlier entries were generated from Conventional Commits and are preserved below.
 
+## [1.3.0](https://github.com/genome-spy/genome-spy/compare/v1.2.0...v1.3.0) (2026-11-04)
+
+GenomeSpy 1.3.0 adds [Figwig](https://github.com/jmschrei/figwig) support for
+multiple signal tracks and embedded sample metadata, zoomable categorical scales
+with grouping gaps and dendrograms, and interactive legends for category
+selection and numeric range brushing. The App supports changing sample cohorts
+in place, while data-derived reactive parameters and new coordinate and
+record-search utilities support embedding applications. Rule marks gain explicit
+fills and configurable border alignment, alongside fixes for transparency,
+categorical domain updates, shared highlighting, and WebGL resource cleanup.
+
+### New features
+
+- **Core:** Add explicit fills and configurable borders to rule marks. `fill`
+  takes precedence over `color`, `size` controls body thickness, and
+  `strokeAlign` places borders inside, centered on, or outside the body,
+  including through parameter expressions. Fill and stroke opacity can be
+  controlled independently, with translucent strokes blending over the fill
+  where they overlap. Canvas retains its documented approximation for alignment,
+  blending, caps, and dashes. ([#657](https://github.com/genome-spy/genome-spy/pull/657), [#644](https://github.com/genome-spy/genome-spy/pull/644), [#649](https://github.com/genome-spy/genome-spy/pull/649)) [@okunator](https://github.com/okunator)
+
+- **Core:** Support dendrograms on categorical band scales, so heatmaps can encode original
+  sample and gene IDs. Each supplied tree can publish its ordered leaf categories
+  to a shared scale through `domainParam` and parameter pushing, including when the
+  tree presentation is hidden. Shared outputs use bare ancestor parameter
+  declarations, with ownership inferred from the publishing transform. Existing
+  index-scale dendrograms remain compatible. ([#600](https://github.com/genome-spy/genome-spy/pull/600)) [@tuner](https://github.com/tuner)
+
+- **Core:** Separate selected heat-map rows and columns with fixed-width grouping gaps on
+  categorical band and point scales. Gap boundaries follow category values through
+  domain reordering, and step-sized views reserve space for gaps while preserving
+  their base step, including partially visible gaps on index and locus scales. ([#642](https://github.com/genome-spy/genome-spy/pull/642)) [@tuner](https://github.com/tuner)
+
+- **App, App Agent, Core:** Add categorical membership to point selections with typed raw values, scoped
+  selection APIs, and expression helpers including allocation-free membership tests.
+  Link categorical positions, colors, and shapes across plots with independent scales.
+  Category selections also support App history, bookmarks, and agent parameter
+  actions without requiring record keys.
+
+  Point capabilities and snapshots now distinguish `membership: "records"` from
+  `"categories"`; after narrowing to `type: "point"`, check membership before reading
+  record `data` or category `encodings` and `values`. For semantic-zoom sampling,
+  record and interval leaves referenced by appearance conditions independently
+  preserve their matching rows, including under `and` and `not`. Category leaves
+  and conditions used only for drawing order do not preserve rows. ([#614](https://github.com/genome-spy/genome-spy/pull/614)) [@tuner](https://github.com/tuner)
+
+- **App, Core:** Keep GenomeSpy App open while inserting, removing, or replacing its sample cohort.
+  Replacement clears cohort metadata and history while preserving independent
+  annotation tracks and navigation. Controls and bookmark persistence follow the
+  attached cohort, with an explicit API for changing its bookmark context. Removed
+  or failed views release their keyboard handlers and retained readers before their
+  source URLs can be released. ([#631](https://github.com/genome-spy/genome-spy/pull/631)) [@tuner](https://github.com/tuner)
+
+- **App, Core:** Add a [Figwig](https://github.com/jmschrei/figwig) lazy source
+  for multiple signal tracks in one file, with reactive track selection and
+  cached, viewport-focused reads. The default fast mode uses approximate,
+  zero-filled summaries for overviews and raw values at close zooms; `mode: "exact"` computes missing-aware means from raw values. `maxSummaryPixels`
+  controls summary detail. The App loads typed embedded track attributes as
+  sample metadata and can derive sample IDs and labels from Figwig or matrix
+  metadata without a separate sample-list file. ([#617](https://github.com/genome-spy/genome-spy/pull/617), [#627](https://github.com/genome-spy/genome-spy/pull/627), [`be31682`](https://github.com/genome-spy/genome-spy/commit/be31682a6c8596f0d7342c28538bf00a19b19be4), [`c5565d6`](https://github.com/genome-spy/genome-spy/commit/c5565d606cae8a129b67e798ef273269822120ad)) [@tuner](https://github.com/tuner)
+
+- **App, Core:** Brush numeric ranges directly on continuous color legends and combine them with
+  ordinary selection predicates across linked charts. Reaching the legend's
+  numeric maximum removes the upper limit while keeping the full color key stable.
+  Range brushes also work in sample-pane legends.
+  Open ranges survive App bookmarks and undo/redo.
+  Interval APIs read and clear shared values independently of brush hosts, and
+  programmatic replacement cancels active gestures without restoring stale bounds. ([#643](https://github.com/genome-spy/genome-spy/pull/643)) [@tuner](https://github.com/tuner)
+
+- **Core:** Bind categorical point selections to symbol legends to focus matching categories
+  across plots. Legend symbols and labels show the selected categories while
+  preserving configured styles, and selections work with existing APIs, history,
+  and bookmarks. ([#637](https://github.com/genome-spy/genome-spy/pull/637)) [@tuner](https://github.com/tuner)
+
+- **App, Core:** Parse and format genomic locations through the optional `@genome-spy/core/coordinates`
+  entry, with optional validation against a locus scale's resolved assembly. App
+  uses the same utilities, rejects invalid coordinate input, and leaves unknown bare
+  names available for datum search. Custom contig names now take precedence over
+  aliases, and locus domain readback correctly covers
+  one-base views and fractional chromosome boundaries. The internal
+  `Genome.parseInterval()` method was removed; use `parseCoordinates()`, which
+  returns a tagged result containing chromosome-relative endpoints instead of
+  whole-genome numeric offsets. Both parsers use zero-based half-open intervals. ([#616](https://github.com/genome-spy/genome-spy/pull/616)) [@tuner](https://github.com/tuner)
+
+- **App, App Agent, Core:** Look up loaded searchable records through the optional `@genome-spy/core/search`
+  entry without navigating or copying the full dataset. Bounded results include
+  multiple loci, record-derived targets, and publication metadata for consumer-owned
+  suggestions. App uses the shared lookup with field-labelled examples that refresh
+  when opened after updates, retaining its navigation and sample-command policies.
+  App Agent uses the same lookup and refreshed field examples, with explicit
+  truncation metadata; coordinate parsing remains separate. ([#616](https://github.com/genome-spy/genome-spy/pull/616)) [@tuner](https://github.com/tuner)
+
+- **Core:** Anchor scrollable views to the bottom or right with `anchor: "end"` in
+  `viewportHeight` or `viewportWidth` size objects. Views keep their distance from
+  that edge as dimensions change, align smaller content to it, and retain normal
+  manual scrolling. Step-sized views also stay synchronized during animated
+  navigation, avoiding transient jumps as row counts change. ([`8a4075b`](https://github.com/genome-spy/genome-spy/commit/8a4075b9ca8b3294d2f543d802894bd6b3f3c478)) [@tuner](https://github.com/tuner)
+
+- **Core:** Publish read-only array parameters from data with the new `values` transform,
+  for example to derive index-scale gaps from metadata. The new `branch`
+  declaration forks the current input for summaries while preserving the main
+  rows, and ordinary parameter changes can update outputs through cached replay.
+
+  Lazy genomic sources can also publish outputs from successfully loaded windows.
+  Aggregations span physical input files, and ungrouped empty input produces a
+  count of zero. ([#575](https://github.com/genome-spy/genome-spy/pull/575)) [@tuner](https://github.com/tuner)
+
+- **Core:** Enable zooming and panning on band and point scales while preserving their
+  category domains and fixed-pixel grouping gaps. Configure an initial rank
+  viewport or navigate it through the scale API. Band axes can optionally squeeze
+  labels to fit their bands as the available space changes. ([#648](https://github.com/genome-spy/genome-spy/pull/648)) [@tuner](https://github.com/tuner)
+
+### Improvements
+
+- **Core:** Reduce the default WebGL font atlas download by 14.8 KiB using lossless WebP compression, preserving text rendering quality. ([#641](https://github.com/genome-spy/genome-spy/pull/641)) [@tuner](https://github.com/tuner)
+
+### Fixes
+
+- **Core:** Keep categorical positions, colors, and other ordinal styles aligned with the
+  current explicit domain when categories are reordered, removed, or restored.
+  This also fixes domains arriving after data has been encoded, while preserving
+  category identity for picking and selections. ([#595](https://github.com/genome-spy/genome-spy/pull/595)) [@tuner](https://github.com/tuner)
+
+- **Embed Examples:** Fix the dark-mode embedding example so the page background and text follow the
+  selected appearance in production builds. ([`3fb9136`](https://github.com/genome-spy/genome-spy/commit/3fb91366849fa826686df16ef7817281cd038ea5)) [@tuner](https://github.com/tuner)
+
+- **Core:** Work around rectangle and arrow shader compilation failures in Firefox on affected
+  OpenGL drivers, including NVIDIA on Linux. The workaround has not yet been tested
+  on the affected Firefox/NVIDIA/Linux setup. ([#583](https://github.com/genome-spy/genome-spy/pull/583)) [@tuner](https://github.com/tuner)
+
+- **App:** Fix sample grouping when a group's title equals its name. Group labels now load
+  without a missing-field error, allowing grouped visualizations and bookmarks to
+  finish restoring. ([#617](https://github.com/genome-spy/genome-spy/pull/617)) [@tuner](https://github.com/tuner)
+
+- **Core:** Match GPU rule dash caps to SVG: round and square caps now apply to every dash,
+  including zero-length dashes. Outside borders follow the resulting silhouette,
+  and cap extensions can close small gaps without changing centerline dash lengths. ([#658](https://github.com/genome-spy/genome-spy/pull/658)) [@tuner](https://github.com/tuner)
+
+- **App:** Hide directories without JSON specs in the App dev server's main listing, including
+  directory trees that contain only other file types. ([`215a057`](https://github.com/genome-spy/genome-spy/commit/215a057ea5c1ed1aa2962bdebd454365bb2ca3a3)) [@tuner](https://github.com/tuner)
+
+- **Core:** Hide scrollbars when their content fits inside the viewport, reducing visual
+  distraction and making it clearer when scrolling is available. Scrollbars
+  reappear with their existing appearance when content overflows, including after
+  zooming or resizing. ([`8459b03`](https://github.com/genome-spy/genome-spy/commit/8459b03585b20fcb840cf2bc732479375a45198e)) [@tuner](https://github.com/tuner)
+
+- **Core:** Infer the row-ID encoding needed by point-selection conditions on marks with
+  picking disabled. Coordinated highlighting through shared outer selections no
+  longer requires an explicit `uniqueId` encoding on each consuming mark. ([`007d593`](https://github.com/genome-spy/genome-spy/commit/007d593020e40155e6db0cf6a6230b89152485d7)) [@tuner](https://github.com/tuner)
+
+- **Core:** Allow computed parameters to reference a view's automatic `width` and `height`
+  during initialization. Aliases now track layout changes correctly, while explicit
+  parameters with these names retain precedence. ([`bdf3bcc`](https://github.com/genome-spy/genome-spy/commit/bdf3bcc08914c6f86e43d4e129690ab9ac26823f)) [@tuner](https://github.com/tuner)
+
+- **Core:** Reserve enough width for every column in vertical categorical legends. Legends
+  with multiple columns no longer clip later labels or overlap the plot because
+  only one column's width was allocated. ([#591](https://github.com/genome-spy/genome-spy/pull/591)) [@okunator](https://github.com/okunator)
+
+- **Core:** Preserve point fills beneath translucent and invisible inward strokes in SVG
+  exports and Canvas2D rendering. Opaque strokes retain their existing rendering
+  path, and stroke outlines keep their existing geometry. ([`d983873`](https://github.com/genome-spy/genome-spy/commit/d983873abaa5e21b8b7eb35e55221a6e9a19f3da)) [@tuner](https://github.com/tuner)
+
+- **Core:** Allow expression-valued ordinal numeric ranges with more than four categories
+  in WebGL. Interactive opacity scales can update through the existing range
+  texture without the numeric-vector limit used by continuous scales. ([#606](https://github.com/genome-spy/genome-spy/pull/606)) [@okunator](https://github.com/okunator)
+
+- **Core:** Fix ordinal color schemes rendering black when their categories are inferred
+  from data. Scheme colors now update when the number of categories changes. ([`0cf15c4`](https://github.com/genome-spy/genome-spy/commit/0cf15c46866119ae89aaeb75d3299607de5ebbb8)) [@tuner](https://github.com/tuner)
+
+- **Core:** Restore hover highlighting and single-point selection in views that share a
+  selection through `push: "outer"`, including after the selection is replaced or
+  cleared through the embedding API. Hover highlighting now follows the pointer
+  between marks without the previous view clearing the new highlight. ([`4788c08`](https://github.com/genome-spy/genome-spy/commit/4788c08b3b6b8c858eec87e689ab897cb0ffd690)) [@tuner](https://github.com/tuner)
+
+- **Core:** Format band coverage as a numeric shader literal so malformed specs cannot inject source into generated WebGL shaders. ([`608b6c2`](https://github.com/genome-spy/genome-spy/commit/608b6c254d2c1a15c1d376c48b4479141efdc626)) [@tuner](https://github.com/tuner)
+
+- **Core:** Preserve shared scale instances when views are inserted or removed and the scale
+  type stays unchanged. Retained annotations continue to pan, zoom, and reveal
+  details alongside dynamically added sample tracks. ([#633](https://github.com/genome-spy/genome-spy/pull/633)) [@tuner](https://github.com/tuner)
+
+- **Core:** Serialize `linearizeGenomicCoordinate` offsets before embedding them in its
+  specialized setter. Malformed values remain data instead of being interpreted
+  as executable code, with no additional work in the per-row path. ([`8389096`](https://github.com/genome-spy/genome-spy/commit/83890960e0a955fff48fd7c76c8703d496c82546)) [@tuner](https://github.com/tuner)
+
+- **Core:** Keep a shared ruler cursor active when the pointer moves directly between plots
+  that push to the same parameter. Leaving the previous plot no longer clears the
+  coordinate just published by the new plot. ([#600](https://github.com/genome-spy/genome-spy/pull/600)) [@tuner](https://github.com/tuner)
+
+- **Core:** Honor alpha in CSS colors, including `transparent`, for GPU paint values and color
+  scale ranges. Point fill geometry and line-only shape fallback now account for
+  transparent strokes consistently across renderers. ([#632](https://github.com/genome-spy/genome-spy/pull/632)) [@tuner](https://github.com/tuner)
+
+- **Core:** Centered WebGL arrow strokes now blend over the underlying fill correctly. ([#630](https://github.com/genome-spy/genome-spy/pull/630)) [@okunator](https://github.com/okunator)
+
+- **Core:** Release WebGL contexts when charts are finalized so replacing charts does not
+  unnecessarily exhaust the browser's context limit. Report context loss during
+  shader initialization clearly, and preserve compilation and linking failures
+  when the browser supplies no diagnostic text. ([#638](https://github.com/genome-spy/genome-spy/pull/638)) [@okunator](https://github.com/okunator)
+
+- **Core:** Correct WebGL point fill and stroke blending for centered and inward borders,
+  including translucent strokes and subpixel edges. Preserve line-only `x` and `+`
+  shape widths, fill fallback, and picking behavior. ([#624](https://github.com/genome-spy/genome-spy/pull/624)) [@okunator](https://github.com/okunator)
+
+- **Core:** Preserve rectangle fills beneath transparent and translucent strokes in WebGL, including hatch patterns. Keep minimum-size fading and view opacity consistent across the combined fill and stroke. ([#622](https://github.com/genome-spy/genome-spy/pull/622)) [@okunator](https://github.com/okunator)
+
+- **Core:** Keep text labels aligned with leader lines and other marks when zooming or
+  filtering changes the visible labels. Fix a WebGL buffer allocation error that
+  could reject text updates and leave old label positions on screen. ([`1bf9535`](https://github.com/genome-spy/genome-spy/commit/1bf9535058a17e06c94eb23265f14e33862bef5f)) [@tuner](https://github.com/tuner)
+
 ## [1.2.0](https://github.com/genome-spy/genome-spy/compare/v1.1.1...v1.2.0) (2026-10-20)
 
 ### New features
