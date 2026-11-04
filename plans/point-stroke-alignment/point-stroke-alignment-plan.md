@@ -1,8 +1,8 @@
 # Point stroke alignment: bounded design and native proof
 
 Base: master 0923989b2. #604 follow-up; shared StrokeAlign declaration is in
-#657, now rebased onto master. This branch contains planning only. No dependency
-or production-code changes are authorized by the proof milestone.
+#657, now rebased onto master. This branch contains planning only. No dependency changes or production implementation commits are part of this
+proof milestone.
 
 ## Scope and ownership
 
@@ -160,5 +160,85 @@ No production work on this alternative starts without the next scope agreement.
 - [x] Architectural ownership and current native code traced.
 - [x] Bounded native proof completed; small clipping candidate rejected.
 - [x] Smallest coherent alternative and explicit size budget prepared.
-- [ ] User scope decision: native point contract and/or WebGPU foundation next.
-- [ ] Bounded GPU proof before implementing the alternative.
+- [ ] Implementation scope decision on native contract and retained GPU limits.
+- [x] Bounded GPU proof completed; compatibility and normal-width alignment pass.
+- [ ] Production scope decision on existing atlas-width and x/+ limits; no implementation yet.
+
+## Bounded WebGPU proof (authorized)
+
+The next user instruction authorizes the isolated GPU proof, not production
+implementation. The candidate changes only the two point programs, public channel
+name and legacy Core adapter mapping in a temporary checkout. No atlas generation,
+resource ownership or native painter changes. Compare inside/center against the
+unmodified baseline, and test outside against independent coverage/geometry.
+Explicitly separate existing path-distance clamping and the documented x/+ arm
+semantics backlog from any introduced regression. Both public shader routes,
+transparent paint, retained updates, fallback and picking must be exercised.
+
+## WebGPU proof result
+
+**Bounded normal-width rendering and compatibility pass. The unrestricted point
+contract is not yet qualified.** The prototype is isolated; only this plan changes
+in the working repository. No dependency, atlas or resource-ownership changes.
+
+Prototype: replace the standalone boolean channel with numeric strokeAlign
+(inside=0, center=1 default, outside=2). Reuse existing inner/fill/outer coverage,
+extrude by the requested outward extent and retain the existing pick/minimum-size
+policies. Core's adapter maps its current legacy property to 0/1; Core exposes no
+new grammar. Four source/type files: **+28/-32 raw lines**. This fits the 120-added-
+production-line budget without adding helpers, state or frameworks.
+
+Actual public createRenderer/createMark/render/pick/batchUpdates/series.replace
+paths were tested in isolated baseline/candidate checkouts, at DPR 1/2:
+
+- Analytic circle and path program forced through a closed circle path, a custom
+  square path and a concave named cross rotated 23 degrees.
+- 54 paired standalone frame cases are byte-exact (maximum error 0), including
+  existing centered/inward paints, fractional scope opacity, wide centered
+  strokes, mixed x/+ fallback, retained replacement and original pick IDs.
+  The new outside code also preserves the fallback mixture byte-for-byte and
+  returns the original IDs for all four shapes.
+- All three alignments meet the sampled premultiplied coverage formula within
+  0.8 byte, using independently exported nominal coverage. Transparent strokes
+  preserve the nominal frame within 1 byte (path cases are exact).
+- A four-pixel outside band has the same full-frame coverage envelope as the
+  baseline's eight-pixel centered band: maximum error 0 for all shapes/DPRs.
+  Border picking succeeds; scissor picks remain hit/empty as intended.
+- Common scope opacity 0.5 produces half the premultiplied frame within 0.5 byte.
+  Oversized inward paint consumes each nominal interior without negative geometry.
+- Independent SVG contours agree at the sampled stable pixels except for one
+  concave centered fringe pixel at DPR 1. That mode's full frame is byte-exact to
+  baseline; this is an existing SVG/MSDF difference, not a new alignment change.
+- A negative control restoring the old outside quad size fails the envelope
+  assertion. No WebGPU validation errors were reported in the passing runs.
+
+Actual Core public embedding, export, reactive legacy expressions and picks were
+also exercised with each public renderer export resolved to its isolated checkout.
+All 16 baseline/candidate Core frame pairs are byte-exact, including analytic
+circles and mixed circle/cross/x/+; picked datum shapes are preserved.
+
+### Two existing limits, measured rather than expanded into this slice
+
+1. **Path atlas distance range.** A 16-pixel path symbol with a requested 20-pixel
+   outside band is clamped by the existing distance field. At x=55 for center
+   32.25/radius 8, the analytic circle is opaque blue while the path circle,
+   custom square and cross are clear. The baseline's equivalent wide centered
+   stroke has the same limitation. Correcting it requires a separate resource/
+   representation decision; do not hide it with shader extrapolation or an atlas
+   workaround. Thus full-width semantics for arbitrarily wide path borders fail.
+2. **Existing Core x/+ arm semantics.** Baseline and candidate pictures, fallback
+   colors, thickness and picking are preserved exactly. Preservation is not a fix
+   for the documented WebGPU arm-semantics backlog: + arms are 3 px for either
+   strokeWidth 2 or 6 at size 400, and about 4.5 px at size 900. The WebGL control
+   produces about 2/6 px and remains 2 px when size changes. Core's required
+   stroke-only width contract is therefore still unimplemented on WebGPU.
+
+The first renderer-only scope can preserve current behavior and support alignment
+within the existing representable range. It cannot claim complete #604 point
+conformance. Before production implementation, agree whether these existing
+limits are explicitly retained for that narrow PR or require separate fixes
+first. No line-shape rewrite or atlas change has been added to the candidate.
+
+Evidence (scripts, candidate patch, machine-readable results and negative control):
+`/Users/okusupreme/.codex/visualizations/2026/10/26/01a177b3-ba10-71b1-bb64-a4584cdb56bd/webgpu-point-alignment-proof/`.
+No performance claim is made by these correctness/preservation checks.
