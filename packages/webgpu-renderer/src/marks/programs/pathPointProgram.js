@@ -15,7 +15,22 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
  * @property {Float32Array} entries
  */
 
-export const PATH_POINT_SHADER_BODY = /* wgsl */ `
+/** @param {number[]} [lineKinds] @returns {string} */
+export function createPathPointShaderBody(lineKinds = []) {
+    const hasLines = lineKinds.some(Boolean);
+    return /* wgsl */ `
+${
+    hasLines
+        ? /* wgsl */ `
+fn getLineKind(shape: u32) -> u32 {
+    switch (shape) {
+        ${lineKinds.flatMap((kind, index) => (kind ? [`case ${index}u: { return ${kind}u; }`] : [])).join("\n        ")}
+        default: { return 0u; }
+    }
+}
+`
+        : ""
+}
 ${POSITION_CLAMP_WGSL}
 fn placeClampedPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
 #if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
@@ -52,6 +67,14 @@ struct VSOut {
     @location(8) @interpolate(flat) inwardStroke: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
+${
+    hasLines
+        ? /* wgsl */ `
+    @location(11) @interpolate(flat) lineKind: u32,
+    @location(12) local: vec2<f32>,
+`
+        : ""
+}
 };
 
 fn culledPoint() -> VSOut {
@@ -71,6 +94,14 @@ fn culledPoint() -> VSOut {
     out.inwardStroke = 0u;
     out.gradientStrength = 0.0;
     out.deviceRadius = 0.0;
+${
+    hasLines
+        ? /* wgsl */ `
+    out.lineKind = 0u;
+    out.local = vec2<f32>(0.0);
+`
+        : ""
+}
     return out;
 }
 
@@ -98,8 +129,19 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     if (strokeOpacity <= 0.0) {
         strokeWidth = 0.0;
     }
+${
+    hasLines
+        ? /* wgsl */ `
+    let lineKind = getLineKind(shape);
+    if (lineKind != 0u) {
+        strokeWidth = max(getScaled_strokeWidth(i), 0.0);
+        if (diameter <= 0.0 || strokeWidth <= 0.0) { return culledPoint(); }
+    }
+`
+        : ""
+}
     let entry = pathAtlasEntries[shape];
-    let inwardStroke = getScaled_inwardStroke(i);
+    let inwardStroke = ${hasLines ? "select(getScaled_inwardStroke(i), 0u, lineKind != 0u)" : "getScaled_inwardStroke(i)"};
     if (pickingEnabled && (strokeWidth <= 0.0 || inwardStroke != 0u)) {
         diameter = max(diameter, 1.0 / globals.dpr);
     }
@@ -118,7 +160,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         params.uSpread * devicePixelsPerAtlas - AA_COVERAGE_RADIUS_PIXELS,
         0.0
     ) / (strokeDistanceMultiplier * globals.dpr);
-    let halfStrokeWidth = min(strokeWidth * 0.5, maxHalfStrokeWidth);
+    let halfStrokeWidth = ${hasLines ? "select(min(strokeWidth * 0.5, maxHalfStrokeWidth), strokeWidth * 0.5, lineKind != 0u)" : "min(strokeWidth * 0.5, maxHalfStrokeWidth)"};
     let outwardStroke = halfStrokeWidth > 0.0 && inwardStroke == 0u;
     // The antialiased outer contour is another offset curve, so its radius
     // must use the path-specific miter extent too. Keep the remaining
@@ -130,15 +172,27 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         STROKE_RASTER_SAFETY_PIXELS,
         outwardStroke
     ) / globals.dpr;
-    let localMin = entry.localBounds.xy * diameter -
+    var localMin = entry.localBounds.xy * diameter -
         entry.strokePadding.xy * coverageRadius - rasterSafety;
-    let localMax = entry.localBounds.zw * diameter +
+    var localMax = entry.localBounds.zw * diameter +
         entry.strokePadding.zw * coverageRadius + rasterSafety;
+${
+    hasLines
+        ? /* wgsl */ `
+    if (lineKind != 0u) {
+        let length = diameter * select(0.5, sqrt(0.5), lineKind == 1u);
+        let extent = max(length, halfStrokeWidth) + 1.0 / globals.dpr;
+        localMin = vec2<f32>(-extent);
+        localMax = vec2<f32>(extent);
+    }
+`
+        : ""
+}
     let localScreen = mix(localMin, localMax, quad[v]);
 
     // Local point coordinates use screen-space axes, so positive angles rotate
     // clockwise, matching Canvas, SVG, and the WebGPU text mark.
-    let angle = getScaled_angle(i) * PI / 180.0;
+    let angle = (getScaled_angle(i)${hasLines ? " + select(0.0, -45.0, lineKind == 1u)" : ""}) * PI / 180.0;
     let sinTheta = sin(angle);
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
@@ -202,6 +256,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.inwardStroke = inwardStroke;
     out.gradientStrength = getScaled_gradientStrength(i);
     out.deviceRadius = diameter * globals.dpr * 0.5;
+${
+    hasLines
+        ? /* wgsl */ `
+    out.lineKind = lineKind;
+    out.local = localScreen;
+`
+        : ""
+}
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -226,6 +288,33 @@ fn shade(in: VSOut) -> vec4<f32> {
         in.uv,
         in.devicePixelsPerAtlas
     );
+${
+    hasLines
+        ? /* wgsl */ `
+    if (in.lineKind != 0u) {
+        let p = abs(in.local * globals.dpr);
+        let length = in.deviceRadius * select(1.0, sqrt(2.0), in.lineKind == 1u);
+        let bounds = vec2<f32>(in.halfStrokeWidth * globals.dpr, length);
+        let vertical = p - bounds;
+        let horizontal = p - bounds.yx;
+        let d = min(max(vertical.x, vertical.y), max(horizontal.x, horizontal.y));
+        if (pickingEnabled) {
+            if (d > 0.0) { discard; }
+            return vec4<f32>(1.0);
+        }
+        var paint = in.stroke;
+        paint.a *= in.strokeOpacity;
+        if (paint.a <= 0.0) {
+            paint = in.fill;
+            paint.a *= in.fillOpacity;
+        }
+        let color = premultiplyAlpha(paint) * clamp(0.5 - d, 0.0, 1.0);
+        if (color.a <= 0.0) { discard; }
+        return color;
+    }
+`
+        : ""
+}
     if (pickingEnabled) {
         if (distance + in.halfStrokeWidth * globals.dpr < 0.0) { discard; }
         return vec4<f32>(1.0);
@@ -267,12 +356,17 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     return shade(in);
 }
 `;
+}
 
-/** Point program backed by a finite SVG-path MSDF atlas. */
+export const PATH_POINT_SHADER_BODY = createPathPointShaderBody();
+
+/** Point program for SVG paths and named stroke-only symbols. */
 export default class PathPointProgram extends PointProgram {
     /** @returns {string} */
     get shaderBody() {
-        return PATH_POINT_SHADER_BODY;
+        return createPathPointShaderBody(
+            /** @type {number[]} */ (this._markConfig.lineKinds ?? [])
+        );
     }
 
     /**

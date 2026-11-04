@@ -20,6 +20,9 @@ function resolvePathConfig(config) {
     return {
         ...config,
         paths,
+        lineKinds: table.map((name) =>
+            name === "x" ? 1 : name === "+" ? 2 : 0
+        ),
         atlasOptions: { normalizationSpan: 2 },
         channels: {
             ...config.channels,

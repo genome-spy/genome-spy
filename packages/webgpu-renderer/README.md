@@ -307,6 +307,15 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Stroke-only point shapes
+
+Named `x` and `+` points use `strokeWidth` as the full arm thickness in logical
+pixels, independently of symbol size and `inwardStroke`. Stroke RGBA alpha times
+`strokeOpacity` selects the paint; when that alpha is zero, the fill is used.
+Nonpositive size or width produces no paint or picking coverage. Positive-size
+symbols retain `minPickingSize` enlargement. Custom SVG paths remain filled shapes,
+even when their contours resemble `x` or `+`.
+
 ### Rule fill and borders
 
 Rules use `fill` (formerly `color`) for the body, with `size` as its thickness.
