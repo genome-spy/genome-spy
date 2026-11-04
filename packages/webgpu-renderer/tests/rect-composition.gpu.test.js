@@ -53,7 +53,7 @@ for (const dpr of [1, 2]) {
                     cornerRadiusBottomRight: dynamic(0),
                     hatchPattern: { ...dynamic(0), type: "u32" },
                     shadowOpacity: dynamic(0),
-                    shadowOffsetX: { value: 8 },
+                    shadowOffsetX: dynamic(8),
                     shadowBlur: { value: 1 },
                     shadowColor: { value: [0, 1, 0, 1] },
                 },
@@ -163,8 +163,32 @@ for (const dpr of [1, 2]) {
                     hatchPattern: 4,
                 });
                 const hatched = await capture();
-                const hatchPixel = pixel(hatched, 32 * dpr, 32 * dpr);
-                set({ hatchPattern: 0 });
+                // The stripe spans local x=[0, 4/dpr]: both edges have half coverage.
+                const hatchSamples = [-1, 0, 1, 4, 5].map((offset) =>
+                    pixel(hatched, 32 * dpr + offset, 32 * dpr)
+                );
+                let hatchPaddingError = 0;
+                for (const hatchPattern of [4, 5, 6]) {
+                    set({ hatchPattern, shadowOffsetX: 0 });
+                    const reference = await capture();
+                    for (const shadowOffsetX of [2, 8]) {
+                        // Invisible shadow padding must not move interior hatch stripes.
+                        set({ shadowOffsetX });
+                        const actual = await capture();
+                        for (let y = 24 * dpr; y < 40 * dpr; y++) {
+                            for (let x = 24 * dpr; x < 40 * dpr; x++) {
+                                for (let c = 0; c < 4; c++) {
+                                    const i = (y * canvas.width + x) * 4 + c;
+                                    hatchPaddingError = Math.max(
+                                        hatchPaddingError,
+                                        Math.abs(actual[i] - reference[i])
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                set({ hatchPattern: 0, shadowOffsetX: 8 });
                 const overlay = renderer.createMark(rectMark, {
                     count: 1,
                     channels: {
@@ -232,7 +256,8 @@ for (const dpr of [1, 2]) {
                     picks,
                     shadow,
                     rounded,
-                    hatchPixel,
+                    hatchSamples,
+                    hatchPaddingError,
                     overlap,
                     updated,
                     error:
@@ -272,7 +297,15 @@ for (const dpr of [1, 2]) {
             127.5,
             127.5 * (1 + coverage),
         ]);
-        close(result.hatchPixel, [128, 0, 128, 255]);
+        expect(result.hatchPaddingError).toBeLessThanOrEqual(1);
+        // Half-covered edges of a 50%-opaque stroke contribute 25% blue over red.
+        [
+            [255, 0, 0, 255],
+            [191, 0, 64, 255],
+            [128, 0, 128, 255],
+            [191, 0, 64, 255],
+            [255, 0, 0, 255],
+        ].forEach((p, i) => close(result.hatchSamples[i], p));
         close(result.overlap, [128, 128, 0, 255]);
         close(result.updated, [64, 64, 128, 255]);
         for (const faded of result.fades) close(faded, [0, 0, 128, 128]);
