@@ -96,8 +96,9 @@ overhead has been eliminated.
 - [x] Core and renderer TypeScript checks pass.
 - [x] GPU placement/clamping regression passes in Chrome.
 - [x] Release policy and release-status checks pass.
-- [ ] Complete scoped lint/format checks and verify the reconstructed upper
-      branch has exactly the previously tested package tree.
+- [x] Scoped lint and format checks pass.
+- [x] All non-plan tracked files on the reconstructed upper branch match the
+      previously tested `a13287481` tree exactly; independent review has no findings.
 
 Earlier integration checks on the complete consumer stack covered native band
 heatmap navigation/restore, shared matrix/tree resolutions, point size,
