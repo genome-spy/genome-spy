@@ -89,6 +89,31 @@ export function renderPointSvg(baseMark, options) {
                 : +(styles["stroke-opacity"] ?? constantStrokeOpacity) *
                   strokeAlpha(String(styles.stroke ?? constantStroke));
         const hasStroke = strokeOpacity > 0;
+        const polygonClip =
+            inwardStroke &&
+            !lineShape &&
+            hasStroke &&
+            instance.shape !== "circle" &&
+            instance.shape !== "square"
+                ? options.getPointClipPathUrl(instance.shape)
+                : undefined;
+        if (polygonClip) {
+            // Round concave joins follow the same distance band as the edges.
+            // Convex outer joins disappear under the nominal silhouette clip.
+            styles["stroke-width"] = formatSvgNumber(strokeWidth * 2);
+            styles["stroke-linejoin"] = "round";
+            styles["clip-path"] = polygonClip;
+            group.appendChild(
+                createPointElement(
+                    instance,
+                    radius,
+                    styles,
+                    pointPathBuilder,
+                    options.warn
+                )
+            );
+            return;
+        }
         const separateFill =
             !lineShape &&
             radius != geometryRadius &&
