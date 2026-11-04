@@ -61,9 +61,12 @@ for (const dpr of [1, 2]) {
                 });
             const routes = [];
             try {
-                for (const shape of ["circle", "square"]) {
+                for (const config of [
+                    { shape: "circle" },
+                    { shape: "square" },
+                ]) {
                     const mark = renderer.createMark(pointMark, {
-                        shape,
+                        ...config,
                         count: 1,
                         channels: {
                             uniqueId: { value: 17, type: "u32" },
@@ -81,7 +84,7 @@ for (const dpr of [1, 2]) {
                             stroke: dynamic([0, 0, 1, 1]),
                             fillOpacity: dynamic(1),
                             strokeOpacity: dynamic(1),
-                            inwardStroke: { ...dynamic(0), type: "u32" },
+                            strokeAlign: { ...dynamic(1), type: "u32" },
                         },
                     });
                     const centered = pixel(await capture(mark));
@@ -102,7 +105,7 @@ for (const dpr of [1, 2]) {
                         size: 256,
                         fillOpacity: 0.8,
                         strokeWidth: 1 / dpr,
-                        inwardStroke: 1,
+                        strokeAlign: 0,
                     });
                     const inwardTranslucent = pixel(await capture(mark));
                     set(mark, { fillOpacity: 1, strokeOpacity: 1 });
@@ -111,7 +114,38 @@ for (const dpr of [1, 2]) {
                         await renderer.pick(32, 32),
                         await renderer.pick(0, 0),
                     ];
-                    set(mark, { inwardStroke: 0, strokeWidth: 0 });
+                    set(mark, { strokeAlign: 2 });
+                    const outside = pixel(await capture(mark));
+                    set(mark, { fillOpacity: 0.8, strokeOpacity: 0.5 });
+                    const outsideTranslucent = pixel(await capture(mark));
+                    set(mark, {
+                        fillOpacity: 1,
+                        strokeOpacity: 1,
+                        strokeWidth: 4,
+                    });
+                    const outsideFrame = await capture(mark);
+                    const outsidePicks = [
+                        await renderer.pick(43, 32),
+                        await renderer.pick(45, 32),
+                    ];
+                    await capture(mark, [
+                        {
+                            mark,
+                            scissor: { x: 0, y: 0, width: 40, height: 64 },
+                        },
+                    ]);
+                    const clippedOutsidePick = await renderer.pick(43, 32);
+                    set(mark, { strokeAlign: 1, strokeWidth: 8 });
+                    const centeredDouble = await capture(mark);
+                    // Opaque paints have the same outer envelope; their interior colors differ.
+                    const envelopeError = outsideFrame.reduce(
+                        (m, v, i) =>
+                            i % 4 === 3
+                                ? Math.max(m, Math.abs(v - centeredDouble[i]))
+                                : m,
+                        0
+                    );
+                    set(mark, { strokeAlign: 2, strokeWidth: 0 });
                     const baseline = await capture(mark),
                         transparentErrors = [];
                     for (const values of [
@@ -129,9 +163,10 @@ for (const dpr of [1, 2]) {
                         );
                     }
                     let tiny = null;
-                    if (shape === "square") {
+                    if (config.shape === "square") {
                         // Characterize the existing UV-clamping limitation; do not fix its geometry here.
                         set(mark, {
+                            strokeAlign: 1,
                             x: 32,
                             y: 32,
                             size: 4,
@@ -148,6 +183,11 @@ for (const dpr of [1, 2]) {
                         emptyFill,
                         inwardTranslucent,
                         inward,
+                        outside,
+                        outsideTranslucent,
+                        outsidePicks,
+                        clippedOutsidePick,
+                        envelopeError,
                         picks,
                         transparentErrors,
                         tiny,
@@ -188,7 +228,7 @@ for (const dpr of [1, 2]) {
                         stroke: { data: data.stroke, components: 4 },
                         strokeWidth: { value: 1 },
                         angle: { data: data.angle },
-                        inwardStroke: { ...dynamic(0), type: "u32" },
+                        strokeAlign: { ...dynamic(1), type: "u32" },
                     },
                 });
                 const initial = await capture(mixed),
@@ -201,7 +241,7 @@ for (const dpr of [1, 2]) {
                     0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
                 ]);
                 mixed.series.replace(data, 4);
-                mixed.values.inwardStroke.set(1);
+                mixed.values.strokeAlign.set(0);
                 const updated = await capture(mixed);
                 const changed = initial.some((v, i) => v !== updated[i]);
                 shapePick.push(await renderer.pick(40, 11));
@@ -255,6 +295,12 @@ for (const dpr of [1, 2]) {
             close(route.scoped, [80, 0, 32, 112]);
             close(route.inward, [0, 0, 128, 128]);
             close(route.inwardTranslucent, [51, 0, 64, 115]);
+            // Outside: Ci=Cf=.5,Co=1. The nominal edge remains fully covered.
+            close(route.outside, [128, 0, 128, 255]);
+            close(route.outsideTranslucent, [102, 0, 64, 166]);
+            expect(route.envelopeError).toBe(0);
+            expect(route.outsidePicks).toEqual([17, null]);
+            expect(route.clippedOutsidePick).toBeNull();
             expect(route.picks).toEqual([17, null]);
             expect(Math.max(...route.transparentErrors)).toBeLessThanOrEqual(2);
         }

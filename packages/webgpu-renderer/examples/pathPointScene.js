@@ -27,7 +27,7 @@ export const PATH_POINT_ATLAS_OPTIONS = DEFAULT_SPARSE_PATH_ATLAS_OPTIONS;
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ backend?: "wgsl" | "msdfgen" }} [options]
+ * @param {{ backend?: "wgsl" | "msdfgen", strokeAlign?: number, strokeOpacity?: number }} [options]
  * @returns {Promise<() => void>}
  */
 export default async function runPathPointScene(canvas, options = {}) {
@@ -120,7 +120,8 @@ export default async function runPathPointScene(canvas, options = {}) {
                 }),
             },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },
-            strokeOpacity: { value: 0.5 },
+            strokeOpacity: { value: options.strokeOpacity ?? 0.5 },
+            strokeAlign: { value: options.strokeAlign ?? 1, type: "u32" },
             strokeWidth: { data: strokeWidth, type: "f32" },
             angle: { data: angle, type: "f32" },
         },

@@ -1,8 +1,9 @@
 # Point stroke alignment: bounded design and native proof
 
 Base: master 0923989b2. #604 follow-up; shared StrokeAlign declaration is in
-#657, now rebased onto master. This branch contains planning only. No dependency changes or production implementation commits are part of this
-proof milestone.
+#657, now rebased onto master. The narrow WebGPU renderer slice is authorized
+and in progress on codex/webgpu-point-stroke-alignment. Earlier proof milestones
+remain recorded below; no new dependencies, atlas or x/+ fixes are included.
 
 ## Scope and ownership
 
@@ -181,8 +182,8 @@ SVG supplies the separate contour oracle, and baseline frame parity protects the
 existing rendering contract. Keep these roles distinct in reports.
 
 Tentative commit: feat(webgpu-renderer): support aligned point strokes.
-The narrow scope is agreed. This step completes proof review and rerun only;
-production implementation follows as a separate milestone.
+The narrow scope and geometry proof gate are agreed and passed. Production
+implementation is now authorized for this renderer-only milestone.
 
 ## Status
 
@@ -300,3 +301,18 @@ the envelope gate runs. The temporary shader was restored afterward. This
 complements the earlier smaller-quad control caught by the full-frame envelope.
 Updated scripts/results and geometry-gate-summary.json are retained in the
 evidence folder above. No production files or dependencies were changed.
+
+## Production milestone
+
+- [x] Replace the boolean channel in both programs and migrate the sole Core adapter.
+- [x] Document numeric alignment and the retained atlas width cap.
+- [x] Migrate existing GPU tests and extend actual rendering coverage for outside
+      composition, extrusion, scissor picking, retained updates and rotated concave paths.
+- [x] Add the point/path story controls through the existing scene runners.
+- [ ] Finish package/type/story checks and rerun the independent geometry/Core proof
+      against the exact production shader and adapter files.
+- [ ] Review the final diff and report exact size before opening a PR.
+
+Core's legacy property, resource ownership, atlas generation and x/+ semantics
+remain unchanged. This unpublished renderer/API migration has no release impact;
+no Changeset is required. Retain this working plan until delivery reconciliation.

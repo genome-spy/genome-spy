@@ -666,8 +666,8 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             gradientStrength: liveValue(() =>
                 readNumericProperty(mark, "fillGradientStrength")
             ),
-            inwardStroke: liveValue(
-                () => (readProperty(mark, "inwardStroke") ? 1 : 0),
+            strokeAlign: liveValue(
+                () => (readProperty(mark, "inwardStroke") ? 0 : 1),
                 "u32"
             ),
             minPickingSize: liveValue(() =>

@@ -816,7 +816,12 @@ export type PointChannelName =
     | "strokeOpacity"
     | "angle"
     | "gradientStrength"
-    | "inwardStroke"
+    /**
+     * Stroke placement: 0 inside, 1 center (default), 2 outside.
+     * Path-backed points clamp stroke widths to the atlas distance range;
+     * fixed analytic circles do not have this limit.
+     */
+    | "strokeAlign"
     | "minPickingSize";
 
 export type PointChannels = Partial<
