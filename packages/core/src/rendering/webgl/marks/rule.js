@@ -113,6 +113,18 @@ export default class WebGLRuleMark extends WebGLMark {
             (cap) => ["butt", "square", "round"].indexOf(cap)
         );
 
+        // Ticks share this renderer but do not use the stroke-alignment uniform.
+        if (this.mark.getType() === "rule") {
+            this.registerMarkUniformValue(
+                "uStrokeAlign",
+                this.properties.strokeAlign,
+                (align) => {
+                    const code = ["inside", "center", "outside"].indexOf(align);
+                    return code < 0 ? 2 : code;
+                }
+            );
+        }
+
         setBlockUniforms(this.markUniformInfo, {
             uDashTextureSize: +this.dashTextureSize,
             uStrokeDashOffset: props.strokeDashOffset,

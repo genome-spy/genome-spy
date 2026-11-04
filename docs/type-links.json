@@ -275,6 +275,7 @@
   "SortOrder": "/grammar/types/#sortorder",
   "StringDatumDef": "/grammar/types/#stringdatumdef",
   "StringFieldDef": "/grammar/types/#stringfielddef",
+  "StrokeAlign": "/grammar/types/#strokealign",
   "SurroundPlotSpec": "/grammar/types/#surroundplotspec",
   "SurroundSide": "/grammar/types/#surroundside",
   "TextDef": "/grammar/types/#textdef",

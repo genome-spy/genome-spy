@@ -945,6 +945,10 @@ SCHEMA StringDatumDef
 
 SCHEMA StringFieldDef
 
+## StrokeAlign
+
+SCHEMA StrokeAlign
+
 ## StyleConfig
 
 See the [StyleConfig documentation](config.md#theme-config-and-style).
