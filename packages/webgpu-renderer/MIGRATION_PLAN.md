@@ -47,8 +47,9 @@ Open-head geometry and picking policy remain unchanged; tightly packed repeated
 heads still have stroke-dependent layout. WebGL parity and Core common-opacity
 normalization remain separate follow-ups.
 Point circle and path programs now resolve existing centered/inward paint
-coverage together. Shared Core opacity/alignment normalization and x/+ arm
-semantics remain separate; tiny path UV-clamping geometry is unchanged.
+coverage together. Named x/+ use analytic stroke-only arms with configured width and fill fallback
+in the existing path program; custom SVG paths remain filled. Shared Core
+opacity/alignment normalization and tiny path atlas reach remain separate.
 
 ## Active integration: selection predicate composition
 
