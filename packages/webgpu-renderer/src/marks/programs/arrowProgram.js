@@ -48,6 +48,7 @@ export const ARROW_CHANNEL_SPECS = {
     y2Offset: { type: "f32", components: 1, default: 0 },
     fill: { type: "f32", components: 4, default: [0, 0, 0, 1] },
     stroke: { type: "f32", components: 4, default: [0, 0, 0, 1] },
+    opacity: { type: "f32", components: 1, default: 1 },
     fillOpacity: { type: "f32", components: 1, default: 1 },
     strokeOpacity: { type: "f32", components: 1, default: 1 },
     strokeWidth: { type: "f32", components: 1, default: 1 },
@@ -83,6 +84,7 @@ struct VSOut {
     @location(10) @interpolate(flat) headSpacing: f32,
     @location(11) @interpolate(flat) pickId: u32,
     @location(12) @interpolate(flat) headStrokeWidth: f32,
+    @location(13) @interpolate(flat) opacity: f32,
 };
 
 fn culledArrow() -> VSOut {
@@ -104,6 +106,7 @@ fn culledArrow() -> VSOut {
     out.headSpacing = 0.0;
     out.pickId = 0u;
     out.headStrokeWidth = 0.0;
+    out.opacity = 0.0;
     return out;
 }
 
@@ -512,6 +515,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.direction = direction;
     out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, headRepeat);
     out.headStrokeWidth = headStrokeWidth;
+    out.opacity = getScaled_opacity(i);
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
@@ -524,7 +528,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shade(in) * select(in.opacity, 1.0, pickingEnabled);
 }
 `;
 

@@ -4,9 +4,10 @@ import { linearScale } from "../src/scales/linear.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
+ * @param {{ opacity?: number }} [options]
  * @returns {Promise<() => void>}
  */
-export default async function runArrowScene(canvas) {
+export default async function runArrowScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
     const count = 6;
     const x = new Float32Array([0.1, 0.1, 0.1, 0.15, 0.15, 0.15]);
@@ -25,6 +26,7 @@ export default async function runArrowScene(canvas) {
     const { series, scales } = renderer.createMark(arrowMark, {
         count,
         channels: {
+            opacity: { value: options.opacity ?? 1 },
             x: {
                 data: x,
                 type: "f32",

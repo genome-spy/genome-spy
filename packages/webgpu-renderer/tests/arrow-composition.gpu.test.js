@@ -16,6 +16,13 @@ for (const dpr of [1, 2]) {
         expect(result.clippedPicks).toEqual([77, null]);
         expect(result.outsidePicks).toEqual([77, null]);
         expect(result.zeroLength).toEqual([false, null]);
+        for (const common of result.common) {
+            expect(common.visible).toBe(true);
+            expect(common.error).toBeLessThanOrEqual(1);
+            expect(common.zero).toBe(false);
+            expect(common.pick).toBe(77);
+            expect(common.restored).toBe(true);
+        }
         expect(result.validation).toBeNull();
     });
 }
@@ -55,6 +62,7 @@ async function renderArrows(dpr) {
                 strokeWidth: 0.25 / dpr,
                 fill: [1, 0, 0, 1],
                 stroke: [0, 0, 1, 1],
+                opacity: 1,
                 fillOpacity: 1,
                 strokeOpacity: 1,
                 direction: 0,
@@ -103,7 +111,28 @@ async function renderArrows(dpr) {
     };
     const samples = [],
         transparentErrors = [],
-        openPicks = [];
+        openPicks = [],
+        common = [];
+    const checkOpacity = async (x = 32, y = cy) => {
+        const full = await capture();
+        set({ opacity: 0.5 });
+        const half = await capture();
+        set({ opacity: 0 });
+        const zero = await capture();
+        const pick = await renderer.pick(x, y);
+        set({ opacity: 1 });
+        const restored = await capture();
+        common.push({
+            visible: full.some(Boolean),
+            error: half.reduce(
+                (m, v, i) => Math.max(m, Math.abs(v - full[i] * 0.5)),
+                0
+            ),
+            zero: zero.some(Boolean),
+            pick,
+            restored: restored.every((v, i) => v === full[i]),
+        });
+    };
     try {
         // Straight stem: d=.125/DPR, Ci=.25, Cf=.375, Co=.5.
         samples.push([pixel(await capture()), [64, 0, 64, 128]]);
@@ -136,6 +165,7 @@ async function renderArrows(dpr) {
             ),
             [32, 0, 32, 64],
         ]);
+        await checkOpacity();
         for (const shape of ["triangle", "open"]) {
             mark.properties.headShape.set(shape);
             set({ size: 8, strokeWidth: 0 });
@@ -153,7 +183,9 @@ async function renderArrows(dpr) {
                     )
                 );
             }
-            set({ strokeWidth: 0, strokeOpacity: 1 });
+            set({ fill: [1, 0, 0, 0.6] });
+            await checkOpacity();
+            set({ fill: [1, 0, 0, 1], strokeWidth: 0, strokeOpacity: 1 });
         }
         mark.properties.stem.set(false);
         set({ strokeWidth: 1 });
@@ -184,8 +216,10 @@ async function renderArrows(dpr) {
         );
         const revealedPicks = [
             await renderer.pick(20.5, cy + 3),
-            await renderer.pick(18.5, cy),
+            // Transparent borders remain pickable; probe the remaining hole.
+            await renderer.pick(17.5, cy),
         ];
+        await checkOpacity(20.5, cy + 3);
         set({ strokeWidth: 1, strokeOpacity: 1 });
         await capture([
             { mark, scissor: { x: 0, y: 0, width: 32, height: 64 } },
@@ -213,6 +247,7 @@ async function renderArrows(dpr) {
         ];
         return {
             samples,
+            common,
             transparentErrors,
             openPicks,
             revealedPicks,

@@ -212,9 +212,17 @@ export const Links = withSource("runLinkScene", null, {
     render: (args) => renderScene(runLinkScene, args),
 });
 
-export const Arrows = withSource("runArrowScene", null, {
-    render: (args) => renderScene(runArrowScene, args),
-});
+export const Arrows = withSource(
+    "runArrowScene",
+    { opacity: 1 },
+    {
+        args: { opacity: 1 },
+        argTypes: {
+            opacity: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
+        },
+        render: (args) => renderScene(runArrowScene, args),
+    }
+);
 
 export const Text = withSource(
     "runTextScene",

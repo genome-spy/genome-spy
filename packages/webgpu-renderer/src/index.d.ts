@@ -896,6 +896,7 @@ export type LinkChannelName =
 export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
 
 export type ArrowChannelName =
+    | "opacity"
     | "xClampRange"
     | "yClampRange"
     | "uniqueId"

@@ -43,7 +43,8 @@ remain #604 follow-ups; this correction does not expose new Core grammar.
 ## Active integration: arrow paint composition
 
 Arrow centered strokes preserve nominal fill beneath translucent paint (#604).
-Open-head geometry and picking policy remain unchanged; tightly packed repeated
+Standalone arrow opacity applies once to the completed occurrence, including
+repeated heads. Open-head geometry and picking policy remain unchanged; tightly packed repeated
 heads still have stroke-dependent layout. WebGL parity and Core common-opacity
 normalization remain separate follow-ups.
 Point circle and path programs now resolve existing centered/inward paint
