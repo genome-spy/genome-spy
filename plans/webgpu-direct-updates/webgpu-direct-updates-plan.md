@@ -3,8 +3,10 @@
 Status: the existing foundation is implemented, reviewed and measured during the
 SampleView investigation. The continuation below broadens the investigation to
 all GPU input data carried by uniforms, textures and equivalent lookup buffers.
-The SampleView placement/navigation refactor stacks on this foundation. Retain
-this temporary record for draft discussion and retire it before merge.
+The selected upload optimizations and audit are complete; delivery coordination
+with the stacked consumer remains pending. The SampleView placement/navigation
+refactor stacks on this foundation. Retain this temporary record for draft
+discussion and retire it before merge.
 
 ## Goal and architecture
 
@@ -208,24 +210,24 @@ should be folded into its owning commit.
       extend coverage only for a distinct regression and remove overlapping
       implementation-detail assertions when code changes make them redundant.
 - [x] Run Core and renderer TypeScript checks after rebasing.
-- [ ] Preserve simultaneous scale/style transactions, selection changes,
+- [x] Preserve simultaneous scale/style transactions, selection changes,
       configuration replacement, mutable-domain updates, frozen-domain reuse,
       reversed bands/gaps and independently scaled secondary channels.
-- [ ] For input-data paths changed in milestone 3, extend the existing resource,
+- [x] For input-data paths changed in milestone 3, extend the existing resource,
       renderer and GPU suites with representative unchanged-frame and targeted
       mutation cases. Verify visible/picking/export transitions, resize/DPR,
       texture or buffer growth/rebinding, shared-resource disposal and
       empty-data behavior where those contracts are affected. Do not add a
       configuration matrix for paths whose implementation remains unchanged.
-- [ ] Run the real-GPU `tests/mark-clamping.gpu.test.js` regression. Smoke-test
-      ordinary band navigation, semantic zoom and picking through public Core;
-      verify inherited rule-stroke alignment on WebGL and WebGPU. Use the
-      existing clustered-heatmap and semantic-zoom examples, not a new
-      validation harness.
+- [x] Run the real-GPU placement/clamping, ordering/picking, render-group and
+      scale-table regressions. Verify public Core heatmap navigation/export,
+      semantic zoom and inherited rule strokes on WebGL and WebGPU using
+      existing examples. The result record below distinguishes smoke success
+      from the existing cross-backend text-layout difference.
 - [ ] If the dependent stack is rebuilt, verify SampleView peek/scroll,
       sort/filter/undo, row alignment and plot picking on #660. Keep the known
       WebGPU grouped-summary limitation separate from supported-case acceptance.
-- [ ] After relevant implementation changes, run affected package type checks,
+- [x] After relevant implementation changes, run affected package type checks,
       scoped lint/format and applicable release checks. Let updated CI cover
       broader integration; expand local tests only for a concrete unresolved
       risk.
@@ -234,10 +236,10 @@ Outcome: current evidence that fewer evaluations and cheaper packing retain
 observable behavior. Core's `mark.js` owns revisions; `webGpuSurface.js` owns
 binding refresh and snapshots; renderer `uniformBuffer.js` owns packing and
 `baseProgram.js` owns flushing. The existing foundation still uploads whole mark
-blocks; milestone 3 may change internal upload spans if measurements justify it.
-No public API, persistence or documentation migration is planned. A discovered
-regression would get a focused message such as
-`fix(core): preserve live WebGPU inputs after scale updates`.
+blocks; the selected optimizations skip unchanged uploads without changing
+internal upload spans or immediate slot timing. No public API, persistence or
+documentation migration is planned. A discovered regression would get a focused
+message such as `fix(core): preserve live WebGPU inputs after scale updates`.
 
 ### 3. Audit and optimize every GPU input-data path
 
@@ -248,15 +250,15 @@ Inventory every class below, record its update trigger, owner, sharing identity,
 payload preparation, upload/copy cost and disposal. Unchanged data should retain
 resources and avoid redundant work wherever frame/target semantics permit it.
 
-| Data class                                                                            | Current WebGPU owner and representation                                                                   | Audit focus                                                                                                 |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Values, styles, opacity, offsets, thresholds, scale parameters and selection metadata | Mark uniform block in `baseProgram.js`, fed by Core `webGpuSurface.js` and renderer slot handles          | Retained setters, dependency-specific evaluation, packing and batched dirty uploads for every slot kind     |
-| Viewport, DPR, cull bounds, placement index/clip/count and order pass                 | Per-occurrence dynamic-offset uniforms in `renderer.js`                                                   | Repacking/uploading identical frames; preserve visible/picking and detached-export differences              |
-| Composite opacity                                                                     | Dynamic-offset uniforms in `renderGroups.js`                                                              | Used-span packing/upload and safe reuse across changing scope sequences                                     |
-| Palettes and dash patterns                                                            | Actual data textures in `scaleResources.js` and `ruleProgram.js`                                          | Sampling/building payloads, unchanged updates, repeated consumers, texture identity, uploads and rebindings |
-| Font and path atlases                                                                 | Shared GPU-generated textures in `outlineFontAtlas.js`, `msdfAtlasTexture.js` and `sparseGpuPathAtlas.js` | Generation parameter uniforms/storage, copies, growth, stable coordinates, borrower updates and lifetime    |
-| Categorical domains, gap cuts, ordinal ranges and selections                          | Storage lookup buffers in `scaleResources.js` and `selectionResources.js`                                 | Normalization/hash preparation, retained membership, capacity, upload/rebind and sharing costs              |
-| Placement and text lookup data                                                        | Storage buffers in `renderer.js`, `textProgram.js` and `pathPointProgram.js`                              | Snapshot/packing/upload triggers and reuse of glyph/metric/string/render-item tables                        |
+| Data class                                                                            | Current WebGPU owner and representation                                                                   | Assessment after implementation                                                                                        |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Values, styles, opacity, offsets, thresholds, scale parameters and selection metadata | Mark uniform block in `baseProgram.js`, fed by Core `webGpuSurface.js` and renderer slot handles          | Already retained: compiled setters, Core change filtering and batched dirty uploads; extra direct-call guards deferred |
+| Viewport, DPR, cull bounds, placement index/clip/count and order pass                 | Per-occurrence dynamic-offset uniforms in `renderer.js`                                                   | Improved: compare encoded data against uploaded staging; unchanged records skip packing and transfer                   |
+| Composite opacity                                                                     | Dynamic-offset uniforms in `renderGroups.js`                                                              | Improved: retain uploaded opacity sequence, dirty state and valid prefix; unchanged sequences skip transfer            |
+| Palettes and dash patterns                                                            | Actual data textures in `scaleResources.js` and `ruleProgram.js`                                          | Improved palette upload reuse after sampling; dash atlas already initialization-only, sharing deferred                 |
+| Font and path atlases                                                                 | Shared GPU-generated textures in `outlineFontAtlas.js`, `msdfAtlasTexture.js` and `sparseGpuPathAtlas.js` | Already shared/append-only; generation scratch and parameter buffers retained; no new cache needed                     |
+| Categorical domains, gap cuts, ordinal ranges and selections                          | Storage lookup buffers in `scaleResources.js` and `selectionResources.js`                                 | Improved normalized scale-table upload reuse; selection capacity/Core filtering already retained                       |
+| Placement and text lookup data                                                        | Storage buffers in `renderer.js`, `textProgram.js` and `pathPointProgram.js`                              | Already revision/series-replacement driven with capacity reuse; equal explicit replacements deferred                   |
 
 Storage lookups are included because they carry data that WebGL often supplies
 through textures. Rectangle hatches are procedural; their input parameters
@@ -269,54 +271,53 @@ blocks), `rendererResources.js` (shared scale tables) and `webGLHelper.js`
 (range/selection texture ownership). WebGL also uploads View uniforms per
 occurrence; do not assume that it already caches every unchanged frame.
 
-- [ ] Trace each class from public input to GPU resource. Separate initial
+- [x] Trace each class from public input to GPU resource. Separate initial
       creation, unchanged redraw/navigation, changed-value updates, membership
       changes and growth. Exercise style/selection edits and text/palette
       changes as well as zoom/pan; equal initial values alone do not justify
       sharing.
-- [ ] Attribute evaluation, normalization, packing, allocation/rebinding, upload
+- [x] Attribute evaluation, normalization, packing, allocation/rebinding, upload
       calls/bytes and GPU generation/copies separately by resource class.
       Compare against WebGL and the unchanged WebGPU baseline on the same
       workload. Reuse existing tooling; its interaction driver sets `profile=1`,
       and `--no-trace` does not disable that profiler. Use separate verified
       profiler-disabled, alternating warmed runs and a same-version noise
       control to judge whole-thread CPU and cadence.
-- [ ] Separate public-renderer dispatched-update costs from Core integration.
+- [x] Separate public-renderer dispatched-update costs from Core integration.
       Core's `webGpuSurface.js:updateResourceBindings` already filters unchanged
-      range leaves, while `scaleResources.js` still uploads every dispatched
-      table/palette payload. Use realistic direct-API or config-replacement
-      workloads for proposed renderer guards, and check their comparison
-      overhead on ordinary Core navigation. Label benefits by workload; removing
-      an upload Core already avoids is not evidence of an integrated application
-      gain.
-- [ ] Select the smallest justified changes within the existing API. Concrete
-      candidates include unchanged occurrence-global reuse, avoiding repeated
-      palette/lookup payload construction, and retaining common input
-      preparation for consumers whose semantic identity is already available.
-      Audit mark values/properties/selections with the same care as scales. Keep
-      one source of truth; do not add a generic cache or parallel invalidation
-      registry.
-- [ ] Preserve mutable input and callable-palette semantics in any reuse guard.
+      range leaves, while the baseline `scaleResources.js` uploaded every
+      dispatched table/palette payload. Use realistic direct-API or
+      config-replacement workloads for proposed renderer guards, and check their
+      comparison overhead on ordinary Core navigation. Label benefits by
+      workload; removing an upload Core already avoids is not evidence of an
+      integrated application gain.
+- [x] Select the smallest justified changes within the existing API: retain
+      occurrence/composite staging and compare normalized scale-table/palette
+      bytes before uploads. Payload normalization and callable evaluation still
+      run, preserving mutable-input semantics. Additional shared preparation and
+      generic no-op guards are deferred without evidence; no new registry or
+      sharing/lifetime contract is introduced.
+- [x] Preserve mutable input and callable-palette semantics in any reuse guard.
       Snapshot or compare contents where needed, including reused arrays with
       changed nested colors. The same `ColorInterpolatorFn` can produce
       different colors after captured state changes, so a repeated explicit
       range update must still observe its new output. Neither object/function
       identity nor a frozen outer array proves immutable contents. Add these
       regressions only when modifying the corresponding data path.
-- [ ] For occurrence-global reuse, track the contents last uploaded into the
+- [x] For occurrence-global reuse, track the contents last uploaded into the
       actual GPU buffer. Live rendering, picking (`forceAll`) and detached
       export share and overwrite that buffer; remembered frame identity alone is
       insufficient. Extend `renderer.test.js` with a representative live →
       picking/export → live transition and invalidate reuse when buffer capacity
       grows. Preserve target-local DPR, viewport/culling, placement and
       order-pass values, as well as individual-slot and batch timing.
-- [ ] Compare one contiguous dirty uniform span with whole-block batching only
-      if transfer cost warrants it. Preserve device alignment, integer bits,
-      ordering and valid minimum sizes, and avoid multiplying small uploads.
-      Sharing must preserve mutable input semantics and last-consumer disposal;
-      atlas growth must refresh borrowers without destroying in-flight
-      resources.
-- [ ] Record each class as improved, already adequately retained, or deferred
+- [x] Defer contiguous dirty-span uploads and additional sharing: selected
+      guards remove redundant transfers without changing spans or ownership. The
+      standalone steady probe's remaining mark upload is only 16 bytes per
+      frame; no measured opportunity justifies more machinery. Preserve device
+      alignment, integer bits, minimum sizes and existing atlas borrower
+      lifetimes.
+- [x] Record each class as improved, already adequately retained, or deferred
       with evidence. Keep changes for repeatable benefit beyond observed noise
       and a clear production-line/maintenance tradeoff; counters alone do not
       establish an application speedup. If a worthwhile candidate needs an API
@@ -331,14 +332,92 @@ messages include `perf(webgpu-renderer): retain unchanged draw uniforms` or
 Internal changes need no public migration; API changes require a separately
 approved proposal and its documentation/declaration work before implementation.
 
+### Implementation and evidence — 2026-11-04
+
+The plan was committed as `47120aacc` before implementation. Three existing
+renderer owners now suppress redundant uploads using their retained data:
+
+- `renderer.js`: compare encoded globals with the actual uploaded staging
+  prefix. Mutable caller ranges, DPR changes, live/picking/export transitions
+  and buffer growth remain observable. No second per-frame snapshot is
+  allocated.
+- `renderGroups.js`: retain dirty state and the uploaded opacity prefix.
+  Capacity growth invalidates reuse; encoding that stops before flush retains
+  dirty state.
+- `scaleResources.js`: compare normalized table words and palette bytes before
+  uploading. Existing CPU table data is reused; palettes retain 1 KiB/channel.
+  Reused nested colors and callable palettes with changed closure output still
+  update, and binding/disposal ownership stays unchanged.
+
+No public exports, declarations, package entry points or slot timing changed.
+Runtime source across these three files grows from 3,307 to 3,391 lines (+84 raw
+lines); the growth buys explicit upload-validity checks, not a parallel resource
+model. Existing tests were extended for mutable inputs, pass transitions,
+encoded equality, growth and disposal; only the compositor gains new test cases.
+An independent implementation review found no actionable correctness/API issue.
+
+Measurement used headed Chrome on an Apple Metal-3 adapter at DPR 1, with the
+application profiler absent and no concurrent heavy checks. Baseline source is
+`47120aacc`; only the three changed runtime modules were substituted between
+versions. Temporary drivers and raw reports remain under ignored
+`output/webgpu-input-data-efficiency/`; no permanent benchmark framework is
+added.
+
+The standalone scene uses 256 repeated rect occurrences and 16 opacity groups on
+512×512 pixels. Five alternating warmed baseline/candidate pairs measure 100
+frames per workload; separate 10-frame instrumented probes count transfers. The
+steady case changes a mark value each frame; the changing case also moves a
+viewport. Direct lookup updates repeatedly dispatch a 1,024-category domain and
+256-texel palette. Repeated baseline rounds provide the same-version variation
+reference. Timings cover renderer-thread tasks, not GPU completion time.
+
+| Workload, per 10 frames                              | Baseline transfers                                             | Optimized transfers                         | Mean thread CPU, baseline → optimized per 100 frames |
+| ---------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------- |
+| Fixed occurrence/composite data, changing mark value | 30 buffer writes / 696,480 B                                   | 10 buffer writes / 160 B                    | 92.54 → 84.66 ms (−8.5%)                             |
+| Changing viewport                                    | 30 buffer writes / 696,480 B                                   | 20 buffer writes / 655,520 B                | 83.28 → 81.69 ms (−1.9%, mixed pair signs)           |
+| Repeated explicit lookup/palette update              | 30 buffer writes / 167,360 B plus 10 texture writes / 10,240 B | 10 buffer writes / 960 B, no texture writes | 90.41 → 88.96 ms (−1.6%, mixed pair signs)           |
+
+Transfer reductions are deterministic; these synthetic timings are not an
+application-wide claim. Direct lookup normalization/sampling still runs. An
+independent mock payload check confirms that subsequent in-place mutations
+upload both changed resources with final bytes matching baseline.
+
+Integrated public Core heatmap navigation used three alternating warmed pairs,
+96 viewport updates per run, at 900×650 pixels with the same profiler-disabled
+setup. Mean thread CPU was WebGL 188.21 ms, baseline WebGPU 195.94 ms and
+optimized WebGPU 202.52 ms (+3.4% versus baseline). Each candidate pair was
+slightly higher; small-sample variation prevents a general conclusion, and this
+is not evidence of application acceleration. Cadence p95 stayed about 17.1–17.5
+ms. The optimized heatmap PNG is byte-identical to baseline across all three
+runs.
+
+Validation: 451 tests in the renderer suite plus focused Core suites pass; both
+package type checks, scoped ESLint/Prettier, and release policy/status pass.
+Eight native GPU tests cover clamping/placement, conditional order/picking,
+render groups and scale-table relocation/membership. Public semantic-zoom and
+outlined- rule examples render successfully on both backends without
+validation/runtime errors. The combined example command returns failure for the
+outlined-rule cross-backend PNG comparison because existing font/layout metrics
+produce 500×206 versus 500×203 output. A separate unchanged-source comparison
+confirms byte-identical baseline/optimized WebGPU outlined-rule PNGs and
+identical export dimensions. The semantic-zoom spec uses random data, so its PNG
+hashes are not a cross-run equality contract.
+
+Release impact remains none for this unpublished implementation. After the 1.3.0
+master rebase, Changesets status required an empty fragment to acknowledge the
+branch's shared Core internal changes. The empty
+`.changeset/webgpu-retained-input-data.md` records that decision without bumping
+any package; no releasable functionality or API has changed.
+
 ### 4. Prepare the foundation for delivery
 
-- [ ] Address actual implementation review findings; use an independent review
+- [x] Address actual implementation review findings; use an independent review
       for substantive integration changes. The requested independent plan review
       and its resolutions are recorded below.
-- [ ] Reassess the final release impact with `write-genomespy-changeset`; the
-      current unpublished-only implementation has no fragment. Update the PR's
-      validation and measurement claims to match the final branch.
+- [x] Reassess the final release impact with `write-genomespy-changeset`: no
+      package bump, recorded by the empty fragment. Local validation and
+      measurement claims are reconciled above; updating remote PR metadata
+      remains delivery work.
 - [ ] Reconcile completed/discarded plan tasks, retain that record in branch
       history, then remove this temporary plan in a later commit before merge,
       following `prepare-genomespy-change`. Tentative retirement message:

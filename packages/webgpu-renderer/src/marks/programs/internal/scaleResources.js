@@ -61,6 +61,9 @@ export class ScaleResourceManager {
     /** @type {Map<string, ChannelResources>} */
     #channelResources = new Map();
 
+    /** @type {Map<string, Uint8Array>} */
+    #rangeTexturePayloads = new Map();
+
     /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }>} */
     #scaleUpdaters = new Map();
 
@@ -125,6 +128,11 @@ export class ScaleResourceManager {
             data.byteLength / 4
         );
         const previous = this.#tables.get(key);
+        if (previous && equalPayload(previous.data, words)) {
+            previous.publish = publish;
+            publish(previous.offset);
+            return false;
+        }
         if (previous && words.length <= previous.capacity) {
             previous.data = words;
             previous.publish = publish;
@@ -815,6 +823,13 @@ export class ScaleResourceManager {
     #setRangeTexture(name, textureData) {
         const resources = this.#ensureChannelResources(name);
         const prev = resources.rangeTexture;
+        const data = new Uint8Array(
+            textureData.data.buffer,
+            textureData.data.byteOffset,
+            textureData.data.byteLength
+        );
+        const previousData = this.#rangeTexturePayloads.get(name);
+        if (previousData && equalPayload(previousData, data)) return false;
         const needsNewTexture = !prev;
         const texture = needsNewTexture
             ? this.#device.createTexture({
@@ -831,6 +846,7 @@ export class ScaleResourceManager {
               })
             : prev.texture;
         writeTextureData(this.#device, texture, textureData);
+        this.#rangeTexturePayloads.set(name, data);
         const sampler =
             prev?.sampler ??
             this.#device.createSampler({
@@ -935,7 +951,22 @@ export class ScaleResourceManager {
         this.#tableBuffer = null;
         this.#tables.clear();
         this.#channelResources.clear();
+        this.#rangeTexturePayloads.clear();
         this.#scaleUpdaters.clear();
         this.#gapScales.clear();
     }
+}
+
+/**
+ * Compare the packed GPU payload, including exact integer and floating-point bits.
+ * Inputs are renderer-owned outputs of normalization, not mutable caller arrays.
+ * @param {ArrayLike<number>} first
+ * @param {ArrayLike<number>} second
+ */
+function equalPayload(first, second) {
+    if (first.length !== second.length) return false;
+    for (let i = 0; i < first.length; i++) {
+        if (first[i] !== second[i]) return false;
+    }
+    return true;
 }
