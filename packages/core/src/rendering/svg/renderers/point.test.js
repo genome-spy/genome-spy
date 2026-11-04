@@ -379,18 +379,38 @@ describe("SVG point renderer", () => {
         expect(warnings).toEqual([]);
     });
 
-    test("preserves inward fill when constant stroke opacity inherits view opacity", async () => {
+    test("composes inward point paints before nested view opacity", async () => {
         const { view } = await createHeadlessEngine({
             opacity: 0.5,
-            data: { values: [{}] },
-            mark: {
-                type: "point",
-                inwardStroke: true,
-                fill: "red",
-                stroke: "blue",
-                strokeWidth: 4,
-                size: 400,
+            data: {
+                values: [
+                    { shape: "circle", alpha: 1 },
+                    { shape: "circle", alpha: 0.5 },
+                    { shape: "circle", alpha: 0 },
+                    { shape: "+", alpha: 0 },
+                ],
             },
+            layer: [
+                {
+                    opacity: 0.5,
+                    mark: {
+                        type: "point",
+                        inwardStroke: true,
+                        fill: "red",
+                        stroke: "blue",
+                        strokeWidth: 6,
+                        size: 1024,
+                    },
+                    encoding: {
+                        shape: { field: "shape", type: "nominal", scale: null },
+                        strokeOpacity: {
+                            field: "alpha",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                    },
+                },
+            ],
         });
         const { svg } = createSvg({
             viewRoot: view,
@@ -399,16 +419,38 @@ describe("SVG point renderer", () => {
             background: null,
         });
         const group = svg.querySelector('[data-mark-type="point"]');
-        const circles = Array.from(group.querySelectorAll("circle"));
+        const occurrences = Array.from(group.children);
 
-        expect(group.getAttribute("stroke-opacity")).toBe("0.5");
-        expect(group.getAttribute("fill-opacity")).toBe("0.5");
-        expect(circles.map((circle) => circle.getAttribute("r"))).toEqual([
-            "10",
-            "8",
+        expect(group.getAttribute("fill-opacity")).toBe("1");
+        expect(group.getAttribute("opacity")).toBeNull();
+        expect(
+            occurrences.map((element) => [
+                element.tagName,
+                element.getAttribute("opacity"),
+            ])
+        ).toEqual([
+            ["circle", "0.25"],
+            ["g", "0.25"],
+            ["circle", "0.25"],
+            ["path", "0.25"],
         ]);
-        expect(circles[0].getAttribute("stroke")).toBe("none");
-        expect(circles[1].getAttribute("fill")).toBe("none");
+        // Opaque paint retains one inset shape; only the translucent pair isolates.
+        expect(occurrences[0].getAttribute("r")).toBe("13");
+        expect(
+            Array.from(occurrences[1].children, (element) => [
+                element.getAttribute("r"),
+                element.getAttribute("stroke-opacity"),
+                element.getAttribute("opacity"),
+            ])
+        ).toEqual([
+            ["16", "0.5", null],
+            ["13", "0.5", null],
+        ]);
+        expect(occurrences[2].getAttribute("r")).toBe("16");
+        expect(occurrences[2].getAttribute("stroke")).toBe("none");
+        expect(occurrences[3].getAttribute("stroke")).toBe("red");
+        expect(occurrences[3].getAttribute("stroke-opacity")).toBe("1");
+        expect(occurrences[3].getAttribute("stroke-width")).toBe("6");
     });
 
     test("reports resolved unsupported properties separately", async () => {

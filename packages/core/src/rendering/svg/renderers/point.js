@@ -11,7 +11,7 @@ import {
     toPaintString,
 } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
-import { formatSvgNumber } from "../svgNumber.js";
+import { formatSvgNumber, formatSvgUnitless } from "../svgNumber.js";
 
 /**
  * @param {import("../../../marks/mark.js").default} baseMark
@@ -49,12 +49,12 @@ export function renderPointSvg(baseMark, options) {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
             encoder: encoders.fillOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         stroke: { encoder: encoders.stroke, transform: toPaintString },
         "stroke-opacity": {
             encoder: encoders.strokeOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         "stroke-width": {
             encoder: encoders.strokeWidth,
@@ -79,7 +79,7 @@ export function renderPointSvg(baseMark, options) {
                 ? { "stroke-width": formatSvgNumber(strokeWidth) }
                 : {}),
             ...(lineShape
-                ? getLineShapeStyles(encoders, datum, viewOpacity, strokeAlpha)
+                ? getLineShapeStyles(encoders, datum, strokeAlpha)
                 : {}),
         };
         // Only inset fill geometry needs the stroke's effective alpha here.
@@ -97,9 +97,21 @@ export function renderPointSvg(baseMark, options) {
                 fillAlpha(String(styles.fill ?? constantFill)) >
                 0;
 
+        // A translucent inward stroke uses two shapes for one logical point.
+        // Fade that pair together; ordinary and invisible-stroke points stay flat.
+        const isolate = separateFill && hasStroke && viewOpacity != 1;
+        const occurrence = isolate
+            ? createSvgElement("g", { opacity: formatSvgUnitless(viewOpacity) })
+            : group;
+        if (isolate) {
+            group.appendChild(occurrence);
+        } else if (viewOpacity != 1) {
+            styles.opacity = formatSvgUnitless(viewOpacity);
+        }
+
         if (separateFill) {
             // Preserve the nominal fill without introducing per-point clips.
-            group.appendChild(
+            occurrence.appendChild(
                 createPointElement(
                     instance,
                     radius,
@@ -111,7 +123,7 @@ export function renderPointSvg(baseMark, options) {
             styles.fill = "none";
         }
         if (!separateFill || hasStroke) {
-            group.appendChild(
+            occurrence.appendChild(
                 createPointElement(
                     instance,
                     geometryRadius,
@@ -202,21 +214,19 @@ function createPointPathBuilder() {
 /**
  * @param {Record<string, import("../../../types/encoder.js").Encoder>} encoders
  * @param {object} datum
- * @param {number} viewOpacity
  * @param {(paint: string) => number} strokeAlpha
  * @returns {Record<string, string | number>}
  */
-function getLineShapeStyles(encoders, datum, viewOpacity, strokeAlpha) {
+function getLineShapeStyles(encoders, datum, strokeAlpha) {
     const stroke = toPaintString(encoders.stroke(datum));
     const strokeOpacity = encodeNumber(encoders.strokeOpacity, datum);
     const useFill = strokeOpacity * strokeAlpha(stroke) <= 0;
     return {
         fill: "none",
         stroke: toPaintString(useFill ? encoders.fill(datum) : stroke),
-        "stroke-opacity":
-            (useFill
-                ? encodeNumber(encoders.fillOpacity, datum)
-                : strokeOpacity) * viewOpacity,
+        "stroke-opacity": useFill
+            ? encodeNumber(encoders.fillOpacity, datum)
+            : strokeOpacity,
         "stroke-width": formatSvgNumber(
             encodeNumber(encoders.strokeWidth, datum)
         ),
