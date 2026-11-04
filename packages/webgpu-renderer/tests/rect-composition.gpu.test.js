@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 for (const dpr of [1, 2]) {
-    test(`centered rectangle strokes preserve underlying paint at DPR ${dpr}`, async ({
+    test(`rectangle strokes preserve aligned paint at DPR ${dpr}`, async ({
         page,
     }) => {
         await ensureWebGPU(page);
@@ -47,6 +47,7 @@ for (const dpr of [1, 2]) {
                     minOpacity: dynamic(0),
                     strokeOpacity: dynamic(1),
                     strokeWidth: dynamic(0),
+                    strokeAlign: { ...dynamic(1), type: "u32" },
                     cornerRadiusTopLeft: dynamic(0),
                     cornerRadiusTopRight: dynamic(0),
                     cornerRadiusBottomLeft: dynamic(0),
@@ -54,7 +55,7 @@ for (const dpr of [1, 2]) {
                     hatchPattern: { ...dynamic(0), type: "u32" },
                     shadowOpacity: dynamic(0),
                     shadowOffsetX: dynamic(8),
-                    shadowBlur: { value: 1 },
+                    shadowBlur: dynamic(1),
                     shadowColor: { value: [0, 1, 0, 1] },
                 },
             });
@@ -86,6 +87,18 @@ for (const dpr of [1, 2]) {
                         (y * canvas.width + x) * 4 + 4
                     )
                 );
+            const interiorError = (a, b) => {
+                let error = 0;
+                for (let y = 24 * dpr; y < 40 * dpr; y++) {
+                    for (let x = 24 * dpr; x < 40 * dpr; x++) {
+                        for (let c = 0; c < 4; c++) {
+                            const i = (y * canvas.width + x) * 4 + c;
+                            error = Math.max(error, Math.abs(a[i] - b[i]));
+                        }
+                    }
+                }
+                return error;
+            };
             const set = (values) =>
                 mark.batchUpdates(() => {
                     for (const [name, value] of Object.entries(values))
@@ -175,17 +188,10 @@ for (const dpr of [1, 2]) {
                         // Invisible shadow padding must not move interior hatch stripes.
                         set({ shadowOffsetX });
                         const actual = await capture();
-                        for (let y = 24 * dpr; y < 40 * dpr; y++) {
-                            for (let x = 24 * dpr; x < 40 * dpr; x++) {
-                                for (let c = 0; c < 4; c++) {
-                                    const i = (y * canvas.width + x) * 4 + c;
-                                    hatchPaddingError = Math.max(
-                                        hatchPaddingError,
-                                        Math.abs(actual[i] - reference[i])
-                                    );
-                                }
-                            }
-                        }
+                        hatchPaddingError = Math.max(
+                            hatchPaddingError,
+                            interiorError(actual, reference)
+                        );
                     }
                 }
                 set({ hatchPattern: 0, shadowOffsetX: 8 });
@@ -244,7 +250,86 @@ for (const dpr of [1, 2]) {
                     fades.push(pixel(await capture(), x * dpr, y * dpr));
                     set({ [end]: 48 + 0.5 / dpr, [minimum]: 0 });
                 }
+                set({
+                    strokeWidth: 4,
+                    fillOpacity: 0.8,
+                    strokeOpacity: 0.5,
+                    shadowOffsetX: 0,
+                    shadowBlur: 0,
+                });
+                set({ strokeWidth: 0 });
+                const nominal = await capture();
+                const aligned = [];
+                for (const strokeAlign of [0, 1, 2]) {
+                    set({ strokeAlign, strokeWidth: 4, strokeOpacity: 0 });
+                    const transparent = await capture();
+                    const transparentError = transparent.reduce(
+                        (m, v, i) => Math.max(m, Math.abs(v - nominal[i])),
+                        0
+                    );
+                    set({ strokeOpacity: 0.5 });
+                    aligned.push({
+                        transparentError,
+                        edge: pixel(await capture(), 32 * dpr, 16 * dpr),
+                        picks: [
+                            await renderer.pick(32, 13),
+                            await renderer.pick(32, 11),
+                        ],
+                    });
+                }
+                set({ strokeAlign: 1, hatchPattern: 4 });
+                const centeredHatch = await capture();
+                const hatchAlignmentErrors = [];
+                for (const strokeAlign of [0, 2]) {
+                    set({ strokeAlign });
+                    hatchAlignmentErrors.push(
+                        interiorError(await capture(), centeredHatch)
+                    );
+                }
+                set({
+                    hatchPattern: 0,
+                    fill: [0, 0, 1, 1],
+                    fillOpacity: 1,
+                    strokeOpacity: 1,
+                });
+                const envelopeErrors = [];
+                for (const radius of [0, 6]) {
+                    set({
+                        cornerRadiusTopLeft: radius,
+                        cornerRadiusTopRight: radius,
+                        cornerRadiusBottomLeft: radius,
+                        cornerRadiusBottomRight: radius,
+                        strokeAlign: 1,
+                        strokeWidth: 8,
+                    });
+                    const centeredDouble = await capture();
+                    set({ strokeAlign: 2, strokeWidth: 4 });
+                    const outside = await capture();
+                    envelopeErrors.push(
+                        outside.reduce(
+                            (m, v, i) =>
+                                Math.max(m, Math.abs(v - centeredDouble[i])),
+                            0
+                        )
+                    );
+                }
+                set({ strokeAlign: 0, strokeWidth: 40, fill: [1, 0, 0, 1] });
+                const oversizedInside = pixel(
+                    await capture(),
+                    32 * dpr,
+                    32 * dpr
+                );
+                set({ strokeAlign: 2, strokeWidth: 4 });
+                await capture([
+                    { mark, scissor: { x: 0, y: 16, width: 64, height: 48 } },
+                ]);
+                const clippedBorder = await renderer.pick(32, 13);
                 return {
+                    aligned,
+                    oversizedInside,
+                    hatchAlignmentErrors,
+                    envelopeErrors,
+                    clippedBorder,
                     fades,
                     shadowOnly,
                     shadowOverlap,
@@ -306,6 +391,21 @@ for (const dpr of [1, 2]) {
             [191, 0, 64, 255],
             [255, 0, 0, 255],
         ].forEach((p, i) => close(result.hatchSamples[i], p));
+        [
+            [51, 0, 64, 115],
+            [51, 0, 128, 179],
+            [102, 0, 64, 166],
+        ].forEach((p, i) => close(result.aligned[i].edge, p));
+        expect(result.aligned.map((a) => a.picks)).toEqual([
+            [null, null],
+            [null, null],
+            [7, null],
+        ]);
+        expect(Math.max(...result.hatchAlignmentErrors)).toBeLessThanOrEqual(1);
+        expect(Math.max(...result.envelopeErrors)).toBeLessThanOrEqual(1);
+        expect(result.aligned.every((a) => a.transparentError <= 1)).toBe(true);
+        close(result.oversizedInside, [0, 0, 255, 255]);
+        expect(result.clippedBorder).toBeNull();
         close(result.overlap, [128, 128, 0, 255]);
         close(result.updated, [64, 64, 128, 255]);
         for (const faded of result.fades) close(faded, [0, 0, 128, 128]);
