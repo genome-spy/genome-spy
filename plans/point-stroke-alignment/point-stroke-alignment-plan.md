@@ -192,7 +192,7 @@ implementation is now authorized for this renderer-only milestone.
 - [x] Smallest coherent alternative and explicit size budget prepared.
 - [x] Narrow renderer scope agreed: retain the documented atlas cap and existing x/+ behavior.
 - [x] Bounded GPU proof completed; compatibility and normal-width alignment pass.
-- [ ] Production implementation after the geometry-gate rerun; atlas and x/+ fixes stay separate.
+- [x] Production implementation after the geometry-gate rerun; atlas and x/+ fixes stay separate.
 
 ## Bounded WebGPU proof (authorized)
 
@@ -309,10 +309,40 @@ evidence folder above. No production files or dependencies were changed.
 - [x] Migrate existing GPU tests and extend actual rendering coverage for outside
       composition, extrusion, scissor picking, retained updates and rotated concave paths.
 - [x] Add the point/path story controls through the existing scene runners.
-- [ ] Finish package/type/story checks and rerun the independent geometry/Core proof
+- [x] Finish package/type/story checks and rerun the independent geometry/Core proof
       against the exact production shader and adapter files.
-- [ ] Review the final diff and report exact size before opening a PR.
+- [x] Review the final diff and report exact size before opening a PR.
 
 Core's legacy property, resource ownership, atlas generation and x/+ semantics
 remain unchanged. This unpublished renderer/API migration has no release impact;
 no Changeset is required. Retain this working plan until delivery reconciliation.
+
+### Implementation verification
+
+Implementation commit: 7dfd94105. Both shader paths use the existing combined
+coverage; no new helper, resource, dependency or Core grammar is introduced.
+Default alignment remains centered; Core's live legacy property maps to 0/1.
+The path story uses its existing restart lifecycle so switching the atlas oracle
+still recreates the selected backend. The point story updates retained values.
+
+- 19 actual point GPU tests pass in Chrome/Metal, including DPR 1/2 composition,
+  outside picking/scissor and equivalent outer-coverage envelopes. The envelope
+  assertion compares alpha: different alignments intentionally paint different
+  interior colors. Rotated concave picking and all three pathological-width
+  clamp modes use the existing path suite.
+- 318 renderer unit tests and 79 focused program/Core-adapter tests pass.
+- Renderer and Core TypeScript checks, focused ESLint and Storybook build pass.
+- The reviewed independent geometry gate passes with the exact production files:
+  24 cases, zero unexpected mismatches; only the exact existing centered-cross
+  fringe is accepted. All 54 standalone and 16 Core paired frames are byte-exact,
+  preserving reactive legacy properties, x/+ fallback/width and datum picking.
+- Release policy passes. Existing unrelated fragments plan a minor fixed-group
+  release; this unpublished renderer change needs no new fragment.
+
+Final deliverable size against master 0923989b2, excluding this temporary plan:
+13 files, +187/-84 raw lines. Runtime JS under the two packages' src trees is
++27/-31 non-comment lines (net -4), excluding declarations/tests. Examples and
+story code add the retained controls; the complete deliverable stays within the
+reviewed size budget. No PR has been opened. Retire this plan before merge.
+
+Updated production proof results and logs are in the evidence folder above.

@@ -85,9 +85,11 @@ export const PositionClamping = withSource(
 
 const pointStrokeControls = {
     strokeAlign: {
-        control: "select",
+        control: {
+            type: "select",
+            labels: { 0: "inside", 1: "center", 2: "outside" },
+        },
         options: [0, 1, 2],
-        labels: { 0: "inside", 1: "center", 2: "outside" },
     },
     strokeOpacity: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
 };
