@@ -37,6 +37,12 @@ import {
  * @typedef {object} ChannelResources
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
+ * @typedef {object} GapScaleState
+ * @property {readonly number[]} cuts
+ * @property {readonly number[]} domain
+ * @property {number} width
+ * @property {readonly number[] | undefined} ranks
+ * @property {import("../../../utils/uniformBuffer.js").UniformSetter} writeGeometry
  */
 
 /**
@@ -61,13 +67,10 @@ export class ScaleResourceManager {
     /** @type {Map<string, ChannelResources>} */
     #channelResources = new Map();
 
-    /** @type {Map<string, Uint8Array>} */
-    #rangeTexturePayloads = new Map();
-
     /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }>} */
     #scaleUpdaters = new Map();
 
-    /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
+    /** @type {Map<string, GapScaleState>} */
     #gapScales = new Map();
 
     /** @type {GPUBuffer | null} */
@@ -128,11 +131,6 @@ export class ScaleResourceManager {
             data.byteLength / 4
         );
         const previous = this.#tables.get(key);
-        if (previous && equalPayload(previous.data, words)) {
-            previous.publish = publish;
-            publish(previous.offset);
-            return false;
-        }
         if (previous && words.length <= previous.capacity) {
             previous.data = words;
             previous.publish = publish;
@@ -322,6 +320,7 @@ export class ScaleResourceManager {
                         : this.#unpackDomain(scale.domain ?? [0, 1]),
                 width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
                 ranks: scale.type === "index" ? scale.gapDomain : undefined,
+                writeGeometry: this.#getUniformSetter("gapGeometry_" + name),
             });
             this.#updateGapCuts();
             this.updateGapWidth(
@@ -508,7 +507,7 @@ export class ScaleResourceManager {
                     if (!normalized) {
                         return;
                     }
-                    this.#setUniformValue(domainUniformName, normalized);
+                    writeDomain(normalized);
                 };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
@@ -574,6 +573,7 @@ export class ScaleResourceManager {
             }
         }
 
+        const gaps = this.#gapScales.get(name);
         let viewport = normalizeScaleViewport(scale.viewport ?? null);
         let categoryCount = scale.domain?.length ?? 0;
         /** @param {import("../../../index.d.ts").ScaleViewport | null} value */
@@ -583,11 +583,10 @@ export class ScaleResourceManager {
             viewport = normalizeScaleViewport(value);
             const interval = viewport?.interval ?? [0, categoryCount];
             writeDomain(interval);
-            const gaps = this.#gapScales.get(name);
             if (gaps) {
                 gaps.domain = interval;
                 gaps.ranks = viewport?.gapRanks;
-                this.#updateGapGeometry(name);
+                this.#updateGapGeometry(gaps);
             }
         };
         /** @type {(domain: unknown) => boolean} */
@@ -672,27 +671,27 @@ export class ScaleResourceManager {
                   }
                 : () => false;
 
-        return {
-            updateDomain: (domain, ranks) => {
+        /** @type {(domain: unknown, ranks?: readonly number[]) => boolean} */
+        let publishDomain = updateDomain;
+        if (scale.type === "band") {
+            publishDomain = (domain) => {
                 const result = updateDomain(domain);
-                if (scale.type === "band") {
-                    categoryCount = /** @type {number[]} */ (domain).length;
-                    updateViewport(viewport);
-                    return result;
-                }
-                const gaps = this.#gapScales.get(name);
-                if (gaps) {
-                    gaps.domain = this.#unpackDomain(
-                        /** @type {number[]} */ (domain)
-                    );
-                    gaps.ranks = ranks;
-                    this.#updateGapGeometry(name);
-                }
+                categoryCount = /** @type {number[]} */ (domain).length;
+                updateViewport(viewport);
                 return result;
-            },
-            updateRange,
-            updateViewport,
-        };
+            };
+        } else if (gaps) {
+            publishDomain = (domain, ranks) => {
+                const result = updateDomain(domain);
+                gaps.domain = this.#unpackDomain(
+                    /** @type {number[]} */ (domain)
+                );
+                gaps.ranks = ranks;
+                this.#updateGapGeometry(gaps);
+                return result;
+            };
+        }
+        return { updateDomain: publishDomain, updateRange, updateViewport };
     }
 
     /** @param {readonly number[]} domain */
@@ -722,7 +721,7 @@ export class ScaleResourceManager {
             return false;
         gaps.cuts = cuts;
         const rebind = this.#updateGapCuts();
-        this.#updateGapGeometry(name);
+        this.#updateGapGeometry(gaps);
         return rebind;
     }
 
@@ -730,14 +729,14 @@ export class ScaleResourceManager {
     updateGapWidth(name, width) {
         if (width != null && (!Number.isFinite(width) || width < 0))
             throw new Error("Gap width must be finite and nonnegative.");
-        this.#getGaps(name).width = width ?? 0;
-        this.#updateGapGeometry(name);
+        const gaps = this.#getGaps(name);
+        gaps.width = width ?? 0;
+        this.#updateGapGeometry(gaps);
     }
 
-    /** @param {string} name */
-    #updateGapGeometry(name) {
-        const { cuts, domain, width, ranks } = this.#getGaps(name);
-        this.#setUniformValue("gapGeometry_" + name, [
+    /** @param {GapScaleState} gaps */
+    #updateGapGeometry({ cuts, domain, width, ranks, writeGeometry }) {
+        writeGeometry([
             width,
             ranks?.[0] ?? cutRank(cuts, domain[0]),
             ranks?.[1] ?? cutRank(cuts, domain[1], true),
@@ -823,13 +822,6 @@ export class ScaleResourceManager {
     #setRangeTexture(name, textureData) {
         const resources = this.#ensureChannelResources(name);
         const prev = resources.rangeTexture;
-        const data = new Uint8Array(
-            textureData.data.buffer,
-            textureData.data.byteOffset,
-            textureData.data.byteLength
-        );
-        const previousData = this.#rangeTexturePayloads.get(name);
-        if (previousData && equalPayload(previousData, data)) return false;
         const needsNewTexture = !prev;
         const texture = needsNewTexture
             ? this.#device.createTexture({
@@ -846,7 +838,6 @@ export class ScaleResourceManager {
               })
             : prev.texture;
         writeTextureData(this.#device, texture, textureData);
-        this.#rangeTexturePayloads.set(name, data);
         const sampler =
             prev?.sampler ??
             this.#device.createSampler({
@@ -951,22 +942,7 @@ export class ScaleResourceManager {
         this.#tableBuffer = null;
         this.#tables.clear();
         this.#channelResources.clear();
-        this.#rangeTexturePayloads.clear();
         this.#scaleUpdaters.clear();
         this.#gapScales.clear();
     }
-}
-
-/**
- * Compare the packed GPU payload, including exact integer and floating-point bits.
- * Inputs are renderer-owned outputs of normalization, not mutable caller arrays.
- * @param {ArrayLike<number>} first
- * @param {ArrayLike<number>} second
- */
-function equalPayload(first, second) {
-    if (first.length !== second.length) return false;
-    for (let i = 0; i < first.length; i++) {
-        if (first[i] !== second[i]) return false;
-    }
-    return true;
 }

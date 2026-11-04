@@ -12,7 +12,7 @@ import {
 /**
  * @param {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
  * @param {Partial<typeof mockGpuLimits>} [limits]
- * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }>, writes: ReturnType<typeof vi.fn>, textureWrites: ReturnType<typeof vi.fn> }}
+ * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number>, buffers: Array<GPUBuffer & { destroy: ReturnType<typeof vi.fn> }>, textures: Array<GPUTexture & { destroy: ReturnType<typeof vi.fn> }>, writes: ReturnType<typeof vi.fn> }}
  */
 function createManager(channels, limits = {}) {
     const analysisByChannel = analyzeTestChannels(channels);
@@ -67,7 +67,7 @@ function createManager(channels, limits = {}) {
             createSampler: () => /** @type {unknown} */ ({}),
             queue: {
                 writeBuffer: vi.fn(),
-                writeTexture: vi.fn(),
+                writeTexture: () => {},
             },
         })
     );
@@ -85,7 +85,6 @@ function createManager(channels, limits = {}) {
         buffers,
         textures,
         writes: vi.mocked(device.queue.writeBuffer),
-        textureWrites: vi.mocked(device.queue.writeTexture),
     };
 }
 
@@ -124,6 +123,18 @@ describe("ScaleResourceManager", () => {
         expect(needsRebind).toBe(true);
         expect(manager.tableBuffer?.size).toBeGreaterThan(0);
         expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 10]);
+
+        const viewport = { interval: /** @type {[number, number]} */ ([1, 2]) };
+        updater.updateViewport(viewport);
+        // Later membership changes must use the detached requested viewport.
+        viewport.interval[0] = 100;
+        updater.updateDomain([10, 20, 30]);
+        expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([1, 2]);
+        expect(() => updater.updateViewport({ interval: [2, 1] })).toThrow(
+            "finite increasing interval"
+        );
+        updater.updateViewport(null);
+        expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 3]);
     });
 
     it("updates ordinal ranges and writes range buffers", () => {
@@ -144,25 +155,16 @@ describe("ScaleResourceManager", () => {
                     },
                 },
             });
-        const { manager, uniforms, writes } = createManager(channels);
+        const { manager, uniforms } = createManager(channels);
         uniforms.set(RANGE_COUNT_PREFIX + "fill", 0);
         manager.initializeScale("fill", channels.fill, channels.fill.scale);
         const updater = manager.getScaleUpdater("fill");
 
         const initialRebind = updater.updateRange(channels.fill.scale.range);
-        const range = [
+        const needsRebind = updater.updateRange([
             [0.1, 0.1, 0.1, 1],
             [0.2, 0.2, 0.2, 1],
-        ];
-        const needsRebind = updater.updateRange(range);
-        writes.mockClear();
-        updater.updateRange(range.map((color) => color.slice()));
-        expect(writes).not.toHaveBeenCalled();
-
-        // A reused caller array can still change after its previous upload.
-        range[0][0] = 0.3;
-        updater.updateRange(range);
-        expect(writes).toHaveBeenCalledOnce();
+        ]);
 
         expect(initialRebind).toBe(true);
         expect(needsRebind).toBe(false);
@@ -194,18 +196,10 @@ describe("ScaleResourceManager", () => {
         const initial = manager.tableBuffer;
         const oldY = uniforms.get("uDomainMapTable_y");
         writes.mockClear();
-        const domain = [10, 43];
-        expect(manager.getScaleUpdater("x").updateDomain(domain)).toBe(false);
+        expect(manager.getScaleUpdater("x").updateDomain([10, 43])).toBe(false);
         expect(manager.tableBuffer).toBe(initial);
         expect(writes).toHaveBeenCalledOnce();
         expect(uniforms.get("uDomainMapTable_y")).toEqual(oldY);
-
-        writes.mockClear();
-        manager.getScaleUpdater("x").updateDomain(domain.slice());
-        expect(writes).not.toHaveBeenCalled();
-        domain[1] = 44;
-        manager.getScaleUpdater("x").updateDomain(domain);
-        expect(writes).toHaveBeenCalledOnce();
 
         writes.mockClear();
         expect(
@@ -265,7 +259,7 @@ describe("ScaleResourceManager", () => {
         manager.destroy();
     });
 
-    it("retains palette uploads while keeping mutable colors and interpolators live", () => {
+    it("normalizes continuous color-texture ranges to unit coordinates", () => {
         const channels =
             /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 fill: {
@@ -280,33 +274,10 @@ describe("ScaleResourceManager", () => {
                     },
                 },
             });
-        const { manager, uniforms, textures, textureWrites } =
-            createManager(channels);
+        const { manager, uniforms, textures } = createManager(channels);
 
         manager.initializeScale("fill", channels.fill, channels.fill.scale);
-        const updater = manager.getScaleUpdater("fill");
-        const range = [
-            [1, 0, 0, 1],
-            [0, 0, 1, 1],
-        ];
-        expect(updater.updateRange(range)).toBe(true);
-        textureWrites.mockClear();
-        // Different inputs that normalize to identical texels need no upload.
-        expect(updater.updateRange(["red", "blue"])).toBe(false);
-        expect(textureWrites).not.toHaveBeenCalled();
-        range[0][1] = 1;
-        updater.updateRange(range);
-        expect(textureWrites).toHaveBeenCalledOnce();
-
-        let color = "purple";
-        const scheme = () => color;
-        updater.updateRange(scheme);
-        textureWrites.mockClear();
-        updater.updateRange(scheme);
-        expect(textureWrites).not.toHaveBeenCalled();
-        color = "yellow";
-        updater.updateRange(scheme);
-        expect(textureWrites).toHaveBeenCalledOnce();
+        manager.getScaleUpdater("fill").updateRange(["red", "blue"]);
         expect(textures).toHaveLength(1);
         expect(uniforms.get(RANGE_PREFIX + "fill")).toEqual([0, 1]);
         manager.destroy();

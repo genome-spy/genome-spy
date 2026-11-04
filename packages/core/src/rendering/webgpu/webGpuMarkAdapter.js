@@ -32,7 +32,6 @@ import { symlogScale } from "@genome-spy/webgpu-renderer/scales/symlog";
 import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
 
 import { getMarkData } from "../immediate/markData.js";
-import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import {
@@ -294,7 +293,6 @@ function createTranslation(definition, config, mark) {
  * @param {import("../../marks/mark.js").default} mark
  */
 export function getWebGpuMarkConfigRevision(mark) {
-    initializeWebGpuMarkRevisions(mark);
     return mark.getRenderingRevision("configuration");
 }
 
@@ -306,7 +304,6 @@ export function getWebGpuMarkConfigRevision(mark) {
  * @returns {number | undefined}
  */
 export function getWebGpuMarkResourceRevision(mark) {
-    initializeWebGpuMarkRevisions(mark);
     return mark.getRenderingRevision("resources");
 }
 
@@ -888,6 +885,35 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createTextConfig(mark, data, coords, viewOpacity) {
+    const retainedProperties = {
+        // The view rectangle can change while a retained mark is reused.
+        viewport: retainedPropertyValue(() => [
+            coords.x,
+            coords.y,
+            coords.x2,
+            coords.y2,
+        ]),
+        ...createDynamicNumericVectorProperty(
+            mark,
+            "viewportEdgeFadeWidth",
+            TEXT_EDGE_FADE_WIDTH_PROPERTIES,
+            [0, 0, 0, 0]
+        ),
+        ...createDynamicNumericVectorProperty(
+            mark,
+            "viewportEdgeFadeDistance",
+            TEXT_EDGE_FADE_DISTANCE_PROPERTIES,
+            [-Infinity, -Infinity, -Infinity, -Infinity]
+        ),
+        ...createDynamicProperties(mark, {
+            paddingX: (value) => value,
+            paddingY: (value) => value,
+            flushX: (value) => !!value,
+            flushY: (value) => !!value,
+            squeeze: (value) => !!value,
+            logoLetters: (value) => !!value,
+        }),
+    };
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
     const textMetrics =
@@ -974,35 +1000,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         flushY: !!readProperty(mark, "flushY"),
         squeeze: !!readProperty(mark, "squeeze"),
         logoLetters: !!readProperty(mark, "logoLetters"),
-        // The view rectangle can change while a retained mark is reused.
-        retainedProperties: {
-            viewport: retainedPropertyValue(() => [
-                coords.x,
-                coords.y,
-                coords.x2,
-                coords.y2,
-            ]),
-            ...createDynamicNumericVectorProperty(
-                mark,
-                "viewportEdgeFadeWidth",
-                TEXT_EDGE_FADE_WIDTH_PROPERTIES,
-                [0, 0, 0, 0]
-            ),
-            ...createDynamicNumericVectorProperty(
-                mark,
-                "viewportEdgeFadeDistance",
-                TEXT_EDGE_FADE_DISTANCE_PROPERTIES,
-                [-Infinity, -Infinity, -Infinity, -Infinity]
-            ),
-            ...createDynamicProperties(mark, {
-                paddingX: (value) => value,
-                paddingY: (value) => value,
-                flushX: (value) => !!value,
-                flushY: (value) => !!value,
-                squeeze: (value) => !!value,
-                logoLetters: (value) => !!value,
-            }),
-        },
+        retainedProperties,
     };
 }
 
@@ -1014,6 +1012,18 @@ function createTextConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createLinkConfig(mark, data, coords, viewOpacity) {
+    const retainedProperties = createDynamicProperties(mark, {
+        arcFadingDistance: (value) => value || [0, 0],
+        noFadingOnSecondPass: (value) => !!value,
+        arcHeightFactor: (value) => value,
+        minArcHeight: (value) => value,
+        linkShape: (value) => value ?? "arc",
+        orient: (value) => value ?? "vertical",
+        clampApex: (value) => !!value,
+        maxChordLength: (value) => value,
+        segments: (value) => value,
+        minPickingSize: (value) => value,
+    });
     return {
         count: data.length,
         channels: {
@@ -1048,18 +1058,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             50000
         ),
         segments: readOptionalNumericProperty(mark, "segments", 101),
-        retainedProperties: createDynamicProperties(mark, {
-            arcFadingDistance: (value) => value || [0, 0],
-            noFadingOnSecondPass: (value) => !!value,
-            arcHeightFactor: (value) => value,
-            minArcHeight: (value) => value,
-            linkShape: (value) => value ?? "arc",
-            orient: (value) => value ?? "vertical",
-            clampApex: (value) => !!value,
-            maxChordLength: (value) => value,
-            segments: (value) => value,
-            minPickingSize: (value) => value,
-        }),
+        retainedProperties,
     };
 }
 
@@ -1071,6 +1070,18 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
  * @returns {object}
  */
 function createArrowConfig(mark, data, coords, viewOpacity) {
+    const retainedProperties = createDynamicProperties(mark, {
+        headAngle: (value) => value,
+        headNotchAngle: (value) => value,
+        minSize: (value) => value,
+        headWidth: (value) => value,
+        startNotch: (value) => !!value,
+        minStemLength: (value) => value,
+        headSpacing: (value) => value,
+        stem: (value) => value !== false,
+        headShape: (value) => value ?? "triangle",
+        headPlacement: (value) => value ?? "inside",
+    });
     const headAngle = readOptionalNumericProperty(mark, "headAngle", 45);
     const headNotchAngle = readOptionalNumericProperty(
         mark,
@@ -1122,18 +1133,7 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
         stem: readProperty(mark, "stem") !== false,
         headShape: readProperty(mark, "headShape") ?? "triangle",
         headPlacement: readProperty(mark, "headPlacement") ?? "inside",
-        retainedProperties: createDynamicProperties(mark, {
-            headAngle: (value) => value,
-            headNotchAngle: (value) => value,
-            minSize: (value) => value,
-            headWidth: (value) => value,
-            startNotch: (value) => !!value,
-            minStemLength: (value) => value,
-            headSpacing: (value) => value,
-            stem: (value) => value !== false,
-            headShape: (value) => value ?? "triangle",
-            headPlacement: (value) => value ?? "inside",
-        }),
+        retainedProperties,
     };
 }
 
@@ -1184,7 +1184,7 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
         scale?.type == "point" ||
         scale?.type == "ordinal"
     ) {
-        const { intern, readDomain } = getCategoricalMapping(
+        const { intern, readDomain, readViewport } = getCategoricalMapping(
             mark,
             channel,
             scale
@@ -1210,6 +1210,7 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                           scale,
                           getRange(channel, coords, undefined),
                           readDomain,
+                          readViewport,
                           // Pixel y runs in the opposite direction from Core's unit range.
                           channel[0] === "y" ? 1 - band : band,
                           channel
@@ -1259,10 +1260,18 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
  * @param {() => number[]} readDomain
+ * @param {() => import("../../scales/scaleBand.js").CategoricalViewport | null} readViewport
  * @param {number} band
  * @param {string} channel
  */
-function createBandPositionScale(scale, range, readDomain, band, channel) {
+function createBandPositionScale(
+    scale,
+    range,
+    readDomain,
+    readViewport,
+    band,
+    channel
+) {
     const configurableScale = /** @type {any} */ (scale);
     const reverse = range[1] < range[0];
     // Core's effective range already includes reversal and can extend beyond
@@ -1288,10 +1297,7 @@ function createBandPositionScale(scale, range, readDomain, band, channel) {
     );
     Object.defineProperty(result, "viewport", {
         enumerable: true,
-        get: () =>
-            /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
-                scale
-            ).viewport(),
+        get: readViewport,
     });
     return retainGroupingGaps(result, scale, channel);
 }
@@ -1411,7 +1417,7 @@ function createNumericBranch(mark, channel, data, encoder) {
         encoder.scale?.type == "band" ||
         encoder.scale?.type == "point"
     ) {
-        const { values, readDomain } = toCategoricalArray(
+        const { values, readDomain, readViewport } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1434,6 +1440,7 @@ function createNumericBranch(mark, channel, data, encoder) {
                           encoder.scale,
                           [0, 1],
                           readDomain,
+                          readViewport,
                           /** @type {import("../../spec/channel.js").BandMixins} */ (
                               encoder.channelDef
                           ).band ?? 0.5,
@@ -2303,11 +2310,15 @@ function createIndexValue(mark, channel, read, large) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  */
 function toCategoricalArray(mark, channel, data, accessor, scale) {
-    const { intern, readDomain } = getCategoricalMapping(mark, channel, scale);
+    const { intern, readDomain, readViewport } = getCategoricalMapping(
+        mark,
+        channel,
+        scale
+    );
     const values = getCachedSeries(mark, channel, data, accessor, () =>
         toUint32Array(data, (datum) => intern(accessor(datum)))
     );
-    return { values, readDomain };
+    return { values, readDomain, readViewport };
 }
 
 /**
@@ -2330,9 +2341,9 @@ function getCategoricalMapping(mark, channel, scale) {
             ?.accessor.scaleChannel ?? getPrimaryChannel(key);
     if (!isChannelWithScale(scaleChannel))
         throw unsupported(mark, "Missing categorical scale channel.");
-    const domainRef = mark.unitView
-        .getScaleResolution(scaleChannel)
-        .getDomainRef();
+    const resolution = mark.unitView.getScaleResolution(scaleChannel);
+    const domainRef = resolution.getDomainRef();
+    const mappingRef = resolution.getMappingRef();
     /** @type {readonly any[] | undefined} */
     let previous;
     /** @type {number[]} */
@@ -2347,7 +2358,10 @@ function getCategoricalMapping(mark, channel, scale) {
         }
         return mapped;
     };
-    return { intern, readDomain };
+    // Completed mappings retain owned viewport snapshots; the public scale
+    // getter validates and copies the same value on every read.
+    const readViewport = () => mappingRef.get()?.viewport ?? null;
+    return { intern, readDomain, readViewport };
 }
 
 /**
@@ -2512,7 +2526,7 @@ function readProperty(mark, property) {
     const value = /** @type {Record<string, any>} */ (mark.properties)[
         property
     ];
-    return resolveMarkProperty(mark, value);
+    return isExprRef(value) ? mark.evaluateRenderingExpression(value) : value;
 }
 
 /**

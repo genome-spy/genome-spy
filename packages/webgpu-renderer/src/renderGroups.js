@@ -195,10 +195,6 @@ export class TextureCompositor {
 
     #count = 0;
 
-    #uploadedCount = 0;
-
-    #dirty = false;
-
     /** @type {GPUBindGroupLayout} */
     #layout;
 
@@ -287,7 +283,6 @@ export class TextureCompositor {
             this.#capacity = next;
             this.#buffer = this.#createBuffer(next);
             this.#staging = new Float32Array((next * this.#stride) / 4);
-            this.#uploadedCount = 0;
             old.destroy();
         }
         this.#count = 0;
@@ -300,12 +295,7 @@ export class TextureCompositor {
      */
     bind(pass, source, opacity) {
         const index = this.#count++;
-        const offset = (index * this.#stride) / 4;
-        const encodedOpacity = Math.fround(opacity);
-        this.#dirty ||=
-            index >= this.#uploadedCount ||
-            this.#staging[offset] !== encodedOpacity;
-        this.#staging[offset] = encodedOpacity;
+        this.#staging[(index * this.#stride) / 4] = opacity;
         let binding = source.compositeBinding;
         if (binding === null || binding.buffer !== this.#buffer) {
             binding = {
@@ -331,7 +321,7 @@ export class TextureCompositor {
     }
 
     flush() {
-        if (this.#count && this.#dirty) {
+        if (this.#count) {
             this.#device.queue.writeBuffer(
                 this.#buffer,
                 0,
@@ -339,8 +329,6 @@ export class TextureCompositor {
                 0,
                 this.#count * this.#stride
             );
-            this.#uploadedCount = this.#count;
-            this.#dirty = false;
         }
     }
 

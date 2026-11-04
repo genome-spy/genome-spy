@@ -31,7 +31,7 @@ import { isInChromeSubtree } from "../view/viewChrome.js";
  * @prop {number} configuration
  * @prop {number} resources
  * @prop {number} resourceExpressions
- * @prop {Set<string>} expressions
+ * @prop {Map<string, import("../paramRuntime/types.js").ExprRefFunction>} expressions
  */
 
 /**
@@ -508,7 +508,7 @@ export default class Mark {
                 configuration: 0,
                 resources: 0,
                 resourceExpressions: 0,
-                expressions: new Set(),
+                expressions: new Map(),
             });
 
         /**
@@ -523,12 +523,15 @@ export default class Mark {
             if (state.expressions.has(key)) {
                 return;
             }
-            this.unitView.paramRuntime.watchExpression(expression, () => {
-                state[kind]++;
-                if (kind === "resources") state.resourceExpressions++;
-                this.unitView.context.animator.requestRender();
-            });
-            state.expressions.add(key);
+            const evaluate = this.unitView.paramRuntime.watchExpression(
+                expression,
+                () => {
+                    state[kind]++;
+                    if (kind === "resources") state.resourceExpressions++;
+                    this.unitView.context.animator.requestRender();
+                }
+            );
+            state.expressions.set(key, evaluate);
         };
         if (!previousState) {
             const scales = new Set();
@@ -613,6 +616,25 @@ export default class Mark {
      */
     getRenderingRevision(kind) {
         return this.#renderingRevisionState?.[kind] ?? 0;
+    }
+
+    /**
+     * Evaluates a live property using its existing revision subscription.
+     *
+     * @param {import("../spec/parameter.js").ExprRef} expression
+     * @returns {any}
+     */
+    evaluateRenderingExpression(expression) {
+        const evaluate = this.#renderingRevisionState?.expressions.get(
+            "resources:" + expression.expr
+        );
+        if (!evaluate) {
+            throw new Error(
+                "Rendering expression has not been initialized: " +
+                    expression.expr
+            );
+        }
+        return evaluate();
     }
 
     /**
