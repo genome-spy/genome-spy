@@ -142,27 +142,56 @@ fragment is expected if all existing Core behavior stays identical; reassess
 observable behavior at delivery. Do not edit MIGRATION_PLAN until the renderer
 phase actually begins.
 
-Success gate before coding this alternative: generic public WebGPU point configs
-support all alignments on both shader paths, with full-band width, independent
-fill, transparent/oversized bands and conservative picking/quad bounds. A closed
-custom path and concave named shape exercise the path program. Core controls
-must retain legacy defaults, x/+ thickness/fallback and picking. Keep font/atlas
-ownership, path generation, other marks and common-opacity migration out of scope.
-Common-opacity handling and native/Core compatibility still need their own
-explicit contract review before the eventual Core API slice; do not claim the
-renderer foundation completes #604.
+The agreed first slice is renderer-only alignment **within the existing path
+atlas distance range**. Stroke widths retain the current range clamp; the
+analytic-circle route does not have that atlas limit. Document this beside the
+public channel and in the symbol guide, including the numeric mapping
+inside=0, center=1 (default), outside=2. Do not promise unrestricted path widths
+or complete #604 point conformance.
+
+Success gate: both shader paths implement the alignment extents and combined
+coverage within that existing representable range. Transparent paints preserve
+nominal fill; oversized inward strokes consume small interiors without negative
+geometry. Wide outside requests must preserve and characterize the existing cap,
+rather than satisfy an unrestricted-width gate. A closed custom path and rotated
+concave symbol exercise path geometry. Preserve Core legacy defaults and current
+x/+ thickness/fallback/picking exactly; correcting its known arm-width semantics
+is a separate slice. Atlas generation/resources, native painters, new Core grammar,
+other marks and common-opacity migration remain out of scope.
+
+Production channel migration is part of this slice, not an optional cleanup:
+update both programs and the public channel type, the sole Core adapter, existing
+point-composition and path-point-definition GPU tests (including retained value
+updates), the adapter regression, point/path scenes and their story controls, and
+src/symbols/README.md. Remove standalone inwardStroke references rather than add
+a compatibility layer. Core's legacy property and expressions remain supported
+through the adapter. Search the renderer package for remaining channel consumers
+and keep internal source assertions aligned with the public behavioral tests.
+
+The independent geometry gate requires zero unexpected stable-pixel mismatches
+for every shape, alignment and DPR, including every new outside case. Its sole
+exception is the observed existing concave-cross centered pixel at DPR 1:
+logical (41,28), expected white, actual RGBA (213,213,255,255). Permit only this
+exact case/pixel/color; require that legacy pixel to match baseline exactly.
+An unexpected mismatch must fail, not merely be recorded in the result summary.
+
+The composition oracle samples nominal coverage from the candidate program with
+zero stroke. This tests composition algebra, not geometry independently. Native
+SVG supplies the separate contour oracle, and baseline frame parity protects the
+existing rendering contract. Keep these roles distinct in reports.
 
 Tentative commit: feat(webgpu-renderer): support aligned point strokes.
-No production work on this alternative starts without the next scope agreement.
+The narrow scope is agreed. This step completes proof review and rerun only;
+production implementation follows as a separate milestone.
 
 ## Status
 
 - [x] Architectural ownership and current native code traced.
 - [x] Bounded native proof completed; small clipping candidate rejected.
 - [x] Smallest coherent alternative and explicit size budget prepared.
-- [ ] Implementation scope decision on native contract and retained GPU limits.
+- [x] Narrow renderer scope agreed: retain the documented atlas cap and existing x/+ behavior.
 - [x] Bounded GPU proof completed; compatibility and normal-width alignment pass.
-- [ ] Production scope decision on existing atlas-width and x/+ limits; no implementation yet.
+- [ ] Production implementation after the geometry-gate rerun; atlas and x/+ fixes stay separate.
 
 ## Bounded WebGPU proof (authorized)
 
@@ -199,8 +228,8 @@ paths were tested in isolated baseline/candidate checkouts, at DPR 1/2:
   The new outside code also preserves the fallback mixture byte-for-byte and
   returns the original IDs for all four shapes.
 - All three alignments meet the sampled premultiplied coverage formula within
-  0.8 byte, using independently exported nominal coverage. Transparent strokes
-  preserve the nominal frame within 1 byte (path cases are exact).
+  0.8 byte, using nominal coverage from the candidate with zero stroke.
+  Transparent strokes preserve the nominal frame within 1 byte (path cases are exact).
 - A four-pixel outside band has the same full-frame coverage envelope as the
   baseline's eight-pixel centered band: maximum error 0 for all shapes/DPRs.
   Border picking succeeds; scissor picks remain hit/empty as intended.
@@ -235,10 +264,39 @@ circles and mixed circle/cross/x/+; picked datum shapes are preserved.
 
 The first renderer-only scope can preserve current behavior and support alignment
 within the existing representable range. It cannot claim complete #604 point
-conformance. Before production implementation, agree whether these existing
-limits are explicitly retained for that narrow PR or require separate fixes
-first. No line-shape rewrite or atlas change has been added to the candidate.
+conformance. The reviewed narrow scope explicitly retains these limits and
+documents them; their fixes stay separate. No line-shape rewrite or atlas change
+has been added to the candidate.
 
 Evidence (scripts, candidate patch, machine-readable results and negative control):
 `/Users/okusupreme/.codex/visualizations/2026/10/26/01a177b3-ba10-71b1-bb64-a4584cdb56bd/webgpu-point-alignment-proof/`.
 No performance claim is made by these correctness/preservation checks.
+
+## Sol review reconciliation and geometry-gate rerun
+
+Both requested Sol reviews recommend the narrow renderer slice as independently
+useful, with appropriate ownership and no unnecessary abstractions/dependencies.
+Their conditions are incorporated above: bounded width semantics, explicit public
+limitations, complete required-consumer migration, and an asserted geometry gate.
+The scope does not include the atlas or x/+ fixes.
+
+- [x] Replace the unrestricted-width gate with the existing representable-range contract.
+- [x] Record the full channel-migration consumers and public documentation requirements.
+- [x] Distinguish zero-stroke composition control from the independent SVG geometry oracle.
+- [x] Assert zero unexpected geometry mismatches and tightly characterize the known fringe.
+- [x] Rerun the actual baseline/candidate proof at DPR 1/2.
+- [x] Confirm omitted outside extrusion fails the geometry comparison itself.
+
+Rerun outcome: **24 geometry cases, zero unexpected mismatches**. Exactly the
+characterized legacy centered-cross pixel is accepted at DPR 1; every new outside
+case has zero exceptions. Its corresponding legacy pixel matches baseline exactly.
+All 54 paired standalone frames and 16 actual Core compatibility frames remain
+byte-exact; fallback, retained updates, outside/scissor picking and common scope
+opacity checks pass. Existing atlas caps and x/+ behavior remain unchanged.
+
+The negative control omits outside extrusion in the isolated analytic shader.
+The geometry gate itself rejects the resulting stable-pixel mismatches before
+the envelope gate runs. The temporary shader was restored afterward. This
+complements the earlier smaller-quad control caught by the full-frame envelope.
+Updated scripts/results and geometry-gate-summary.json are retained in the
+evidence folder above. No production files or dependencies were changed.
