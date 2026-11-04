@@ -57,6 +57,16 @@ EXAMPLE examples/docs/grammar/mark/rule/outlined-rules.json height=220
     that are slow to render. SVG viewers may also show a thin antialiasing seam
     between the fill and border.
 
+### Weighted network
+
+White outside borders separate crossing links while preserving the colored body
+thickness set by `size`, so link weights remain readable. Centered and inside
+borders cover part of the body and can obscure thin links. The node positions
+are precomputed with a force-directed layout, and points draw the nodes above
+the links.
+
+EXAMPLE examples/docs/grammar/mark/rule/weighted-network.json height=380 spechidden
+
 ### Human-mouse synteny
 
 EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460

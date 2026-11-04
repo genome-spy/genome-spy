@@ -27,3 +27,13 @@ Keep fixture files small, stable, and easy to understand.
 If a local fixture is adapted from an external public dataset, document the
 provenance in the consuming example or docs page instead of treating it as an
 opaque vendor drop.
+
+## Weighted network
+
+`weighted-network.json` contains 20 nodes and 48 undirected links, sampled without
+replacement from the 190 possible pairs using Python's `random.Random(657)`.
+The same generator assigns independent uniform weights between 0 and 1, rounded
+to three decimal places. Node positions were precomputed from the connected
+graph with NetworkX 3.7's weighted
+Fruchterman–Reingold layout (`spring_layout`, seed 657, 1,000 iterations), then
+uniformly scaled and centered within `[0.06, 0.94]`.

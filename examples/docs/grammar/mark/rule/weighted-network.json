@@ -1,0 +1,105 @@
+{
+  "description": [
+    "Weighted network with outlined rules",
+    "White outside borders separate crossing links while preserving the body thickness that encodes their weights."
+  ],
+
+  "params": [
+    {
+      "name": "alignment",
+      "value": "outside",
+      "bind": {
+        "input": "radio",
+        "options": ["outside", "center", "inside"],
+        "name": "Stroke alignment"
+      }
+    },
+    {
+      "name": "showStroke",
+      "value": true,
+      "bind": { "input": "checkbox", "name": "Show border" }
+    }
+  ],
+
+  "data": {
+    "url": "data/weighted-network.json",
+    "format": { "property": "nodes" }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 1] },
+      "axis": null
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 1] },
+      "axis": null
+    }
+  },
+
+  "layer": [
+    {
+      "data": {
+        "url": "data/weighted-network.json",
+        "format": { "property": "links" }
+      },
+
+      "transform": [
+        {
+          "type": "lookup",
+          "from": {
+            "url": "data/weighted-network.json",
+            "format": { "property": "nodes" }
+          },
+          "key": "id",
+          "fields": "source",
+          "values": ["x", "y"]
+        },
+        {
+          "type": "lookup",
+          "from": {
+            "url": "data/weighted-network.json",
+            "format": { "property": "nodes" }
+          },
+          "key": "id",
+          "fields": "target",
+          "values": ["x", "y"],
+          "as": ["x2", "y2"]
+        }
+      ],
+
+      "mark": {
+        "type": "rule",
+        "color": "#4c78a8",
+        "stroke": "white",
+        "strokeWidth": { "expr": "showStroke ? 1 : 0" },
+        "strokeAlign": { "expr": "alignment" }
+      },
+
+      "encoding": {
+        "x2": { "field": "x2" },
+        "y2": { "field": "y2" },
+        "size": {
+          "field": "weight",
+          "type": "quantitative",
+          "scale": { "range": [0.5, 5] }
+        }
+      }
+    },
+
+    {
+      "mark": {
+        "type": "point",
+        "filled": true,
+        "color": "#f28e2b",
+        "size": 225,
+        "stroke": "white",
+        "strokeWidth": 1
+      }
+    }
+  ]
+}
