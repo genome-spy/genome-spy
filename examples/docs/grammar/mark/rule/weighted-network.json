@@ -69,6 +69,10 @@
           "fields": "target",
           "values": ["x", "y"],
           "as": ["x2", "y2"]
+        },
+        {
+          "type": "collect",
+          "sort": { "field": "weight", "order": "ascending" }
         }
       ],
 
