@@ -11,6 +11,8 @@ for (const dpr of [1, 2]) {
             );
         }
         expect(Math.max(...result.transparentErrors)).toBeLessThanOrEqual(2);
+        expect(Math.max(...result.repeatErrors)).toBeLessThanOrEqual(1);
+        expect(result.repeatCoverage.every((count) => count > 0)).toBe(true);
         expect(result.openPicks).toEqual(Array(4).fill([77, null]));
         expect(result.revealedPicks).toEqual([77, null]);
         expect(result.clippedPicks).toEqual([77, null]);
@@ -103,7 +105,9 @@ async function renderArrows(dpr) {
     };
     const samples = [],
         transparentErrors = [],
-        openPicks = [];
+        openPicks = [],
+        repeatErrors = [],
+        repeatCoverage = [];
     try {
         // Straight stem: d=.125/DPR, Ci=.25, Cf=.375, Co=.5.
         samples.push([pixel(await capture()), [64, 0, 64, 128]]);
@@ -182,9 +186,10 @@ async function renderArrows(dpr) {
                 0
             )
         );
+        // A transparent border remains pickable; probe the remaining hole.
         const revealedPicks = [
             await renderer.pick(20.5, cy + 3),
-            await renderer.pick(18.5, cy),
+            await renderer.pick(17.5, cy),
         ];
         set({ strokeWidth: 1, strokeOpacity: 1 });
         await capture([
@@ -194,6 +199,97 @@ async function renderArrows(dpr) {
             await renderer.pick(20.5, cy + 3),
             await renderer.pick(44.5, cy + 3),
         ];
+        // Invisible borders must not change tightly repeated nominal heads.
+        mark.properties.headSpacing.set(0.5);
+        for (const shape of ["triangle", "open"]) {
+            for (const direction of [0, 1]) {
+                mark.properties.headShape.set(shape);
+                set({ direction });
+                set({ strokeWidth: 0 });
+                const nominal = await capture();
+                for (const strokeWidth of [4, 24]) {
+                    set({ strokeWidth, strokeOpacity: 0 });
+                    const transparent = await capture();
+                    repeatErrors.push(
+                        transparent.reduce(
+                            (m, v, i) => Math.max(m, Math.abs(v - nominal[i])),
+                            0
+                        )
+                    );
+                }
+                const spacing = 8 + (shape === "open" ? 8 / Math.SQRT2 : 0);
+                const count = Math.floor((48 - spacing) / spacing) + 1;
+                const reference = renderer.createMark(arrowMark, {
+                    ...config,
+                    count,
+                    stem: false,
+                    headShape: shape,
+                    channels: {
+                        ...config.channels,
+                        direction: { value: direction, type: "u32" },
+                        x:
+                            direction === 0
+                                ? { value: 8 }
+                                : {
+                                      data: Float32Array.from(
+                                          { length: count },
+                                          (_, i) => 8 + i * spacing
+                                      ),
+                                  },
+                        x2:
+                            direction === 0
+                                ? {
+                                      data: Float32Array.from(
+                                          { length: count },
+                                          (_, i) => 56 - i * spacing
+                                      ),
+                                  }
+                                : { value: 56 },
+                        size: { value: 8 },
+                        strokeWidth: { value: 24 },
+                    },
+                });
+                set({ strokeOpacity: 1 });
+                const actual = await capture();
+                const expected = await capture([{ mark: reference }]);
+                // Opaque, locally stable pixels avoid treating separately composited
+                // antialiasing at adjacent heads as an exact union-coverage oracle.
+                let error = 0,
+                    foreground = 0,
+                    background = 0;
+                for (let y = 1; y < canvas.height - 1; y++) {
+                    for (let x = 1; x < canvas.width - 1; x++) {
+                        const i = (y * canvas.width + x) * 4 + 3;
+                        const alpha = expected[i];
+                        if (alpha !== 0 && alpha !== 255) continue;
+                        let stable = true;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (
+                                    expected[
+                                        i + (dy * canvas.width + dx) * 4
+                                    ] !== alpha
+                                )
+                                    stable = false;
+                            }
+                        }
+                        if (stable) {
+                            if (alpha === 255) foreground++;
+                            else background++;
+                            error = Math.max(
+                                error,
+                                Math.abs(actual[i] - alpha)
+                            );
+                        }
+                    }
+                }
+                repeatErrors.push(error);
+                repeatCoverage.push(foreground, background);
+                renderer.destroyMark(reference.markId);
+            }
+        }
+        mark.properties.headShape.set("open");
+        set({ direction: 0, strokeWidth: 1 });
         mark.properties.headSpacing.set(null);
         mark.properties.headPlacement.set("outside");
         set({ x: 16, x2: 48 });
@@ -213,6 +309,8 @@ async function renderArrows(dpr) {
         ];
         return {
             samples,
+            repeatErrors,
+            repeatCoverage,
             transparentErrors,
             openPicks,
             revealedPicks,
