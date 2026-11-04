@@ -319,8 +319,10 @@ export default class BaseProgram {
             analysisByChannel: compiledChannels.analysisByChannel,
             label: this.label,
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),
-            setUniformValue: (name, value) =>
-                this._setUniformValue(name, value),
+            getUniformSetter: (name) =>
+                /** @type {UniformBuffer} */ (
+                    this._uniformBufferState
+                ).getSetter(name),
         });
         this.#selectionResources = new SelectionResourceManager({
             device: this.device,
@@ -976,10 +978,11 @@ export default class BaseProgram {
                 `Uniform "${uniformName}" is not available for updates.`
             );
         }
+        const write = this._uniformBufferState.getSetter(uniformName);
         return {
             set: (value) => {
                 this._assertAlive();
-                this._setUniformValue(uniformName, value);
+                write(value);
                 this._queueSlotUpdate(false);
             },
         };
@@ -1017,11 +1020,12 @@ export default class BaseProgram {
                 `Uniform "${uniformName}" is not available for updates.`
             );
         }
+        const write = this._uniformBufferState.getSetter(uniformName);
         return {
             set: (value) => {
                 this._assertAlive();
                 validateScalarSlotValue(name, config.type, value);
-                this._setUniformValue(uniformName, value);
+                write(value);
                 this._queueSlotUpdate(false);
             },
         };
