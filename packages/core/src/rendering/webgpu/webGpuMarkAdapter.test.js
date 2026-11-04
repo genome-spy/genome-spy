@@ -122,6 +122,76 @@ describe("WebGPU mark adapter", () => {
         }
     });
 
+    test("detaches live packed datums and parameter-backed link vectors", async () => {
+        const start = 2 ** 32;
+        const { view } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{}] },
+            params: [
+                { name: "position", value: start + 4 },
+                { name: "distance", value: [10, 20] },
+                { name: "revision", value: 0 },
+            ],
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            datum: { expr: "position" },
+                            type: "index",
+                            scale: { domain: [start, start + 20] },
+                            axis: null,
+                        },
+                        y: { value: 0.5 },
+                    },
+                },
+                {
+                    mark: {
+                        type: "link",
+                        arcFadingDistance: {
+                            expr: "revision >= 0 ? distance : null",
+                        },
+                    },
+                    encoding: {
+                        x: { value: 0 },
+                        x2: { value: 1 },
+                        y: { value: 0 },
+                        y2: { value: 1 },
+                    },
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const [point, link] = view
+            .getDescendants()
+            .filter((child) => child instanceof UnitView)
+            .map(
+                (unit) =>
+                    /** @type {any} */ (
+                        createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
+                    )
+            );
+        const packed = point.config.channels.x.value;
+        const fading = link.properties.arcFadingDistance.value;
+        expect(packed).toEqual([1048576, 4]);
+        expect(fading).toEqual([10, 20]);
+
+        // Another dependency can notify while the expression returns the same array.
+        const distance = view.paramRuntime.getValue("distance");
+        distance[0] = 15;
+        distance[1] = 25;
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("position", start + 9);
+            view.paramRuntime.setValue("revision", 1);
+        });
+        await view.paramRuntime.whenPropagated();
+
+        expect(point.config.channels.x.value).toEqual([1048576, 9]);
+        expect(link.properties.arcFadingDistance.value).toEqual([15, 25]);
+        expect(packed).toEqual([1048576, 4]);
+        expect(fading).toEqual([10, 20]);
+    });
+
     test("retains live categorical ranges and gaps for ordinary and text occurrences", async () => {
         const { view, context } = await createHeadlessEngine({
             config: { mark: { color: "black" } },
@@ -338,7 +408,7 @@ describe("WebGPU mark adapter", () => {
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
-        expect(channels.minPickingSize).toEqual(dynamicValue(12));
+        expect(channels.minPickingSize).toEqual({ value: 12 });
         expect(channels.strokeAlign).toEqual({
             ...dynamicValue(1),
             type: "u32",
@@ -347,8 +417,6 @@ describe("WebGPU mark adapter", () => {
         expect(channels.strokeAlign.value).toBe(0);
         pointProperties.inwardStroke = false;
         expect(channels.strokeAlign.value).toBe(1);
-        pointProperties.minPickingSize = 20;
-        expect(channels.minPickingSize.value).toBe(20);
     });
 
     test("keeps categorical point offset scales in the renderer", () => {
@@ -1105,7 +1173,7 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels).not.toHaveProperty("color");
         expect(config.channels.strokeWidth).toEqual({ value: 0 });
         expect(config.dashPatterns).toEqual([[3, 2]]);
-        expect(config.channels.strokeDashOffset).toEqual(dynamicValue(1));
+        expect(config.channels.strokeDashOffset).toEqual({ value: 1 });
     });
 
     test("translates link geometry and rendering properties", () => {
@@ -2691,6 +2759,11 @@ function createMark(type, data, encoders, properties = {}) {
             nonvisualInputs: new Set(),
             encoders: { ...defaultEncoders, ...encoders },
             properties: {
+                minWidth: 0,
+                minHeight: 0,
+                minOpacity: 0,
+                minLength: 0,
+                strokeDashOffset: 0,
                 cornerRadius: 0,
                 dx: 0,
                 dy: 0,

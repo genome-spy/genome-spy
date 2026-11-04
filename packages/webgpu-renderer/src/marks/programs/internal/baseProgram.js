@@ -1043,40 +1043,23 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType, components?: string[] }} def
+     * @param {import("./selectionResources.js").SelectionDef} def
      * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
     #createSelectionSlot(def) {
-        /**
-         * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} next
-         */
-        const update = (next) => {
+        /** @param {import("./selectionResources.js").SelectionValue} value */
+        const set = (value) => {
             this._assertAlive();
             const needsRebind = this.#selectionResources.updateSelection(
-                def.name,
-                next,
+                def,
+                value,
                 this._extraBuffers
             );
             this._queueSlotUpdate(needsRebind);
         };
-
-        if (def.type === "single") {
-            return {
-                type: "single",
-                set: (id) => update({ type: "single", id }),
-            };
-        }
-        if (def.type === "multi") {
-            return {
-                type: "multi",
-                set: (ids) => update({ type: "multi", ids }),
-            };
-        }
-        return {
-            type: "interval",
-            components: def.components ?? [],
-            set: (intervals) => update({ type: "interval", intervals }),
-        };
+        return def.type === "interval"
+            ? { type: def.type, components: def.components ?? [], set }
+            : { type: def.type, set };
     }
 
     /**

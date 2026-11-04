@@ -19,15 +19,10 @@ export function normalizeScaleViewport(value) {
         throw new Error(
             "A band viewport requires a finite increasing interval and optional gap ranks."
         );
-    return {
-        interval: [interval[0], interval[1]],
-        ...(gapRanks
-            ? {
-                  gapRanks: /** @type {[number, number]} */ ([
-                      gapRanks[0],
-                      gapRanks[1],
-                  ]),
-              }
-            : {}),
-    };
+    return gapRanks
+        ? {
+              interval: [interval[0], interval[1]],
+              gapRanks: [gapRanks[0], gapRanks[1]],
+          }
+        : { interval: [interval[0], interval[1]] };
 }

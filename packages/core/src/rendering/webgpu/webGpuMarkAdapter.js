@@ -601,30 +601,22 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
                 ["cornerRadius", "cornerRadiusBottomLeft"],
                 () => readCornerRadii(mark).bottomLeft
             ),
-            minWidth: liveValue(() => readNumericProperty(mark, "minWidth")),
-            minHeight: liveValue(() => readNumericProperty(mark, "minHeight")),
-            minOpacity: liveValue(() =>
-                readNumericProperty(mark, "minOpacity")
-            ),
-            shadowOffsetX: liveValue(() =>
-                readOptionalNumericProperty(mark, "shadowOffsetX", 0)
-            ),
-            shadowOffsetY: liveValue(() =>
-                readOptionalNumericProperty(mark, "shadowOffsetY", 0)
-            ),
-            shadowBlur: liveValue(() =>
-                readOptionalNumericProperty(mark, "shadowBlur", 0)
-            ),
+            minWidth: numericPropertyValue(mark, "minWidth"),
+            minHeight: numericPropertyValue(mark, "minHeight"),
+            minOpacity: numericPropertyValue(mark, "minOpacity"),
+            shadowOffsetX: numericPropertyValue(mark, "shadowOffsetX", 0),
+            shadowOffsetY: numericPropertyValue(mark, "shadowOffsetY", 0),
+            shadowBlur: numericPropertyValue(mark, "shadowBlur", 0),
             shadowOpacity: staticOrLivePropertyValue(
                 mark,
                 ["shadowOpacity"],
                 () =>
-                    readOptionalNumericProperty(mark, "shadowOpacity", 0) *
+                    readNumericProperty(mark, "shadowOpacity", 0) *
                     viewOpacity(),
                 undefined,
                 !staticViewOpacity
             ),
-            shadowColor: liveValue(() =>
+            shadowColor: staticOrLivePropertyValue(mark, ["shadowColor"], () =>
                 toRgba(mark, readProperty(mark, "shadowColor") ?? "black")
             ),
             hatchPattern: staticOrLivePropertyValue(
@@ -682,16 +674,15 @@ function createPointConfig(mark, data, coords, viewOpacity) {
                 viewOpacity
             ),
             angle: createNumericChannel(mark, "angle", data),
-            gradientStrength: liveValue(() =>
-                readNumericProperty(mark, "fillGradientStrength")
+            gradientStrength: numericPropertyValue(
+                mark,
+                "fillGradientStrength"
             ),
             strokeAlign: liveValue(
                 () => (readProperty(mark, "inwardStroke") ? 0 : 1),
                 "u32"
             ),
-            minPickingSize: liveValue(() =>
-                readOptionalNumericProperty(mark, "minPickingSize", 2)
-            ),
+            minPickingSize: numericPropertyValue(mark, "minPickingSize", 2),
         },
         ...visibility,
     };
@@ -862,14 +853,12 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
                   }
                 : {}),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
-            minLength: liveValue(() => readNumericProperty(mark, "minLength")),
+            minLength: numericPropertyValue(mark, "minLength"),
             strokeCap: liveValue(
                 () => mapProperty(mark, "strokeCap", STROKE_CAP_CODES),
                 "u32"
             ),
-            strokeDashOffset: liveValue(() =>
-                readNumericProperty(mark, "strokeDashOffset")
-            ),
+            strokeDashOffset: numericPropertyValue(mark, "strokeDashOffset"),
             strokeDash: { value: 0, type: "u32" },
         },
         dashPatterns: strokeDash == null ? null : [strokeDash],
@@ -886,7 +875,7 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
 function createTextConfig(mark, data, coords, viewOpacity) {
     const retainedProperties = {
         // The view rectangle can change while a retained mark is reused.
-        viewport: retainedPropertyValue(() => [
+        viewport: retainedValue(() => [
             coords.x,
             coords.y,
             coords.x2,
@@ -1011,7 +1000,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
  */
 function createLinkConfig(mark, data, coords, viewOpacity) {
     const retainedProperties = createDynamicProperties(mark, {
-        arcFadingDistance: (value) => value || [0, 0],
+        arcFadingDistance: (value) => (value ? value.slice() : [0, 0]),
         noFadingOnSecondPass: (value) => !!value,
         arcHeightFactor: (value) => value,
         minArcHeight: (value) => value,
@@ -1038,24 +1027,16 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             color: createColorChannel(mark, "color", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
-        minPickingSize: readOptionalNumericProperty(mark, "minPickingSize", 3),
+        minPickingSize: readNumericProperty(mark, "minPickingSize", 3),
         linkShape: readProperty(mark, "linkShape") ?? "arc",
         orient: readProperty(mark, "orient") ?? "vertical",
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
         noFadingOnSecondPass: !!readProperty(mark, "noFadingOnSecondPass"),
-        arcHeightFactor: readOptionalNumericProperty(
-            mark,
-            "arcHeightFactor",
-            1
-        ),
-        minArcHeight: readOptionalNumericProperty(mark, "minArcHeight", 1.5),
+        arcHeightFactor: readNumericProperty(mark, "arcHeightFactor", 1),
+        minArcHeight: readNumericProperty(mark, "minArcHeight", 1.5),
         clampApex: !!readProperty(mark, "clampApex"),
-        maxChordLength: readOptionalNumericProperty(
-            mark,
-            "maxChordLength",
-            50000
-        ),
-        segments: readOptionalNumericProperty(mark, "segments", 101),
+        maxChordLength: readNumericProperty(mark, "maxChordLength", 50000),
+        segments: readNumericProperty(mark, "segments", 101),
         retainedProperties,
     };
 }
@@ -1080,12 +1061,8 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
         headShape: (value) => value ?? "triangle",
         headPlacement: (value) => value ?? "inside",
     });
-    const headAngle = readOptionalNumericProperty(mark, "headAngle", 45);
-    const headNotchAngle = readOptionalNumericProperty(
-        mark,
-        "headNotchAngle",
-        90
-    );
+    const headAngle = readNumericProperty(mark, "headAngle", 45);
+    const headNotchAngle = readNumericProperty(mark, "headNotchAngle", 90);
     return {
         count: data.length,
         channels: {
@@ -1123,10 +1100,10 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
         },
         headAngle,
         headNotchAngle,
-        minSize: readOptionalNumericProperty(mark, "minSize", 1),
-        headWidth: readOptionalNumericProperty(mark, "headWidth", 3),
+        minSize: readNumericProperty(mark, "minSize", 1),
+        headWidth: readNumericProperty(mark, "headWidth", 3),
         startNotch: !!readProperty(mark, "startNotch"),
-        minStemLength: readOptionalNumericProperty(mark, "minStemLength", 0),
+        minStemLength: readNumericProperty(mark, "minStemLength", 0),
         headSpacing: readNullableNumericProperty(mark, "headSpacing"),
         stem: readProperty(mark, "stem") !== false,
         headShape: readProperty(mark, "headShape") ?? "triangle",
@@ -2287,13 +2264,10 @@ function createIndexValue(mark, channel, read, large) {
     // Reuse the packing buffers when a parameter-backed datum changes.
     const source = [0];
     const packed = new Uint32Array(2);
-    const value = [0, 0];
     return liveValue(() => {
         source[0] = readIndexValue(mark, channel, read());
         packHighPrecisionU32ArrayInto(source, packed);
-        value[0] = packed[0];
-        value[1] = packed[1];
-        return value;
+        return [packed[0], packed[1]];
     }, "u32");
 }
 
@@ -2391,37 +2365,22 @@ function getCachedSeries(mark, channel, data, accessor, create) {
 
 /**
  * @param {import("../../marks/mark.js").default} mark
- * @param {string} property
- */
-function readNumericProperty(mark, property) {
-    const value = readProperty(mark, property);
-    if (typeof value != "number") {
-        throw unsupported(
-            mark,
-            `Property "${property}" must be a number for the WebGPU renderer.`
-        );
-    }
-    return value;
-}
-
-/**
- * @param {import("../../marks/mark.js").default} mark
  * @param {string[]} properties
  * @param {number[]} fallbacks
  * @returns {number[]}
  */
 function readNumericPropertyVector(mark, properties, fallbacks) {
     return properties.map((property, index) =>
-        readOptionalNumericProperty(mark, property, fallbacks[index])
+        readNumericProperty(mark, property, fallbacks[index])
     );
 }
 
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
- * @param {number} fallback
+ * @param {number} [fallback]
  */
-function readOptionalNumericProperty(mark, property, fallback) {
+function readNumericProperty(mark, property, fallback) {
     const value = readProperty(mark, property) ?? fallback;
     if (typeof value != "number") {
         throw unsupported(
@@ -2475,26 +2434,14 @@ function readDistancePair(mark, property) {
 function readCornerRadii(mark) {
     const radius = readNumericProperty(mark, "cornerRadius");
     return {
-        topRight: readOptionalNumericProperty(
-            mark,
-            "cornerRadiusTopRight",
-            radius
-        ),
-        bottomRight: readOptionalNumericProperty(
+        topRight: readNumericProperty(mark, "cornerRadiusTopRight", radius),
+        bottomRight: readNumericProperty(
             mark,
             "cornerRadiusBottomRight",
             radius
         ),
-        topLeft: readOptionalNumericProperty(
-            mark,
-            "cornerRadiusTopLeft",
-            radius
-        ),
-        bottomLeft: readOptionalNumericProperty(
-            mark,
-            "cornerRadiusBottomLeft",
-            radius
-        ),
+        topLeft: readNumericProperty(mark, "cornerRadiusTopLeft", radius),
+        bottomLeft: readNumericProperty(mark, "cornerRadiusBottomLeft", radius),
     };
 }
 
@@ -2535,6 +2482,17 @@ function liveValue(read, type) {
 }
 
 /**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @param {number} [fallback]
+ */
+function numericPropertyValue(mark, property, fallback) {
+    return staticOrLivePropertyValue(mark, [property], () =>
+        readNumericProperty(mark, property, fallback)
+    );
+}
+
+/**
  * Emits literal mark properties as renderer constants while keeping expression
  * properties updateable. Every listed property contributes to the value.
  *
@@ -2565,9 +2523,10 @@ function staticOrLivePropertyValue(
 }
 
 /**
- * Exposes a retained numeric leaf that already has an explicit slot contract.
+ * Exposes a retained leaf that already has an explicit slot contract.
  *
- * @param {() => number | number[]} read
+ * @template T
+ * @param {() => T} read
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
  */
 function retainedValue(read, type) {
@@ -2576,15 +2535,6 @@ function retainedValue(read, type) {
             return read();
         },
         ...(type ? { type } : {}),
-    };
-}
-
-/** @param {() => any} read */
-function retainedPropertyValue(read) {
-    return {
-        get value() {
-            return read();
-        },
     };
 }
 
@@ -2607,7 +2557,7 @@ function createDynamicProperties(mark, definitions) {
         if (!isExprRef(value)) {
             continue;
         }
-        properties[property] = retainedPropertyValue(() =>
+        properties[property] = retainedValue(() =>
             adjust(readProperty(mark, property))
         );
     }
@@ -2634,7 +2584,7 @@ function createDynamicNumericVectorProperty(mark, name, properties, fallbacks) {
         return {};
     }
     return {
-        [name]: retainedPropertyValue(() =>
+        [name]: retainedValue(() =>
             readNumericPropertyVector(mark, properties, fallbacks)
         ),
     };

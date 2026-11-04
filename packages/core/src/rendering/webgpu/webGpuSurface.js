@@ -1,4 +1,4 @@
-import deepEqual, { isPlainObject } from "../../utils/deepEqual.js";
+import deepEqual from "../../utils/deepEqual.js";
 import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 import {
@@ -492,9 +492,8 @@ function equalFloat32Arrays(first, second) {
 }
 
 /**
- * Compiles Core's live leaves into direct renderer-slot updates. Reusing the
- * previous values preserves change detection when a translated config is
- * replaced while keeping dirty-frame work flat and reflection-free.
+ * Compiles Core's owned or computed leaves into direct renderer-slot updates.
+ * Retaining the results also filters unchanged leaves across config replacement.
  * Scale-only publications use the subset that depends on mappings.
  *
  * @param {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
@@ -529,16 +528,12 @@ function compileResourceBindings(
         skipUndefined = false,
         scaleDependent = false
     ) => {
-        let value = previousValues.get(key);
-        if (!previousValues.has(key)) {
-            value = snapshotValue(read());
-        } else if (Array.isArray(value) && Object.isFrozen(value)) {
-            // A replacement config can supply an equal immutable domain. Adopt
-            // its reference once instead of comparing every entry on each frame.
-            const current = read();
-            if (isImmutableScalarArray(current) && deepEqual(value, current))
-                value = current;
-        }
+        const current = read();
+        const previous = previousValues.get(key);
+        const value =
+            previousValues.has(key) && !deepEqual(previous, current)
+                ? previous
+                : current;
 
         /** @type {ResourceBinding} */
         const binding = {
@@ -548,7 +543,6 @@ function compileResourceBindings(
             value,
             skipUndefined,
             equals: deepEqual,
-            snapshot: snapshotValue,
         };
         bindings.all.push(binding);
         if (scaleDependent) bindings.scales.push(binding);
@@ -645,9 +639,7 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 () => channel.scale.viewport,
                 (viewport) => scaleSlot.setViewport(viewport)
             );
-            binding.equals = equalViewports;
-            binding.snapshot = snapshotViewport;
-            binding.value = snapshotViewport(binding.value);
+            binding.equals = Object.is;
         }
         if ("range" in channel.scale) {
             addScale(
@@ -691,84 +683,15 @@ function updateResourceBindings(bindings) {
     for (const binding of bindings) {
         const value = binding.read();
         if (
-            (binding.skipUndefined && value === undefined) ||
-            binding.equals(binding.value, value)
+            !(binding.skipUndefined && value === undefined) &&
+            !binding.equals(binding.value, value)
         ) {
-            continue;
+            binding.write(value);
+            binding.value = value;
+            writes++;
         }
-        binding.write(value);
-        writes++;
-        binding.value = binding.snapshot(value, binding.value);
     }
     return writes;
-}
-
-/** Compare the fixed private viewport payload without generic object traversal.
- * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} first
- * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} second
- */
-function equalViewports(first, second) {
-    if (first === second) return true;
-    if (!first || !second) return false;
-    return (
-        Object.is(first.interval[0], second.interval[0]) &&
-        Object.is(first.interval[1], second.interval[1]) &&
-        (first.gapRanks === second.gapRanks ||
-            (!!first.gapRanks &&
-                !!second.gapRanks &&
-                Object.is(first.gapRanks[0], second.gapRanks[0]) &&
-                Object.is(first.gapRanks[1], second.gapRanks[1])))
-    );
-}
-
-/** Retain one detached snapshot; caller-owned arrays can still change in place.
- * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} value
- * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} [previous]
- */
-function snapshotViewport(value, previous) {
-    if (!value) return value;
-    /** @type {import("@genome-spy/webgpu-renderer").ScaleViewport} */
-    const snapshot = previous ?? { interval: [0, 0] };
-    snapshot.interval[0] = value.interval[0];
-    snapshot.interval[1] = value.interval[1];
-    if (value.gapRanks) {
-        const ranks = (snapshot.gapRanks ??= [0, 0]);
-        ranks[0] = value.gapRanks[0];
-        ranks[1] = value.gapRanks[1];
-    } else {
-        delete snapshot.gapRanks;
-    }
-    return snapshot;
-}
-
-/**
- * @param {any} value
- * @returns {any}
- */
-function snapshotValue(value) {
-    // Typed series and non-plain objects retain their separate identity paths.
-    if (Array.isArray(value)) {
-        // Frozen scalar domains and cuts are complete immutable snapshots.
-        if (isImmutableScalarArray(value)) return value;
-        return value.map(snapshotValue);
-    }
-    if (isPlainObject(value))
-        return Object.fromEntries(
-            Object.entries(value).map(([key, entry]) => [
-                key,
-                snapshotValue(entry),
-            ])
-        );
-    return value;
-}
-
-/** @param {any} value */
-function isImmutableScalarArray(value) {
-    return (
-        Array.isArray(value) &&
-        Object.isFrozen(value) &&
-        value.every((entry) => entry === null || typeof entry !== "object")
-    );
 }
 
 /**
@@ -832,43 +755,30 @@ function updateRetainedSelections(retained, mark) {
             }
             retained.selections.set(name, { value: selection, indexer, ids });
         } else if (slot.type == "interval") {
-            let snapshot = /** @type {SelectionSnapshot | undefined} */ (
-                retained.selections.get(name)
+            const previous =
+                /** @type {{intervals: Record<string, number[] | null>} | undefined} */ (
+                    retained.selections.get(name)
+                );
+            if (previous === selection) continue;
+            retained.selections.set(name, selection);
+            if (
+                slot.components.every((component) =>
+                    deepEqual(
+                        previous?.intervals[component] ?? null,
+                        selection.intervals?.[component] ?? null
+                    )
+                )
+            )
+                continue;
+            slot.set(
+                Object.fromEntries(
+                    slot.components.map((component) => [
+                        component,
+                        selection.intervals?.[component] ?? null,
+                    ])
+                )
             );
-            if (!snapshot || snapshot.type != "interval") {
-                /** @type {Record<string, [number, number] | null>} */
-                const intervals = {};
-                for (const component of slot.components) {
-                    intervals[component] = null;
-                }
-                snapshot = {
-                    type: "interval",
-                    intervals,
-                };
-                retained.selections.set(name, snapshot);
-            }
-
-            let changed = false;
-            for (const component of slot.components) {
-                const interval = selection.intervals?.[component] ?? null;
-                const previous = snapshot.intervals[component];
-                if (
-                    interval == null
-                        ? previous != null
-                        : previous == null ||
-                          previous[0] != interval[0] ||
-                          previous[1] != interval[1]
-                ) {
-                    snapshot.intervals[component] = interval
-                        ? [interval[0], interval[1]]
-                        : null;
-                    changed = true;
-                }
-            }
-            if (changed) {
-                slot.set(snapshot.intervals);
-                writes++;
-            }
+            writes++;
         }
     }
     return writes;
@@ -987,7 +897,7 @@ function getLogicalChannelSeries(channel) {
  * @prop {ResourceBindings} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
- * @prop {Map<string, number | SelectionSnapshot | IntegerSetSnapshot>} selections
+ * @prop {Map<string, number | import("../../types/selectionTypes.js").IntervalSelection | IntegerSetSnapshot>} selections
  * @prop {number | undefined} resourceExpressionsRevision
  */
 
@@ -1003,13 +913,6 @@ function getLogicalChannelSeries(channel) {
  * @property {any} value
  * @property {boolean} skipUndefined
  * @property {(first: any, second: any) => boolean} equals
- * @property {(value: any, previous?: any) => any} snapshot
- */
-
-/**
- * @typedef {object} SelectionSnapshot
- * @property {"interval"} type
- * @property {Record<string, [number, number] | null>} intervals
  */
 
 /**

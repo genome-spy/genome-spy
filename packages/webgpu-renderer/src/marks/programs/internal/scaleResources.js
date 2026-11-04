@@ -576,11 +576,7 @@ export class ScaleResourceManager {
         const gaps = this.#gapScales.get(name);
         let viewport = normalizeScaleViewport(scale.viewport ?? null);
         let categoryCount = scale.domain?.length ?? 0;
-        /** @param {import("../../../index.d.ts").ScaleViewport | null} value */
-        const updateViewport = (value) => {
-            if (scale.type !== "band")
-                throw new Error("Scale viewport requires a band scale.");
-            viewport = normalizeScaleViewport(value);
+        const publishViewport = () => {
             const interval = viewport?.interval ?? [0, categoryCount];
             writeDomain(interval);
             if (gaps) {
@@ -588,6 +584,13 @@ export class ScaleResourceManager {
                 gaps.ranks = viewport?.gapRanks;
                 this.#updateGapGeometry(gaps);
             }
+        };
+        /** @param {import("../../../index.d.ts").ScaleViewport | null} value */
+        const updateViewport = (value) => {
+            if (scale.type !== "band")
+                throw new Error("Scale viewport requires a band scale.");
+            viewport = normalizeScaleViewport(value);
+            publishViewport();
         };
         /** @type {(domain: unknown) => boolean} */
         const updateDomain = (domain) => {
@@ -677,7 +680,7 @@ export class ScaleResourceManager {
             publishDomain = (domain) => {
                 const result = updateDomain(domain);
                 categoryCount = /** @type {number[]} */ (domain).length;
-                updateViewport(viewport);
+                publishViewport();
                 return result;
             };
         } else if (gaps) {

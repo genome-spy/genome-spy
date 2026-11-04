@@ -464,7 +464,7 @@ describe("WebGpuSurface", () => {
             /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
                 /** @type {unknown} */ ({ type: "point" })
             );
-        const domain = [0, 10];
+        let domain = [0, 10];
         let size = 5;
         const config = {
             count: 2,
@@ -488,8 +488,7 @@ describe("WebGpuSurface", () => {
         };
 
         useMark(surface, mark, definition, config);
-        domain[0] = 1;
-        domain[1] = 11;
+        domain = [1, 11];
         size = 6;
         useMark(surface, mark, definition, config);
 
@@ -503,7 +502,7 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
-    test("reuses frozen scalar domains while retaining nested mutation detection", async () => {
+    test("reuses owned domains while computed color ranges stay live", async () => {
         const surface = new WebGpuSurface(
             /** @type {any} */ ({
                 container: document.body,
@@ -527,8 +526,6 @@ describe("WebGpuSurface", () => {
             [0, 0, 0, 1],
             [1, 1, 1, 1],
         ];
-        // A frozen outer array does not make its nested colors immutable.
-        Object.freeze(range);
         const config = {
             count: 3,
             channels: {
@@ -539,7 +536,9 @@ describe("WebGpuSurface", () => {
                         get domain() {
                             return domain;
                         },
-                        range,
+                        get range() {
+                            return range.map((color) => color.slice());
+                        },
                     },
                 },
             },
@@ -555,7 +554,9 @@ describe("WebGpuSurface", () => {
                         get domain() {
                             return domain;
                         },
-                        range,
+                        get range() {
+                            return range.map((color) => color.slice());
+                        },
                     },
                 },
             },
@@ -622,36 +623,14 @@ describe("WebGpuSurface", () => {
         expect(
             mocks.handle.scales.x.default.setViewport
         ).toHaveBeenCalledOnce();
-        // Equal snapshots are quiet; mutations must compare with detached state.
-        scale.viewport = structuredClone(scale.viewport);
+        scale.viewport = { interval: [1.25, 3], gapRanks: [0.75, 1] };
         useMark(surface, mark, definition, config);
-        expect(
-            mocks.handle.scales.x.default.setViewport
-        ).toHaveBeenCalledOnce();
-        scale.viewport.interval[0] = 1.25;
+        scale.viewport = { interval: [1.25, 3] };
         useMark(surface, mark, definition, config);
-        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            2
-        );
-        scale.viewport.gapRanks[0] = 0.75;
-        useMark(surface, mark, definition, config);
-        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            3
-        );
-        delete scale.viewport.gapRanks;
-        useMark(surface, mark, definition, config);
-        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            4
-        );
-        scale.viewport.gapRanks = [0.75, 1];
-        useMark(surface, mark, definition, config);
-        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            5
-        );
         scale.viewport = null;
         useMark(surface, mark, definition, config);
         expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            6
+            4
         );
         expect(
             mocks.handle.scales.x.default.setViewport
@@ -1017,6 +996,10 @@ describe("WebGpuSurface", () => {
 
     test("updates all interval targets atomically and preserves inactive targets", async () => {
         const selectionSet = vi.fn();
+        let selection = {
+            type: "interval",
+            intervals: { x: [1, 2], y: [3, 4] },
+        };
         mocks.handle.selections = {
             brush: {
                 type: "interval",
@@ -1038,10 +1021,7 @@ describe("WebGpuSurface", () => {
             /** @type {unknown} */ ({
                 unitView: {
                     paramRuntime: {
-                        findValue: () => ({
-                            type: "interval",
-                            intervals: { x: [1, 2], y: [3, 4] },
-                        }),
+                        findValue: () => selection,
                     },
                 },
             })
@@ -1060,8 +1040,11 @@ describe("WebGpuSurface", () => {
 
         useMark(surface, mark, definition, createConfig(0));
         expect(selectionSet).not.toHaveBeenCalled();
+        selection = { type: "interval", intervals: { x: [1, 2], y: [3, 4] } };
+        useMark(surface, mark, definition, createConfig(0));
+        expect(selectionSet).not.toHaveBeenCalled();
 
-        mark.unitView.paramRuntime.findValue = () => ({
+        selection = /** @type {any} */ ({
             type: "interval",
             intervals: { x: [5, 6] },
         });
@@ -1071,7 +1054,7 @@ describe("WebGpuSurface", () => {
         expect(selectionSet).toHaveBeenCalledWith({ x: [5, 6], y: null });
         selectionSet.mockClear();
 
-        mark.unitView.paramRuntime.findValue = () => ({
+        selection = /** @type {any} */ ({
             type: "interval",
             intervals: { x: null, y: null },
         });
@@ -1083,6 +1066,10 @@ describe("WebGpuSurface", () => {
 
     test("retains literal conditional channels without creating a series", async () => {
         const selectionSet = vi.fn();
+        const selection = {
+            type: "interval",
+            intervals: { x: [1, 2], y: [3, 4] },
+        };
         mocks.handle.selections = {
             brush: {
                 type: "interval",
@@ -1104,10 +1091,7 @@ describe("WebGpuSurface", () => {
             /** @type {unknown} */ ({
                 unitView: {
                     paramRuntime: {
-                        findValue: () => ({
-                            type: "interval",
-                            intervals: { x: [1, 2], y: [3, 4] },
-                        }),
+                        findValue: () => selection,
                     },
                 },
             })
