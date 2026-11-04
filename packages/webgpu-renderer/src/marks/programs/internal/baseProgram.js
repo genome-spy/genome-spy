@@ -1148,7 +1148,8 @@ export default class BaseProgram {
                 layout.push({
                     name: `u_${name}`,
                     type: channel.type ?? "f32",
-                    components: channel.components ?? 1,
+                    components:
+                        channel.inputComponents ?? channel.components ?? 1,
                 });
             }
             if (isSeriesChannelConfig(channel) && channel.scale) {

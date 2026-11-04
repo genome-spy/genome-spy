@@ -255,12 +255,13 @@ not regress. Remove duplicate private Surface snapshots and unnecessary renderer
 setter plumbing; keep boundary validation and caller-input detachment.
 
 Core's completed mapping owns domain, viewport and grouping-gap publications.
-Resource expression getters return computed numeric/color values. The large
-index pair and link-distance vector producers now detach their mutable outputs;
-Surface can retain prior results without recursive copies. Private Surface fake
-config mutation is not a new public contract. Preserve actual parameter/scale
-updates, config replacement, export/live transitions, selections and disposal.
-Do not add another subscription registry or input-mask system.
+Resource expression getters return computed numeric/color values. The
+intermediate correction detached the large-index pair and link-distance outputs.
+The final continuation below removes that need for mutable uniforms by consuming
+them synchronously. Private Surface fake config mutation is not a new public
+contract. Preserve actual parameter/scale updates, config replacement,
+export/live transitions, selections and disposal. Do not add another
+subscription registry or input-mask system.
 
 Independent design review identified two constraints: configured ranges can be
 new but semantically unchanged on navigation, and adapter getters can close over
@@ -338,3 +339,108 @@ gate. No declaration files changed. Both Core/renderer type checks, scoped
 lint/format, independent final review, 531 focused tests, eight native GPU tests
 and release checks pass. There is no public renderer API change or
 released-package version bump.
+
+## Direct uniform consumption and captured evaluators
+
+Baseline: `071c5708d`. The renderer API remains fixed. The user permits a small
+SLOC increase when it unlocks substantial measured gains. CPU must not regress;
+allocation/GC diagnostics are separate from profiler-disabled CPU acceptance.
+
+### Completed design
+
+- [x] Keep the flat retained-binding loop and its cheap scalar filtering.
+      Dynamic uniform vectors always reach synchronous typed setters; their
+      previous borrowed references never suppress an update. Scale/table and
+      owned immutable geometry values retain semantic change filtering.
+- [x] Reuse packed-index and numeric-vector scratch; pass native link-distance
+      arrays directly. Delete per-read detached uniform-vector outputs and whole
+      corner-radius objects. Text viewport geometry uses one owned array per
+      translated config, refreshed by existing numeric-geometry invalidation.
+- [x] Expose the exact existing subscribed property evaluator from Mark and
+      capture it once in numeric, semantic and vector readers. Common corner
+      fallbacks call the captured base-radius evaluator directly. There are no
+      extra subscriptions, result caches or lifecycle owners.
+- [x] Delete redundant continuous-domain normalizer envelopes and
+      packed-interval intermediates. Pack high-precision integers directly into
+      existing storage, deleting the intermediate split pairs and duplicate
+      packing loop.
+- [x] Honor already-declared packed input components in dynamic uniform storage.
+      A real native HP datum exposed the existing scalar-layout initialization
+      failure. Typed-memory unit and native rendering/picking regressions now
+      cover this API contract; no public declaration or method changed.
+- [x] Replace the private getter-ownership test with real adapter-to-slot typed
+      memory behavior. Remove the fake live-leaf case now covered by real native
+      parameter/scale tests. Retain scalar validation after failed setters.
+
+Grouped source dispatch and setter-keyed scalar caches were measured and
+rejected: the style workload used about 10% more thread CPU despite allocating
+less. Source-reference grouping and additional routing state are discarded.
+Capturing producers while retaining the flat loop is the final design.
+
+Independent final review found no outstanding ownership or API issue. Earlier
+review findings about publishing state before failed setters and suppressing
+undefined-property validation were addressed; the retained flat loop publishes
+comparison state only after a successful setter.
+
+### Final native measurements
+
+Temporary drivers, source hashes, profiles, traces and PNGs are under ignored
+`output/webgpu-direct-uniforms/`. All JavaScript module timestamp queries are
+normalized consistently during source substitution so Core's module-local
+metadata retains one identity. Rejected candidates and failures remain recorded.
+No permanent benchmark framework was added.
+
+CPU acceptance uses explicit CDP `threadTicks`/`ThreadTime`, separate from
+allocation/CPU sampling. Each synthetic scene has 32 marks. Three alternating
+pairs each measure 600 updates after 600 warmup updates for style and 360 for
+vectors. Heap collections before/after the interval are timed separately; none
+is forced inside the interaction interval. All exported PNG pairs are
+byte-identical, and no page/loading errors were reported.
+
+| Workload                         | Baseline thread CPU per 600 updates |   Candidate | Change |
+| -------------------------------- | ----------------------------------: | ----------: | -----: |
+| Style plus scale                 |                         1,386.05 ms | 1,338.62 ms | −3.42% |
+| HP datum/link vectors plus scale |                           868.72 ms |   877.73 ms | +1.04% |
+| Real clustered heatmap           |                           846.98 ms |   850.02 ms | +0.36% |
+
+Pair variation is substantial. These results support roughly unchanged whole
+renderer-thread CPU, not a reliable application-wide speedup. The HP vector
+baseline needs the same isolated input-layout correctness fix before it can
+render; the driver records this common fix and both original/effective hashes.
+The untouched baseline failure is preserved explicitly.
+
+Two alternating allocation-sampling pairs per workload include objects collected
+by minor/major GC. Sampling interval is 4,096 bytes; values are statistical
+allocation estimates, not exact allocation counts or retained heap sizes.
+
+| Workload              | Baseline sampled allocation | Candidate |  Change |
+| --------------------- | --------------------------: | --------: | ------: |
+| Style plus scale      |                    80.58 MB |  65.87 MB | −18.25% |
+| HP datum/link vectors |                    71.88 MB |  72.46 MB |  +0.81% |
+
+Both style pairs agree (−18.39%, −18.11%). Adapter-attributed style allocations
+fall from 20.16 to 5.36 MB. Vector totals and GC timing are mixed; claim no
+overall vector-allocation or GC-time improvement. Mean main-thread GC union
+times are 26.53→25.16 ms for style and 27.28→30.96 ms for vectors. Traces clip
+the interaction window and merge overlapping intervals rather than double-count
+nested phases.
+
+A separate final 100 µs CPU-sampling diagnostic attributes 55.67→41.32 ms to the
+`updateMark` subtree (−25.8%) over one 360-update pair. This supports reduced
+update-preparation work, not a whole-application speedup; the acceptance numbers
+above have no CPU sampler enabled.
+
+### Verification and delivery
+
+- 530 focused tests across 55 files and 14 GPU tests pass, including the new
+  packed-value rendering, movement and picking regression.
+- Core/renderer TypeScript, scoped lint/format and release checks pass.
+- This remains unpublished WebGPU/internal Core work. Reuse the empty changeset;
+  no released package is scheduled for a version bump.
+- Parser-based JavaScript counts under `packages/`, excluding
+  tests/declarations, add 138 and delete 132 lines against `071c5708d`: **+6
+  production lines**. Across the continued cleanup against `d8e083bb7`,
+  production is **−142 lines** (238 added, 380 deleted), or **−18 including
+  tests** (529 added, 547 deleted). The full branch is **−61 production lines**
+  against `origin/master`.
+- The renderer's public declarations and slot timing are unchanged.

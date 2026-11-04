@@ -479,36 +479,30 @@ export class ScaleResourceManager {
         if (stopKind) {
             if (stopKind === "continuous") {
                 const domainLength = stopInfo?.domainLength ?? 2;
-                const normalizeDomain =
-                    scaleDef.normalizeDomain ??
-                    (({ name, domain, domainLength: expectedLength }) => {
-                        const domainValues = coerceArrayLike(
-                            domain,
-                            `Scale on "${name}" expects a domain array.`
-                        );
-                        if (
-                            expectedLength &&
-                            domainValues.length !== expectedLength
-                        ) {
-                            throw new Error(
-                                `Scale domain for "${name}" expects ${expectedLength} entries, got ${domainValues.length}.`
-                            );
-                        }
-                        return domainValues;
-                    });
+                const normalizeDomain = scaleDef.normalizeDomain;
                 const expectedRangeLength = stopInfo?.rangeLength;
-                updateStopDomain = (value) => {
-                    const normalized = normalizeDomain({
-                        name,
-                        scale,
-                        domain: value,
-                        domainLength,
-                    });
-                    if (!normalized) {
-                        return;
-                    }
-                    writeDomain(normalized);
-                };
+                updateStopDomain = normalizeDomain
+                    ? (value) => {
+                          const normalized = normalizeDomain({
+                              name,
+                              scale,
+                              domain: value,
+                              domainLength,
+                          });
+                          if (normalized) writeDomain(normalized);
+                      }
+                    : (value) => {
+                          const domain = coerceArrayLike(
+                              value,
+                              `Scale on "${name}" expects a domain array.`
+                          );
+                          if (domainLength && domain.length !== domainLength) {
+                              throw new Error(
+                                  `Scale domain for "${name}" expects ${domainLength} entries, got ${domain.length}.`
+                              );
+                          }
+                          writeDomain(domain);
+                      };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
                         throw new Error(

@@ -10,8 +10,17 @@ import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
-/** @type {Readonly<Record<string, {value: any}>>} */
+/** @type {Readonly<Record<string, {value: any, dynamic?: boolean}>>} */
 const EMPTY_PROPERTIES = Object.freeze({});
+
+/**
+ * Uniform vectors are consumed synchronously and may reuse mutable storage.
+ * @param {any} previous
+ * @param {any} value
+ */
+function equalUniformValues(previous, value) {
+    return !Array.isArray(value) && Object.is(previous, value);
+}
 
 /**
  * @param {import("../../marks/mark.js").default} mark
@@ -292,7 +301,7 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
-     * @param {Record<string, {value: any}>} [properties]
+     * @param {Record<string, {value: any, dynamic?: boolean}>} [properties]
      * @returns {number} Number of retained resource writes.
      */
     updateMark(mark, definition, config, properties = EMPTY_PROPERTIES) {
@@ -506,7 +515,7 @@ function equalFloat32Arrays(first, second) {
  *
  * @param {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @param {any} config
- * @param {Record<string, {value: any}>} properties
+ * @param {Record<string, {value: any, dynamic?: boolean}>} properties
  * @param {ResourceBindings} [previousBindings]
  * @returns {ResourceBindings}
  */
@@ -587,11 +596,8 @@ function compileResourceBindings(
         if (!slot) {
             throw new Error(`Renderer mark has no property slot "${name}".`);
         }
-        add(
-            `property:${name}`,
-            () => property.value,
-            (value) => slot.set(value)
-        );
+        const binding = add(`property:${name}`, () => property.value, slot.set);
+        if (property.dynamic) binding.equals = equalUniformValues;
     }
 
     for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
@@ -604,7 +610,7 @@ function compileResourceBindings(
                 (value) => slot.set(value),
                 false,
                 true
-            );
+            ).equals = equalUniformValues;
         }
     }
     return bindings;
@@ -678,7 +684,7 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             (value) => valueSlot.set(value),
             true,
             isWebGpuScaleDependentValue(channel)
-        );
+        ).equals = equalUniformValues;
     }
 }
 
@@ -901,7 +907,7 @@ function getLogicalChannelSeries(channel) {
  * @prop {number} gapKey
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
- * @prop {Record<string, {value: any}>} properties
+ * @prop {Record<string, {value: any, dynamic?: boolean}>} properties
  * @prop {ResourceBindings} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count

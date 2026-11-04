@@ -104,6 +104,73 @@ test("fixed circles keep the analytic path without MSDF resources", async ({
     });
 });
 
+test("moves a high-precision index datum through its retained value slot", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { pointMark },
+            { indexScale },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/point.js"),
+            import("/src/scales/index.js"),
+            import("/src/scales/identity.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        const start = 2 ** 32;
+        const mark = renderer.createMark(pointMark, {
+            shape: "circle",
+            channels: {
+                uniqueId: { value: 42, type: "u32" },
+                x: {
+                    value: [1048576, 16],
+                    type: "u32",
+                    inputComponents: 2,
+                    dynamic: true,
+                    scale: indexScale({
+                        domain: [start, start + 64],
+                        range: [0, 64],
+                        band: 0,
+                    }),
+                },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 64 },
+                fill: { value: [1, 0, 0, 1] },
+                strokeOpacity: { value: 0 },
+            },
+        });
+        renderer.render({ draws: [{ mark }] });
+        const before = await Promise.all([
+            renderer.pick(16, 32),
+            renderer.pick(48, 32),
+        ]);
+        mark.values.x.set([1048576, 48]);
+        renderer.render({ draws: [{ mark }] });
+        const after = await Promise.all([
+            renderer.pick(16, 32),
+            renderer.pick(48, 32),
+        ]);
+        const validation = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return { before, after, validation: validation?.message };
+    });
+    expect(result).toEqual({
+        before: [42, null],
+        after: [null, 42],
+        validation: undefined,
+    });
+});
+
 test("fixed named and SVG point shapes use the shared path program", async ({
     page,
 }) => {
