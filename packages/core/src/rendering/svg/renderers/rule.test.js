@@ -163,7 +163,7 @@ describe("SVG rule renderer", () => {
             expect(reactive.getAttribute("stroke-width")).toBe("2");
             expect(reactive.hasAttribute("mask")).toBe(false);
             const nominal = reactive.getAttribute("d");
-            for (const alignment of ["inside", "outside"]) {
+            for (const alignment of ["inside", "outside", "unknown"]) {
                 view.paramRuntime.setValue("alignment", alignment);
                 await view.paramRuntime.whenPropagated();
                 const svg = render();

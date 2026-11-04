@@ -466,7 +466,11 @@ async function checkAlignment(page, renderer, dpr) {
                         );
                         cf = 1 - control[1] / 255;
                     }
-                    for (const align of ["inside", "center", "outside"]) {
+                    const alignments = ["inside", "center", "outside"];
+                    // An unknown expression result uses the default placement.
+                    if (alpha === 1 && width === 6 && body === 16)
+                        alignments.push("unknown");
+                    for (const align of alignments) {
                         for (const [name, value] of Object.entries({
                             alpha,
                             common,
@@ -518,7 +522,7 @@ async function checkAlignment(page, renderer, dpr) {
                             width,
                             body,
                             cf,
-                            align,
+                            align: align === "unknown" ? "outside" : align,
                             captures,
                             picked: pick.status === "hit",
                         });

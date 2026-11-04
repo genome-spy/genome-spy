@@ -825,11 +825,9 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
                 ? {
                       strokeAlign: liveValue(
                           () =>
-                              mapProperty(
-                                  mark,
-                                  "strokeAlign",
-                                  STROKE_ALIGN_CODES
-                              ),
+                              STROKE_ALIGN_CODES.get(
+                                  readProperty(mark, "strokeAlign")
+                              ) ?? 2,
                           "u32"
                       ),
                       fillOpacity: createNumericChannel(
