@@ -52,8 +52,8 @@ export class ScaleResourceManager {
     /** @type {(name: string) => [number, number] | undefined} */
     #getDefaultScaleRange;
 
-    /** @type {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} */
-    #setUniformValue;
+    /** @type {(name: string) => import("../../../utils/uniformBuffer.js").UniformSetter} */
+    #getUniformSetter;
 
     /** @type {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} */
     #analysisByChannel;
@@ -79,21 +79,29 @@ export class ScaleResourceManager {
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {string} [params.label]
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
-     * @param {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} params.setUniformValue
+     * @param {(name: string) => import("../../../utils/uniformBuffer.js").UniformSetter} params.getUniformSetter
      */
     constructor({
         device,
         analysisByChannel,
         label = "mark",
         getDefaultScaleRange,
-        setUniformValue,
+        getUniformSetter,
     }) {
         this.#device = device;
         this.#label = label;
         this.#getDefaultScaleRange = getDefaultScaleRange;
-        this.#setUniformValue = setUniformValue;
+        this.#getUniformSetter = getUniformSetter;
 
         this.#analysisByChannel = analysisByChannel;
+    }
+
+    /**
+     * @param {string} name
+     * @param {number | ArrayLike<number> | Array<number | number[]>} value
+     */
+    #setUniformValue(name, value) {
+        this.#getUniformSetter(name)(value);
     }
 
     /** The single mark-owned scale/gap storage buffer. */
@@ -379,6 +387,8 @@ export class ScaleResourceManager {
         const stopInfo = stopKind ? this.#getScaleStopInfo(name) : undefined;
         const domainUniformName = DOMAIN_PREFIX + name;
         const rangeUniformName = RANGE_PREFIX + name;
+        const writeDomain = this.#getUniformSetter(domainUniformName);
+        const writeRange = this.#getUniformSetter(rangeUniformName);
         const defaultRange =
             stopKind === "continuous"
                 ? this.#getDefaultScaleRange(name)
@@ -506,7 +516,7 @@ export class ScaleResourceManager {
                             `Scale range for "${name}" expects ${expectedRangeLength} entries, got ${value.length}.`
                         );
                     }
-                    this.#setUniformValue(rangeUniformName, value);
+                    writeRange(value);
                 };
             } else {
                 if (!stopInfo) {
@@ -528,7 +538,7 @@ export class ScaleResourceManager {
                             `${label} scale on "${name}" expects ${domainLength} domain entries, got ${domain.length}.`
                         );
                     }
-                    this.#setUniformValue(domainUniformName, domain);
+                    writeDomain(domain);
                 };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
@@ -542,7 +552,7 @@ export class ScaleResourceManager {
                         );
                     }
                     if (outputComponents === 1 && isNumericRange(value)) {
-                        this.#setUniformValue(rangeUniformName, value);
+                        writeRange(value);
                         return;
                     }
                     const normalized = normalizeDiscreteRange(
@@ -551,7 +561,7 @@ export class ScaleResourceManager {
                         outputComponents,
                         stopKind
                     );
-                    this.#setUniformValue(rangeUniformName, normalized);
+                    writeRange(normalized);
                 };
             }
         }
@@ -564,7 +574,7 @@ export class ScaleResourceManager {
                 throw new Error("Scale viewport requires a band scale.");
             viewport = normalizeScaleViewport(value);
             const interval = viewport?.interval ?? [0, categoryCount];
-            this.#setUniformValue(domainUniformName, interval);
+            writeDomain(interval);
             const gaps = this.#gapScales.get(name);
             if (gaps) {
                 gaps.domain = interval;
@@ -578,10 +588,7 @@ export class ScaleResourceManager {
             if (updateStopDomain) {
                 updateStopDomain(mapUpdate?.domainUniform ?? domain);
             } else if (mapUpdate?.domainUniform) {
-                this.#setUniformValue(
-                    domainUniformName,
-                    mapUpdate.domainUniform
-                );
+                writeDomain(mapUpdate.domainUniform);
             }
             return mapUpdate?.needsRebind ?? false;
         };

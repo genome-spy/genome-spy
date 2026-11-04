@@ -75,7 +75,7 @@ function createManager(channels, limits = {}) {
         device,
         analysisByChannel,
         getDefaultScaleRange: () => undefined,
-        setUniformValue: (name, value) => {
+        getUniformSetter: (name) => (value) => {
             uniforms.set(name, value);
         },
     });
