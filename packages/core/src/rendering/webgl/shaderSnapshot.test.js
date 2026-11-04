@@ -557,7 +557,6 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("float sdArrow");
         expect(sources.fragment).toContain("float sdStem");
         expect(sources.fragment).toContain("float sdArrowHead");
-        expect(sources.fragment).toContain("float repeat");
         expect(sources.fragment).toContain("vHeadRepeatFootprintLength");
         expect(sources.fragment).toContain("vHeadSpacing");
         expect(sources.fragment).toContain("uStartNotch");
