@@ -584,7 +584,7 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
                 data,
                 viewOpacity
             ),
-            strokeWidth: createNumericChannel(mark, "strokeWidth", data, true),
+            strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             cornerRadiusTopRight: staticOrLivePropertyValue(
                 mark,
                 ["cornerRadius", "cornerRadiusTopRight"],
@@ -1208,7 +1208,7 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                       )
                     : createBandPositionScale(
                           scale,
-                          range,
+                          getRange(channel, coords, undefined),
                           readDomain,
                           // Pixel y runs in the opposite direction from Core's unit range.
                           channel[0] === "y" ? 1 - band : band,
@@ -1264,17 +1264,27 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
  */
 function createBandPositionScale(scale, range, readDomain, band, channel) {
     const configurableScale = /** @type {any} */ (scale);
+    const reverse = range[1] < range[0];
+    // Core's effective range already includes reversal and can extend beyond
+    // the viewport when an App layout translates or expands complete bands.
+    const readRange = () =>
+        scale
+            .range()
+            .map((value) => range[0] + Number(value) * (range[1] - range[0]));
     const result = retainScaleLeaves(
         bandScale({
             domain: readDomain(),
-            range,
+            range: readRange(),
             paddingInner:
                 scale.type == "point" ? 1 : configurableScale.paddingInner(),
             paddingOuter: configurableScale.paddingOuter(),
-            align: configurableScale.align(),
-            band,
+            align: reverse
+                ? 1 - configurableScale.align()
+                : configurableScale.align(),
+            band: reverse ? 1 - band : band,
         }),
-        readDomain
+        readDomain,
+        readRange
     );
     Object.defineProperty(result, "viewport", {
         enumerable: true,
@@ -1362,12 +1372,11 @@ function retainGroupingGaps(target, scale, channel, peer) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
- * @param {boolean} [keepLiteralStatic]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createNumericChannel(mark, channel, data, keepLiteralStatic = false) {
+function createNumericChannel(mark, channel, data) {
     return createConditionalChannel(mark, channel, data, (encoder) =>
-        keepLiteralStatic && isStaticConstantEncoder(encoder)
+        isStaticConstantEncoder(encoder)
             ? { value: Number(encoder(data[0])) }
             : createNumericBranch(mark, channel, data, encoder)
     );
@@ -1423,9 +1432,7 @@ function createNumericBranch(mark, channel, data, encoder) {
                       )
                     : createBandPositionScale(
                           encoder.scale,
-                          /** @type {[number, number]} */ (
-                              encoder.scale.range()
-                          ),
+                          [0, 1],
                           readDomain,
                           /** @type {import("../../spec/channel.js").BandMixins} */ (
                               encoder.channelDef
@@ -1637,6 +1644,9 @@ function createColorChannel(mark, channel, data) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createColorBranch(mark, channel, data, encoder) {
+    if (isStaticConstantEncoder(encoder)) {
+        return { value: toRgba(mark, encoder(data[0])) };
+    }
     if (encoder.constant) {
         return liveValue(() => toRgba(mark, encoder(data[0])));
     }
@@ -2332,6 +2342,8 @@ function getCategoricalMapping(mark, channel, scale) {
         if (domain !== previous) {
             previous = domain;
             mapped = domain.map(intern);
+            // Membership changes replace this private array; navigation can reuse it.
+            Object.freeze(mapped);
         }
         return mapped;
     };
