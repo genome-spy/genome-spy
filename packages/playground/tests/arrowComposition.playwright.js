@@ -43,6 +43,8 @@ for (const dpr of [1, 2]) {
             expect(Math.max(...result.transparentErrors)).toBeLessThanOrEqual(
                 2
             );
+            expect(result.overlapAlpha).toBe(255);
+            expect(result.overlapPicks).toEqual(["arrow", "arrow", "empty"]);
             expect(result.picks).toEqual(["arrow", "empty", "empty"]);
         } finally {
             await browser.close();
@@ -87,7 +89,10 @@ async function renderArrows({ dpr, entry, registration }) {
             height: 64,
             padding: 0,
             config: { background: null },
-            data: { values: [{ id: "arrow", x: 8, x2: 56, y: cy, y2: cy }] },
+            datasets: {
+                arrows: [{ id: "arrow", x: 8, x2: 56, y: cy, y2: cy }],
+            },
+            data: { name: "arrows" },
             params: Object.entries({
                 size: 8 - 0.25 / dpr,
                 width: 0.25 / dpr,
@@ -198,7 +203,47 @@ async function renderArrows({ dpr, entry, registration }) {
             });
             picks.push(hit.status === "hit" ? hit.hit.datum.id : hit.status);
         }
+        // A later head's empty quad overlaps an earlier head's opaque border.
+        const spacing = 8 + 8 / Math.SQRT2;
+        api.datasets.set(
+            "arrows",
+            Array.from({ length: 3 }, (_, i) => ({
+                id: "arrow",
+                x: 8,
+                x2: 56 - i * spacing,
+                y: cy,
+                y2: cy,
+            }))
+        );
+        const overlapping = await paint({
+            head: "open",
+            stem: false,
+            size: 8,
+            width: 24,
+            strokeAlpha: 1,
+        });
+        const overlapAlpha =
+            overlapping[
+                ((canvas.height - 1 - 42 * dpr) * canvas.width + 40 * dpr) * 4 +
+                    3
+            ];
+        const overlapPicks = [];
+        for (const strokeAlpha of [1, 0]) {
+            await paint({ strokeAlpha });
+            const hit = await view.marks.pick({
+                x: bounds.x + 40,
+                y: bounds.y + 42,
+            });
+            overlapPicks.push(
+                hit.status === "hit" ? hit.hit.datum.id : hit.status
+            );
+        }
+        overlapPicks.push(
+            (await view.marks.pick({ x: bounds.x, y: bounds.y })).status
+        );
         return {
+            overlapAlpha,
+            overlapPicks,
             samples,
             transparentErrors,
             picks,
