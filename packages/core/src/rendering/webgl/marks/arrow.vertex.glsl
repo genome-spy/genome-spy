@@ -208,7 +208,7 @@ void main(void) {
     }
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
+    float strokeOpacity = getScaled_strokeOpacity();
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     float arrowSize = max(getScaled_size(), uMinSize);
@@ -297,7 +297,7 @@ void main(void) {
 
     gl_Position = unitToNdc(p);
 
-    float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
+    float fillOpacity = getScaled_fillOpacity();
     vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
