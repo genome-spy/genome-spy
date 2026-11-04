@@ -314,6 +314,13 @@ including its repeated heads. It defaults to 1 and accepts scalar, series and
 conditional inputs. Scope opacity remains separate. Open-head geometry and
 geometric picking are unchanged, including when arrow opacity is zero.
 
+### Rectangle opacity
+
+Rectangle `opacity` multiplies each occurrence's completed fill, stroke, hatch
+and shadow paint once. It defaults to 1 and accepts scalar, series and conditional
+inputs. Minimum-size fading retains its existing foreground behavior. Scope opacity
+remains separate, and picking remains geometric when rectangle opacity is zero.
+
 ### Rule fill and borders
 
 Rules use `fill` (formerly `color`) for the body, with `size` as its thickness.

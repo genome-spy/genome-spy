@@ -24,6 +24,7 @@ export const RECT_CHANNEL_SPECS = {
     y2Offset: { type: "f32", components: 1, default: 0 },
     fill: { type: "f32", components: 4, default: [0.27, 0.49, 0.8, 1.0] },
     stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    opacity: { type: "f32", components: 1, default: 1.0 },
     fillOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeWidth: { type: "f32", components: 1, default: 1.0 },
@@ -269,7 +270,7 @@ struct VSOut {
     @location(11) shadowColor: vec4<f32>,
     @location(12) @interpolate(flat) hatchPattern: u32,
     @location(13) @interpolate(flat) pickId: u32,
-    @location(14) opacityFactor: f32,
+    @location(14) opacityFactors: vec2<f32>,
 };
 
 fn culledRect() -> VSOut {
@@ -282,7 +283,7 @@ fn culledRect() -> VSOut {
     out.size = vec2<f32>(0.0);
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
-    out.opacityFactor = 0.0;
+    out.opacityFactors = vec2<f32>(0.0);
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.strokeExtents = vec2<f32>(0.0);
@@ -396,7 +397,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.size = vec2<f32>(w, h);
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
-    out.opacityFactor = opaFactor;
+    out.opacityFactors = vec2<f32>(opaFactor, getScaled_opacity(i));
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = getScaled_strokeOpacity(i);
     out.strokeExtents = vec2<f32>(strokeWidth - outset, outset);
@@ -424,7 +425,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     if (USE_MULTISAMPLE_EDGE_COVERAGE &&
             all(in.cornerRadii <= vec4<f32>(0.0)) && all(in.strokeExtents <= vec2<f32>(0.0)) &&
             in.shadowOpacity <= 0.0) {
-        return select(fillColor * in.opacityFactor, vec4<f32>(1.0), pickingEnabled);
+        return select(fillColor * in.opacityFactors.x, vec4<f32>(1.0), pickingEnabled);
     }
 
     let halfSize = in.size * 0.5;
@@ -481,7 +482,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         );
     }
 
-    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, in.strokeExtents, in.opacityFactor);
+    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, in.strokeExtents, in.opacityFactors.x);
 }
 
 @fragment
@@ -489,7 +490,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shade(in) * select(in.opacityFactors.y, 1.0, pickingEnabled);
 }
 `;
 

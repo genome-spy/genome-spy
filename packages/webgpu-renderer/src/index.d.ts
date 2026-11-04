@@ -767,6 +767,7 @@ export type ChannelConfigResolved =
 export type ChannelConfig = ChannelConfigInput;
 
 export type RectChannelName =
+    | "opacity"
     | "uniqueId"
     | "x"
     | "x2"

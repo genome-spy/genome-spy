@@ -42,6 +42,9 @@ the default, nominal bounds and hatch stripe widths stay fixed, and plain
 heatmap antialiasing is unchanged. Shared Core rectangle alignment remains a
 #604 follow-up; this renderer slice does not expose new Core grammar.
 
+Standalone rectangle opacity fades the completed foreground and shadow together,
+independently of minimum-size fading.
+
 ## Active integration: arrow paint composition
 
 Standalone arrows support full-width inside/center/outside strokes with combined
