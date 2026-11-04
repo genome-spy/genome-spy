@@ -375,7 +375,7 @@ sample set and display labels from this file, configure
 Identity and attribute loading reuse the cached header. Configure
 `initialLoad: "*"` to load the attributes at startup, or import selected columns
 later. This backend uses the same published `@genome-spy/figwig` dependency as the
-[Figwig signal source](../grammar/data/lazy.md#figwig-experimental).
+[Figwig signal source](../grammar/data/lazy.md#figwig).
 
 APP_SCHEMA FigWigBackendDef
 

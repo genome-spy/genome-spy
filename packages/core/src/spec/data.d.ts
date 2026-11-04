@@ -549,7 +549,7 @@ export interface BigWigData extends DebouncedData {
     pixelsPerBin?: number | ExprRef;
 }
 
-/** Experimental multitrack signal data from a single Figwig file. */
+/** Multitrack signal data from a single Figwig file. */
 export interface FigWigData extends DebouncedData {
     type: "figwig";
 
