@@ -11,9 +11,9 @@ Thank you for considering contributing to GenomeSpy.
 
 ## How to Contribute
 
-Start with a local development environment, then review the coding, testing,
-and submission guidelines below. For questions or help choosing a contribution,
-see [Community and Communication](#community-and-communication).
+Start with a local development environment, then review the coding, testing, and
+submission guidelines below. For questions or help choosing a contribution, see
+[Community and Communication](#community-and-communication).
 
 ### Setting Up Your Development Environment
 
@@ -72,9 +72,8 @@ schema instead of Core, or vice versa.
 
 Other editors can use the same generated schema files. Configure the editor to
 associate the Core and App example paths with their respective files, or add an
-explicit `$schema` to private specifications. For example, a file directly
-under `private/` can use `../packages/core/dist/schema.json` for the current
-checkout.
+explicit `$schema` to private specifications. For example, a file directly under
+`private/` can use `../packages/core/dist/schema.json` for the current checkout.
 
 ### Debugging
 
@@ -116,8 +115,8 @@ npm run docs:install
 npm run docs:serve
 ```
 
-Use `npm run build:docs` when you want the same one-shot docs build that CI runs.
-If CairoSVG cannot find `cairo`, install the native libraries first:
+Use `npm run build:docs` when you want the same one-shot docs build that CI
+runs. If CairoSVG cannot find `cairo`, install the native libraries first:
 `brew install cairo` on macOS, or
 `apt-get install libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
 on Ubuntu/Debian.
@@ -130,7 +129,8 @@ Our codebase is primarily JavaScript, utilizing
 [JSDoc](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
 for type annotations. The TypeScript language server in VSCode uses the JSDoc
 comments for type checking. Before pushing your changes, ensure that your code
-is correctly typed and passes the type checking. You can run the type checking with:
+is correctly typed and passes the type checking. You can run the type checking
+with:
 
 ```sh
 npm -ws --if-present run test:tsc
@@ -180,8 +180,8 @@ npm test -- --reporter=agent
 npm run lint
 ```
 
-Run the type checks described under [Language and Typings](#language-and-typings)
-as well.
+Run the type checks described under
+[Language and Typings](#language-and-typings) as well.
 
 ## Commit Guidelines
 
@@ -193,12 +193,12 @@ review your commits to ensure each represents a single logical change.
 
 ### Conventional Commits and Commitlint
 
-We adhere strictly to the [conventional
-commits](https://www.conventionalcommits.org/en/v1.0.0/) specification to
-maintain a clean, navigable, and informative commit history. To facilitate this,
-commit messages should be validated using
-[commitlint](https://commitlint.js.org/). Running `npm install` will install
-git hooks that will validate your commit messages automatically.
+We adhere strictly to the
+[conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
+specification to maintain a clean, navigable, and informative commit history. To
+facilitate this, commit messages should be validated using
+[commitlint](https://commitlint.js.org/). Running `npm install` will install git
+hooks that will validate your commit messages automatically.
 
 If applicable, the scope in the commit message should be the package name, e.g.,
 `core` or `app`. However, when making commits that will be squashed into a
@@ -224,17 +224,17 @@ fixes, `minor` for compatible functionality, and `major` for breaking API or
 specification changes. Every breaking note must explain the required migration.
 
 Start the fragment body with `<!-- category: feature -->`,
-`<!-- category: improvement -->`, or `<!-- category: fix -->`, followed by a blank
-line and a concise changelog entry. Categories control presentation independently
-of version bumps; any major bump appears under **Breaking changes**. Empty
-no-release markers do not need a category.
+`<!-- category: improvement -->`, or `<!-- category: fix -->`, followed by a
+blank line and a concise changelog entry. Categories control presentation
+independently of version bumps; any major bump appears under **Breaking
+changes**. Empty no-release markers do not need a category.
 
-Reuse the feature's existing fragment as the implementation evolves, keeping
-its entry concise. Supporting tests, documentation, and refactoring need no
-additional fragments. Use separate notes for independent user-visible
-changes. When the whole contribution has no release impact, such as tests, CI,
-pure refactoring, development dependency maintenance, or internal documentation,
-no fragment is needed. Existing empty fragments remain valid and do not bump
+Reuse the feature's existing fragment as the implementation evolves, keeping its
+entry concise. Supporting tests, documentation, and refactoring need no
+additional fragments. Use separate notes for independent user-visible changes.
+When the whole contribution has no release impact, such as tests, CI, pure
+refactoring, development dependency maintenance, or internal documentation, no
+fragment is needed. Existing empty fragments remain valid and do not bump
 versions.
 
 CI validates existing fragments, including their categories, package names, and
@@ -261,9 +261,9 @@ please feel free to reach out through GitHub
 
 ## Releases
 
-This section is for maintainers preparing and publishing releases. Direct commits
-to `master` or `main` follow the same release-note policy as pull requests.
-Version commits consume fragments and need no additional fragment.
+This section is for maintainers preparing and publishing releases. Direct
+commits to `master` or `main` follow the same release-note policy as pull
+requests. Version commits consume fragments and need no additional fragment.
 
 The eight release packages share one fixed version, so selecting a single
 affected package propagates the bump to the group. Only Core, App, Inspector,
@@ -273,7 +273,8 @@ never published or tagged; the WebGPU prototype remains outside the group.
 ### Prepare a stable release
 
 Start from a clean checkout with committed fragments and a `GITHUB_TOKEN` with
-the Changesets GitHub formatter's [read permissions](https://changesets.dev/packages/changelog-github):
+the Changesets GitHub formatter's
+[read permissions](https://changesets.dev/packages/changelog-github):
 
 ```sh
 npm run release:status
@@ -283,10 +284,11 @@ git diff
 ```
 
 `release:status` previews versions. `release:version` consumes fragments and
-updates manifests, package changelogs, the lockfile, and the grouped root changelog.
-Use this wrapper instead of plain `changeset version`. Empty fragments alone
-do not create a release. Only stable releases are currently supported; see
-[future major release lines](#future-major-release-lines) for the deferred policy.
+updates manifests, package changelogs, the lockfile, and the grouped root
+changelog. Use this wrapper instead of plain `changeset version`. Empty
+fragments alone do not create a release. Only stable releases are currently
+supported; see [future major release lines](#future-major-release-lines) for the
+deferred policy.
 
 For optional release-wide prose, prepare a Markdown file outside the working
 tree (or commit it first) and run:
@@ -328,7 +330,8 @@ workflow needs no npm token secret; see
 
 Keep the existing `ACTIONS_DEPLOY_KEY` repository secret for the separate site
 repository. The release action needs permission to create repository tags and
-GitHub releases; repository rules must permit those operations by GitHub Actions.
+GitHub releases; repository rules must permit those operations by GitHub
+Actions.
 
 ### Publish a reviewed release commit
 
@@ -339,11 +342,12 @@ version, such as `1.0.1`.
 
 The [publish workflow](.github/workflows/publish.yml) publishes the packages,
 creates the `vX.Y.Z` tag and GitHub release, and calls the
-[docs/Playground workflow](.github/workflows/docs-and-playground.yml) at that tag.
-The GitHub release uses the reviewed root changelog entry plus contributor credits.
-Preview the entry locally with `npm run release:notes`; adding `-- --github`
-includes credits and requires `GH_TOKEN` or `GITHUB_TOKEN` with Contents write
-permission, supplied automatically in the workflow.
+[docs/Playground workflow](.github/workflows/docs-and-playground.yml) at that
+tag. The GitHub release uses the reviewed root changelog entry plus contributor
+credits. Preview the wrapped entry locally with `npm run release:notes`. Adding
+`-- --github` unwraps prose paragraphs and includes credits; it requires
+`GH_TOKEN` or `GITHUB_TOKEN` with Contents write permission, supplied
+automatically in the workflow.
 
 For failed runs:
 
@@ -353,18 +357,19 @@ For failed runs:
   manually before deploying docs. Publication rejects an existing global tag.
 - If only docs deployment failed, select **Re-run failed jobs** to reuse the
   built artifact. If it expired after seven days or published schemas/examples
-  changed, rerun the docs build and its dependent deploy job. Once the tag exists,
-  rerun only docs jobs, not publication.
+  changed, rerun the docs build and its dependent deploy job. Once the tag
+  exists, rerun only docs jobs, not publication.
 
 ### Publish a package preview
 
 The [preview workflow](.github/workflows/preview.yml) publishes the four public
 packages to [pkg.pr.new](https://pkg.pr.new/) for testing. Install the
-[pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new) on the repository first.
+[pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new) on the repository
+first.
 
-Open **Actions → Publish GenomeSpy preview → Run workflow** and select the branch
-to test. It must contain the workflow and locked `pkg-pr-new` dependency; only
-pushed commits are included. Alternatively:
+Open **Actions → Publish GenomeSpy preview → Run workflow** and select the
+branch to test. It must contain the workflow and locked `pkg-pr-new` dependency;
+only pushed commits are included. Alternatively:
 
 ```sh
 gh workflow run preview.yml --repo genome-spy/genome-spy --ref YOUR_BRANCH
@@ -372,14 +377,16 @@ gh workflow run preview.yml --repo genome-spy/genome-spy --ref YOUR_BRANCH
 
 Open the completed run's **Summary** for installation commands. Imports keep the
 normal `@genome-spy/...` names. Previews are temporary dependencies subject to
-pkg.pr.new's [retention policy](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/);
+pkg.pr.new's
+[retention policy](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/);
 switch consumer projects back to npm releases after testing.
 
 ### Rehearse without publishing
 
-Use a disposable checkout or worktree to rehearse versioning. `changeset version`
-has no non-mutating dry run. `release:status` and `release:plan` inspect plans;
-versioning consumes fragments and changes files. To build and pack locally:
+Use a disposable checkout or worktree to rehearse versioning.
+`changeset version` has no non-mutating dry run. `release:status` and
+`release:plan` inspect plans; versioning consumes fragments and changes files.
+To build and pack locally:
 
 ```sh
 npm run build
@@ -416,8 +423,8 @@ npm run build:schemas
 node scripts/publish-schemas.mjs --site-dir /path/to/site-copy
 ```
 
-Inspect `schema/core/` and `schema/app/` in that directory. Exact versions cannot
-be overwritten with different content, and aliases cannot move backward.
+Inspect `schema/core/` and `schema/app/` in that directory. Exact versions
+cannot be overwritten with different content, and aliases cannot move backward.
 
 ### Future major release lines
 
@@ -443,19 +450,19 @@ maintenance branch, not a branch per feature.
 
 Breaking PRs target `master` and include a major changeset with migration
 instructions. Compatible work also targets `master` by default. Merging a PR
-records release intent; it does not publish packages. Once prerelease support
-is ready, enter Changesets prerelease mode with `next` on `master` and prepare
-reviewed previews such as `2.0.0-next.0`. When the major is ready, exit prerelease
-mode and prepare the final stable version commit. See the
+records release intent; it does not publish packages. Once prerelease support is
+ready, enter Changesets prerelease mode with `next` on `master` and prepare
+reviewed previews such as `2.0.0-next.0`. When the major is ready, exit
+prerelease mode and prepare the final stable version commit. See the
 [Changesets prerelease guide](https://changesets.dev/guide/prereleases).
 
 For changes needed by both lines, merge the implementation into `master`, then
-open a backport PR against `release/1.x` by cherry-picking or adapting it. Include
-a changeset appropriate to the 1.x behavior, usually patch for a fix. Fix bugs
-specific to 1.x on the maintenance branch and forward-port them when relevant.
-Keep release/version commits, generated changelogs, lockfile version updates,
-and prerelease state local to each line; port individual implementation changes
-rather than routinely merging whole release branches. See the
+open a backport PR against `release/1.x` by cherry-picking or adapting it.
+Include a changeset appropriate to the 1.x behavior, usually patch for a fix.
+Fix bugs specific to 1.x on the maintenance branch and forward-port them when
+relevant. Keep release/version commits, generated changelogs, lockfile version
+updates, and prerelease state local to each line; port individual implementation
+changes rather than routinely merging whole release branches. See the
 [Changesets backporting guide](https://changesets.dev/guide/backporting-changes).
 
 The intended npm channel policy is:
@@ -474,17 +481,19 @@ releases must not replace the current major as the latest GitHub release. See
 
 Before activating this policy, complete the following work:
 
-- Extend `scripts/release.mjs` and release validation for Changesets
-  prerelease entry, repeated previews, and exit. Preserve the fixed/private
-  package policy, handle archived `.changeset/pre/` notes in the final changelog,
-  and check the expected version against the selected release channel.
+- Extend `scripts/release.mjs` and release validation for Changesets prerelease
+  entry, repeated previews, and exit. Preserve the fixed/private package policy,
+  handle archived `.changeset/pre/` notes in the final changelog, and check the
+  expected version against the selected release channel.
 - Extend both CI workflows to cover maintenance branches and their PRs.
 - Make `publish.yml` validate the branch, version, and npm channel together,
-  including the transition from 1.x `latest` to 2.x `latest`. Preserve the global
-  Git tags and mark GitHub releases with the appropriate prerelease/latest status.
+  including the transition from 1.x `latest` to 2.x `latest`. Preserve the
+  global Git tags and mark GitHub releases with the appropriate
+  prerelease/latest status.
 - Route preview and maintenance docs and Playground builds separately from the
   primary stable site. Publish schemas and advance aliases for the appropriate
-  release line; previews and old-major docs must not replace current stable docs.
+  release line; previews and old-major docs must not replace current stable
+  docs.
 - Rehearse repeated previews, finalization, and maintenance publication in
   disposable fixtures before enabling the workflow, including checking that a
   backport cannot move npm's `latest` or overwrite the primary site.

@@ -1,95 +1,95 @@
 ---
 name: write-genomespy-changeset
-description: Assess GenomeSpy release impact and write concise changelog entries for feature branches, pull requests, and direct commits to master or main. Reuse fragments for ongoing work; contributions with no release impact need no fragment.
+description:
+  Assess release impact and write or update individual GenomeSpy changesets for
+  PRs and direct commits.
 ---
 
 # Write a GenomeSpy changeset
 
-Read `.changeset/config.json` and `.changeset/README.md` for the release group
-and contribution contract. `v1.0.0` is the migration boundary. Do not reconstruct
-earlier release notes or derive bump types from Conventional Commit subjects.
+Follow the [note format](../../../.changeset/README.md) and release group in
+`.changeset/config.json`. For release-wide editing, use
+[prepare-genomespy-changelog](../prepare-genomespy-changelog/SKILL.md).
 
-## Assess the contribution
+## Assess and record the change
 
-- For a feature branch or PR, inspect the cumulative diff against the target
-  branch, including relevant uncommitted changes and fragments already added
-  by the branch. Assess the whole contribution, not just the latest task or
-  implementation commit. For a direct commit to `master` or `main`, inspect
-  exactly the staged change.
-- Identify observable behavior and affected package APIs or specification
-  properties. Include release notes for user-visible fixes, functionality, and
-  compatibility changes, including a behavior change inside a refactor.
-- Tests, CI, internal docs, pure refactoring, and work limited to the unpublished
-  WebGPU prototype have no release impact by themselves. Documentation changes
-  need a package bump only when they change what ships to consumers.
-- Select directly affected packages. The configured fixed group propagates
-  their highest bump to all eight packages, including private applications.
-  Do not list every synchronized package solely to keep versions aligned.
-  Keep `@genome-spy/webgpu-renderer` outside this group.
+- Inspect the whole PR/branch diff, including uncommitted work and existing
+  fragments. For a direct commit, assess exactly the staged change.
+- Record user-visible functionality, fixes, and compatibility changes, including
+  behavior changes within refactors. Tests, CI, internal docs, pure refactoring,
+  and unpublished WebGPU work need no fragment by themselves. Documentation
+  needs a bump only when it changes what ships to consumers.
+- Reuse one fragment per coherent change. Rewrite it as the feature evolves;
+  supporting work and pre-release fixes need no extra notes. Add a separate
+  fragment for an independent user-visible change.
+- Select directly affected packages; the fixed group synchronizes versions.
+  Choose `patch` for compatible fixes, `minor` for functionality, and `major`
+  for breaking changes. Investigate uncertain compatibility rather than
+  guessing.
+- Use `npm run changeset` or write `.changeset/<name>.md`. Begin the body with
+  one `<!-- category: feature -->`, `<!-- category: improvement -->`, or
+  `<!-- category: fix -->` marker. Categories describe purpose independently of
+  bumps; major changes appear under Breaking changes. Empty fragments need no
+  marker and do not cause a release.
 
-## Reuse or create a fragment
+## Write the entry
 
-- One fragment describes one coherent change across packages and commits.
-  Reuse the contribution's existing fragment. Add a separate note only for an
-  independent user-visible change; leave unrelated fragments alone.
-- Tests, documentation, refactoring, and fixes to the same unreleased feature
-  do not need additional fragments. Leave an accurate note unchanged
-  unless the final behavior, compatibility impact, or affected packages change.
-- Contributions with no release impact need no fragment. Existing empty
-  fragments remain valid. Assess independent direct commits to `master` or
-  `main` separately for release impact.
-- Use `npm run changeset` or write a descriptive `.changeset/<name>.md` with
-  YAML frontmatter. Creating these files does not authorize publishing or
-  GitHub messages.
+- Open with one short, complete sentence identifying the feature or fix. Put
+  useful details and caveats in a separate paragraph; small fixes can remain one
+  sentence. Breaking entries need concrete migration instructions.
+- Explain the final user-visible behavior. Keep tutorials, option inventories,
+  implementation details, and test results elsewhere. Name APIs only when
+  useful. Verify defaults, limitations, and experimental status against code and
+  docs.
+- Wrap Markdown source with the repository's Prettier settings and separate
+  paragraphs with blank lines. GitHub output unwraps prose automatically. Let
+  the formatter supply package labels, references, and attribution.
 
-## Write a concise changelog entry
+## Examples
 
-- Start the Markdown body with exactly one `<!-- category: feature -->`,
-  `<!-- category: improvement -->`, or `<!-- category: fix -->` marker, then a
-  blank line and the entry. Choose the category by the change's purpose,
-  independently of the version bump; any major bump is displayed under Breaking
-  changes. Empty no-release fragments need no category. Keep the marker when
-  rewriting an existing note.
-- `patch`: backward-compatible fix. `minor`: backward-compatible functionality.
-  `major`: breaking API or specification change. Use post-1.0 semantic versioning.
-- If compatibility is uncertain, investigate callers, docs, and tests. State any
-  unresolved judgment for review instead of silently inventing a major bump.
-- Aim for one short paragraph, usually two to four sentences. Give more context
-  than a commit subject: say what users can now do or what was corrected, and
-  why it matters. A small fix can be shorter.
-- Name public APIs or spec properties only when they help users understand the
-  change. Keep tutorials, configuration examples, option inventories, edge-case
-  catalogs, implementation details, and test results in documentation or PR
-  notes. Avoid commit prefixes and internal method names.
-- When the feature evolves, rewrite the note to summarize its final behavior;
-  do not append each refinement or implementation step. Re-read the whole note
-  for brevity before delivery.
-- Every breaking note needs the minimum concrete migration instructions.
-  Add another short paragraph only when needed to explain the migration.
-- Put general release commentary in the prepared root changelog entry or supply
-  a Markdown file with `npm run release:version -- --intro <file>`. Keep that
-  release-wide prose out of individual feature notes.
+The feature example is a complete fragment; the others show entry prose only.
+
+### Feature (`minor`, `feature`)
 
 ```md
 ---
-"@genome-spy/core": patch
+"@genome-spy/core": minor
 ---
 
-<!-- category: fix -->
+<!-- category: feature -->
 
-Keep axis labels up to date when an interactive parameter changes their number
-format, so the labels match the active formatting choice.
+Add explicit fills and configurable borders to rule marks.
+
+Borders can sit inside, centered on, or outside the rule body, with independent
+fill and stroke opacity. Canvas approximates the outlined rendering to maintain
+interactive performance, and excessive outlined dashes can produce large SVGs
+that render slowly.
 ```
 
-## Verify delivery
+### Fix (`patch`, `fix`)
 
-- Run `npm run release:check` and `npm run release:status`; report the calculated
-  version and why that bump or no-release decision fits. Without releasable
-  fragments, no release is expected.
-- Check the staged diff or PR diff again: user-visible changes need a fragment
-  included with the change. `release:check` validates existing fragments and
-  release policy; reviewers assess whether a contribution needs release notes.
-- Keep commit messages developer-facing. They are not copied to changelogs.
-  Changesets consumes fragments when `npm run release:version` prepares the
-  next release. Do not run it merely to validate a contribution, because it
-  changes versions and removes pending fragments.
+```md
+Fix clipped labels and plot overlap in multi-column categorical legends.
+
+Vertical legends now reserve space for every column, keeping later labels
+visible and preventing the legend from extending into the plot.
+```
+
+### Breaking change (`major`, `improvement`; hypothetical)
+
+```md
+Rename the BAM source's `tags` option to `samTags`.
+
+Replace `tags` with `samTags` in source definitions. Generated `tag_<name>`
+fields are unchanged.
+```
+
+## Verify
+
+Check that the note covers the diff, then run `npm run release:check` and
+`npm run release:status`; report the bump or no-release decision. Reuse passing
+checks for unchanged inputs. These commands validate policy, not whether every
+user-visible change has a note.
+
+Use focused content and formatting checks for prose-only edits. Do not run
+version generation for validation: it changes versions and consumes fragments.

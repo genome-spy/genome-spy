@@ -266,11 +266,21 @@ describe("fixed post-1.0 releases", () => {
 
 test("groups categories independently of bumps, labels direct packages, and accepts release prose", async () => {
     const cwd = await fixture();
+    // Exercise package-file formatting as well as the root changelog generator.
+    const configPath = path.join(cwd, ".changeset/config.json");
+    const config = await readJson(configPath);
+    config.format = "prettier";
+    await writeJson(configPath, config);
+    await writeFile(
+        path.join(cwd, ".prettierrc.json"),
+        await readFile(path.join(repoRoot, ".prettierrc.json"))
+    );
     const notes = [
         [
             "feature",
             '"@genome-spy/core": minor\n"@genome-spy/app": minor',
-            "Add shared controls.",
+            "Add shared controls.\n\n" +
+                "This release improves navigation across linked genomic views and keeps categorical labels readable when the visible data changes.",
         ],
         [
             "improvement",
@@ -326,6 +336,10 @@ test("groups categories independently of bumps, labels direct packages, and acce
         "### Fixes\n\n- **Core:** Keep axis labels visible."
     );
     expect(prepared.match(/Add shared controls\./g)).toHaveLength(1);
+    const wrappedDetail =
+        "This release improves navigation across linked genomic views and keeps\n" +
+        "  categorical labels readable when the visible data changes.";
+    expect(prepared).toContain(wrappedDetail);
     expect(prepared).toContain("Migration: rename oldProperty to newProperty.");
     expect(prepared).not.toMatch(/category:|App Agent|Inspector|React/);
     for (const name of ["core", "app", "playground"]) {
@@ -334,6 +348,9 @@ test("groups categories independently of bumps, labels direct packages, and acce
             "utf8"
         );
         expect(changelog).not.toContain("category:");
+        if (name === "core") {
+            expect(changelog).toContain(wrappedDetail);
+        }
     }
     expect(await releaseVersion(cwd)).toBe("2.0.0");
 });
@@ -374,15 +391,27 @@ test("publication requires consumed fragments and the reviewed stable version", 
     );
 });
 
-test("GitHub credits preserve reviewed notes and include new, returning, and direct-commit authors", async () => {
+test("GitHub output unwraps reviewed prose, preserves Markdown, and credits all contributors", async () => {
     const cwd = await fixture();
     await addChangeset(
         cwd,
         '---\n"@genome-spy/core": patch\n---\n\n<!-- category: fix -->\n\nKeep axis labels consistent.\n'
     );
     const intro =
-        "A release introduction.\n\n## [Highlights](https://genomespy.app/)\n\nSome editorial context.";
+        "A release introduction.\n\n## [Highlights](https://genomespy.app/)\n\nSome editorial context.\n\n" +
+        "```text\nfirst line\nsecond line\n```\n\n- First item.\n- Second item.";
     await prepareRelease(cwd, { intro });
+    const changelogPath = path.join(cwd, "CHANGELOG.md");
+    // Maintainers may wrap reviewed prose differently from the generated files.
+    await writeFile(
+        changelogPath,
+        (await readFile(changelogPath, "utf8"))
+            .replace("A release introduction.", "A release\nintroduction.")
+            .replace(
+                "Keep axis labels consistent.",
+                "Keep axis labels\n  consistent."
+            )
+    );
     commit(cwd);
     const target = git(cwd, ["rev-parse", "HEAD"]);
     const changelog = await readFile(path.join(cwd, "CHANGELOG.md"), "utf8");
@@ -419,13 +448,20 @@ test("GitHub credits preserve reviewed notes and include new, returning, and dir
     vi.stubEnv("GH_TOKEN", "fixture-token");
 
     const reviewedNotes = await releaseNotes(cwd);
-    expect(reviewedNotes).toContain(intro);
+    expect(reviewedNotes).toContain("A release\nintroduction.");
+    expect(reviewedNotes).toContain("Keep axis labels\n  consistent.");
     expect(fetch).not.toHaveBeenCalled();
     const notes = await releaseNotes(cwd, { github: true });
     expect(notes).toBe(
-        reviewedNotes.trimEnd() +
+        reviewedNotes
+            .trimEnd()
+            .replace("A release\nintroduction.", "A release introduction.")
+            .replace(
+                "Keep axis labels\n  consistent.",
+                "Keep axis labels consistent."
+            ) +
             "\n\n## New Contributors\n\n" +
-            "* @new-user made their first contribution in https://github.com/genome-spy/genome-spy/pull/125\n\n" +
+            "- @new-user made their first contribution in https://github.com/genome-spy/genome-spy/pull/125\n\n" +
             "Thanks to @direct, @new-user, @pr-author, @Returning!\n"
     );
     expect(fetch.mock.calls[0][0]).toBe(

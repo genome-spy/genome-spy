@@ -21,19 +21,21 @@ controls the release-note section independently of the package version bumps;
 any major bump places the note under **Breaking changes**. Empty no-release
 fragments need no marker. `release:check` rejects missing or invalid categories.
 
-Write a concise changelog entry, usually one short paragraph of two to four
-sentences. Give enough context to explain the change and its benefit beyond a
-commit subject. Keep tutorials, configuration examples, exhaustive option lists,
-and implementation details in documentation or PR notes. Breaking changes need
-only the migration instructions necessary to update existing usage.
+Start with one short sentence naming or briefly explaining the feature or fix.
+Put supporting detail in a separate paragraph, usually keeping the whole entry
+to two to four sentences. A small fix can remain one sentence. Wrap prose in
+Markdown files using the repository's Prettier settings, with blank lines
+between paragraphs. GitHub release output automatically unwraps paragraphs. Keep
+tutorials, option inventories, and implementation details in documentation or PR
+notes. Breaking changes need concrete migration instructions.
 
 One fragment covers a coherent change across packages and commits. Assess a
 feature branch or PR as a whole and reuse its existing fragment. Leave an
 accurate note unchanged for tests, documentation, refactoring, and refinements
-that do not change its release summary.
-When the final behavior changes, rewrite the note concisely instead of appending
-each development step. Use separate fragments for independent user-visible
-changes. For direct commits to `master` or `main`, assess each commit separately.
+that do not change its release summary. When the final behavior changes, rewrite
+the note concisely instead of appending each development step. Use separate
+fragments for independent user-visible changes. For direct commits to `master`
+or `main`, assess each commit separately.
 
 When the whole contribution has no release impact, such as tests, refactoring,
 CI, development dependency maintenance, internal documentation, or work limited
@@ -44,8 +46,8 @@ CI validates existing fragments and the release plan without requiring a new or
 updated fragment. Reviewers check the diff for user-visible changes and assess
 whether release notes, affected packages, and version bumps are appropriate.
 
-Run `npm run release:status` to inspect planned versions and `npm run
-release:check` to validate the package topology and fragments. See the
+Run `npm run release:status` to inspect planned versions and
+`npm run release:check` to validate the package topology and fragments. See the
 [release workflow](../CONTRIBUTING.md#releases) for preparation and publishing.
 
 Root release notes group entries into **Breaking changes**, **New features**,
@@ -55,12 +57,12 @@ version-bump headings; the shared formatter removes the markers and puts prose
 before links and contributor attribution in both outputs.
 
 Release-wide prose belongs in the root release entry. Use
-`npm run release:version -- --intro /path/to/introduction.md` to insert a Markdown
-introduction above the grouped entries, or edit the prepared root entry before
-committing it. The introduction file must be outside the working tree or already
-committed, because versioning requires a clean checkout. Release prose may include
-paragraphs, links, and headings; it needs no category marker and is preserved in
-the GitHub release. Keep individual fragments concise.
+`npm run release:version -- --intro /path/to/introduction.md` to insert a
+Markdown introduction above the grouped entries, or edit the prepared root entry
+before committing it. The introduction file must be outside the working tree or
+already committed, because versioning requires a clean checkout. Release prose
+may include paragraphs, links, and headings; it needs no category marker and is
+preserved in the GitHub release. Keep individual fragments concise.
 
 ## Example notes
 
@@ -79,8 +81,10 @@ This example names the option and explains what it enables:
 <!-- category: feature -->
 
 Expose selected SAM auxiliary tags through the BAM lazy data source's `tags`
-option. The resulting `tag_<name>` fields make annotations such as haplotype
-assignments and cell barcodes available in encodings, filters, and tooltips.
+option.
+
+The resulting `tag_<name>` fields make annotations such as haplotype assignments
+and cell barcodes available in encodings, filters, and tooltips.
 ```
 
 ### Breaking change
@@ -96,6 +100,8 @@ migration instructions:
 <!-- category: improvement -->
 
 The BAM lazy data source now uses `samTags` instead of `tags` to select SAM
-auxiliary tags. Rename `tags` to `samTags` in source definitions; the resulting
-`tag_<name>` fields keep their existing names.
+auxiliary tags.
+
+Rename `tags` to `samTags` in source definitions; the resulting `tag_<name>`
+fields keep their existing names.
 ```
