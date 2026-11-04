@@ -34,7 +34,16 @@ export function renderRectCanvas(baseMark, options) {
 
     /** @type {string | undefined} */
     let strokeStyle;
+    let opaqueFill = false;
+    let opaqueStroke = false;
     const radii = [0, 0, 0, 0];
+    const bounds = options.visibleBounds;
+    const dpr = options.devicePixelRatio;
+    const alignedClip =
+        Number.isInteger(bounds.x1 * dpr) &&
+        Number.isInteger(bounds.y1 * dpr) &&
+        Number.isInteger(bounds.x2 * dpr) &&
+        Number.isInteger(bounds.y2 * dpr);
     const strokeOpacityIsConstant = encoders.strokeOpacity.constant;
     const constantStroke = getDrawConstantPaint(encoders.stroke, options);
     const hasInvisibleConstantStroke = constantStroke == "none";
@@ -62,12 +71,69 @@ export function renderRectCanvas(baseMark, options) {
             stroke != "none" &&
             strokeOpacity > 0 &&
             instance.strokeWidth > 0;
+        if (fillVisible && fillStyle != instance.fill) {
+            context.fillStyle = fillStyle = instance.fill;
+            opaqueFill = isOpaqueStyle(context.fillStyle);
+        }
+        if (strokeVisible && strokeStyle != stroke) {
+            context.strokeStyle = strokeStyle = stroke;
+            opaqueStroke = isOpaqueStyle(context.strokeStyle);
+        }
         const rounded =
             properties.hasCornerRadii &&
             (instance.radii.topLeft != 0 ||
                 instance.radii.topRight != 0 ||
                 instance.radii.bottomRight != 0 ||
                 instance.radii.bottomLeft != 0);
+        // With opaque paints and a full physical pixel between contours, inner
+        // coverage lies inside solid outer coverage. Paint S outside, then F
+        // inside. Fractional clips would apply edge coverage twice.
+        if (
+            alignedClip &&
+            !rounded &&
+            fillVisible &&
+            strokeVisible &&
+            instance.width > 0 &&
+            instance.height > 0 &&
+            instance.strokeWidth * options.devicePixelRatio >= 1 &&
+            opacityFactor === 1 &&
+            instance.fillOpacity === 1 &&
+            strokeOpacity === 1 &&
+            opaqueFill &&
+            opaqueStroke
+        ) {
+            const half = instance.strokeWidth / 2;
+            if (fillStyle !== stroke) {
+                context.fillStyle = fillStyle = stroke;
+                opaqueFill = opaqueStroke;
+            }
+            paintRectRows(
+                context,
+                instance.x - half,
+                instance.y - half,
+                instance.width + instance.strokeWidth,
+                instance.height + instance.strokeWidth,
+                options.devicePixelRatio
+            );
+            if (
+                instance.width > instance.strokeWidth &&
+                instance.height > instance.strokeWidth
+            ) {
+                if (fillStyle !== instance.fill) {
+                    context.fillStyle = fillStyle = instance.fill;
+                    opaqueFill = true;
+                }
+                paintRectRows(
+                    context,
+                    instance.x + half,
+                    instance.y + half,
+                    instance.width - instance.strokeWidth,
+                    instance.height - instance.strokeWidth,
+                    options.devicePixelRatio
+                );
+            }
+            return;
+        }
         if (rounded && (fillVisible || strokeVisible)) {
             radii[0] = instance.radii.topLeft;
             radii[1] = instance.radii.topRight;
@@ -84,10 +150,6 @@ export function renderRectCanvas(baseMark, options) {
         }
 
         if (fillVisible) {
-            if (fillStyle != instance.fill) {
-                context.fillStyle = instance.fill;
-                fillStyle = instance.fill;
-            }
             setAlpha(context, instance.fillOpacity * opacityFactor);
             if (rounded) {
                 context.fill();
@@ -102,10 +164,6 @@ export function renderRectCanvas(baseMark, options) {
         }
 
         if (strokeVisible) {
-            if (strokeStyle != stroke) {
-                context.strokeStyle = stroke;
-                strokeStyle = stroke;
-            }
             setAlpha(context, strokeOpacity);
             setLineWidth(context, instance.strokeWidth);
             if (rounded) {
@@ -120,6 +178,50 @@ export function renderRectCanvas(baseMark, options) {
             }
         }
     });
+}
+
+/**
+ * Canvas serializes opaque sRGB paints as hex. Other native color formats keep
+ * the ordinary path, without imposing a narrower CSS parser on this backend.
+ * @param {string | CanvasGradient | CanvasPattern} style
+ */
+function isOpaqueStyle(style) {
+    return typeof style === "string" && style.length === 7 && style[0] === "#";
+}
+
+/**
+ * Separate X and Y coverage so live and detached canvases agree at corners.
+ * Native rectangle AA can differ between GPU and CPU-backed Canvas surfaces.
+ * @param {CanvasRenderingContext2D} context
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width
+ * @param {number} height
+ * @param {number} dpr
+ */
+function paintRectRows(context, x, y, width, height, dpr) {
+    const top = y * dpr;
+    const bottom = (y + height) * dpr;
+    const first = Math.floor(top);
+    const last = Math.floor(bottom);
+    if (first === last) {
+        setAlpha(context, bottom - top);
+        context.fillRect(x, first / dpr, width, 1 / dpr);
+        return;
+    }
+    const wholeTop = Math.ceil(top);
+    if (wholeTop > top) {
+        setAlpha(context, wholeTop - top);
+        context.fillRect(x, first / dpr, width, 1 / dpr);
+    }
+    if (last > wholeTop) {
+        setAlpha(context, 1);
+        context.fillRect(x, wholeTop / dpr, width, (last - wholeTop) / dpr);
+    }
+    if (bottom > last) {
+        setAlpha(context, bottom - last);
+        context.fillRect(x, last / dpr, width, 1 / dpr);
+    }
 }
 
 /**
