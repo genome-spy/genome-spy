@@ -496,6 +496,83 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
+    test("reuses frozen scalar domains while retaining nested mutation detection", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        const mark = /** @type {any} */ ({});
+        const definition = /** @type {any} */ ({ type: "point" });
+        const readDomainEntry = vi.fn();
+        const createDomain = () =>
+            new Proxy(Object.freeze([200, 5, 900]), {
+                get(target, property, receiver) {
+                    if (typeof property === "string" && /^\d+$/.test(property))
+                        readDomainEntry();
+                    return Reflect.get(target, property, receiver);
+                },
+            });
+        let domain = createDomain();
+        const range = [
+            [0, 0, 0, 1],
+            [1, 1, 1, 1],
+        ];
+        // A frozen outer array does not make its nested colors immutable.
+        Object.freeze(range);
+        const config = {
+            count: 3,
+            channels: {
+                x: {
+                    data: new Uint32Array([200, 5, 900]),
+                    type: "u32",
+                    scale: {
+                        get domain() {
+                            return domain;
+                        },
+                        range,
+                    },
+                },
+            },
+        };
+        useMark(surface, mark, definition, config);
+        domain = createDomain();
+        const replacementConfig = {
+            ...config,
+            channels: {
+                x: {
+                    ...config.channels.x,
+                    scale: {
+                        get domain() {
+                            return domain;
+                        },
+                        range,
+                    },
+                },
+            },
+        };
+        useMark(surface, mark, definition, replacementConfig);
+        readDomainEntry.mockClear();
+
+        range[0][0] = 0.25;
+        useMark(surface, mark, definition, replacementConfig);
+
+        expect(readDomainEntry).not.toHaveBeenCalled();
+        expect(mocks.handle.scales.x.default.setDomain).not.toHaveBeenCalled();
+        expect(
+            mocks.handle.scales.x.default.setRange
+        ).toHaveBeenCalledExactlyOnceWith(range);
+        domain = Object.freeze([900, 200]);
+        useMark(surface, mark, definition, replacementConfig);
+        expect(
+            mocks.handle.scales.x.default.setDomain
+        ).toHaveBeenCalledExactlyOnceWith([900, 200]);
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+        surface.finalize();
+    });
+
     test("updates categorical gaps without treating category IDs as index camera ranks", async () => {
         const surface = new WebGpuSurface(
             /** @type {any} */ ({

@@ -526,13 +526,22 @@ function compileResourceBindings(
         skipUndefined = false,
         scaleDependent = false
     ) => {
+        let value = previousValues.get(key);
+        if (!previousValues.has(key)) {
+            value = snapshotValue(read());
+        } else if (Array.isArray(value) && Object.isFrozen(value)) {
+            // A replacement config can supply an equal immutable domain. Adopt
+            // its reference once instead of comparing every entry on each frame.
+            const current = read();
+            if (isImmutableScalarArray(current) && deepEqual(value, current))
+                value = current;
+        }
+
         const binding = {
             key,
             read,
             write,
-            value: previousValues.has(key)
-                ? previousValues.get(key)
-                : snapshotValue(read()),
+            value,
             skipUndefined,
         };
         bindings.all.push(binding);
@@ -690,7 +699,11 @@ function updateResourceBindings(bindings) {
  */
 function snapshotValue(value) {
     // Typed series and non-plain objects retain their separate identity paths.
-    if (Array.isArray(value)) return value.map(snapshotValue);
+    if (Array.isArray(value)) {
+        // Frozen scalar domains and cuts are complete immutable snapshots.
+        if (isImmutableScalarArray(value)) return value;
+        return value.map(snapshotValue);
+    }
     if (isPlainObject(value))
         return Object.fromEntries(
             Object.entries(value).map(([key, entry]) => [
@@ -699,6 +712,15 @@ function snapshotValue(value) {
             ])
         );
     return value;
+}
+
+/** @param {any} value */
+function isImmutableScalarArray(value) {
+    return (
+        Array.isArray(value) &&
+        Object.isFrozen(value) &&
+        value.every((entry) => entry === null || typeof entry !== "object")
+    );
 }
 
 /**

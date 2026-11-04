@@ -1,5 +1,7 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 import Rectangle from "../../view/layout/rectangle.js";
+import UnitView from "../../view/unitView.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
 import { indexScaleDefinition } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
@@ -50,6 +52,83 @@ function expectedSamplingMatch(selection, type) {
 }
 
 describe("WebGPU mark adapter", () => {
+    test("retains live categorical ranges and gaps for ordinary and text occurrences", async () => {
+        const { view, context } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            params: [{ name: "gap", value: 10 }],
+            data: { values: [{ category: "A" }, { category: "B" }] },
+            scales: {
+                y: {
+                    type: "band",
+                    domain: ["A", "B"],
+                    gapPositions: ["B"],
+                    gapWidth: { expr: "gap" },
+                    reverse: true,
+                    align: 0.2,
+                },
+            },
+            encoding: {
+                y: { field: "category", type: "nominal", axis: null },
+            },
+            layer: [
+                { mark: "rect" },
+                {
+                    mark: { type: "text", fitToBand: true },
+                    encoding: { text: { field: "category" } },
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        // Translation only needs a prepared font handle, not GPU font resources.
+        Object.assign(context.textMetrics, {
+            getPreparedFont: () => ({ getGlyph() {} }),
+        });
+        const coords = Rectangle.create(10, 20, 100, 200);
+        const units = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof UnitView);
+        const channels = units.map(
+            (unit) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(unit.mark, {}, coords)
+                ).config.channels
+        );
+        const [rect, text] = channels;
+        const categoryData = rect.y.data;
+        const categoryDomain = rect.y.scale.domain;
+        const scale = view.getScaleResolution("y").getScale();
+        expect(Object.isFrozen(categoryDomain)).toBe(true);
+
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("gap", 20);
+            scale.range([0.9, -0.8]);
+        });
+        await view.paramRuntime.whenPropagated();
+
+        expect(rect.y.scale.range).toEqual([40, 380]);
+        expect(text.y.scale.range).toEqual([20, 360]);
+        expect(rect.y.scale.gapWidth).toBe(20);
+        expect(text.y.scale.gapWidth).toBe(20);
+        expect(rect.y.scale.band).toBe(1);
+        expect(rect.y2.scale.band).toBe(0);
+        expect(rect.y.scale.align).toBe(0.8);
+        expect(rect.y.data).toBe(categoryData);
+        expect(rect.y.scale.domain).toBe(categoryDomain);
+        expect(scale.range()).toEqual([0.9, -0.8]);
+
+        scale.range([0.1, 0.9]);
+        expect(rect.y.scale.range).toEqual([200, 40]);
+        expect(text.y.scale.range).toEqual([180, 20]);
+        expect(rect.y.scale.domain).toEqual([0, 1]);
+        expect(rect.y.data).toBe(categoryData);
+
+        scale.domain(["B", "A"]);
+        expect(rect.y.scale.domain).toEqual([1, 0]);
+        expect(rect.y.scale.domain).not.toBe(categoryDomain);
+        expect(Object.isFrozen(rect.y.scale.domain)).toBe(true);
+        expect(categoryDomain).toEqual([0, 1]);
+    });
+
     test("translates conditional order into declarative renderer config", () => {
         const mark = createMark("point", [{ id: 17 }], {
             uniqueId: createConstantEncoder(17),
@@ -234,6 +313,45 @@ describe("WebGPU mark adapter", () => {
 
         expect(channels.x.scale.domain).toEqual([1, 3]);
         expect(channels.fillOpacity.value).toBe(0.125);
+    });
+
+    test("keeps literal numeric and color channels static while expressions stay live", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            params: [
+                { name: "angle", value: 30 },
+                { name: "strokeColor", value: "black" },
+            ],
+            mark: "point",
+            encoding: {
+                size: { value: 64 },
+                fill: { value: "#336699" },
+                angle: { value: { expr: "angle" } },
+                stroke: { value: { expr: "strokeColor" } },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const channels = /** @type {any} */ (
+            createWebGpuMarkConfig(
+                /** @type {UnitView} */ (view).mark,
+                {},
+                Rectangle.ZERO
+            )
+        ).config.channels;
+
+        expect(channels.size).toEqual({ value: 64 });
+        expect(channels.fill).toEqual({ value: [0.2, 0.4, 0.6, 1] });
+        expect(channels.angle).toEqual(dynamicValue(30));
+        expect(channels.stroke).toEqual(dynamicValue([0, 0, 0, 1]));
+
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("angle", 60);
+            view.paramRuntime.setValue("strokeColor", "red");
+        });
+        await view.paramRuntime.whenPropagated();
+
+        expect(channels.angle.value).toBe(60);
+        expect(channels.stroke.value).toEqual([1, 0, 0, 1]);
     });
 
     test("revisions retained resources from existing scale notifications", () => {
@@ -482,7 +600,7 @@ describe("WebGPU mark adapter", () => {
             data: new Float32Array([2, -3]),
             type: "f32",
         });
-        expect(config.channels.yOffset).toEqual(dynamicValue(9));
+        expect(config.channels.yOffset.value).toBe(9);
         expect(config.channels.dx).toEqual(dynamicValue(4));
         expect(config.channels.dy).toEqual(dynamicValue(5));
         expect(config.font.getGlyph).toBeTypeOf("function");
@@ -884,7 +1002,7 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.channels.fill.value).toEqual([0, 0, 0, 1]);
         expect(config.channels).not.toHaveProperty("color");
-        expect(config.channels.strokeWidth).toEqual(dynamicValue(0));
+        expect(config.channels.strokeWidth).toEqual({ value: 0 });
         expect(config.dashPatterns).toEqual([[3, 2]]);
         expect(config.channels.strokeDashOffset).toEqual(dynamicValue(1));
     });
@@ -923,8 +1041,8 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("link");
-        expect(config.channels.xOffset).toEqual(dynamicValue(2));
-        expect(config.channels.y2Offset).toEqual(dynamicValue(5));
+        expect(config.channels.xOffset.value).toBe(2);
+        expect(config.channels.y2Offset.value).toBe(5);
         expect(config.linkShape).toBe("dome");
         expect(config.orient).toBe("horizontal");
         expect(config.arcFadingDistance).toEqual([10, 20]);
@@ -973,8 +1091,8 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("arrow");
-        expect(config.channels.xOffset).toEqual(dynamicValue(2));
-        expect(config.channels.y2Offset).toEqual(dynamicValue(5));
+        expect(config.channels.xOffset.value).toBe(2);
+        expect(config.channels.y2Offset.value).toBe(5);
         expect(config.channels.direction).toEqual({
             data: new Uint32Array([0, 1, 2]),
             type: "u32",
@@ -2555,7 +2673,7 @@ function createConstantEncoder(value) {
 }
 
 /**
- * @param {number} value
+ * @param {number | number[]} value
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
  */
 function dynamicValue(value, type) {
@@ -2603,6 +2721,7 @@ function createBandScale(domain, reverse = false) {
         type: "band",
         viewport: /** @returns {null} */ () => null,
         domain: () => domain,
+        range: () => (reverse ? [1, 0] : [0, 1]),
         props: {
             reverse,
             domainIndexer: createCategoryIndexer(domain),
