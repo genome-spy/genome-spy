@@ -162,20 +162,6 @@ for (const dpr of [1, 2]) {
                             )
                         );
                     }
-                    let tiny = null;
-                    if (config.shape === "square") {
-                        // Characterize the existing UV-clamping limitation; do not fix its geometry here.
-                        set(mark, {
-                            strokeAlign: 1,
-                            x: 32,
-                            y: 32,
-                            size: 4,
-                            strokeWidth: 8,
-                            stroke: [0, 0, 1, 0],
-                            strokeOpacity: 1,
-                        });
-                        tiny = pixel(await capture(mark), 33 * dpr, 32 * dpr);
-                    }
                     routes.push({
                         centered,
                         scoped,
@@ -190,7 +176,6 @@ for (const dpr of [1, 2]) {
                         envelopeError,
                         picks,
                         transparentErrors,
-                        tiny,
                     });
                     renderer.destroyMark(mark.markId);
                 }
@@ -304,12 +289,6 @@ for (const dpr of [1, 2]) {
             expect(route.picks).toEqual([17, null]);
             expect(Math.max(...route.transparentErrors)).toBeLessThanOrEqual(2);
         }
-        close(result.routes[1].tiny, [
-            dpr === 1 ? 193 : 198,
-            0,
-            0,
-            dpr === 1 ? 193 : 198,
-        ]);
         expect(result.before).toEqual([21, 22, 23, 24]);
         expect(result.changed).toBe(true);
         expect(result.shapePick).toEqual([null, 23]);

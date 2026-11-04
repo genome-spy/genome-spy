@@ -58,7 +58,10 @@ Point circle and path programs support the renderer-generic strokeAlign channel
 (0 inside, 1 center, 2 outside), reusing combined paint coverage. Core maps its
 legacy inwardStroke property to 0/1 without exposing new grammar. Path atlas
 width limits, shared Core opacity/alignment normalization and x/+ arm semantics
-remain separate; atlas resources and tiny path UV-clamping geometry are unchanged.
+remain separate. Path atlas UVs now interpolate affinely and clamp at sampling,
+so invisible wide borders cannot distort nominal fills. Correcting the old
+inflation can leave some subpixel placements empty. Finite-distance scaling and
+wide-stroke range limits remain separate; no atlas resources change.
 
 ## Active integration: selection predicate composition
 
