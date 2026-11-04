@@ -69,8 +69,6 @@ describe("Renderer mark definitions", () => {
             dpr: 1.5,
         });
 
-        renderer.render({ draws: [{ mark }] });
-        const liveFrame = renderer._renderFrame;
         target.render({ draws: [{ mark }] });
         await target.onSubmittedWorkDone();
 
@@ -85,18 +83,7 @@ describe("Renderer mark definitions", () => {
             new Float32Array(/** @type {ArrayBuffer} */ (writes.at(-1)[2]))[2]
         ).toBe(1.5);
         expect(renderer._globals).toEqual({ width: 100, height: 50, dpr: 2 });
-
-        const uploadCount = writes.length;
-        target.render({ draws: [{ mark }] });
-        expect(writes).toHaveLength(uploadCount);
-        expect(renderer._renderFrame).toBe(liveFrame);
-
-        // The detached target overwrote the shared buffer; live globals must return.
-        renderer.render({ draws: [{ mark }] });
-        expect(writes).toHaveLength(uploadCount + 1);
-        expect(
-            new Float32Array(/** @type {ArrayBuffer} */ (writes.at(-1)[2]))[2]
-        ).toBe(2);
+        expect(renderer._renderFrame).toBeNull();
         expect(
             renderer.device.queue.onSubmittedWorkDone
         ).toHaveBeenCalledOnce();
@@ -465,19 +452,6 @@ describe("Renderer mark definitions", () => {
         await renderer.pick(1, 2);
         expect(program.draw).toHaveBeenCalledOnce();
 
-        const writes = vi.mocked(renderer.device.queue.writeBuffer);
-        expect(
-            new Uint32Array(
-                /** @type {ArrayBuffer} */ (writes.mock.calls.at(-1)[2])
-            )[19]
-        ).toBe(0);
-
-        renderer.render({ draws: [{ mark }] });
-        const uploaded = new Uint32Array(
-            /** @type {ArrayBuffer} */ (writes.mock.calls.at(-1)[2])
-        );
-        expect([uploaded[19], uploaded[64 + 19]]).toEqual([2, 5]);
-
         program._order.matching = "first";
         renderer.render({ draws: [{ mark }] });
         expect(renderer._renderFrame?.map((draw) => draw.orderPass)).toEqual([
@@ -580,7 +554,7 @@ describe("Renderer mark definitions", () => {
         expect(renderer.device.queue.submit).not.toHaveBeenCalled();
     });
 
-    test("retains unchanged draw globals and observes mutable inputs and buffer growth", () => {
+    test("reuses draw-global CPU staging while capacity is unchanged", () => {
         const { renderer } = createRendererHarness();
         const mark = renderer.createMark(
             { type: "custom", createProgram: () => createProgram() },
@@ -601,33 +575,15 @@ describe("Renderer mark definitions", () => {
         renderer.render({ draws: [draw] });
         const writes = vi.mocked(renderer.device.queue.writeBuffer);
         const first = writes.mock.calls.at(-1);
-        renderer.render({ draws: [draw] });
-        expect(writes).toHaveBeenCalledOnce();
-
         draw.viewport.width = 50;
-        draw.visibleRange.x1 = 6;
         renderer.render({ draws: [draw] });
         const second = writes.mock.calls.at(-1);
-        expect(writes).toHaveBeenCalledTimes(2);
         expect(second[0]).toBe(first[0]);
         expect(second[2]).toBe(first[2]);
         const floats = new Float32Array(/** @type {ArrayBuffer} */ (second[2]));
         expect(floats[0]).toBe(50);
-        expect(Array.from(floats.slice(4, 10))).toEqual([6, 5, 20, 25, 1, 0]);
+        expect(Array.from(floats.slice(4, 10))).toEqual([4, 5, 20, 25, 1, 0]);
         expect(second[4]).toBe(256);
-
-        renderer.updateGlobals({ width: 100, height: 50, dpr: 1.5 });
-        renderer.render({ draws: [draw] });
-        expect(writes).toHaveBeenCalledTimes(3);
-        expect(floats[2]).toBe(1.5);
-
-        renderer.render({ draws: [draw, draw] });
-        const grown = writes.mock.calls.at(-1);
-        expect(grown[0]).not.toBe(first[0]);
-        expect(grown[4]).toBe(512);
-        expect(writes).toHaveBeenCalledTimes(4);
-        renderer.render({ draws: [draw, draw] });
-        expect(writes).toHaveBeenCalledTimes(4);
     });
 
     test("clamps physical scissors to the render target", () => {

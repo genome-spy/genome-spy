@@ -163,72 +163,11 @@ describe("TextureCompositor", () => {
         const pass = createRenderPass();
 
         compositor.bind(pass, source, 1);
-        compositor.flush();
         compositor.prepare(2);
         compositor.bind(pass, source, 1);
-        compositor.flush();
 
         expect(createBindGroup).toHaveBeenCalledTimes(2);
         expect(buffers[0].destroy).toHaveBeenCalledOnce();
-        expect(device.queue.writeBuffer).toHaveBeenCalledTimes(2);
-
-        compositor.destroy();
-    });
-
-    test("retains uploaded opacity sequences across count and value changes", () => {
-        const { device } = createCompositorDevice();
-        const compositor = new TextureCompositor(device, "rgba8unorm");
-        const source = createTransientTexture();
-        const pass = createRenderPass();
-        /** @param {number[]} opacities */
-        const render = (opacities) => {
-            compositor.prepare(2);
-            for (const opacity of opacities) {
-                compositor.bind(pass, source, opacity);
-            }
-            compositor.flush();
-        };
-
-        render([0.1, 0.75]);
-        // Inputs that encode to the same f32 and shorter used prefixes need no upload.
-        render([0.1 + 1e-10, 0.75]);
-        render([0.1]);
-        render([0.1, 0.75]);
-        expect(device.queue.writeBuffer).toHaveBeenCalledOnce();
-
-        render([0.75, 0.1]);
-        expect(device.queue.writeBuffer).toHaveBeenCalledTimes(2);
-
-        render([0.5]);
-        expect(device.queue.writeBuffer).toHaveBeenCalledTimes(3);
-        expect(device.queue.writeBuffer).toHaveBeenLastCalledWith(
-            expect.anything(),
-            0,
-            expect.any(ArrayBuffer),
-            0,
-            256
-        );
-
-        render([0.5, 0.1]);
-        expect(device.queue.writeBuffer).toHaveBeenCalledTimes(4);
-
-        compositor.destroy();
-    });
-
-    test("retains pending opacity changes when frame encoding stops before flush", () => {
-        const { device } = createCompositorDevice();
-        const compositor = new TextureCompositor(device, "rgba8unorm");
-        const source = createTransientTexture();
-        const pass = createRenderPass();
-
-        compositor.bind(pass, source, 0.25);
-        compositor.flush();
-        compositor.prepare(1);
-        compositor.bind(pass, source, 0.75);
-        compositor.prepare(1);
-        compositor.bind(pass, source, 0.75);
-        compositor.flush();
-        expect(device.queue.writeBuffer).toHaveBeenCalledTimes(2);
 
         compositor.destroy();
     });

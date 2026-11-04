@@ -52,6 +52,76 @@ function expectedSamplingMatch(selection, type) {
 }
 
 describe("WebGPU mark adapter", () => {
+    test("reuses subscribed property expressions for live scalar and vector resources", async () => {
+        const { view, context } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{}] },
+            params: [
+                { name: "style", value: 2 },
+                { name: "fade", value: 3 },
+            ],
+            encoding: {
+                x: { value: 0 },
+                x2: { value: 1 },
+                y: { value: 0 },
+                y2: { value: 1 },
+            },
+            layer: [
+                { mark: { type: "rect", cornerRadius: { expr: "style" } } },
+                { mark: { type: "arrow", headWidth: { expr: "style" } } },
+                {
+                    mark: {
+                        type: "text",
+                        paddingX: { expr: "style" },
+                        viewportEdgeFadeWidthTop: { expr: "fade" },
+                    },
+                    encoding: { text: { value: "A" } },
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        // Property translation needs a prepared font handle, not GPU resources.
+        Object.assign(context.textMetrics, {
+            getPreparedFont: () => ({ getGlyph() {} }),
+        });
+        const units = Array.from(
+            view.getDescendants().filter((child) => child instanceof UnitView)
+        );
+        const [rect, arrow, text] = units.map(
+            (unit) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
+                )
+        );
+        const compilers = units.map((unit) =>
+            vi.spyOn(unit.paramRuntime, "createExpression")
+        );
+
+        for (const [style, fade] of [
+            [2, 3],
+            [7, 11],
+        ]) {
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.setValue("style", style);
+                view.paramRuntime.setValue("fade", fade);
+            });
+            await view.paramRuntime.whenPropagated();
+            for (const compiler of compilers) compiler.mockClear();
+
+            expect(rect.config.channels.cornerRadiusTopRight.value).toBe(style);
+            expect(arrow.properties.headWidth.value).toBe(style);
+            expect(text.properties.paddingX.value).toBe(style);
+            expect(text.properties.viewportEdgeFadeWidth.value).toEqual([
+                fade,
+                0,
+                0,
+                0,
+            ]);
+            for (const compiler of compilers)
+                expect(compiler).not.toHaveBeenCalled();
+        }
+    });
+
     test("retains live categorical ranges and gaps for ordinary and text occurrences", async () => {
         const { view, context } = await createHeadlessEngine({
             config: { mark: { color: "black" } },
@@ -96,7 +166,11 @@ describe("WebGPU mark adapter", () => {
         const [rect, text] = channels;
         const categoryData = rect.y.data;
         const categoryDomain = rect.y.scale.domain;
-        const scale = view.getScaleResolution("y").getScale();
+        const resolution = view.getScaleResolution("y");
+        const scale =
+            /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
+                resolution.getScale()
+            );
         expect(Object.isFrozen(categoryDomain)).toBe(true);
 
         view.paramRuntime.runInTransaction(() => {
@@ -127,6 +201,33 @@ describe("WebGPU mark adapter", () => {
         expect(rect.y.scale.domain).not.toBe(categoryDomain);
         expect(Object.isFrozen(rect.y.scale.domain)).toBe(true);
         expect(categoryDomain).toEqual([0, 1]);
+
+        const resources = getWebGpuMarkResourceRevision(units[0].mark);
+        scale.viewport({ interval: [0.25, 1.75] });
+        await view.paramRuntime.whenPropagated();
+        const viewport = resolution.getMappingRef().get().viewport;
+        expect(viewport).toEqual({ interval: [0.25, 1.75] });
+        expect(rect.y.scale.viewport).toBe(viewport);
+        expect(text.y.scale.viewport).toBe(viewport);
+        expect(getWebGpuMarkResourceRevision(units[0].mark)).toBeGreaterThan(
+            resources
+        );
+
+        // Physical replacement must retain the resolution-owned viewport source.
+        resolution.attachViewLevelScaleProps(view, {
+            ...resolution.getViewLevelScaleProps().props,
+            type: "point",
+        });
+        await view.paramRuntime.whenPropagated();
+        expect(resolution.scale).not.toBe(scale);
+        /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
+            resolution.scale
+        ).viewport({ interval: [0.5, 1.5] });
+        await view.paramRuntime.whenPropagated();
+        expect(rect.y.scale.viewport).toEqual({ interval: [0.5, 1.5] });
+        expect(rect.y.scale.viewport).toBe(
+            resolution.getMappingRef().get().viewport
+        );
     });
 
     test("translates conditional order into declarative renderer config", () => {
@@ -2599,6 +2700,13 @@ function createMark(type, data, encoders, properties = {}) {
             },
             getType: () => type,
             initializeRenderingRevisions: vi.fn(),
+            /**
+             * @this {import("../../marks/mark.js").default}
+             * @param {import("../../spec/parameter.js").ExprRef} expression
+             */
+            evaluateRenderingExpression(expression) {
+                return this.unitView.paramRuntime.evaluateAndGet(expression);
+            },
             getRenderingRevision: (
                 /** @type {"configuration" | "resources"} */ kind
             ) => revisions[kind],
@@ -2619,6 +2727,14 @@ function createMark(type, data, encoders, properties = {}) {
                               getScale: () => scale,
                               getDomainRef: () => ({
                                   get: () => scale.domain().slice(),
+                              }),
+                              getMappingRef: () => ({
+                                  get: () => ({
+                                      viewport:
+                                          "viewport" in scale
+                                              ? scale.viewport()
+                                              : null,
+                                  }),
                               }),
                           }
                         : undefined;

@@ -176,8 +176,15 @@ describe("mark rendering revisions", () => {
         const watchExpression = vi.spyOn(view.paramRuntime, "watchExpression");
         view.mark.initializeEncoders();
         expect(watchExpression).not.toHaveBeenCalled();
+        expect(() =>
+            view.mark.evaluateRenderingExpression({ expr: "headWidth" })
+        ).toThrow("Rendering expression has not been initialized");
+        view.mark.initializeRenderingRevisions(["headWidth"]);
         view.mark.initializeRenderingRevisions(["headWidth"]);
         expect(watchExpression).toHaveBeenCalledTimes(2);
+        expect(
+            view.mark.evaluateRenderingExpression({ expr: "headWidth" })
+        ).toBe(2);
         expect(view.mark.getRenderingRevision("configuration")).toBe(0);
         expect(view.mark.getRenderingRevision("resources")).toBe(0);
         expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
@@ -188,6 +195,9 @@ describe("mark rendering revisions", () => {
         expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
 
         view.paramRuntime.setValue("headWidth", 3);
+        expect(
+            view.mark.evaluateRenderingExpression({ expr: "headWidth" })
+        ).toBe(3);
         expect(view.mark.getRenderingRevision("configuration")).toBe(1);
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
         expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);

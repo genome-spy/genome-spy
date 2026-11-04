@@ -358,22 +358,29 @@ describe("WebGpuSurface", () => {
         );
         await surface.initialize();
         const mark = /** @type {any} */ ({});
+        const getProgramKey = vi.fn(
+            (/** @type {any} */ config) => config.shape
+        );
         const definition = /** @type {any} */ ({
             type: "point",
-            getProgramKey: (/** @type {any} */ config) => config.shape,
+            getProgramKey,
         });
         configureMockMark(mark, definition);
 
-        surface.updateMark(mark, definition, {
+        const config = {
             ...createConfig(0),
             shape: "circle",
-        });
+        };
+        surface.updateMark(mark, definition, config);
+        surface.updateMark(mark, definition, config);
+        expect(getProgramKey).toHaveBeenCalledOnce();
         surface.updateMark(mark, definition, {
             ...createConfig(0),
             shape: "square",
         });
 
         expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
+        expect(getProgramKey).toHaveBeenCalledTimes(2);
         expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
     });
 
@@ -587,7 +594,10 @@ describe("WebGpuSurface", () => {
             type: "band",
             viewport:
                 /** @type {import("../../scales/scaleBand.js").CategoricalViewport | null} */ (
-                    null
+                    Object.freeze({
+                        interval: Object.freeze([0, 3]),
+                        gapRanks: Object.freeze([0, 1]),
+                    })
                 ),
             domain: [200, 5, 900],
             range: [0, 100],
@@ -628,10 +638,20 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
             3
         );
-        scale.viewport = null;
+        delete scale.viewport.gapRanks;
         useMark(surface, mark, definition, config);
         expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
             4
+        );
+        scale.viewport.gapRanks = [0.75, 1];
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            5
+        );
+        scale.viewport = null;
+        useMark(surface, mark, definition, config);
+        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
+            6
         );
         expect(
             mocks.handle.scales.x.default.setViewport

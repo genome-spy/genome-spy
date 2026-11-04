@@ -297,7 +297,10 @@ export default class WebGpuSurface {
         const resourceExpressionsRevision = mark.getRenderingRevision(
             "resourceExpressions"
         );
-        const programKey = definition.getProgramKey?.(config);
+        const programKey =
+            retained?.definition === definition && retained.config === config
+                ? retained.programKey
+                : definition.getProgramKey?.(config);
         const gapKey = groupingGapKey(mark.encoders);
         if (
             !retained ||
@@ -537,15 +540,19 @@ function compileResourceBindings(
                 value = current;
         }
 
+        /** @type {ResourceBinding} */
         const binding = {
             key,
             read,
             write,
             value,
             skipUndefined,
+            equals: deepEqual,
+            snapshot: snapshotValue,
         };
         bindings.all.push(binding);
         if (scaleDependent) bindings.scales.push(binding);
+        return binding;
     };
 
     for (const [name, channel] of Object.entries(config.channels)) {
@@ -602,7 +609,7 @@ function compileResourceBindings(
 }
 
 /**
- * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean, scaleDependent?: boolean) => void} add
+ * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean, scaleDependent?: boolean) => ResourceBinding} add
  * @param {string} key
  * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
@@ -633,11 +640,14 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             );
         }
         if ("viewport" in channel.scale) {
-            addScale(
+            const binding = addScale(
                 key + ":viewport",
                 () => channel.scale.viewport,
                 (viewport) => scaleSlot.setViewport(viewport)
             );
+            binding.equals = equalViewports;
+            binding.snapshot = snapshotViewport;
+            binding.value = snapshotViewport(binding.value);
         }
         if ("range" in channel.scale) {
             addScale(
@@ -682,15 +692,53 @@ function updateResourceBindings(bindings) {
         const value = binding.read();
         if (
             (binding.skipUndefined && value === undefined) ||
-            deepEqual(binding.value, value)
+            binding.equals(binding.value, value)
         ) {
             continue;
         }
         binding.write(value);
         writes++;
-        binding.value = snapshotValue(value);
+        binding.value = binding.snapshot(value, binding.value);
     }
     return writes;
+}
+
+/** Compare the fixed private viewport payload without generic object traversal.
+ * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} first
+ * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} second
+ */
+function equalViewports(first, second) {
+    if (first === second) return true;
+    if (!first || !second) return false;
+    return (
+        Object.is(first.interval[0], second.interval[0]) &&
+        Object.is(first.interval[1], second.interval[1]) &&
+        (first.gapRanks === second.gapRanks ||
+            (!!first.gapRanks &&
+                !!second.gapRanks &&
+                Object.is(first.gapRanks[0], second.gapRanks[0]) &&
+                Object.is(first.gapRanks[1], second.gapRanks[1])))
+    );
+}
+
+/** Retain one detached snapshot; caller-owned arrays can still change in place.
+ * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} value
+ * @param {import("@genome-spy/webgpu-renderer").ScaleViewport | null} [previous]
+ */
+function snapshotViewport(value, previous) {
+    if (!value) return value;
+    /** @type {import("@genome-spy/webgpu-renderer").ScaleViewport} */
+    const snapshot = previous ?? { interval: [0, 0] };
+    snapshot.interval[0] = value.interval[0];
+    snapshot.interval[1] = value.interval[1];
+    if (value.gapRanks) {
+        const ranks = (snapshot.gapRanks ??= [0, 0]);
+        ranks[0] = value.gapRanks[0];
+        ranks[1] = value.gapRanks[1];
+    } else {
+        delete snapshot.gapRanks;
+    }
+    return snapshot;
 }
 
 /**
@@ -954,6 +1002,8 @@ function getLogicalChannelSeries(channel) {
  * @property {(value: any) => void} write
  * @property {any} value
  * @property {boolean} skipUndefined
+ * @property {(first: any, second: any) => boolean} equals
+ * @property {(value: any, previous?: any) => any} snapshot
  */
 
 /**
