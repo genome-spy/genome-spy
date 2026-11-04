@@ -2249,13 +2249,10 @@ function createIndexValue(mark, channel, read, large) {
     // Reuse the packing buffers when a parameter-backed datum changes.
     const source = [0];
     const packed = new Uint32Array(2);
-    const value = [0, 0];
     return liveValue(() => {
         source[0] = readIndexValue(mark, channel, read());
         packHighPrecisionU32ArrayInto(source, packed);
-        value[0] = packed[0];
-        value[1] = packed[1];
-        return value;
+        return packed;
     }, "u32");
 }
 

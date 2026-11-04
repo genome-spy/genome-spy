@@ -635,14 +635,14 @@ describe("WebGPU mark adapter", () => {
             createWebGpuMarkConfig(mark, {}, Rectangle.create(10, 20, 100, 200))
         ).config.channels.x;
 
-        expect(x.value).toEqual(start ? [1048576, 4] : 4);
+        expect(x.value).toEqual(start ? new Uint32Array([1048576, 4]) : 4);
         expect(x.inputComponents ?? 1).toBe(start ? 2 : 1);
         expect(x.type).toBe("u32");
         expect(x.dynamic).toBe(true);
         expect(x.data).toBeUndefined();
         expect(x.scale.band).toBe(0.25);
         position = start + 9;
-        expect(x.value).toEqual(start ? [1048576, 9] : 9);
+        expect(x.value).toEqual(start ? new Uint32Array([1048576, 9]) : 9);
     });
 
     test("keeps text anchor and glyph offsets separate", () => {

@@ -16,7 +16,9 @@ methods, accepted inputs, immediate individual mutations, `batchUpdates`,
 resource ownership and disposal. An API shortcoming must become a concrete
 proposal with motivation, alternatives and migration costs; obtain explicit user
 permission before implementing it. The package's unpublished status does not
-waive this constraint.
+waive this constraint. The user subsequently authorized the two small API
+extensions below, conditional on independent review support. Other API changes
+remain outside the authorized scope.
 
 Use existing owners and dependencies. Do not add a parallel invalidation model,
 input-mask registry, generic result cache or payload comparison merely to reduce
@@ -444,3 +446,64 @@ above have no CPU sampler enabled.
   tests** (529 added, 547 deleted). The full branch is **−61 production lines**
   against `origin/master`.
 - The renderer's public declarations and slot timing are unchanged.
+
+## Authorized API extension: typed vectors and uniform input consumption
+
+The user authorized implementation if an independent subagent supported two
+proposals: accept numeric typed vectors, and document immediate consumption so
+callers can reuse scratch buffers. Review supports both with the boundary below.
+
+The renderer owns numeric value types, shader literals, validation and uniform
+storage. Extend the existing numeric value contract across initial channel
+values, defaults, conditional literals, retained value slots and custom extra
+uniforms; preserve scalar-only, scale and semantic-property input contracts.
+Exclude `DataView` and BigInt typed arrays. This is an additive public type
+extension; callers using existing numeric arrays need no migration.
+
+Successful uniform setters consume numeric elements into renderer-owned storage
+before returning, including within `batchUpdates`. This documents the existing
+synchronous packing behavior; batching coalesces uploads and binding work. The
+promise covers value slots, extra-uniform slots and built-in uniform-backed
+properties. Configurations, series and scale-resource inputs are separate:
+configs/series retain source references, and gap ranks can be retained for later
+scale updates. No new general ownership promise applies to them.
+
+Core's large-index adapter can return the packed `Uint32Array` directly,
+deleting its intermediate plain array and component copies. Surface compares
+only primitive uniform values for equality; mutable vectors always reach the
+setter even when their storage identity is unchanged. No new subscriptions,
+resource owners, update registry or per-update allocation is needed. Static WGSL
+generation and text/rule decisions must recognize typed vectors too.
+
+- [x] Independent review supports the scoped contract and identifies retained
+      scale/config references as an ownership boundary.
+- [x] Implement consistent numeric value types and existing runtime consumers.
+- [x] Consume the packed buffer directly in Core and preserve mutable updates.
+- [x] Document accepted values, successful-call timing and batching semantics.
+- [x] Verify representative static/conditional, exact-u32 and scratch reuse
+      behavior, including native rendering and picking.
+- [x] Review the final integrated diff, types, lint, release impact and size;
+      commit the coherent extension.
+
+Commit: `perf(webgpu): accept typed uniform vectors directly`
+
+Verification covers 487 renderer/Core WebGPU tests across 53 files and 14 native
+GPU checks. Both package TypeScript checks and scoped ESLint pass. The existing
+mutable point/link integration test exercises repeated writes from the same
+packed typed buffer; renderer tests verify exact u32 words from subarrays,
+independent batched vector writes, and built-in property/extra-uniform scratch
+reuse. Static/conditional literal, ordinal-scalar, text-alpha and dash-index
+cases retain their prior semantics with numeric typed inputs.
+
+This extension removes one adapter scratch array and its two component copies.
+It adds no uniform-setter work and makes no new end-to-end CPU speedup claim;
+the native CPU measurements above apply to the preceding commit. Release
+policy/status checks pass with the existing empty changeset and no version bump.
+
+Independent final review found no remaining contract or correctness issue. Its
+KISS finding removed a redundant constructor container-validation loop: static
+literals, dynamic uniform packing and conditions already validate effective
+inputs. The final runtime delta is 57 added and 33 deleted raw lines (**+24**,
+including comments and blank lines), plus **+16** declaration lines, against
+`7ed682f83`. The existing uniform writer is unchanged; added type/container
+handling runs during mark construction and shader assembly.

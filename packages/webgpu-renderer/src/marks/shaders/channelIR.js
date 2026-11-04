@@ -86,7 +86,9 @@ function buildChannelIR(analysis, seriesIndexExpression) {
                     scalarType,
                     inputComponents,
                     channel.value ??
-                        /** @type {number|number[]} */ (channel.default)
+                        /** @type {import("../../index.d.ts").NumericValue} */ (
+                            channel.default
+                        )
                 );
 
     return {

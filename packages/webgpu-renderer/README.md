@@ -396,6 +396,12 @@ Conditional scale and value slots are keyed by condition index. For example,
 `mark.scales.color.conditions[0].setRange(...)` updates the scale used by the
 first conditional branch.
 
+Numeric channel values, defaults, conditional literals, and custom extra-uniform
+values accept numbers, numeric arrays, and numeric typed arrays. `DataView` and
+BigInt typed arrays are excluded. Packed integer vectors can be passed directly
+from the high-precision packing helpers without converting them to plain arrays.
+The configured input type and component count still apply.
+
 ### Built-in mark properties
 
 Built-in marks expose their updateable non-channel options through typed
@@ -427,6 +433,25 @@ points.batchUpdates(() => {
   points.values.size.set(4);
 });
 ```
+
+After a successful `values` or `extraValues` setter returns, the renderer has
+consumed the numeric elements into its own uniform storage. Built-in
+uniform-backed property setters have the same guarantee. Scratch arrays can be
+mutated or reused immediately, including before a `batchUpdates` callback exits.
+For a dynamic fill channel:
+
+```js
+const color = new Float32Array([1, 0, 0, 1]);
+points.batchUpdates(() => {
+  points.values.fill.set(color);
+  color.fill(0);
+});
+```
+
+The fill remains red. Batching defers uploads, not reading uniform inputs; GPU
+execution remains asynchronous. This guarantee applies to uniform setter inputs.
+Configurations, series arrays, and scale-resource inputs have separate ownership
+contracts and may retain caller-provided references.
 
 ### Series replacement
 

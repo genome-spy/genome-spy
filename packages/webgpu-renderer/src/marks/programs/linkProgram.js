@@ -510,7 +510,7 @@ export default class LinkProgram extends BaseProgram {
 
     /**
      * @param {string} name
-     * @param {number | number[]} value
+     * @param {import("../../index.d.ts").NumericValue} value
      * @internal
      */
     _setExtraUniformValue(name, value) {

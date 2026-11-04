@@ -33,13 +33,13 @@ struct VSOut {
 }
 
 class ExtraSlotProgram extends SlotProgram {
-    /** @returns {{ name: string, type: "f32", components: 1 }[]} */
+    /** @returns {{ name: string, type: "f32", components: 2 }[]} */
     getExtraUniformLayout() {
-        return [{ name: "uExtra", type: "f32", components: 1 }];
+        return [{ name: "uExtra", type: "f32", components: 2 }];
     }
 
     _initializeExtraUniforms() {
-        this._setUniformValue("uExtra", 1);
+        this._setUniformValue("uExtra", [1, 2]);
     }
 }
 
@@ -193,17 +193,19 @@ describe("BaseProgram slot handles", () => {
 
     it("updates dynamic values through slots", () => {
         const renderer = createMockRenderer();
+        const packed = new Uint32Array([0, 0xfedcba98, 4, 0]).subarray(1, 3);
+        const start = 0xfedcba98 * 4096;
         const program = createSlotProgram(renderer, {
             channels: {
                 uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
                 x: {
-                    value: [1048576, 4],
+                    value: packed,
                     type: "u32",
                     inputComponents: 2,
                     dynamic: true,
                     scale: {
                         type: "index",
-                        domain: [2 ** 32, 2 ** 32 + 10],
+                        domain: [start, start + 10],
                         range: [0, 1],
                     },
                 },
@@ -237,9 +239,11 @@ describe("BaseProgram slot handles", () => {
             xEntry.offset,
             2
         );
-        expect(Array.from(xWords)).toEqual([1048576, 4]);
-        program.getSlotHandles().values.x.set([1048576, 9]);
-        expect(Array.from(xWords)).toEqual([1048576, 9]);
+        expect(Array.from(xWords)).toEqual([0xfedcba98, 4]);
+        packed[1] = 9;
+        program.getSlotHandles().values.x.set(packed);
+        packed.fill(0);
+        expect(Array.from(xWords)).toEqual([0xfedcba98, 9]);
 
         const sizeEntry = program._uniformBufferState.entries.get("u_size");
         program.getSlotHandles().values.size.set(5);
@@ -306,21 +310,31 @@ describe("BaseProgram slot handles", () => {
         if (!conditions) {
             throw new Error("Expected conditional value slots.");
         }
-        conditions[0].set([0.2, 0.3, 0.4, 1]);
-        conditions[1].set([0.6, 0.7, 0.8, 1]);
+        const scratch = new Float32Array([0.25, 0.5, 0.75, 1]);
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+        program.getSlotHandles().batchUpdates(() => {
+            conditions[0].set(scratch);
+            scratch.set([0.5, 0.75, 1, 0.25]);
+            conditions[1].set(scratch);
+            scratch.fill(0);
+        });
 
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                program._uniformBufferState.entries.get("u_fill__cond0").offset,
-                true
+        const stored = [0, 1].map((index) =>
+            Array.from(
+                new Float32Array(
+                    program._uniformBufferState.data,
+                    program._uniformBufferState.entries.get(
+                        `u_fill__cond${index}`
+                    ).offset,
+                    4
+                )
             )
-        ).toBeCloseTo(0.2);
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                program._uniformBufferState.entries.get("u_fill__cond1").offset,
-                true
-            )
-        ).toBeCloseTo(0.6);
+        );
+        expect(stored).toEqual([
+            [0.25, 0.5, 0.75, 1],
+            [0.5, 0.75, 1, 0.25],
+        ]);
+        expect(writeBuffer).toHaveBeenCalledOnce();
     });
 
     it("batches retained slot updates into one uniform upload", () => {
@@ -372,19 +386,24 @@ describe("BaseProgram slot handles", () => {
                     components: 4,
                 },
             },
-            dynamicValues: { uExtra: { value: 2 } },
+            dynamicValues: { uExtra: { value: new Float32Array([2, 3]) } },
         });
 
         const entry = program._uniformBufferState.entries.get("uExtra");
         expect(entry).toBeTruthy();
-        program.getSlotHandles().extraValues.uExtra.set(3);
-
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                entry.offset,
-                true
-            )
-        ).toBe(3);
+        const stored = new Float32Array(
+            program._uniformBufferState.data,
+            entry.offset,
+            2
+        );
+        expect(Array.from(stored)).toEqual([2, 3]);
+        const scratch = new Float32Array([3, 4]);
+        const slots = program.getSlotHandles();
+        slots.batchUpdates(() => {
+            slots.extraValues.uExtra.set(scratch);
+            scratch.fill(0);
+        });
+        expect(Array.from(stored)).toEqual([3, 4]);
     });
 
     it("replaces a single conditional series through its logical channel", () => {

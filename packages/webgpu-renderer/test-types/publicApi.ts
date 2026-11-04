@@ -2,6 +2,7 @@ import {
     createRenderer,
     type ExtraValueMarkOptions,
     type MarkDefinition,
+    type NumericValue,
 } from "@genome-spy/webgpu-renderer";
 import { setDebugResourcesEnabled } from "@genome-spy/webgpu-renderer/debug";
 import { packHighPrecisionU32Array } from "@genome-spy/webgpu-renderer/high-precision";
@@ -50,6 +51,31 @@ export const configuredScales = [
     quantizeScale(),
 ] as const;
 
+const readonlyRgba = [1, 0, 0, 1] as const;
+
+export const numericValues = [
+    1,
+    readonlyRgba,
+    new Float32Array(4),
+    new Float64Array(4),
+    new Int8Array(4),
+    new Uint8Array(4),
+    new Uint8ClampedArray(4),
+    new Int16Array(4),
+    new Uint16Array(4),
+    new Int32Array(4),
+    new Uint32Array(4),
+] satisfies NumericValue[];
+
+export const invalidNumericValues: NumericValue[] = [
+    // @ts-expect-error DataView does not provide numeric elements.
+    new DataView(new ArrayBuffer(16)),
+    // @ts-expect-error BigInt elements cannot be encoded as numeric uniforms.
+    new BigInt64Array(4),
+    // @ts-expect-error BigInt elements cannot be encoded as numeric uniforms.
+    new BigUint64Array(4),
+];
+
 export async function createPointExample(
     canvas: HTMLCanvasElement
 ): Promise<void> {
@@ -67,9 +93,27 @@ export async function createPointExample(
                 type: "f32",
                 scale: linearScale({ domain: [0, 1], range: [100, 0] }),
             },
+            fill: {
+                value: new Float32Array([1, 0, 0, 1]),
+                default: new Float64Array([1, 0, 0, 1]),
+                dynamic: true,
+                conditions: [
+                    {
+                        when: { selection: "chosen", type: "single" },
+                        value: new Float64Array([0, 1, 0, 1]),
+                    },
+                    {
+                        when: { selection: "other", type: "single" },
+                        channel: { value: readonlyRgba, dynamic: true },
+                    },
+                ],
+            },
         },
     });
     points.values.strokeAlign.set(2);
+    points.values.fill.set(readonlyRgba);
+    points.values.fill.set(new Float32Array([0, 0, 1, 1]));
+    points.values.fill.conditions?.[1].set(new Uint8Array([1, 1, 1, 1]));
     points.series.replace({
         x: new Float32Array([0.25, 0.75]),
         y: new Float32Array([0.75, 0.25]),
@@ -151,10 +195,15 @@ export async function createCustomExample(
     canvas: HTMLCanvasElement
 ): Promise<void> {
     const renderer = await createRenderer(canvas);
-    renderer.createMark(customMark, {
+    const custom = renderer.createMark(customMark, {
         radius: 4,
-        dynamicValues: { uRadius: { value: 4 } },
+        dynamicValues: {
+            uRadius: { value: new Float64Array([4]) },
+            uColor: { value: readonlyRgba },
+        },
     });
+    custom.extraValues.uColor.set(readonlyRgba);
+    custom.extraValues.uColor.set(new Float32Array([0, 1, 0, 1]));
     renderer.destroy();
 }
 

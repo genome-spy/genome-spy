@@ -14,12 +14,15 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 const EMPTY_PROPERTIES = Object.freeze({});
 
 /**
- * Uniform vectors are consumed synchronously and may reuse mutable storage.
+ * Only primitives can suppress a write: uniform vectors may reuse mutable storage.
  * @param {any} previous
  * @param {any} value
  */
 function equalUniformValues(previous, value) {
-    return !Array.isArray(value) && Object.is(previous, value);
+    return (
+        (value === null || typeof value !== "object") &&
+        Object.is(previous, value)
+    );
 }
 
 /**

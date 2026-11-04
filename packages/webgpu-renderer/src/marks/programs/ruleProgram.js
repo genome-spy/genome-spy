@@ -378,9 +378,10 @@ export default class RuleProgram extends BaseProgram {
             dashChannel &&
             dashChannel.value !== undefined
         ) {
-            const value = Array.isArray(dashChannel.value)
-                ? dashChannel.value[0]
-                : dashChannel.value;
+            const value =
+                typeof dashChannel.value === "number"
+                    ? dashChannel.value
+                    : dashChannel.value[0];
             if (typeof value === "number" && value >= atlas.patternCount) {
                 console.warn(
                     `[webgpu-renderer] strokeDash value ${value} exceeds pattern count ${atlas.patternCount}.`

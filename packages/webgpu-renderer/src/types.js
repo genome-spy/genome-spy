@@ -20,3 +20,18 @@ export function isSeriesChannelConfig(config) {
 export function isValueChannelConfig(config) {
     return !!config && "value" in config && config.value != null;
 }
+
+/**
+ * @param {unknown} value
+ * @returns {value is Exclude<import("./index.d.ts").NumericValue, number>}
+ */
+export function isNumericArray(value) {
+    if (Array.isArray(value)) return true;
+    if (!ArrayBuffer.isView(value)) return false;
+    const type = Object.prototype.toString.call(value);
+    return (
+        type !== "[object DataView]" &&
+        type !== "[object BigInt64Array]" &&
+        type !== "[object BigUint64Array]"
+    );
+}

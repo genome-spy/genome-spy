@@ -127,12 +127,13 @@ test("moves a high-precision index datum through its retained value slot", async
         renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
         renderer.device.pushErrorScope("validation");
         const start = 2 ** 32;
+        const packed = new Uint32Array([1048576, 16]);
         const mark = renderer.createMark(pointMark, {
             shape: "circle",
             channels: {
                 uniqueId: { value: 42, type: "u32" },
                 x: {
-                    value: [1048576, 16],
+                    value: packed,
                     type: "u32",
                     inputComponents: 2,
                     dynamic: true,
@@ -153,7 +154,11 @@ test("moves a high-precision index datum through its retained value slot", async
             renderer.pick(16, 32),
             renderer.pick(48, 32),
         ]);
-        mark.values.x.set([1048576, 48]);
+        mark.batchUpdates(() => {
+            packed[1] = 48;
+            mark.values.x.set(packed);
+            packed.fill(0);
+        });
         renderer.render({ draws: [{ mark }] });
         const after = await Promise.all([
             renderer.pick(16, 32),

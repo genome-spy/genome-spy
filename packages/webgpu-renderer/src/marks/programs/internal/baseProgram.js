@@ -420,7 +420,7 @@ export default class BaseProgram {
         });
         this.#initializeUniforms();
         const dynamicValues =
-            /** @type {Record<string, {value: number | number[]}>} */ (
+            /** @type {Record<string, import("../../../index.d.ts").DynamicValueConfig>} */ (
                 this._markConfig.dynamicValues ?? {}
             );
         for (const [name, config] of Object.entries(dynamicValues)) {
@@ -1035,7 +1035,7 @@ export default class BaseProgram {
      * Hook for mark programs whose draw parameters mirror an extra uniform.
      *
      * @param {string} name
-     * @param {number | number[]} value
+     * @param {import("../../../index.d.ts").NumericValue} value
      * @internal
      */
     _setExtraUniformValue(name, value) {
