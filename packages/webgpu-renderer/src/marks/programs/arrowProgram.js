@@ -51,6 +51,7 @@ export const ARROW_CHANNEL_SPECS = {
     fillOpacity: { type: "f32", components: 1, default: 1 },
     strokeOpacity: { type: "f32", components: 1, default: 1 },
     strokeWidth: { type: "f32", components: 1, default: 1 },
+    strokeAlign: { type: "u32", components: 1, default: 1 },
     size: { type: "f32", components: 1, default: 8 },
     direction: { type: "u32", components: 1, default: 0 },
 };
@@ -78,7 +79,7 @@ struct VSOut {
     @location(5) @interpolate(flat) notchSlope: f32,
     @location(6) @interpolate(flat) fill: vec4<f32>,
     @location(7) @interpolate(flat) stroke: vec4<f32>,
-    @location(8) @interpolate(flat) strokeWidth: f32,
+    @location(8) @interpolate(flat) strokeExtents: vec2<f32>,
     @location(9) @interpolate(flat) direction: u32,
     @location(10) @interpolate(flat) headSpacing: f32,
     @location(11) @interpolate(flat) pickId: u32,
@@ -99,7 +100,7 @@ fn culledArrow() -> VSOut {
     out.notchSlope = 0.0;
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
-    out.strokeWidth = 0.0;
+    out.strokeExtents = vec2<f32>(0.0);
     out.direction = 0u;
     out.headSpacing = 0.0;
     out.pickId = 0u;
@@ -111,13 +112,13 @@ fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn distanceToColor(d: f32, fill: vec4<f32>, stroke: vec4<f32>, halfStroke: f32) -> vec4<f32> {
+fn distanceToColor(d: f32, fill: vec4<f32>, stroke: vec4<f32>, strokeExtents: vec2<f32>) -> vec4<f32> {
     let fillColor = premultiplyAlpha(fill);
     let strokeColor = premultiplyAlpha(stroke);
-    if (halfStroke > 0.0) {
-        let ci = distanceToRatio(-d - halfStroke);
+    if (strokeExtents.x + strokeExtents.y > 0.0) {
+        let ci = distanceToRatio(-d - strokeExtents.x);
         let cf = distanceToRatio(-d);
-        let co = distanceToRatio(halfStroke - d);
+        let co = distanceToRatio(strokeExtents.y - d);
         return ci * fillColor
             + (cf - ci) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
             + (co - cf) * strokeColor;
@@ -343,7 +344,6 @@ fn shade(in: VSOut) -> vec4<f32> {
         p.x = -p.x;
     }
 
-    let halfStroke = in.strokeWidth * 0.5;
     var stem = 1e20;
     if (in.stemHalfWidth > 0.0) {
         stem = stemDistance(
@@ -357,7 +357,7 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     var head = 1e20;
     if (in.headSpacing >= 0.0) {
-        let halfStroke = in.strokeWidth * 0.5;
+        let halfStroke = (in.strokeExtents.x + in.strokeExtents.y) * 0.5;
         let headAxisLength = in.headHalfWidth * in.headSlope;
         let headStrokeLength = in.headStrokeWidth
             / length(vec2<f32>(in.headSlope, 1.0));
@@ -411,12 +411,12 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     let d = min(stem, head);
     if (pickingEnabled) {
-        if (d >= halfStroke) { discard; }
+        if (d >= in.strokeExtents.y) { discard; }
         return vec4<f32>(1.0);
     }
     var fill = in.fill;
     var stroke = in.stroke;
-    return distanceToColor(d, fill, stroke, halfStroke);
+    return distanceToColor(d, fill, stroke, in.strokeExtents);
 }
 
 @vertex
@@ -472,7 +472,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         ),
         params.uHeadPlacement != PLACEMENT_INSIDE
     );
-    let padding = 1.0 / globals.dpr + getScaled_strokeWidth(i) * 0.5 + max(headHalfWidth, abs(stemHalfWidth));
+    let strokeWidth = max(getScaled_strokeWidth(i), 0.0);
+    let outset = strokeWidth * f32(getScaled_strokeAlign(i)) * 0.5;
+    let padding = 1.0 / globals.dpr + outset + max(headHalfWidth, abs(stemHalfWidth));
     var startExpansion = 0.0;
     var endExpansion = 0.0;
     if (direction == DIRECTION_REVERSE) {
@@ -508,7 +510,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let stroke = getScaled_stroke(i);
     out.fill = vec4<f32>(fill.rgb, fill.a * getScaled_fillOpacity(i));
     out.stroke = vec4<f32>(stroke.rgb, stroke.a * getScaled_strokeOpacity(i));
-    out.strokeWidth = getScaled_strokeWidth(i);
+    out.strokeExtents = vec2<f32>(strokeWidth - outset, outset);
     out.direction = direction;
     out.headSpacing = select(-1.0, params.uHeadSpacing * arrowSize, headRepeat);
     out.headStrokeWidth = headStrokeWidth;

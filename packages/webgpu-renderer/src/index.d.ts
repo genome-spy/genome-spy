@@ -912,6 +912,12 @@ export type ArrowChannelName =
     | "fillOpacity"
     | "strokeOpacity"
     | "strokeWidth"
+    /**
+     * Full-width border alignment: 0 inside, 1 center (default), 2 outside.
+     * Nominal fill and open-head arm thickness are unchanged. Repeated-head
+     * spacing retains its existing stroke-width-dependent footprint.
+     */
+    | "strokeAlign"
     | "size"
     | "direction";
 

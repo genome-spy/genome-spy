@@ -213,6 +213,22 @@ export const Links = withSource("runLinkScene", null, {
 });
 
 export const Arrows = withSource("runArrowScene", null, {
+    args: { strokeAlign: 1, strokeWidth: 1, strokeOpacity: 0.5 },
+    argTypes: {
+        strokeAlign: {
+            options: [0, 1, 2],
+            control: {
+                type: "select",
+                labels: { 0: "Inside", 1: "Center", 2: "Outside" },
+            },
+        },
+        strokeWidth: {
+            control: { type: "range", min: 0, max: 12, step: 0.25 },
+        },
+        strokeOpacity: {
+            control: { type: "range", min: 0, max: 1, step: 0.05 },
+        },
+    },
     render: (args) => renderScene(runArrowScene, args),
 });
 

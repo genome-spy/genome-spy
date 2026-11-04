@@ -11,6 +11,8 @@ for (const dpr of [1, 2]) {
             );
         }
         expect(Math.max(...result.transparentErrors)).toBeLessThanOrEqual(2);
+        expect(Math.max(...result.alignmentErrors)).toBeLessThanOrEqual(1);
+        expect(result.alignmentPicks).toEqual([77, null, 77, null, 77, null]);
         expect(result.openPicks).toEqual(Array(4).fill([77, null]));
         expect(result.revealedPicks).toEqual([77, null]);
         expect(result.clippedPicks).toEqual([77, null]);
@@ -53,6 +55,7 @@ async function renderArrows(dpr) {
                 y2: cy,
                 size: 8 - 0.25 / dpr,
                 strokeWidth: 0.25 / dpr,
+                strokeAlign: 1,
                 fill: [1, 0, 0, 1],
                 stroke: [0, 0, 1, 1],
                 fillOpacity: 1,
@@ -63,7 +66,7 @@ async function renderArrows(dpr) {
                 {
                     value,
                     dynamic: true,
-                    ...(["uniqueId", "direction"].includes(key)
+                    ...(["uniqueId", "direction", "strokeAlign"].includes(key)
                         ? { type: "u32" }
                         : {}),
                 },
@@ -103,7 +106,9 @@ async function renderArrows(dpr) {
     };
     const samples = [],
         transparentErrors = [],
-        openPicks = [];
+        openPicks = [],
+        alignmentErrors = [],
+        alignmentPicks = [];
     try {
         // Straight stem: d=.125/DPR, Ci=.25, Cf=.375, Co=.5.
         samples.push([pixel(await capture()), [64, 0, 64, 128]]);
@@ -136,6 +141,62 @@ async function renderArrows(dpr) {
             ),
             [32, 0, 32, 64],
         ]);
+        // The nominal stem edge crosses a pixel center: Cf=.5 at every DPR.
+        set({ size: 8, strokeWidth: 4, fillOpacity: 1 });
+        for (const [align, expected] of [
+            [0, [64, 0, 64, 128]],
+            [1, [64, 0, 128, 191]],
+            [2, [128, 0, 64, 191]],
+        ]) {
+            set({ strokeAlign: align, strokeOpacity: 0.5 });
+            samples.push([pixel(await capture()), expected]);
+        }
+        for (const shape of ["triangle", "open"]) {
+            mark.properties.headShape.set(shape);
+            set({ strokeWidth: 0, strokeOpacity: 1 });
+            const nominal = await capture();
+            for (const strokeAlign of [0, 1, 2]) {
+                set({ strokeWidth: 4, strokeAlign, strokeOpacity: 0 });
+                const transparent = await capture();
+                alignmentErrors.push(
+                    transparent.reduce(
+                        (m, v, i) => Math.max(m, Math.abs(v - nominal[i])),
+                        0
+                    )
+                );
+            }
+            // Equal outer envelopes exercise head diagonals and concave notches.
+            set({ strokeAlign: 2, strokeOpacity: 1 });
+            const outside = await capture();
+            set({ strokeAlign: 1, strokeWidth: 8 });
+            const centered = await capture();
+            let error = 0;
+            for (let i = 3; i < outside.length; i += 4) {
+                error = Math.max(error, Math.abs(outside[i] - centered[i]));
+            }
+            alignmentErrors.push(error);
+        }
+        mark.properties.headShape.set("triangle");
+        set({ strokeAlign: 2, strokeWidth: 4 });
+        await capture();
+        alignmentPicks.push(
+            await renderer.pick(32, cy + 7),
+            await renderer.pick(32, cy + 13)
+        );
+        await capture([
+            { mark, scissor: { x: 0, y: 0, width: 40, height: 64 } },
+        ]);
+        alignmentPicks.push(
+            await renderer.pick(32, cy + 7),
+            await renderer.pick(44, cy + 7)
+        );
+        set({ strokeAlign: 0, strokeWidth: 20 });
+        samples.push([pixel(await capture(), 32), [0, 0, 255, 255]]);
+        alignmentPicks.push(
+            await renderer.pick(32, cy + 3),
+            await renderer.pick(32, cy + 5)
+        );
+        set({ strokeAlign: 1 });
         for (const shape of ["triangle", "open"]) {
             mark.properties.headShape.set(shape);
             set({ size: 8, strokeWidth: 0 });
@@ -182,9 +243,10 @@ async function renderArrows(dpr) {
                 0
             )
         );
+        // Keep the hole probe clear of the geometrically pickable transparent border.
         const revealedPicks = [
             await renderer.pick(20.5, cy + 3),
-            await renderer.pick(18.5, cy),
+            await renderer.pick(17.5, cy),
         ];
         set({ strokeWidth: 1, strokeOpacity: 1 });
         await capture([
@@ -213,6 +275,8 @@ async function renderArrows(dpr) {
         ];
         return {
             samples,
+            alignmentErrors,
+            alignmentPicks,
             transparentErrors,
             openPicks,
             revealedPicks,
