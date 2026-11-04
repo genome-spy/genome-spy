@@ -69,8 +69,14 @@ export function createBandMapping({
      * @param {number} pixel
      * @param {number} [slope]
      * @param {number} [origin]
+     * @param {number} [pointGapWidth] Target camera gap width, including when the source mapping is exhausted.
      */
-    function invertPoint(pixel, slope = step, origin = start) {
+    function invertPoint(
+        pixel,
+        slope = step,
+        origin = start,
+        pointGapWidth = gapWidth
+    ) {
         const distance = (pixel - origin) * direction;
         const dataStep = slope * direction;
         if (dataStep === 0) return { value: domain[0], rank: firstRank };
@@ -80,23 +86,25 @@ export function createBandMapping({
             const mid = (lo + hi) >>> 1;
             const after =
                 (cuts[mid] - domain[0]) * dataStep +
-                gapWidth * (mid + 1 - firstRank);
+                pointGapWidth * (mid + 1 - firstRank);
             if (after < distance) lo = mid + 1;
             else hi = mid;
         }
-        if (lo < cuts.length && gapWidth > 0) {
+        if (lo < cuts.length && pointGapWidth > 0) {
             const before =
-                (cuts[lo] - domain[0]) * dataStep + gapWidth * (lo - firstRank);
+                (cuts[lo] - domain[0]) * dataStep +
+                pointGapWidth * (lo - firstRank);
             if (distance >= before) {
                 return {
                     value: cuts[lo],
-                    rank: lo + (distance - before) / gapWidth,
+                    rank: lo + (distance - before) / pointGapWidth,
                 };
             }
         }
         return {
             value:
-                domain[0] + (distance - gapWidth * (lo - firstRank)) / dataStep,
+                domain[0] +
+                (distance - pointGapWidth * (lo - firstRank)) / dataStep,
             rank: lo,
         };
     }

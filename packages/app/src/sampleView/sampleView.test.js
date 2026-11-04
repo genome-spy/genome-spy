@@ -929,6 +929,15 @@ describe("sample label column", () => {
                 disableGroupUpdates: false,
             });
 
+            vi.spyOn(
+                view.locationManager,
+                "getGroupSampleBounds"
+            ).mockReturnValue({
+                startRank: 0,
+                endRank: 1,
+                firstLeaf: 0,
+                lastLeaf: 0,
+            });
             /** @type {any} */ (view.locationManager).getLocations = () => ({
                 groups: [
                     {
@@ -973,11 +982,6 @@ describe("sample label column", () => {
             expect(view.sampleGroupView.isVisibleInSpec()).toBe(true);
             expect(view.sampleGroupView.isConfiguredVisible()).toBe(true);
             expect(view.sampleGroupView.getSize().width.px).toBeGreaterThan(0);
-            expect(
-                Array.from(
-                    view.sampleGroupView.children[1].flowHandle.collector.getData()
-                )
-            ).toMatchObject([{ name: "Group", _title: "Group" }]);
         } finally {
             vi.unstubAllGlobals();
         }
@@ -1508,11 +1512,6 @@ describe("layout and group column", () => {
         expect(
             normalizeClipOptions(renderContext.sampleLabels[0])
         ).toBeDefined();
-        expect(renderContext.sampleLabels[0].placement).toMatchObject({
-            source: expect.any(PlacementSource),
-            topologyRevision: 1,
-        });
-        expect(renderContext.sampleLabels[0].placement.index).toBeUndefined();
     });
 
     test("does not clip sample groups to the sticky summary viewport", async () => {
@@ -1568,6 +1567,15 @@ describe("layout and group column", () => {
                         locSize: { location: 0, size: 40 },
                     },
                 ],
+            });
+            vi.spyOn(
+                view.locationManager,
+                "getGroupSampleBounds"
+            ).mockReturnValue({
+                startRank: 0,
+                endRank: 1,
+                firstLeaf: 0,
+                lastLeaf: 0,
             });
             view.sampleGroupView.updateGroups();
 
@@ -2328,6 +2336,14 @@ describe("axis layout and visibility", () => {
         expect(pickingFrame).toEqual(
             expect.arrayContaining(pickingRanges.map((call) => call[1]))
         );
+
+        const requestLayout = vi.fn();
+        context.requestLayoutReflow = requestLayout;
+        const offset = view.locationManager.getScrollOffset();
+        view.locationManager.setScrollOffset(offset + 5);
+        expect(requestLayout).not.toHaveBeenCalled();
+        view.locationManager.setScrollOffset(offset + 1000);
+        expect(requestLayout).not.toHaveBeenCalled();
     });
 
     test("skips sample rendering while sample locations are unavailable", async () => {
@@ -2633,7 +2649,8 @@ describe("axis layout and visibility", () => {
             view.sidebarCoords.width
         );
 
-        view.prepareLayoutSize(300, 120);
+        expect(view.prepareLayoutSize(300, 120)).toBe(true);
+        expect(view.prepareLayoutSize(300, 120)).toBe(false);
 
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
     });

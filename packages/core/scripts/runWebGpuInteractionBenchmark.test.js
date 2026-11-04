@@ -33,6 +33,10 @@ describe("WebGPU interaction benchmark driver", () => {
             "2",
             "--headless",
             "--no-trace",
+            "--browser-channel",
+            "chrome",
+            "--group-by",
+            "diagnosis",
         ]);
 
         expect(options.renderers).toEqual(["webgpu"]);
@@ -40,6 +44,8 @@ describe("WebGPU interaction benchmark driver", () => {
         expect(options.runs).toBe(2);
         expect(options.headed).toBe(false);
         expect(options.traces).toBe(false);
+        expect(options.browserChannel).toBe("chrome");
+        expect(options.groupBy).toBe("diagnosis");
     });
 
     test("accepts Canvas as a CPU-renderer benchmark", () => {
@@ -200,5 +206,46 @@ describe("WebGPU interaction benchmark driver", () => {
             applicable: false,
             reason: "The subject does not expose a scrollable SampleView closeup state.",
         });
+    });
+
+    test("permits only closeup layouts accounted for by active sample membership", () => {
+        const state = {
+            domains: [[0, 10]],
+            peekState: 0,
+            scrollOffset: 0,
+            sampleView: true,
+            closeupSupported: true,
+        };
+        const input = {
+            caseName: "closeup-wheel",
+            before: state,
+            after: { ...state, domains: [[1, 11]], scrollOffset: 100 },
+            observations: [{ ...state, peekState: 1 }],
+            inputActivation: { focused: true, hovered: true },
+            keyboardEvents: [
+                { type: "keydown", code: "KeyE" },
+                { type: "keyup", code: "KeyE" },
+            ],
+            profile: {
+                frames: Array.from({ length: 3 }, () => ({ kind: "render" })),
+                phaseTotals: { layout: 2 },
+                countTotals: {
+                    layoutComputations: 2,
+                    sampleArrangementMembershipChanges: 2,
+                },
+            },
+        };
+        expect(validateInteractionResult(input).passed).toBe(true);
+
+        input.profile.countTotals.layoutComputations = 3;
+        expect(validateInteractionResult(input).passed).toBe(false);
+
+        input.profile.countTotals.layoutComputations = 2;
+        input.caseName = "wasd-zoom";
+        input.keyboardEvents = [
+            { type: "keydown", code: "KeyW" },
+            { type: "keyup", code: "KeyW" },
+        ];
+        expect(validateInteractionResult(input).passed).toBe(false);
     });
 });

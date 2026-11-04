@@ -143,6 +143,9 @@ function mapViewLevelScaleDeclaration(view, channel, props) {
 function collectVisibleScaleResolutions(view, channel) {
     /** @type {Set<ScaleResolution>} */
     const resolutions = new Set();
+    const owned = view.resolutions.scale[channel];
+    if (owned) resolutions.add(owned);
+
     visitNonChromeViews(view, (descendant) => {
         if (
             descendant !== view &&

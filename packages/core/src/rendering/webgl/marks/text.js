@@ -47,7 +47,6 @@ export default class WebGLTextMark extends WebGLMark {
     getAttributes() {
         return [
             "uniqueId",
-            "facetIndex",
             "x",
             "x2",
             "y",

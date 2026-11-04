@@ -5,7 +5,7 @@
 export function groupingGapGlsl(name, categorical = false) {
     const axis =
         name === "y"
-            ? "uViewportSize.y * getSampleFacetPos().height"
+            ? "(uViewportSize.y * getSampleFacetPos().height)"
             : "uViewportSize.x";
     const shared = `
 uniform highp usampler2D uGapCuts_${name};

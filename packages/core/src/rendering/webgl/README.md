@@ -94,7 +94,7 @@ still active before drawing, so releasing a mark also makes older batches
 harmless.
 
 `WebGLHelper` owns the canvas, context-global textures, cached shaders, picking
-framebuffer, placement resources, and size observers. Finalizing the surface
+framebuffer and size observers. Finalizing the surface
 first disposes the mark resource owner and then releases the remaining helper
 resources. Cleanup is idempotent because view disposal and backend disposal may
 occur in either order.

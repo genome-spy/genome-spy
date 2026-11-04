@@ -5,9 +5,13 @@ import { describe, expect, test } from "vitest";
 import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
+    prepareViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
+import { initializeViewData } from "../genomeSpy/viewDataInit.js";
 import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
+import { initializeViewGuides } from "../view/gridView/guideViewSync.js";
+import { markViewAsChrome } from "../view/viewSelectors.js";
 import { initView } from "./scaleResolutionTestUtils.js";
 import {
     attachViewLevelScaleProps,
@@ -15,6 +19,43 @@ import {
 } from "./viewLevelScaleProps.js";
 
 describe("view-level scale property mapping", () => {
+    test("chrome owns its declared scale across empty and populated states without contributing guides", async () => {
+        const { view, context } = await createHeadlessViewHierarchy({
+            resolve: { scale: { y: "shared" } },
+            scales: { y: { type: "band", domain: ["A", "B"] } },
+            layer: [],
+        });
+        // Generated containers are marked chrome before guide initialization.
+        markViewAsChrome(view, { skipSubtree: true });
+        await initializeViewGuides(view);
+        prepareViewHierarchy(view);
+        await initializeViewData(
+            view,
+            context.dataFlow,
+            context.textMetrics,
+            () => undefined
+        );
+
+        try {
+            const resolution = view.getScaleResolution("y");
+            expect(resolution.getScale().type).toBe("band");
+            expect(resolution.getDomain()).toEqual(["A", "B"]);
+
+            const child = await view.addChildSpec({
+                data: { values: [{ category: "A" }] },
+                mark: "rect",
+                encoding: { y: { field: "category", type: "nominal" } },
+            });
+            expect(child.getScaleResolution("y")).toBe(resolution);
+            expect(child.getAxisResolution("y")).toBeUndefined();
+            await view.removeChildAt(0);
+            expect(view.getScaleResolution("y")).toBe(resolution);
+            expect(resolution.getDomain()).toEqual(["A", "B"]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("typed declarations support an empty container and preserve zoom across track mutations", async () => {
         const { view } = await createHeadlessEngine({
             resolve: { scale: { x: "shared" } },

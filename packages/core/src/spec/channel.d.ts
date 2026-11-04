@@ -61,7 +61,6 @@ export type ChannelWithoutScale =
     | "tooltip"
     | "key"
     | "order"
-    | "facetIndex"
     | "semanticScore"
     | "uniqueId"
     | "sample"; // Needed for collecting sample ids (domain) from multiple views
@@ -838,12 +837,6 @@ export interface Encoding {
      * search field matches the entered term.
      */
     search?: SearchDef;
-
-    /**
-     * For internal use
-     */
-    // TODO: proper type
-    facetIndex?: FieldDefWithoutScale;
 
     semanticScore?: FieldDefWithoutScale & Partial<TypeMixins<Type>>;
 }

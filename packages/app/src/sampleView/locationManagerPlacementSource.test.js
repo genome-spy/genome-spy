@@ -20,11 +20,6 @@ describe("LocationManager placement source", () => {
         manager.getPlacementSource();
         expect(source.getSnapshot().topology.revision).toBe(topologyRevision);
 
-        expect(manager.getSampleFacetPosition(0)).toEqual({
-            location: expect.closeTo(0.1),
-            size: expect.closeTo(0.8),
-        });
-        expect(manager.getSampleFacetPosition(1)).toBeUndefined();
         expect(source.getSnapshot().rectangles).toEqual(
             new Float32Array([0, 0.1, 1, 0.8])
         );

@@ -27,10 +27,6 @@ export default class CanvasXIndexManager {
      */
     prepare(mark) {
         this.#preparedEntry = undefined;
-        if (mark.encoders.facetIndex) {
-            return this.#fallback();
-        }
-
         const collector = mark.unitView.getCollector();
         const xScaleResolution = getMarkXIndexScaleResolution(mark);
         const xIndexDomain = xScaleResolution?.zoomExtent;

@@ -226,7 +226,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         mark.initializeRenderingRevisions(Object.keys(mark.properties));
 
         const sampleFacet = options.sampleFacetRenderingOptions;
-        if (sampleFacet && !mark.encoders.facetIndex) {
+        if (sampleFacet) {
             this.#profiler?.addCount("canvasSampleFacetOccurrences");
             if (!isSampleFacetVisible(sampleFacet)) {
                 this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
@@ -340,11 +340,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         }
                     }
                     return count;
-                },
-                (facetIndex) =>
-                    warnOnce(
-                        `Canvas2D could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
-                    )
+                }
             );
         } finally {
             context.restore();

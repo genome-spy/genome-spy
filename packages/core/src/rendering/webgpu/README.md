@@ -64,8 +64,7 @@ rectangles, legend ramps, and both foreground and missing-value metadata cells.
 Points, text, rules, and rectangles with strokes, rounded corners, shadows, or
 hatches stay on the direct single-sample path. Maximal compatible view scopes
 share one accumulation; explicit sample-facet batches collect repeated logical
-views into that same layer. Marks with a `facetIndex` encoder use their encoded
-per-instance placement index.
+views into that same layer.
 
 WebGL continues to consume effective per-mark opacity and receives no
 render-group behavior.
@@ -188,12 +187,8 @@ Sample facets and other layout producers may supply an explicit
 renderer-neutral `PlacementSource` containing complete topology and normalized
 `[x, y, width, height]` rectangles.
 
-The context supports two forms through the same renderer placement contract:
-
-- draw-level indices select facet-specific packed ranges and allow Core to omit
-  zero-area or offscreen occurrences; and
-- per-instance placement indices keep compatible sample-faceted marks in one
-  coalesced draw.
+Draw-level indices select facet-specific packed ranges and allow Core to omit
+zero-area or offscreen occurrences.
 
 Active occurrences never define packed facet topology. Complete placement
 membership determines stable dense indices and collector ranges, so filtering,

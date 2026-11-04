@@ -56,43 +56,6 @@ describe("CPU mark data", () => {
         expect(height).toHaveBeenCalledOnce();
     });
 
-    test("reuses coordinates across explicit and placement facets", () => {
-        const coords = Rectangle.create(10, 20, 200, 100);
-        const resolver = new SampleFacetCoordsResolver();
-        const facet = {
-            locSize: { location: 25, size: 10 },
-            pixelToUnit: 0.01,
-        };
-        const occurrenceCoords = resolver.resolveFacet(coords, facet);
-        const placementSource = {
-            getSnapshot: () => ({
-                rectangles: new Float32Array([
-                    0, 0.5, 1, 0.25, 0, 0.75, 1, 0.1,
-                ]),
-            }),
-        };
-
-        const placed = resolver.resolvePlacement(
-            coords,
-            /** @type {any} */ (placementSource),
-            1
-        );
-        expect(placed).toBe(occurrenceCoords);
-        expect(placed && [placed.x, placed.y, placed.width]).toEqual([
-            10, 95, 200,
-        ]);
-        expect(placed?.height).toBeCloseTo(10);
-
-        const explicit = resolver.resolveFacet(coords, facet);
-        expect(explicit).toBe(occurrenceCoords);
-        expect([
-            explicit.x,
-            explicit.y,
-            explicit.width,
-            explicit.height,
-        ]).toEqual([10, 45, 200, 10]);
-    });
-
     test("repeats non-faceted data for a sample facet", () => {
         const data = [{ value: 1 }];
         const mark = createMark(new Map([[undefined, data]]));

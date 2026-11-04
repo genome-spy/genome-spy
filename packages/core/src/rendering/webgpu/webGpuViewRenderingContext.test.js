@@ -878,69 +878,6 @@ describe("WebGpuViewRenderingContext", () => {
         expect(surface.updateMark).toHaveBeenCalledTimes(4);
     });
 
-    test("coalesces facet-indexed data into one placement draw", () => {
-        const source = new PlacementSource();
-        source.replaceTopology(
-            [["first"], ["second"]],
-            new Float32Array([0, 0, 1, 0.5, 0, 0.5, 1, 0.5])
-        );
-        const surface = {
-            getDevicePixelRatio: () => 1,
-            getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
-            updateMark: vi.fn(),
-            prepareDraw: vi.fn(),
-        };
-        const context = createContext(surface);
-        const view = createView();
-        const mark = {
-            encoders: { facetIndex: vi.fn() },
-            encoding: {},
-            getType: () => "rect",
-            properties: {},
-            unitView: {
-                getEffectiveOpacity: () => 1,
-                getCollector: () => ({}),
-                getPathString: () => "samples/copy-ratios",
-            },
-        };
-
-        context.pushView(
-            /** @type {any} */ (view),
-            Rectangle.create(20, 30, 100, 80)
-        );
-        context.renderMark(/** @type {any} */ (mark), {
-            placement: {
-                source,
-                topologyRevision: source.getSnapshot().topology.revision,
-            },
-        });
-        context.popView(/** @type {any} */ (view));
-        context.finish();
-        const frame = context.render();
-
-        const adapterCalls = /** @type {any[][]} */ (
-            mocks.createWebGpuMarkConfig.mock.calls
-        );
-        expect(adapterCalls[0][2]).toMatchObject({
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 80,
-        });
-        expect(adapterCalls[0][4]).toBeUndefined();
-        expect(surface.updateMark).toHaveBeenCalledOnce();
-        expect(surface.prepareDraw).toHaveBeenCalledOnce();
-        expect(surface.prepareDraw.mock.calls[0][1]).toMatchObject({
-            viewport: { x: 20.5, y: 30.5, width: 100, height: 80 },
-            placement: { set: { placementSetId: -1 } },
-        });
-        expect(surface.prepareDraw.mock.calls[0][2]).toBe(source);
-        expect(collectDraws(frame)).toEqual([
-            surface.prepareDraw.mock.calls[0][1],
-        ]);
-        expectRendererNeutralScopes(frame);
-    });
-
     test("preserves repeated sample rectangle ranges for one MSAA group", () => {
         const source = new PlacementSource();
         source.replaceTopology(

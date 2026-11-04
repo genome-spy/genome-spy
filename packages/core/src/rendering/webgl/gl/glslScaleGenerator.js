@@ -12,6 +12,7 @@ import {
     isDiscreteChannel,
     getPrimaryChannel,
     isFieldDef,
+    isPrimaryPositionalChannel,
 } from "../../../encoder/encoder.js";
 import { asArray, peek } from "../../../utils/arrayUtils.js";
 import { InternMap } from "internmap";
@@ -433,12 +434,19 @@ export function generateScaleGlsl(channel, scale, channelDef) {
 
     if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
-        // Maybe the scale could be annotated with a "dynamicRange" property or something
-        if (isExprRef(rangeProp) || rangeProp.some(isExprRef)) {
+        // Positional categorical ranges can move through runtime range commands.
+        const liveCategoricalRange =
+            isPrimaryPositionalChannel(channel) &&
+            (scale.type === "band" || scale.type === "point");
+        if (
+            liveCategoricalRange ||
+            isExprRef(rangeProp) ||
+            rangeProp.some(isExprRef)
+        ) {
             if (range.length < 1 || range.length > 4) {
                 // TODO: Use an array instead of (float|vec[234]). This is likely to be a rare case, however.
                 throw new Error(
-                    `A range with ExprRefs must have 1-4 elements, not ${
+                    `A dynamic range must have 1-4 elements, not ${
                         range.length
                     }! Range: ${JSON.stringify(range)}`
                 );
