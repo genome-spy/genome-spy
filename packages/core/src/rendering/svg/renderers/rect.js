@@ -32,12 +32,12 @@ export function renderRectSvg(baseMark, options) {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
             encoder: encoders.fillOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         stroke: { encoder: encoders.stroke, transform: toPaintString },
         "stroke-opacity": {
             encoder: encoders.strokeOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         "stroke-width": {
             encoder: encoders.strokeWidth,
@@ -72,21 +72,20 @@ export function renderRectSvg(baseMark, options) {
             fillOpacity,
         } = instance;
         /** @type {Record<string, string | number>} */
+        // Fade the completed foreground, including the pattern and border.
         const styles = {
             ...encodeStyles(datum),
-            ...(opacityFactor == 1
+            ...(opacityFactor * viewOpacity == 1
                 ? {}
-                : { opacity: formatSvgUnitless(opacityFactor) }),
+                : { opacity: formatSvgUnitless(opacityFactor * viewOpacity) }),
         };
         if (hatch != "none" && strokeWidth > 0) {
             styles.fill = options.getRectHatchPatternUrl({
                 type: hatch,
                 fill: toPaintString(encoders.fill(datum)),
-                fillOpacity:
-                    encodeNumber(encoders.fillOpacity, datum) * viewOpacity,
+                fillOpacity: encodeNumber(encoders.fillOpacity, datum),
                 stroke: toPaintString(encoders.stroke(datum)),
-                strokeOpacity:
-                    encodeNumber(encoders.strokeOpacity, datum) * viewOpacity,
+                strokeOpacity: encodeNumber(encoders.strokeOpacity, datum),
                 strokeWidth,
             });
             // Override a constant fill opacity inherited from the mark group;
