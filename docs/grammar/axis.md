@@ -106,8 +106,8 @@ explicit `values` still replace automatic ticks. With `tickEndpoints: "only"`,
 only the endpoints are shown; generated ticks and `extraValues` are omitted.
 
 The built-in `"igv-axis"` style provides a compact genome-browser axis with
-only endpoint ticks, inward-flushed labels close to the domain line and short
-ticks. It is opt-in and does not change the default axis style:
+only endpoint ticks, inward-flushed labels with a small gap from both the domain
+line and endpoint ticks. It is opt-in and does not change the default axis style:
 
 ```json
 { "axis": { "style": "igv-axis" } }

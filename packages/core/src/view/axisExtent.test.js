@@ -233,7 +233,15 @@ describe("Axis extent measurement", () => {
         const [lower, upper] = before.domain;
         expect(labels.map((row) => row.value)).toEqual([lower, upper]);
         expect(axis.axisProps.tickSize).toBe(4);
-        expect(axis.axisProps.labelPadding).toBe(-3);
+        // Keep the same gap to the domain line and the endpoint tick.
+        const labelMark = findLabelsView(axis).mark;
+        expect(labelMark.properties.xOffset).toBe(-3);
+        expect(
+            labels.map(
+                (row) =>
+                    Math.abs(row.labelOffset) - labelMark.properties.size / 2
+            )
+        ).toEqual([3, 3]);
 
         expect(axis.dataParent.getScaleResolution("y").getDomain()).toEqual(
             before.domain

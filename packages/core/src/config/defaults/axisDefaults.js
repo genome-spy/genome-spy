@@ -93,8 +93,9 @@ export const AXIS_STYLE_DEFAULTS = {
     "igv-axis": {
         tickEndpoints: "only",
         labelFlush: true,
+        labelFlushOffset: -3,
         tickSize: 4,
-        labelPadding: -3,
+        labelPadding: -1,
         domain: true,
         grid: false,
         title: null,
