@@ -191,7 +191,8 @@ fn diagonalPattern(uv: vec2<f32>, spacing: f32, halfStrokeWidth: f32) -> f32 {
 
 fn verticalPattern(x: f32, spacing: f32, halfStrokeWidth: f32) -> f32 {
     let divisor = spacing * halfStrokeWidth * 2.0;
-    return abs(modf(x, divisor)) / 2.0;
+    // Distance to the periodic stripe centered at halfStrokeWidth; both repeat edges agree.
+    return abs(modf(x - halfStrokeWidth + 0.5 * divisor, divisor) - 0.5 * divisor);
 }
 
 fn circle(p: vec2<f32>, r: f32) -> f32 {
