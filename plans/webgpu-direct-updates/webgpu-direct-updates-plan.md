@@ -4,6 +4,33 @@ Status: CPU-focused implementation, independent review, native measurements and
 applicable verification are complete. Retain this temporary plan with the draft
 PR and retire it before merge.
 
+## November 5 rebase and grouped-summary verification
+
+Rebase the foundation onto master `5a2b42d33` and replay SampleView #660 on top.
+Preserve incoming stroke-alignment, arrow composition and empty-text fixes.
+Retain both plans while the PRs remain drafts.
+
+The combined stack passes 5,595 unit tests, workspace types and lint. Native GPU
+validation exposed missing ignored oracle assets and an existing picking fixture
+that omitted `placement.clipToPlacement`; the six affected checks pass after
+correcting setup, completing all 141 GPU checks. WebGL composition checks pass
+at DPR 1 and 2. Release checks report the existing fixed-group patch release.
+
+Native grouped SampleView testing reproduces the previously documented summary
+placement failure. A one-to-many occurrence transition adds draw placement to
+the Core-owned config, but Surface retains its old placement-disabled handle.
+Include placement mode in the existing handle-recreation boundary, covering
+unplaced, draw and instance modes without changing the renderer API or adding
+invalidation state. Verify one/many/one transitions and stable ordinary updates,
+then rerun real grouped summaries before recording CPU timings. This localized
+Core correction belongs in the reusable foundation, rather than an App bypass.
+
+The implemented condition adds three raw production lines (Surface 932 -> 935).
+All 51 Surface/context tests, Core types, scoped lint and formatting pass. Tests
+exercise the actual Core context's one/many/one transition and stable repeated
+frames, plus instance-series updates versus compile-mode changes. Native grouped
+summary checks and CPU measurements remain pending below.
+
 ## Goal and constraints
 
 Reduce CPU work tracking changing shader inputs and preparing their GPU updates,

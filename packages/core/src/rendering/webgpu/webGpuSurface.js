@@ -318,7 +318,10 @@ export default class WebGpuSurface {
             !retained ||
             retained.definition !== definition ||
             !Object.is(retained.programKey, programKey) ||
-            retained.gapKey !== gapKey
+            retained.gapKey !== gapKey ||
+            !!retained.config.placementIndex !== !!config.placementIndex ||
+            retained.config.placementIndex?.source !==
+                config.placementIndex?.source
         ) {
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
