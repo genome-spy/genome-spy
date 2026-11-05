@@ -114,22 +114,25 @@ retain the smallest signed edge distance without floating-point atomics.
 Generation uses three ordered edge passes:
 
 1. The first pass records the nearest true finite-segment distance per channel.
-2. The second pass selects the least-aligned endpoint among equal-distance
-   candidates, retaining full floating-point precision.
+2. The second pass selects the least-aligned endpoint among equal-magnitude
+   candidates, retaining full floating-point precision. Sign breaks only a
+   remaining geometric tie.
 3. The third pass considers tangent-based endpoint pseudo-distances. The
-   selected nearest edge can continue perpendicularly beyond a sharp endpoint;
-   other candidates remain bounded by the corner bisector. Candidates must
-   retain the nearest true edge's sign.
+   selected nearest edge can continue perpendicularly beyond an endpoint;
+   other candidates remain bounded by the corner bisector and retain the
+   selected true edge's sign. The selected edge converts independently of
+   auxiliary corner masks and may change sign during that conversion.
 
-The third pass starts from a copy of the true-distance buffer. Queue ordering
-makes the generated atlas visible to later draws without CPU readback.
+The third pass starts with a cleared buffer; the selected edge contributes its
+signed base or converted distance. This avoids copying a sign chosen before
+angular comparison. Queue ordering makes the generated atlas visible to later
+draws without CPU readback.
 
 This follows the nearest-edge conversion in
 [msdfgen's perpendicular-distance selector](https://github.com/Chlumsky/msdfgen/blob/1874bcf7d9624ccc85b4bc9a85d78116f690f35b/core/edge-selectors.cpp).
-The existing positive-sign preference for opposite-sign distance ties remains.
-Temporary generation storage uses 44 bytes per pixel, previously 32. The
-scratch budget remains 64 MiB, so very large jobs can reach it earlier. The
-extra pass runs during atlas preparation, not ordinary repainting.
+Temporary generation storage uses 44 bytes per pixel, previously 32. The scratch
+budget remains 64 MiB, so very large jobs can reach it earlier. The extra pass
+runs during atlas preparation, not ordinary repainting.
 
 ### 3. Sign and correction compute passes
 

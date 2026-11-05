@@ -124,6 +124,9 @@ fn lineDistance(
         return DistanceSample(distance(point, p0), 0.0);
     }
     let t = clamp(dot(point - p0, edge) / denominator, 0.0, 1.0);
+    // Incident edges must measure a shared endpoint from identical coordinates.
+    if (t == 0.0) { return DistanceSample(distance(point, p0), t); }
+    if (t == 1.0) { return DistanceSample(distance(point, p1), t); }
     return DistanceSample(distance(point, p0 + edge * t), t);
 }
 
@@ -213,17 +216,10 @@ fn candidatePriority(value: f32) -> u32 {
     return rank | positive;
 }
 
-fn priorityDistance(priority: u32) -> f32 {
-    if (priority == 0u) {
-        return params.spread;
-    }
-    let orderedMagnitude = 0x7fffffffu - (priority >> 1u);
-    let magnitude = bitcast<f32>(orderedMagnitude);
-    return select(-magnitude, magnitude, (priority & 1u) != 0u);
-}
-
-fn alignmentPriority(alignment: f32) -> u32 {
-    return 0xffffffffu - bitcast<u32>(alignment);
+fn alignmentPriority(alignment: f32, signedDistance: f32) -> u32 {
+    // Alignment is finite in [0, 1], so its 31-bit rank leaves a final sign bit.
+    let rank = (0x7fffffffu - bitcast<u32>(alignment)) << 1u;
+    return rank | select(0u, 1u, signedDistance >= 0.0);
 }
 
 @fragment
@@ -248,6 +244,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             direction = in.p2 - in.p0;
         }
     }
+    if (sample.t == 0.0) { closestPoint = in.p0; }
+    if (sample.t == 1.0) { closestPoint = in.p2; }
     let closestDelta = point - closestPoint;
     let edgeCross =
         closestDelta.x * direction.y - closestDelta.y * direction.x;
@@ -279,14 +277,14 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let angleOffset = params.atlasSize.x * params.atlasSize.y * 3u;
     // Based on msdfgen's nearest-edge perpendicular-distance selector:
     // https://github.com/Chlumsky/msdfgen/blob/1874bcf7d9624ccc85b4bc9a85d78116f690f35b/core/edge-selectors.cpp
-    // Resolve alignment separately so distinct endpoint directions cannot alias.
+    // Compare magnitude, then alignment; sign only breaks a remaining geometric tie.
     let truePriority = candidatePriority(signedDistance);
-    let anglePriority = alignmentPriority(alignment);
+    let anglePriority = alignmentPriority(alignment, signedDistance);
     if (params.passMode == 1u) {
         for (var channel = 0u; channel < 3u; channel++) {
             let index = pixelIndex * 3u + channel;
             if ((in.colorMask & (1u << channel)) != 0u &&
-                truePriority == atomicLoad(&trueScratch[index])) {
+                (truePriority >> 1u) == (atomicLoad(&trueScratch[index]) >> 1u)) {
                 atomicMax(&trueScratch[angleOffset + index], anglePriority);
             }
         }
@@ -342,29 +340,33 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     }
     let startMask = in.pseudoMasks & 7u;
     let endMask = (in.pseudoMasks >> 3u) & 7u;
-    if (min(abs(nearestStartDistance), abs(nearestEndDistance)) >= sample.magnitude) {
-        return vec4<f32>(0.0);
-    }
     for (var channel = 0u; channel < 3u; channel++) {
         let mask = 1u << channel;
         if ((in.colorMask & mask) == 0u) { continue; }
         let nearestPriority = atomicLoad(&trueScratch[pixelIndex * 3u + channel]);
-        let nearest = truePriority == nearestPriority &&
-            anglePriority == atomicLoad(&trueScratch[angleOffset + pixelIndex * 3u + channel]);
-        let candidate = channelDistance(
+        let selectedAngle = atomicLoad(&trueScratch[angleOffset + pixelIndex * 3u + channel]);
+        let nearest = (truePriority >> 1u) == (nearestPriority >> 1u) &&
+            anglePriority == selectedAngle;
+        var candidate = channelDistance(
             signedDistance,
             mask,
             startMask,
             endMask,
-            select(startDistance, nearestStartDistance, nearest),
-            select(endDistance, nearestEndDistance, nearest)
+            startDistance,
+            endDistance
         );
-        if (
+        if (nearest) {
+            // The nearest edge converts independently of sharp-corner auxiliary masks.
+            candidate = channelDistance(signedDistance, mask, mask, mask,
+                nearestStartDistance, nearestEndDistance);
+        }
+        if (nearest || (
             abs(candidate) < sample.magnitude &&
             abs(candidate) <= params.spread &&
-            (candidate >= 0.0) == (priorityDistance(nearestPriority) >= 0.0)
-        ) {
-            atomicMax(&scratch[pixelIndex * 3u + channel], candidatePriority(candidate));
+            (candidate >= 0.0) == ((selectedAngle & 1u) != 0u)
+        )) {
+            atomicMax(&scratch[pixelIndex * 3u + channel], candidatePriority(
+                clamp(candidate, -params.spread, params.spread)));
         }
     }
     return vec4<f32>(0.0);
@@ -1227,13 +1229,7 @@ export class MsdfAtlasGenerator {
         encoder.clearBuffer(trueScratchBuffer, 0, scratchSize * 2);
         encodeEdgePass("true-distance", trueEdgeBindGroup, true);
         encodeEdgePass("alignment", alignmentEdgeBindGroup, false);
-        encoder.copyBufferToBuffer(
-            trueScratchBuffer,
-            0,
-            scratchBuffer,
-            0,
-            scratchSize
-        );
+        // The selected geometric winner emits its signed base in the final edge pass.
         encodeEdgePass("pseudo-distance", pseudoEdgeBindGroup, false);
         encodeComputePass("raw distance", pipelines.raw, rawBindGroup);
         encodeComputePass(
