@@ -13,6 +13,9 @@ import "./rendering/registerSvg.js";
 import "./rendering/registerWebGL.js";
 import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";
+import { createDatumSearch } from "./search.js";
+import { intervalSelection } from "./selection/index.js";
+import { startDocumentDrag } from "./utils/documentDrag.js";
 
 const embed = createEmbed(/** @type {any} */ (GenomeSpy));
 
@@ -771,6 +774,370 @@ test("falls back automatically, picks data, updates live state, and exports", as
     genomeSpy.destroy();
     warn.mockRestore();
 });
+
+test("native visibility preserves nested choices, live data and task selections", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const api = await embed(
+        container,
+        {
+            width: 200,
+            params: [{ name: "region", value: null }],
+            vconcat: [
+                {
+                    name: "explanations",
+                    vconcat: [
+                        {
+                            ...visibilityTrack("reference"),
+                            params: [
+                                {
+                                    name: "region",
+                                    select: {
+                                        type: "interval",
+                                        encodings: ["x"],
+                                    },
+                                    push: "outer",
+                                },
+                            ],
+                        },
+                        visibilityTrack("edited"),
+                    ],
+                },
+            ],
+        },
+        { renderer: "canvas" }
+    );
+    try {
+        const reference = api.views.get({ scope: [], view: "reference" });
+        const selection = reference.params.getSelection("region");
+        reference.params
+            .get("region")
+            .setValue(intervalSelection({ x: [0, 1] }));
+        const before = selection.getValue();
+        const rows = readVisibilityRows(api, reference);
+        const root = /** @type {import("./view/view.js").default} */ (
+            api.debug.getViewRoot()
+        );
+        const cancel = startDocumentDrag({
+            hoverContext: root.context,
+            onMove: () => {},
+        });
+        await expect(
+            api.views.visibility.set(reference, false)
+        ).rejects.toThrow("active drag");
+        await expect(api.views.visibility.reset()).rejects.toThrow(
+            "active drag"
+        );
+        cancel();
+        expect(selection.getValue()).toEqual(before);
+
+        await api.views.visibility.set({ scope: [], view: "edited" }, false);
+        await api.views.visibility.set(
+            { scope: [], view: "explanations" },
+            false
+        );
+        const hidden = api.views.visibility.getSnapshot();
+        expect(hidden[0].visible).toBe(false);
+        expect(
+            hidden[0].children.map((node) => [
+                node.title,
+                node.visible,
+                node.effectiveVisible,
+            ])
+        ).toEqual([
+            ["reference", true, false],
+            ["edited", false, false],
+        ]);
+        expect(reference.isAlive()).toBe(true);
+        expect(selection.getValue()).toEqual(before);
+        expect(readVisibilityRows(api, reference)).toEqual(rows);
+        expect(api.views.getLayoutBounds(reference)).toBeUndefined();
+
+        await api.views.visibility.set(
+            { scope: [], view: "explanations" },
+            true
+        );
+        expect(
+            api.views.visibility
+                .getSnapshot()[0]
+                .children.map((node) => node.effectiveVisible)
+        ).toEqual([true, false]);
+        // Detached inspection cannot silently change the mounted hierarchy.
+        hidden[0].children[0].visible = false;
+        expect(api.views.visibility.getSnapshot()[0].children[0].visible).toBe(
+            true
+        );
+        await api.views.visibility.reset();
+        expect(
+            api.views.visibility
+                .getSnapshot()[0]
+                .children.every((node) => node.effectiveVisible)
+        ).toBe(true);
+        expect(selection.getValue()).toEqual(before);
+        expect(api.views.get({ scope: [], view: "reference" })).toBe(reference);
+    } finally {
+        api.finalize();
+        container.remove();
+    }
+    expect(() => api.views.visibility.getSnapshot()).toThrow("finalized");
+    await expect(
+        api.views.visibility.set({ scope: [], view: "reference" }, false)
+    ).rejects.toThrow("finalized");
+});
+
+test("native visibility keeps radio choices independent across import instances", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const api = await embed(
+        container,
+        {
+            width: 200,
+            name: "comparison",
+            templates: {
+                tracks: {
+                    vconcat: [
+                        {
+                            ...visibilityTrack("pisa"),
+                            configurableVisibility: { group: "method" },
+                        },
+                        {
+                            ...visibilityTrack("ism"),
+                            configurableVisibility: { group: "method" },
+                        },
+                    ],
+                },
+            },
+            vconcat: [
+                { name: "first", import: { template: "tracks" } },
+                { name: "second", import: { template: "tracks" } },
+            ],
+        },
+        { renderer: "canvas" }
+    );
+    try {
+        await api.views.visibility.set({ scope: ["first"], view: "ism" }, true);
+        const nodes = api.views.visibility.getSnapshot()[0].children;
+        expect(
+            nodes.map((node) => node.children.map((child) => child.visible))
+        ).toEqual([
+            [false, true],
+            [true, false],
+        ]);
+        expect(nodes[0].children[0].group).not.toBe(nodes[1].children[0].group);
+        expect(nodes[0].children[0].group).toBe(nodes[0].children[1].group);
+        await api.views.visibility.reset();
+        expect(
+            api.views.visibility
+                .getSnapshot()[0]
+                .children.map((node) =>
+                    node.children.map((child) => child.visible)
+                )
+        ).toEqual([
+            [true, false],
+            [true, false],
+        ]);
+        // Newly inserted radio groups must obey the same defaults immediately.
+        const inserted = await api.views.insert(
+            { scope: [], view: "comparison" },
+            {
+                name: "new-results",
+                vconcat: [
+                    {
+                        ...visibilityTrack("pisa"),
+                        configurableVisibility: { group: "method" },
+                    },
+                    {
+                        ...visibilityTrack("ism"),
+                        configurableVisibility: { group: "method" },
+                    },
+                ],
+            },
+            { scope: "third" }
+        );
+        expect(
+            api.views.visibility
+                .getSnapshot()[0]
+                .children[2].children.map((node) => node.visible)
+        ).toEqual([true, false]);
+        await api.views.remove(
+            api.views.get({ scope: ["third"], view: "pisa" })
+        );
+        const remaining = api.views.get({ scope: ["third"], view: "ism" });
+        expect(readVisibilityRows(api, remaining)).toEqual([
+            { x: 0 },
+            { x: 1 },
+        ]);
+        expect(inserted.isAlive()).toBe(true);
+        await api.views.visibility.set(
+            { scope: [], view: "comparison" },
+            false
+        );
+        flushAnimationFrames(2);
+        expect(api.views.visibility.getSnapshot()[0].visible).toBe(false);
+        expect(inserted.isAlive()).toBe(true);
+        await api.views.visibility.reset();
+    } finally {
+        api.finalize();
+        container.remove();
+    }
+});
+
+test("native visibility loads a hidden source once and rejects invalid or stale writes", async () => {
+    const fetch = vi.fn(
+        async () =>
+            new Response("x\n0\n1\n", {
+                headers: { "Content-Type": "text/csv" },
+            })
+    );
+    vi.stubGlobal("fetch", fetch);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const api = await embed(
+        container,
+        {
+            width: 200,
+            vconcat: [
+                visibilityTrack("ready"),
+                {
+                    ...visibilityTrack("later"),
+                    visible: false,
+                    data: { url: "later.csv" },
+                },
+                {
+                    name: "layers",
+                    height: 30,
+                    layer: [
+                        visibilityTrack("fixed"),
+                        {
+                            ...visibilityTrack("toggle"),
+                            configurableVisibility: true,
+                        },
+                    ],
+                },
+            ],
+        },
+        { renderer: "canvas" }
+    );
+    try {
+        expect(fetch).not.toHaveBeenCalled();
+        const later = api.views.get({ scope: [], view: "later" });
+        await api.views.visibility.set(later, true);
+        expect(fetch).toHaveBeenCalledTimes(1);
+        await api.views.visibility.set(later, false);
+        await api.views.visibility.set(later, true);
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(readVisibilityRows(api, later)).toEqual([{ x: 0 }, { x: 1 }]);
+        await api.views.transaction(async (views) => {
+            await views.visibility.set(later, false);
+            await views.move(later, { index: 1 });
+            await views.visibility.set(later, true);
+        });
+        await Promise.all([
+            api.views.visibility.set(later, false),
+            api.views.visibility.set(later, true),
+        ]);
+        expect(later.isAlive()).toBe(true);
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(
+            api.views.visibility
+                .getSnapshot()[2]
+                .children.map((node) => [node.title, node.configurable])
+        ).toEqual([
+            ["fixed", false],
+            ["toggle", true],
+        ]);
+        await api.views.visibility.set({ scope: [], view: "fixed" }, false);
+        expect(api.views.visibility.getSnapshot()[2].children[0].visible).toBe(
+            false
+        );
+        // Invalid requests must not disturb existing visibility or trigger I/O.
+        const before = api.views.visibility.getSnapshot();
+        await expect(
+            api.views.visibility.set(
+                later,
+                /** @type {boolean} */ (/** @type {unknown} */ ("false"))
+            )
+        ).rejects.toThrow("boolean");
+        expect(api.views.visibility.getSnapshot()).toEqual(before);
+        await api.views.remove(later);
+        await expect(api.views.visibility.set(later, true)).rejects.toThrow(
+            "Stale"
+        );
+    } finally {
+        api.finalize();
+        container.remove();
+    }
+});
+
+test("finalization during a visibility load rejects without scheduling layout", async () => {
+    const gate = Promise.withResolvers();
+    const fetch = vi.fn(async () => {
+        await gate.promise;
+        return new Response("x\n0\n1\n", {
+            headers: { "Content-Type": "text/csv" },
+        });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const api = await embed(
+        container,
+        {
+            vconcat: [
+                {
+                    ...visibilityTrack("later"),
+                    visible: false,
+                    data: { url: "https://example.org/later.csv" },
+                },
+            ],
+        },
+        { renderer: "canvas" }
+    );
+    const root = /** @type {import("./view/view.js").default} */ (
+        api.debug.getViewRoot()
+    );
+    const layout = vi.spyOn(root.context, "requestLayoutReflow");
+    const show = expect(
+        api.views.visibility.set({ scope: [], view: "later" }, true)
+    ).rejects.toThrow();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    api.finalize();
+    layout.mockClear();
+    gate.resolve(undefined);
+    await show;
+    expect(layout).not.toHaveBeenCalled();
+    container.remove();
+});
+
+/** Return a small named track whose data and scale survive visibility changes.
+ * @param {string} name
+ * @returns {import("./spec/view.js").UnitSpec}
+ */
+function visibilityTrack(name) {
+    return {
+        name,
+        height: 30,
+        data: { values: [{ x: 0 }, { x: 1 }] },
+        mark: "point",
+        encoding: {
+            search: { field: "x" },
+            x: { field: "x", type: "quantitative", axis: null },
+        },
+    };
+}
+
+/**
+ * Read both known fixture rows through the release's bounded public lookup.
+ * @param {import("./types/embedApi.js").EmbedResult} api
+ * @param {import("./types/embedApi.js").ViewHandle} view
+ */
+function readVisibilityRows(api, view) {
+    return ["0", "1"].flatMap((query) =>
+        createDatumSearch(api.views)
+            .findDatums(query, { view, limit: 10 })
+            .matches.map((match) => match.datum)
+    );
+}
 
 /** @param {number} count */
 function flushAnimationFrames(count) {

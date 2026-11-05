@@ -93,6 +93,36 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Hiding and showing views
+
+`api.views.visibility` changes visibility without removing views. Hidden views
+keep their data, parameters and selections, but occupy no layout space and
+cannot be picked. Targets must have a unique explicit name within their scope.
+
+```js
+const track = { scope: [], view: "signal" };
+await api.views.visibility.set(track, false);
+await api.views.visibility.set(track, true);
+const hierarchy = api.views.visibility.getSnapshot();
+await api.views.visibility.reset();
+```
+
+The detached snapshot includes configured, effective and authored default
+visibility. A child can remain configured visible while a hidden parent makes
+it effectively hidden. `configurableVisibility` controls menu exposure, not API
+permission; named layers can still be changed programmatically. Scoped radio
+groups remain mutually exclusive.
+
+Changes share the mutation queue and work inside `views.transaction()`. They
+resolve after visible data initialization and schedule layout through the normal
+render cycle. Showing a previously hidden source initializes it once. A loading
+failure does not roll back the requested choice; inspect data-loading errors.
+Visibility writes are rejected during an active native document drag; finish the
+gesture before changing visibility. This leaves native brush behavior unchanged.
+Bare embeds retain overrides for a selector removed and later reinserted until
+reset; App retains its existing bookmark and removal behavior. Finalized embeds
+reject visibility reads and writes. Controls and persistence remain host-owned.
+
 ## Reading transformed records
 
 Each handle exposes `data` for reading and analyzing its current transformed

@@ -24,6 +24,7 @@ import { readBinaryData } from "../data/formats/readBinary.js";
 import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
+import { createViewVisibilityApi } from "./viewVisibilityApi.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -226,7 +227,7 @@ function updateNamedDataBinding(view, binding, data) {
 /**
  * Creates the public view hierarchy API for a GenomeSpy instance.
  *
- * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
+ * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi> & Partial<import("./viewVisibilityApi.js").VisibilityHost>} genomeSpy
  * @param {() => boolean} [isActive]
  * @param {RunViewMutation} [runMutation] Internal host lifecycle boundary; receives the subtree root for removals and runs inside the mutation queue.
  * @returns {import("../types/embedApi.js").ViewApi}
@@ -801,6 +802,7 @@ export function createViewMutationApi(
                     registerViewScope(childView, options.scope);
                 }
 
+                await genomeSpy.refreshViewVisibility?.();
                 return getHandle(childView);
             });
         });
@@ -994,10 +996,10 @@ export function createViewMutationApi(
 
             getMutableContainerChildCount(parentView);
             targetView.assertCanDisposeSubtree();
-            await runMutation(
-                () => removeChildFromMutableContainer(parentView, index),
-                targetView
-            );
+            await runMutation(async () => {
+                await removeChildFromMutableContainer(parentView, index);
+                await genomeSpy.refreshViewVisibility?.();
+            }, targetView);
         });
     }
 
@@ -1065,6 +1067,7 @@ export function createViewMutationApi(
                     fromIndex,
                     index
                 );
+                await genomeSpy.refreshViewVisibility?.();
                 return getHandle(targetView);
             });
         });
@@ -1117,6 +1120,16 @@ export function createViewMutationApi(
 
     /** @type {import("../types/embedApi.js").ViewApi} */
     const api = {
+        // Real embeds provide the native visibility host; headless mutation-only
+        // callers need no host unless they use this additional capability.
+        visibility: createViewVisibilityApi(
+            /** @type {import("./viewVisibilityApi.js").VisibilityHost} */ (
+                /** @type {unknown} */ (genomeSpy)
+            ),
+            getView,
+            enqueue,
+            isActive
+        ),
         root: () => getHandle(getRootView()),
 
         resolve,
