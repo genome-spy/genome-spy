@@ -307,6 +307,12 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Point shapes
+
+An explicit `"circle"` uses the same analytic geometry, stroke alignment,
+gradient and picking behavior through `shape: "circle"` or a `shapes` table.
+Raw SVG paths, including SVG circles, retain the finite-distance atlas behavior.
+
 ### Arrow opacity
 
 Arrow `opacity` multiplies each occurrence's completed fill/stroke paint once,
