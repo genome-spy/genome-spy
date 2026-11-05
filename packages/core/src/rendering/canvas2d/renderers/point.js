@@ -1,3 +1,5 @@
+import { cssColorToRgba } from "../../color.js";
+import clamp from "../../../utils/clamp.js";
 import {
     resolvePointProperties,
     visitPointInstances,
@@ -46,6 +48,12 @@ export function renderPointCanvas(baseMark, options) {
     /** @type {string | undefined} */
     let strokeStyle;
 
+    let combinedFill = "";
+    let combinedStroke = "";
+    let combinedPaint = "";
+    let combinedFillOpacity = -1;
+    let combinedStrokeOpacity = -1;
+
     return visitPointInstances(mark, properties, options, (instance) => {
         const datum = instance.datum;
         const lineShape = instance.lineShape;
@@ -66,6 +74,49 @@ export function renderPointCanvas(baseMark, options) {
         }
 
         const hasFill = !lineShape && fillOpacity * fillAlpha(fill) > 0;
+        // The full inward band covers the circle. Resolve paints before its single AA edge.
+        if (
+            properties.inwardStroke &&
+            instance.shape === "circle" &&
+            instance.radius > 0 &&
+            instance.strokeWidth >= instance.radius &&
+            effectiveStrokeOpacity > 0
+        ) {
+            if (
+                combinedFill !== fill ||
+                combinedStroke !== stroke ||
+                combinedFillOpacity !== fillOpacity ||
+                combinedStrokeOpacity !== strokeOpacity
+            ) {
+                const f = cssColorToRgba(hasFill ? fill : "transparent");
+                const s = cssColorToRgba(stroke);
+                const fa = hasFill ? f[3] * fillOpacity : 0;
+                const sa = s[3] * strokeOpacity;
+                const alpha = sa + fa * (1 - sa);
+                const weight = fa * (1 - sa);
+                const scale = 255 / alpha;
+                const red =
+                    (clamp(s[0], 0, 1) * sa + clamp(f[0], 0, 1) * weight) *
+                    scale;
+                const green =
+                    (clamp(s[1], 0, 1) * sa + clamp(f[1], 0, 1) * weight) *
+                    scale;
+                const blue =
+                    (clamp(s[2], 0, 1) * sa + clamp(f[2], 0, 1) * weight) *
+                    scale;
+                combinedPaint = `rgba(${red},${green},${blue},${alpha})`;
+                combinedFill = fill;
+                combinedStroke = stroke;
+                combinedFillOpacity = fillOpacity;
+                combinedStrokeOpacity = strokeOpacity;
+            }
+            if (fillStyle !== combinedPaint)
+                context.fillStyle = fillStyle = combinedPaint;
+            setAlpha(context, 1);
+            tracePointCanvas(context, instance, instance.radius, options.warn);
+            context.fill();
+            return;
+        }
         const fillRadius =
             effectiveStrokeOpacity < 1
                 ? instance.radius
