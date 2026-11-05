@@ -507,3 +507,128 @@ inputs. The final runtime delta is 57 added and 33 deleted raw lines (**+24**,
 including comments and blank lines), plus **+16** declaration lines, against
 `7ed682f83`. The existing uniform writer is unchanged; added type/container
 handling runs during mark construction and shader assembly.
+
+## Next opportunities: remove obsolete adapter work
+
+Baseline: `d0dff3b5b`. Read-only investigation identified the following ranked
+opportunities. The user authorized implementation of **1 and 2**; record the
+others as deferred rather than expanding this change. Most of the 2,645-line
+adapter builds configurations or extracts columns; file splitting alone would
+not reduce retained-update CPU work.
+
+1. **Remove obsolete per-channel view opacity (authorized).** The only
+   production caller in `webGpuViewRenderingContext.js` passes `1` to
+   `createWebGpuMarkConfig`. View scopes already own local opacity, and
+   effective opacity controls culling. Delete the adapter argument, six-builder
+   plumbing, opacity-specific channel/branch helpers and nonpositional range
+   multipliers. Use the existing numeric channel path and simplify rect shadow
+   opacity to its mark property. This also removes literal-opacity dynamic slots
+   and synthetic scales for unscaled opacity series. Preserve nested group
+   opacity, mark opacity, conditional/scaled inputs, shadows, picking and
+   export.
+2. **Remove duplicate palette normalization (authorized).** Threshold/quantize
+   scale getters currently convert CSS palettes to RGBA before Surface compares
+   their contents. Forward the raw range and delete `normalizeColorRange`.
+   Renderer output components come from channel metadata. Threshold already
+   normalizes CSS colors on actual writes; independent implementation review
+   found that quantize's continuous-stop resource route instead packs strings
+   directly. Route quantize color stops through the renderer's existing color
+   normalizer on actual writes, preserving scalar fast paths and one-entry
+   ranges. Keep palette updates live. Invalid-color errors will come from the
+   renderer's native validation rather than Core's per-read conversion; do not
+   add another polling validator merely to preserve error wording.
+3. **Classify remaining literal properties (deferred).** Point `inwardStroke`,
+   rule cap/alignment and property-backed glyph offsets remain live when
+   literal. Existing static/live property helpers could avoid these bindings,
+   mainly during style updates; scale-only updates already skip them. No new
+   cache or subscription registry is justified.
+4. **Remove small renderer allocations (deferred).** Reuse scale-owned scratch
+   for the four-number gap-geometry write and pass packed interval-selection
+   typed output directly instead of copying through `Array.from`. Preserve
+   complete selection validation before writes, public input detachment and
+   scale/config ownership boundaries.
+5. **Profile draw preparation for larger gains (deferred).** Previous allocation
+   samples attribute roughly 20 MB of 66 MB to normalization and related
+   helpers. Draw clipping creates three temporary rectangles per encoded draw;
+   scalar clipping/physical conversion is a bounded candidate before whole-frame
+   reuse. Preserve target origins, fractional-DPR rounding and retained
+   picking-frame lifetimes. Disabled-profiler callbacks are another diagnostic
+   lead, not a proven source of all allocations attributed to their caller.
+
+Band/ordinal `scale.range().map(...)` allocations remain a separate ownership
+question. Surface retains previous range values for semantic equality, so
+mutating one shared scratch range can hide updates. Mapping configuration range
+is not always the effective range for generated schemes or range steps. Do not
+replace those getters with mutable scratch in this change. Earlier source
+routing/caches and payload scans remain rejected.
+
+### Architecture and implementation gate
+
+Core owns grammar translation and mark opacity. Renderer semantic groups own
+view opacity composition; renderer discrete scale resources own CSS palette
+normalization. Reuse those existing owners, numeric channel construction and
+public renderer APIs. The removed adapter argument is private Core plumbing;
+renderer declarations, handles and ownership contracts are unchanged. No new
+subscriptions, caches or retained state are needed. The existing real group
+opacity test and neighboring rect shadow/conditional paint paths provide
+composition coverage beyond a single point demo.
+
+- [x] Delete the obsolete opacity path and update its sole production caller.
+- [x] Forward threshold/quantize ranges and delete duplicate normalization;
+      normalize quantize CSS stops at the renderer-owned write boundary.
+- [x] Reconcile private adapter tests with actual group and mark contracts;
+      verify live/scaled opacity, raw/transparent palettes and retained updates.
+- [x] Verify native rendering/picking and representative retained interactions,
+      types, focused tests, lint, release impact and source size.
+- [x] Independently review the integrated implementation, address worthwhile
+      findings and commit the two authorized deletions together.
+
+Commit: `perf(webgpu): remove obsolete opacity and palette work`
+
+This remains unpublished WebGPU/internal Core work with the existing empty
+changeset and no package version bump. Keep this plan on the draft branch and
+retire it before merge. Opportunities 3–5 require a later implementation
+decision.
+
+### Completed deletion verification
+
+The adapter shrinks from 2,645 to 2,469 raw lines. The production caller loses
+one line; renderer-owned quantize normalization adds 12. Combined runtime size
+falls by **165 raw lines** (43 added, 208 deleted, including comments/blanks).
+No public renderer declaration changes. The complete boundary tests now include
+real headless conditional/scaled/unscaled mark-opacity updates and actual
+threshold/quantize uniform storage for initial and retained transparent CSS
+palettes. Obsolete tests of arbitrary private adapter view-opacity arguments
+were removed. Independent final review found no remaining correctness or KISS
+blocker after the quantize route correction.
+
+Verification: 488 focused renderer/Core WebGPU tests across 53 files, both
+package TypeScript checks, scoped lint/format and 14 native GPU checks pass.
+Release policy/status checks retain the existing empty changeset and no package
+version bump.
+
+Existing temporary native Chrome/Metal drivers compare `d0dff3b5b` with the
+candidate, substituting all three changed runtime modules consistently. Each
+sample measures 600 style-plus-band-viewport updates on 32 marks. Application
+profiling, CPU sampling and tracing are disabled for acceptance. GC runs only
+outside the measured windows. All exported PNG pairs are byte-identical, with no
+browser/loading errors. The palette variant also uses nested view opacity,
+expression-backed mark opacity, shadows and live quantize CSS palette changes;
+its datum-backed picking results match before/after.
+
+| Run                        | Warmup updates | Alternating pairs | Baseline thread CPU | Candidate thread CPU | Change |
+| -------------------------- | -------------: | ----------------: | ------------------: | -------------------: | -----: |
+| Initial style              |            360 |                 3 |         1,103.18 ms |          1,149.77 ms | +4.22% |
+| Same-code style control    |            600 |                 3 |         1,235.13 ms |          1,236.59 ms | +0.12% |
+| Longer style repeat        |            600 |                 6 |         1,311.86 ms |          1,223.75 ms | −6.72% |
+| Palette and nested opacity |            600 |                 3 |         1,892.76 ms |          1,861.72 ms | −1.64% |
+
+The initial slower observation triggered a separate diagnostic, same-code
+control and longer repeat without source changes. All six repeat pairs favor the
+candidate; palette pairs have mixed signs. Timing varies materially across runs,
+so these measurements do not establish a general CPU speedup or a reproducible
+regression. The accepted implementation deletes known repeated work without
+introducing a tracking layer. Keep the unfavorable initial run and instrumented
+diagnostic with the final results under ignored
+`output/webgpu-direct-uniforms/adapter-deletions-*`; temporary drivers remain in
+`/private/tmp`. No permanent benchmark framework was added.

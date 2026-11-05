@@ -530,7 +530,7 @@ describe("WebGpuViewRenderingContext", () => {
             markCoords.width,
             markCoords.height,
         ]).toEqual([20.5, 30.5, 100, 80]);
-        expect(adapterCalls[0][3]).toBe(1);
+        expect(adapterCalls[0][3]).toBe(mocks.packed.data);
 
         expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
         expect(surface.prepareDraw).toHaveBeenCalledWith(
@@ -807,7 +807,7 @@ describe("WebGpuViewRenderingContext", () => {
             width: 300,
             height: 200,
         });
-        expect(adapterCalls[0][5]).toEqual({
+        expect(adapterCalls[0][4]).toEqual({
             source: "draw",
         });
         const placementCalls = /** @type {any[][]} */ (
@@ -908,7 +908,7 @@ describe("WebGpuViewRenderingContext", () => {
             width: 100,
             height: 80,
         });
-        expect(adapterCalls[0][5]).toBeUndefined();
+        expect(adapterCalls[0][4]).toBeUndefined();
         expect(surface.updateMark).toHaveBeenCalledOnce();
         expect(surface.prepareDraw).toHaveBeenCalledOnce();
         expect(surface.prepareDraw.mock.calls[0][1]).toMatchObject({
@@ -996,7 +996,7 @@ describe("WebGpuViewRenderingContext", () => {
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
         );
-        expect(adapterCalls[0][5]).toEqual({ source: "draw" });
+        expect(adapterCalls[0][4]).toEqual({ source: "draw" });
         expect(surface.prepareDraw).toHaveBeenCalledTimes(2);
         expect(
             surface.prepareDraw.mock.calls.map((call) => ({
@@ -1286,7 +1286,7 @@ describe("WebGpuViewRenderingContext", () => {
         const adapterCalls = /** @type {any[][]} */ (
             mocks.createWebGpuMarkConfig.mock.calls
         );
-        expect(adapterCalls[0][3]).toBe(1);
+        expect(adapterCalls[0][3]).toBe(mocks.packed.data);
     });
 
     test("submits only visible ranges from a 2,000-placement source", () => {

@@ -5,6 +5,7 @@ import {
     isColorRange,
     isRangeFunction,
     normalizeDiscreteRange,
+    normalizeDiscreteRangeValue,
     normalizeOrdinalRange,
     normalizeRangePositions,
 } from "../../scales/scaleStops.js";
@@ -517,7 +518,18 @@ export class ScaleResourceManager {
                             `Scale range for "${name}" expects ${expectedRangeLength} entries, got ${value.length}.`
                         );
                     }
-                    writeRange(value);
+                    writeRange(
+                        outputComponents === 4 && scale.type === "quantize"
+                            ? value.map((entry) =>
+                                  normalizeDiscreteRangeValue(
+                                      name,
+                                      entry,
+                                      outputComponents,
+                                      "Quantize"
+                                  )
+                              )
+                            : value
+                    );
                 };
             } else {
                 if (!stopInfo) {
