@@ -105,11 +105,12 @@ changing its domain. Endpoint labels share the priority of `extraValues`;
 explicit `values` still replace automatic ticks. With `tickEndpoints: "only"`,
 only the endpoints are shown; generated ticks and `extraValues` are omitted.
 
-The built-in `"track-axis"` style provides a compact genome-browser axis with
-only endpoint ticks, inward-flushed labels and a domain line:
+The built-in `"igv-axis"` style provides a compact genome-browser axis with
+only endpoint ticks, inward-flushed labels close to the domain line and short
+ticks. It is opt-in and does not change the default axis style:
 
 ```json
-{ "axis": { "style": "track-axis" } }
+{ "axis": { "style": "igv-axis" } }
 ```
 
 Styles are resolved from `config.style`, like view title styles, and explicit
