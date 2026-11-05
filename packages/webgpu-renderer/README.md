@@ -724,10 +724,6 @@ const labels = renderer.createMark(textMark, {
 });
 ```
 
-`fillOpacity` (default `1`) scales text fill alpha independently of common
-`opacity`, including alpha in the fill color. Stroke and shadow retain their
-separate opacity controls.
-
 Text series and draw ranges use logical strings. The retained text program
 builds private glyph geometry and maps glyphs back to logical series. Programs
 using the same exact font object share one renderer-lifetime atlas, sampler,
