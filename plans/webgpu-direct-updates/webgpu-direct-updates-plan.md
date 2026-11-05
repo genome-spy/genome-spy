@@ -29,7 +29,33 @@ The implemented condition adds three raw production lines (Surface 932 -> 935).
 All 51 Surface/context tests, Core types, scoped lint and formatting pass. Tests
 exercise the actual Core context's one/many/one transition and stable repeated
 frames, plus instance-series updates versus compile-mode changes. Native grouped
-summary checks and CPU measurements remain pending below.
+summary warmups and all 12 profiler-disabled native input traces pass on the
+stacked SampleView branch, with matching sample identities and no browser,
+loading or rendering errors.
+
+The new SampleView comparison is deliberately separate from the 40-heatmap
+measurements below: current WebGPU versus WebGL means are 863.170 versus 881.411
+ms for 384 samples/eight groups, and 970.222 versus 716.028 ms for 1,536
+samples/24 groups. Both include grouped summaries and metadata. The moderate
+difference is small and has mixed pairs; the stress scene uses 35.50% more
+WebGPU main-thread CPU in all three pairs. These are headless native Metal
+backend comparisons, not whole-PR before/after speedups. PR #660 records all
+samples, input details, source identity and limits. The earlier heatmap win does
+not establish that WebGPU is cheaper for every workload.
+
+The exact real MCCA bookmark passes initial loading on both backends and the
+complete WebGL interaction sequence. WebGPU still reports invalid scope bounds
+during interactions, a separate failure documented on the old baseline. Record
+the failing scope label and numeric dimensions before deciding whether an empty
+intersection needs zero-size translation; do not silently mask NaN or add an
+unconfirmed clamp. The synthetic timing evidence excludes this failing scene.
+
+A separate 1,000-microsecond stress profile prioritizes repeated live Rectangle
+and clip getter evaluation in occurrence refresh, followed by draw normalization
+and command submission. These are sampled wall-time observations, not measured
+CPU savings. Investigate one-time scalar materialization at the existing draw
+boundary before introducing any new revision/cache protocol. No additional
+performance implementation is included in this rebase/testing task.
 
 ## Goal and constraints
 
