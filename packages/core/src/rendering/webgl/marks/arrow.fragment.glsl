@@ -204,9 +204,8 @@ void main(void) {
     }
 
     if (uPickingEnabled) {
-        if (d < vHalfStrokeWidth) {
-            fragColor = vPickingColor;
-        }
+        if (d >= vHalfStrokeWidth) discard;
+        fragColor = vPickingColor;
     } else if (fragColor.a == 0.0) {
         discard;
     }

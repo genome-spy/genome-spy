@@ -43,6 +43,8 @@ for (const dpr of [1, 2]) {
             expect(Math.max(...result.transparentErrors)).toBeLessThanOrEqual(
                 2
             );
+            expect(result.overlapAlpha).toBe(255);
+            expect(result.overlapPicks).toEqual(["arrow", "arrow", "empty"]);
             expect(Math.max(...result.repeatErrors)).toBeLessThanOrEqual(1);
             expect(result.referenceError).toBeLessThanOrEqual(2);
             expect(result.referenceCoverage.every((count) => count > 0)).toBe(
@@ -304,7 +306,30 @@ async function renderArrows({ dpr, entry, registration }) {
                 }
             }
         }
+        // The independent heads also exercise an empty later quad overlapping
+        // an earlier opaque border. Reuse the geometry oracle scene above.
+        const overlapAlpha =
+            expected[
+                ((canvas.height - 1 - 42 * dpr) * canvas.width + 40 * dpr) * 4 +
+                    3
+            ];
+        const overlapPicks = [];
+        for (const strokeAlpha of [1, 0]) {
+            await paint({ strokeAlpha });
+            const hit = await view.marks.pick({
+                x: bounds.x + 40,
+                y: bounds.y + 42,
+            });
+            overlapPicks.push(
+                hit.status === "hit" ? hit.hit.datum.id : hit.status
+            );
+        }
+        overlapPicks.push(
+            (await view.marks.pick({ x: bounds.x, y: bounds.y })).status
+        );
         return {
+            overlapAlpha,
+            overlapPicks,
             referenceError,
             referenceCoverage: [foreground, background],
             repeatPicks,
