@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { scaleLinear } from "d3-scale";
+import { createHeadlessEngine } from "../../../view/testUtils.js";
 
 import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
@@ -229,7 +230,7 @@ describe("AxisTickSource", () => {
         ]);
     });
 
-    test("ignores extraValues on discrete scales", async () => {
+    test("ignores extraValues and endpoint ticks on discrete scales", async () => {
         const { view } = createViewStub({
             axisLength: 100,
             scaleType: "band",
@@ -238,7 +239,7 @@ describe("AxisTickSource", () => {
             {
                 type: "axisTicks",
                 channel: "x",
-                axis: { tickCount: 5, extraValues: [50] },
+                axis: { tickCount: 5, extraValues: [50], tickEndpoints: true },
             },
             /** @type {any} */ (view)
         );
@@ -252,13 +253,17 @@ describe("AxisTickSource", () => {
         ]);
     });
 
-    test("values take precedence over extraValues", async () => {
+    test("values take precedence over extraValues and endpoint ticks", async () => {
         const { view } = createViewStub({ axisLength: 100 });
         const source = new AxisTickSource(
             {
                 type: "axisTicks",
                 channel: "x",
-                axis: { values: [10, 20], extraValues: [50] },
+                axis: {
+                    values: [10, 20],
+                    extraValues: [50],
+                    tickEndpoints: true,
+                },
             },
             /** @type {any} */ (view)
         );
@@ -276,6 +281,79 @@ describe("AxisTickSource", () => {
             [10, true],
             [20, true],
         ]);
+    });
+
+    test("endpoint ticks follow exact scale limits without changing them", async () => {
+        const { getDomainListener, view } = createViewStub({ axisLength: 55 });
+        const scale = /** @type {any} */ (
+            scaleLinear().domain([-0.013, 0.0087])
+        );
+        scale.type = "linear";
+        vi.spyOn(view.getScaleResolution(), "getScale").mockReturnValue(scale);
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "y",
+                axis: { tickCount: 3, tickEndpoints: true },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        source.activate();
+        await source.load();
+
+        // Include reversed and single-valued domains; duplicate ticks stay merged.
+        for (const domain of [
+            [-0.013, 0.0087],
+            [0, 0.0173],
+            [0.0087, -0.013],
+            [0.005, 0.005],
+        ]) {
+            scale.domain(domain);
+            getDomainListener()();
+            const rows = Array.from(collector.getData());
+            expect(
+                rows.filter((row) => row.explicit).map((row) => row.value)
+            ).toEqual(Array.from(new Set(domain)).sort((a, b) => a - b));
+            expect(new Set(rows.map((row) => row.value)).size).toBe(
+                rows.length
+            );
+            expect(scale.domain()).toEqual(domain);
+        }
+        source.dispose();
+    });
+
+    test("index endpoint ticks use inclusive coordinates without expanding the domain", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: 10 }, { x: 30 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "index", axis: null },
+            },
+        });
+        const scale = view.getScaleResolution("x").getScale();
+        const before = scale.domain();
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { tickEndpoints: true },
+            },
+            view
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        await source.load();
+
+        expect(
+            Array.from(collector.getData())
+                .filter((row) => row.explicit)
+                .map((row) => row.value)
+        ).toEqual([10, 30]);
+        expect(scale.domain()).toEqual(before);
+        source.dispose();
+        view.disposeSubtree();
     });
 
     test("marks ticks at a configured index zoom extent", async () => {

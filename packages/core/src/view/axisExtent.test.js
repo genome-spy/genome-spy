@@ -205,6 +205,45 @@ function getHeuristicExtent(axis) {
 }
 
 describe("Axis extent measurement", () => {
+    test("endpoint labels stay inside a short y axis without changing its scale", async () => {
+        /** @type {import("../spec/root.js").RootSpec} */
+        const spec = {
+            height: 55,
+            data: { values: [-0.013, 0.0087] },
+            mark: "point",
+            encoding: {
+                y: {
+                    field: "data",
+                    type: "quantitative",
+                    axis: { title: null, tickCount: 3, labelFlush: true },
+                },
+            },
+        };
+        const before = await getSettledAxisSnapshot(spec, "left");
+        const context = createBroadcastingTestViewContext();
+        const root = await createAndInitializeRoot(
+            { ...spec, config: { axisQuantitative: { tickEndpoints: true } } },
+            context
+        );
+        await settleLayout(root, context);
+        const axis = findAxisView(root, "left");
+        const labels = Array.from(
+            findLabelsView(axis).getCollector().getData()
+        );
+        const [lower, upper] = before.domain;
+
+        expect(axis.dataParent.getScaleResolution("y").getDomain()).toEqual(
+            before.domain
+        );
+        expect(
+            labels.find((row) => row.value === lower)?.labelOffset
+        ).toBeLessThan(0);
+        expect(
+            labels.find((row) => row.value === upper)?.labelOffset
+        ).toBeGreaterThan(0);
+        root.disposeSubtree();
+    });
+
     test("axis labels propagate font props to text mark and measureText", async () => {
         const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(

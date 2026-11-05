@@ -116,11 +116,22 @@ export default class AxisTickSource extends SingleAxisLazySource {
         const generatedTicks = axisParams.values
             ? validTicks(scale, axisParams.values, count)
             : tickValues(scale, count);
+        let extraValues = axisParams.extraValues ?? [];
+        if (axisParams.tickEndpoints && isContinuous(scale.type)) {
+            const domain = scale.domain();
+            // Add the existing limits; never round or expand the scale itself.
+            extraValues = extraValues.concat(
+                toExternalIndexLikeInterval(
+                    /** @type {import("../../../spec/scale.js").ScaleType} */ (
+                        scale.type
+                    ),
+                    [domain[0], domain.at(-1)]
+                ).filter(Number.isFinite)
+            );
+        }
         const extraTicks =
-            !axisParams.values &&
-            axisParams.extraValues &&
-            isContinuous(scale.type)
-                ? validTicks(scale, axisParams.extraValues)
+            !axisParams.values && extraValues.length && isContinuous(scale.type)
+                ? validTicks(scale, extraValues)
                 : [];
         const ticks = extraTicks.length
             ? mergeExtraValues(generatedTicks, extraTicks)
