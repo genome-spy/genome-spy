@@ -173,6 +173,148 @@ directional clips and live offscreen/reentry behavior. Core types, scoped lint
 and formatting pass. No renderer API changes or release fragments are needed for
 this unpublished backend-only follow-up.
 
+## Default draw and compiled scope allocation follow-up
+
+The user authorized continuing with default rectangle reuse, followed by Core
+scope container reuse. A fresh current-stack backend comparison still measured
+WebGPU main-thread CPU above WebGL by 8.43% in moderate and 23.04% in stress;
+all three pairs favored WebGL. Those measurements use upper head `1f76f751a`.
+Start with fresh sampled attribution; keep CPU acceptance separate and
+unsampled.
+
+Renderer normalization owns one fresh canvas rectangle per call. Reuse it for
+omitted viewport/scissor fields, preserving nullish default semantics, copying
+and validating supplied mutable inputs every call, and keeping remembered
+picking frames and detached exports independent. This introduces no public input
+cache, snapshot protocol or renderer API change.
+
+Core already compiles scope topology per layout. Allocate its private group and
+child array during that compilation, then clear child arrays and refresh local
+opacity during paint replay. Keep the result root and picking arrays fresh;
+picking uses original commands and detached exports own another plan. Do not
+retain or skip validation of public renderer inputs. Verify dynamic
+zero/unity/fractional opacity, empty membership and live bounds/reentry.
+
+Use focused renderer/context/Surface suites, package types and scoped lint.
+Review both lifetimes independently, then compare native grouped moderate and
+stress wheel/pan/closeup CPU on the same WebGPU backend against `1f76f751a`. Use
+matching same-code controls, output/identity checks and real MCCA smoke
+coverage. Prefer KISS when a larger candidate has no measurable benefit; small
+growth requires a substantial measured gain. Record raw size before/after.
+Tentative delivery: `perf(webgpu): reuse owned render preparation containers`.
+
+The first combined trial is inconclusive: four pairs give moderate 932.988 ->
+953.907 ms (+2.24%) and stress 951.502 -> 952.679 ms (+0.12%), with mixed paired
+directions, identical initial PNGs and no errors. Keep the raw
+`sampleview-owned-containers-cpu-*` results. Revert the default rectangle change
+rather than retaining its extra branches without a demonstrated gain.
+
+The first scope trial clears child arrays with `length = 0`, retaining the
+wrapper but potentially discarding its storage. V8's current fast-elements
+[zero-length path](https://github.com/v8/v8/blob/main/src/objects/elements.cc#L871-L872)
+resets elements; this motivates an experiment, not a claim about the exact
+measured binary. Test a private per-scope write cursor: overwrite accepted
+entries, trim only when the child count changes at scope exit, and keep fresh
+root results/picking and separate export plans. Use the existing parent stack;
+add no per-push records, geometry revisions or public API. The same zero/unity/
+fractional and reentry coverage must pass. Keep growth only if native CPU
+measurements justify it; otherwise choose the original simpler allocation path.
+
+The cursor trial also fails acceptance. Four pairs measure moderate 964.140 ->
+945.692 ms (-1.91%, highly mixed) and stress 932.754 -> 980.242 ms (+5.09%, all
+four candidate pairs higher). Both trials preserve identity, initial PNGs and
+correctness, but establish no useful CPU gain. Revert all scope-container/cursor
+and default-rectangle source changes, including temporary test adaptations. Keep
+raw `sampleview-scope-cursor-cpu-*` evidence and the simpler existing allocation
+behavior.
+
+The fresh profile also attributes 39.8 ms inclusive sampled wall time to scope
+bounds. Test a narrower deletion of work: a scope with neither clipping axis
+always uses the fixed frame target bounds, so initialize that owned bounds
+record from the target and skip discarded live-coordinate union reads for that
+case. Keep directional/full clipping, reentry, picking and detached target
+semantics. No new cache, API or retained-container protocol is involved.
+Validate target ownership and focused coverage, then use native A/B before
+retaining the change.
+
+### Outcome: keep the original preparation code
+
+The last shortcut also fails acceptance: three pairs measure moderate 873.808 ->
+895.458 ms (+2.48%, mixed pairs) and stress 946.848 -> 977.092 ms (+3.19%, all
+candidate pairs higher). Revert it and its temporary bounds assertion. All
+production and test files are byte-identical to the previously committed
+baseline; no renderer API or runtime change from this follow-up is retained. The
+earlier accepted scalar-clipping change stays.
+
+All raw CPU samples are retained below. These percentages describe the measured
+trials, not proven causal regressions. Each trial was rejected before further
+acceptance controls because it showed no reliable gain. All 44 timed traces pass
+membership, input, settling and error checks, with identical initial PNGs. Each
+candidate also passed focused tests, types, lint/format and native MCCA
+interaction checks. The first combined candidate passed 23 native GPU cases.
+
+| Trial                               | Scene    | Baseline CPU samples (ms)            | Candidate CPU samples (ms)           | Change |
+| ----------------------------------- | -------- | ------------------------------------ | ------------------------------------ | ------ |
+| Default rectangles + scope wrappers | Moderate | 1045.909, 917.458, 849.039, 919.548  | 893.094, 969.195, 1027.332, 926.006  | +2.24% |
+| Default rectangles + scope wrappers | Stress   | 979.815, 926.201, 924.470, 975.521   | 966.105, 942.814, 964.805, 936.990   | +0.12% |
+| Scope write cursor                  | Moderate | 843.348, 958.815, 1028.660, 1025.737 | 1053.526, 1052.449, 923.264, 753.527 | -1.91% |
+| Scope write cursor                  | Stress   | 936.849, 907.135, 937.232, 949.801   | 989.518, 945.768, 993.287, 992.396   | +5.09% |
+| Unclipped scope shortcut            | Moderate | 979.043, 815.423, 826.959            | 916.569, 963.130, 806.675            | +2.48% |
+| Unclipped scope shortcut            | Stress   | 944.031, 948.636, 947.878            | 986.453, 982.966, 961.858            | +3.19% |
+
+Artifacts under `output/sample-view-band-benchmark/` use
+`sampleview-owned-containers-cpu-*`, `sampleview-scope-cursor-cpu-*` and
+`sampleview-unclipped-scope-cpu-*`. The first two use four alternating pairs per
+scene; the last uses three, all with two warmups, native wheel/pan/closeup and
+Core profiling/samplers/observers disabled. Baseline is `1f76f751a`. The
+temporary two-module A/B helper preserves canonical module identity and records
+the exact raw/served source hashes; only the first trial changes renderer.js.
+
+The fresh before-profile samples 78.2 ms inclusive wall time in renderer
+normalization and 51.9 ms in GC, with 43.8 ms self time in Core replay. These
+attributions motivated the experiments but did not predict application CPU
+gains. An allocation-only diagnostic on the restored baseline uses CDP heap
+sampling at 32 KiB, including objects collected by both minor and major GC. It
+records no CPU metrics and is not acceptance evidence. Its artifact prefix is
+`sampleview-current-stress-allocation-*`; allocation findings follow below.
+
+### Allocation diagnostic and next investigation
+
+The restored baseline completes its allocation-only stress trace without errors.
+The sampled cumulative JavaScript allocation estimate is 387.32 MB (decimal),
+including allocations collected during the trace. Renderer sites account for
+267.39 MB (69.03%) and the Core WebGPU adapter/surface for 57.49 MB (14.84%).
+These are statistical allocation estimates, not retained heap size, native/GPU
+memory, CPU time or evidence of a speedup.
+
+| Allocation site                | Estimated MB | Share of sampled estimate |
+| ------------------------------ | -----------: | ------------------------: |
+| Renderer `#normalizeDraw`      |       150.99 |                    38.98% |
+| Renderer `#encodeDraws`        |        54.82 |                    14.15% |
+| Core `#submitOccurrenceDraw`   |        26.47 |                     6.83% |
+| Renderer recursive `normalize` |        18.51 |                     4.78% |
+| Renderer `layerize`            |        15.60 |                     4.03% |
+| Core `#render`                 |        11.97 |                     3.09% |
+
+The normalization subtree totals 196.37 MB (50.70%); inclusive rows overlap and
+must not be added. Core replay's entire subtree is 87.71 MB, including 60.76 MB
+under occurrence submission, leaving at most 26.95 MB for all its other work,
+including scope wrappers. `intersectRects` directly accounts for only 1.38 MB;
+inlining prevents isolating default visible-range allocation from the large
+`#normalizeDraw` self site. Allocation sampling uses parameters verified against
+the
+[official CDP HeapProfiler schema](https://raw.githubusercontent.com/ChromeDevTools/devtools-protocol/master/json/js_protocol.json).
+
+Prioritize renderer-owned normalized draw, viewport, placement and default-range
+records, then encoder option/offset temporaries. A small shared default visible
+range is a bounded candidate, but its actual CPU effect must be measured.
+General normalized-record reuse needs a lifetime design for remembered color and
+explicit picking frames, invalid-input boundaries and detached exports. Preserve
+copying/validation of mutable public inputs; do not replace it with identity
+caching or silently change snapshot semantics. Do not add a retained frame API
+without the user's approval. No such optimization is implemented in this
+follow-up. Keep KISS and the previously accepted scalar implementation.
+
 ## Goal and constraints
 
 Reduce CPU work tracking changing shader inputs and preparing their GPU updates,
