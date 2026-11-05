@@ -142,6 +142,7 @@ export const TextEffects = withSource(
         size: 64,
         angle: -6,
         fill: "#f7f8ff",
+        fillOpacity: 1,
         outlineColor: "#14213d",
         outlineWidth: 4,
         outlineOpacity: 1,
@@ -157,6 +158,7 @@ export const TextEffects = withSource(
             size: 64,
             angle: -6,
             fill: "#f7f8ff",
+            fillOpacity: 1,
             outlineColor: "#14213d",
             outlineWidth: 4,
             outlineOpacity: 1,
@@ -173,6 +175,9 @@ export const TextEffects = withSource(
                 control: { type: "range", min: -180, max: 180, step: 1 },
             },
             fill: { control: "color" },
+            fillOpacity: {
+                control: { type: "range", min: 0, max: 1, step: 0.05 },
+            },
             outlineColor: { control: "color" },
             outlineWidth: {
                 control: { type: "range", min: 0, max: 24, step: 0.5 },
