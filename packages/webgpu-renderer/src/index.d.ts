@@ -783,6 +783,12 @@ export type RectChannelName =
     | "fillOpacity"
     | "strokeOpacity"
     | "strokeWidth"
+    /**
+     * Full-width border placement: 0 inside, 1 center (default), 2 outside.
+     * Nominal bounds and corner radii stay fixed. Hatch stripe width remains
+     * strokeWidth regardless of border alignment.
+     */
+    | "strokeAlign"
     | "cornerRadiusTopRight"
     | "cornerRadiusBottomRight"
     | "cornerRadiusTopLeft"

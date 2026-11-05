@@ -27,6 +27,7 @@ export const RECT_CHANNEL_SPECS = {
     fillOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeWidth: { type: "f32", components: 1, default: 1.0 },
+    strokeAlign: { type: "u32", components: 1, default: 1 },
     cornerRadiusTopRight: { type: "f32", components: 1, default: 0.0 },
     cornerRadiusBottomRight: { type: "f32", components: 1, default: 0.0 },
     cornerRadiusTopLeft: { type: "f32", components: 1, default: 0.0 },
@@ -107,12 +108,12 @@ fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, halfStrokeWidth: f32, opacityFactor: f32) -> vec4<f32> {
+fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, strokeExtents: vec2<f32>, opacityFactor: f32) -> vec4<f32> {
     let cf = distanceToRatio(-d);
     var color = cf * fill;
-    if (halfStrokeWidth > 0.0) {
-        let ci = distanceToRatio(-strokeDistance - halfStrokeWidth);
-        let co = distanceToRatio(-d + halfStrokeWidth);
+    if (any(strokeExtents > vec2<f32>(0.0))) {
+        let ci = distanceToRatio(-strokeDistance - strokeExtents.x);
+        let co = distanceToRatio(-d + strokeExtents.y);
         color = ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill)
             + (co - cf) * stroke;
     }
@@ -260,7 +261,7 @@ struct VSOut {
     @location(3) stroke: vec4<f32>,
     @location(4) fillOpacity: f32,
     @location(5) strokeOpacity: f32,
-    @location(6) strokeWidth: f32,
+    @location(6) strokeExtents: vec2<f32>,
     @location(7) cornerRadii: vec4<f32>,
     @location(8) shadowOffset: vec2<f32>,
     @location(9) shadowBlur: f32,
@@ -284,7 +285,7 @@ fn culledRect() -> VSOut {
     out.opacityFactor = 0.0;
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
-    out.strokeWidth = 0.0;
+    out.strokeExtents = vec2<f32>(0.0);
     out.cornerRadii = vec4<f32>(0.0);
     out.shadowOffset = vec2<f32>(0.0);
     out.shadowBlur = 0.0;
@@ -348,6 +349,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     h = max(h, minH);
 
     let strokeWidth = getScaled_strokeWidth(i);
+    let outset = strokeWidth * f32(getScaled_strokeAlign(i)) * 0.5;
     let shadowOffset = vec2<f32>(
         getScaled_shadowOffsetX(i),
         getScaled_shadowOffsetY(i)
@@ -368,7 +370,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     if (hasDecoration) {
         // Keep the SDF decoration outside the nominal rectangle. WebGL expands
         // decorated rects for stroke antialiasing and the shadow kernel's support.
-        decorationPadding = strokeWidth + 1.0 / globals.dpr + shadowPadding * 2.0;
+        decorationPadding = outset * 2.0 + 1.0 / globals.dpr + shadowPadding * 2.0;
     }
     if (!USE_MULTISAMPLE_EDGE_COVERAGE) {
         // Shader coverage needs geometry on both sides of a currently plain
@@ -397,7 +399,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.opacityFactor = opaFactor;
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = getScaled_strokeOpacity(i);
-    out.strokeWidth = strokeWidth;
+    out.strokeExtents = vec2<f32>(strokeWidth - outset, outset);
     let halfMinSize = min(w, h) * 0.5;
     out.cornerRadii = min(cornerRadii, vec4<f32>(halfMinSize));
     out.shadowOffset = shadowOffset;
@@ -420,7 +422,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     // Adjacent plain rectangles must share an exact rasterized edge. Applying
     // SDF coverage here would introduce translucent seams in dense heatmaps.
     if (USE_MULTISAMPLE_EDGE_COVERAGE &&
-            all(in.cornerRadii <= vec4<f32>(0.0)) && in.strokeWidth <= 0.0 &&
+            all(in.cornerRadii <= vec4<f32>(0.0)) && all(in.strokeExtents <= vec2<f32>(0.0)) &&
             in.shadowOpacity <= 0.0) {
         return select(fillColor * in.opacityFactor, vec4<f32>(1.0), pickingEnabled);
     }
@@ -435,7 +437,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     }
 
     if (pickingEnabled) {
-        if (d >= in.strokeWidth * 0.5) { discard; }
+        if (d >= in.strokeExtents.y) { discard; }
         return vec4<f32>(1.0);
     }
 
@@ -450,19 +452,19 @@ fn shade(in: VSOut) -> vec4<f32> {
             max(in.cornerRadii.y, max(in.cornerRadii.z, in.cornerRadii.w))
         );
         let sigma = max(in.shadowBlur / 2.5, 0.25);
-        if (d >= in.strokeWidth * 0.5 - 1.0) {
+        if (d >= in.strokeExtents.y - 1.0) {
             let shadow = roundedBoxShadow(
-                -halfSize - vec2<f32>(in.strokeWidth * 0.5),
-                halfSize + vec2<f32>(in.strokeWidth * 0.5),
+                -halfSize - vec2<f32>(in.strokeExtents.y),
+                halfSize + vec2<f32>(in.strokeExtents.y),
                 centered - in.shadowOffset,
                 sigma,
-                maxCornerRadius + in.strokeWidth * 0.5
+                maxCornerRadius + in.strokeExtents.y
             ) * in.shadowOpacity;
             background = vec4<f32>(in.shadowColor.rgb * shadow, shadow);
         }
     }
 
-    let halfStrokeWidth = in.strokeWidth * 0.5;
+    let halfStrokeWidth = (in.strokeExtents.x + in.strokeExtents.y) * 0.5;
     // Hatches affect the stroke band, never the nominal fill beneath it.
     let fillDistance = d;
     let patternType = i32(in.hatchPattern);
@@ -471,7 +473,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         // axis, while WebGPU's pixel coordinates grow downward.
         d = max(
             d,
-            -hatchPattern(
+            halfStrokeWidth - in.strokeExtents.x - hatchPattern(
                 vec2<f32>(centered.x, -centered.y),
                 halfStrokeWidth,
                 patternType
@@ -479,7 +481,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         );
     }
 
-    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, halfStrokeWidth, in.opacityFactor);
+    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, in.strokeExtents, in.opacityFactor);
 }
 
 @fragment

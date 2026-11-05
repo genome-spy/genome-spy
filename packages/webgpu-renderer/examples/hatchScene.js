@@ -4,9 +4,10 @@ import { indexScale } from "../src/scales/index.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @returns {Promise<() => void>}
+ * @param {{strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}} [options]
+ * @returns {Promise<{cleanup: () => void, update: (options: {strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}) => void}>}
  */
-export default async function runHatchScene(canvas) {
+export default async function runHatchScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
 
     const hatchCols = 5;
@@ -33,7 +34,7 @@ export default async function runHatchScene(canvas) {
         }
     }
 
-    const { series, scales } = renderer.createMark(rectMark, {
+    const mark = renderer.createMark(rectMark, {
         count: hatchCount,
         channels: {
             x: {
@@ -82,12 +83,18 @@ export default async function runHatchScene(canvas) {
             },
             fill: { value: [0.98, 0.98, 0.98, 1.0] },
             stroke: { value: [0.1, 0.1, 0.1, 1.0] },
-            strokeOpacity: { value: 1.0 },
+            strokeOpacity: { value: 1, dynamic: true },
+            strokeAlign: { value: 1, type: "u32", dynamic: true },
+            cornerRadiusTopLeft: { value: 0, dynamic: true },
+            cornerRadiusTopRight: { value: 0, dynamic: true },
+            cornerRadiusBottomLeft: { value: 0, dynamic: true },
+            cornerRadiusBottomRight: { value: 0, dynamic: true },
             strokeWidth: { data: hatchStroke, type: "f32" },
             hatchPattern: { data: hatchPattern, type: "u32" },
         },
     });
 
+    const { series, scales, values } = mark;
     const updateRanges = () => {
         const xSpan = hatchCols * hatchSize + (hatchCols - 1) * hatchGap;
         const ySpan = hatchRows * hatchSize + (hatchRows - 1) * hatchGap;
@@ -113,10 +120,29 @@ export default async function runHatchScene(canvas) {
         hatchCount
     );
 
-    renderer.render();
+    /** @param {{strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}} next */
+    const update = (next) => {
+        mark.batchUpdates(() => {
+            values.strokeAlign.set(next.strokeAlign ?? 1);
+            values.strokeOpacity.set(next.strokeOpacity ?? 1);
+            for (const name of [
+                "cornerRadiusTopLeft",
+                "cornerRadiusTopRight",
+                "cornerRadiusBottomLeft",
+                "cornerRadiusBottomRight",
+            ]) {
+                values[name].set(next.cornerRadius ?? 0);
+            }
+        });
+        renderer.render();
+    };
+    update(options);
 
-    return () => {
-        cleanupResize();
-        renderer.destroy();
+    return {
+        update,
+        cleanup() {
+            cleanupResize();
+            renderer.destroy();
+        },
     };
 }

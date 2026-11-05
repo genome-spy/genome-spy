@@ -64,6 +64,20 @@ export const Basic = withSource("runBasicScene", null, {
 });
 
 export const Hatch = withSource("runHatchScene", null, {
+    args: { strokeAlign: 1, strokeOpacity: 1, cornerRadius: 0 },
+    argTypes: {
+        strokeAlign: {
+            control: {
+                type: "select",
+                labels: { 0: "inside", 1: "center", 2: "outside" },
+            },
+            options: [0, 1, 2],
+        },
+        strokeOpacity: {
+            control: { type: "range", min: 0, max: 1, step: 0.05 },
+        },
+        cornerRadius: { control: { type: "range", min: 0, max: 20, step: 1 } },
+    },
     render: (args) => renderScene(runHatchScene, args),
 });
 
