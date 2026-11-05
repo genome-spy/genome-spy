@@ -373,6 +373,8 @@ describe("grouping gap resources", () => {
         expect(uniforms.get("gapTable_x")).toEqual(uniforms.get("gapTable_x2"));
         manager.getScaleUpdater("x").updateDomain([5, 15]);
         manager.updateGapWidth("x", 12);
+        expect(uniforms.get("gapGeometry_x")).toEqual([12, 0, 1, 0]);
+        expect(uniforms.get("gapGeometry_x2")).toEqual([6, 0, 1, 0]);
         expect(buffers).toHaveLength(1);
         manager.updateGapPositions("x", [10, 12]);
         expect(buffers[0].destroy).toHaveBeenCalledOnce();

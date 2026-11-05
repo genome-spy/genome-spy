@@ -43,6 +43,7 @@ import {
  * @property {readonly number[]} domain
  * @property {number} width
  * @property {readonly number[] | undefined} ranks
+ * @property {number[]} geometry Scratch consumed synchronously by writeGeometry.
  * @property {import("../../../utils/uniformBuffer.js").UniformSetter} writeGeometry
  */
 
@@ -321,6 +322,7 @@ export class ScaleResourceManager {
                         : this.#unpackDomain(scale.domain ?? [0, 1]),
                 width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
                 ranks: scale.type === "index" ? scale.gapDomain : undefined,
+                geometry: [0, 0, 0, 0],
                 writeGeometry: this.#getUniformSetter("gapGeometry_" + name),
             });
             this.#updateGapCuts();
@@ -744,13 +746,13 @@ export class ScaleResourceManager {
     }
 
     /** @param {GapScaleState} gaps */
-    #updateGapGeometry({ cuts, domain, width, ranks, writeGeometry }) {
-        writeGeometry([
-            width,
-            ranks?.[0] ?? cutRank(cuts, domain[0]),
-            ranks?.[1] ?? cutRank(cuts, domain[1], true),
-            ranks ? 1 : 0,
-        ]);
+    #updateGapGeometry(gaps) {
+        const { cuts, domain, ranks, geometry } = gaps;
+        geometry[0] = gaps.width;
+        geometry[1] = ranks?.[0] ?? cutRank(cuts, domain[0]);
+        geometry[2] = ranks?.[1] ?? cutRank(cuts, domain[1], true);
+        geometry[3] = ranks ? 1 : 0;
+        gaps.writeGeometry(geometry);
     }
 
     #updateGapCuts() {

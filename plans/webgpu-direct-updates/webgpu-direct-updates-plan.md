@@ -511,8 +511,8 @@ handling runs during mark construction and shader assembly.
 ## Next opportunities: remove obsolete adapter work
 
 Baseline: `d0dff3b5b`. Read-only investigation identified the following ranked
-opportunities. The user authorized implementation of **1 and 2**; record the
-others as deferred rather than expanding this change. Most of the 2,645-line
+opportunities. The user first authorized **1 and 2**, then authorized **3 and
+4**, followed by a commit, and **5** afterward. Most of the original 2,645-line
 adapter builds configurations or extracts columns; file splitting alone would
 not reduce retained-update CPU work.
 
@@ -537,23 +537,24 @@ not reduce retained-update CPU work.
    ranges. Keep palette updates live. Invalid-color errors will come from the
    renderer's native validation rather than Core's per-read conversion; do not
    add another polling validator merely to preserve error wording.
-3. **Classify remaining literal properties (deferred).** Point `inwardStroke`,
+3. **Classify remaining literal properties (authorized).** Point `inwardStroke`,
    rule cap/alignment and property-backed glyph offsets remain live when
    literal. Existing static/live property helpers could avoid these bindings,
    mainly during style updates; scale-only updates already skip them. No new
    cache or subscription registry is justified.
-4. **Remove small renderer allocations (deferred).** Reuse scale-owned scratch
+4. **Remove small renderer allocations (authorized).** Reuse scale-owned scratch
    for the four-number gap-geometry write and pass packed interval-selection
    typed output directly instead of copying through `Array.from`. Preserve
    complete selection validation before writes, public input detachment and
    scale/config ownership boundaries.
-5. **Profile draw preparation for larger gains (deferred).** Previous allocation
-   samples attribute roughly 20 MB of 66 MB to normalization and related
-   helpers. Draw clipping creates three temporary rectangles per encoded draw;
-   scalar clipping/physical conversion is a bounded candidate before whole-frame
-   reuse. Preserve target origins, fractional-DPR rounding and retained
-   picking-frame lifetimes. Disabled-profiler callbacks are another diagnostic
-   lead, not a proven source of all allocations attributed to their caller.
+5. **Profile draw preparation for larger gains (after the 3–4 commit).**
+   Previous allocation samples attribute roughly 20 MB of 66 MB to normalization
+   and related helpers. Draw clipping creates three temporary rectangles per
+   encoded draw; scalar clipping/physical conversion is a bounded candidate
+   before whole-frame reuse. Preserve target origins, fractional-DPR rounding
+   and retained picking-frame lifetimes. Disabled-profiler callbacks are another
+   diagnostic lead, not a proven source of all allocations attributed to their
+   caller.
 
 Band/ordinal `scale.range().map(...)` allocations remain a separate ownership
 question. Surface retains previous range values for semantic equality, so
@@ -587,8 +588,7 @@ Commit: `perf(webgpu): remove obsolete opacity and palette work`
 
 This remains unpublished WebGPU/internal Core work with the existing empty
 changeset and no package version bump. Keep this plan on the draft branch and
-retire it before merge. Opportunities 3–5 require a later implementation
-decision.
+retire it before merge. The next authorized stages are recorded below.
 
 ### Completed deletion verification
 
@@ -632,3 +632,71 @@ introducing a tracking layer. Keep the unfavorable initial run and instrumented
 diagnostic with the final results under ignored
 `output/webgpu-direct-uniforms/adapter-deletions-*`; temporary drivers remain in
 `/private/tmp`. No permanent benchmark framework was added.
+
+## Literal property and renderer allocation cleanup (3–4)
+
+Baseline: `0584e6bfb`. Implement these two bounded changes and commit them
+before starting draw-preparation work. Renderer public APIs, validation and
+caller input ownership remain fixed.
+
+Core already distinguishes literal and expression-backed numeric properties.
+Reuse those helpers for point inward stroke, rule stroke alignment/caps and
+property-backed glyph offsets. Literal values need no retained uniform binding;
+expressions retain their existing subscribed evaluator. Keep channel-backed
+`dx`/`dy`, fallback semantics and contextual validation intact. Do not introduce
+another property classification system or cache.
+
+Gap state already owns its captured uniform writer. One private four-number
+scratch vector can serve every geometry write because packing is synchronous,
+including inside batches. It is unrelated to public viewport/range ownership.
+For packed selection intervals, pass the packer's fresh typed vector directly to
+the existing writer. Retain preparation of all components before any writes and
+retain ordinary interval detachment; those protect the existing failure
+boundary.
+
+- [x] Classify the remaining literal properties and cover real expression
+      updates.
+- [x] Reuse gap geometry scratch and remove the redundant packed-selection copy.
+- [x] Verify focused behavior, renderer/Core types, native rendering/picking,
+      lint, release impact, source size and independent implementation review.
+- [x] Commit 3–4 as `perf(webgpu): trim literal slots and update allocations`.
+
+Verification passes 488 focused tests, both package TypeScript checks, scoped
+lint/format and 14 native GPU checks. Existing headless property coverage now
+exercises live point/rule expressions and glyph channel branches alongside
+literal offsets/defaults. Renderer coverage writes packed intervals into real
+uniform memory, rejects a malformed later component before any write, and checks
+independent gap state across scale updates. Final independent review found no
+blocker. The runtime delta is **+9 raw lines** (23 added, 14 deleted); this
+replaces repeated evaluation/allocation without adding a framework. No new
+whole-renderer CPU gain is claimed for this bounded cleanup. Release checks
+retain the existing empty changeset and no version bump.
+
+## Draw preparation follow-up (5)
+
+Start only after the 3–4 commit. Profile the resulting committed implementation
+with the existing native scene/driver, keeping CPU acceptance separate from
+allocation sampling. Recheck current attribution rather than treating the older
+20 MB allocation estimate as current evidence.
+
+Prefer bounded removal of transient clipping rectangles and repeated
+normalization over whole-frame pooling or new invalidation machinery. Preserve
+fractional-DPR floor/ceil behavior, offscreen target origins, input validation,
+picking-frame lifetimes and detached exports. The renderer retains normalized
+frames, and bind-group state retains dynamic-offset array references; neither
+can be replaced with arbitrary mutable shared scratch. A larger ownership/API
+change remains a proposal requiring user permission.
+
+If fresh evidence supports a local change, implement it through the current
+renderer boundary, verify the affected clipping/group/picking contracts and
+compare native CPU and output. Inspect disabled-profiler callbacks only when
+current attribution supports them; caller-attributed allocation alone does not
+prove closure volume or CPU cost. Keep only coherent changes with useful
+allocation/work reduction and no reproducible CPU regression.
+
+- [ ] Profile current draw preparation and identify the smallest justified
+      change.
+- [ ] Implement justified local simplification with representative regression
+      coverage.
+- [ ] Verify native output, picking/export and profiler-disabled CPU; review and
+      record the outcome and source delta before delivery.

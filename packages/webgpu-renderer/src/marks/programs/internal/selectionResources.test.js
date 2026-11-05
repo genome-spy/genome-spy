@@ -5,6 +5,7 @@ import { SelectionResourceManager as DefinedSelectionResourceManager } from "./s
 import { analyzeTestChannels } from "../../../../testUtils/scaleDefinitions.js";
 import { HASH_EMPTY_KEY, hash32 } from "../../../utils/hashTable.js";
 import { packHighPrecisionU32 } from "../../../utils/highPrecision.js";
+import { UniformBuffer } from "../../../utils/uniformBuffer.js";
 import {
     intervalSelectionActiveName,
     intervalSelectionBoundsName,
@@ -509,7 +510,8 @@ describe("SelectionResourceManager", () => {
         const invalidUpdate =
             /** @type {import("./selectionResources.js").SelectionValue} */ (
                 /** @type {unknown} */ ({
-                    x: [0],
+                    x: [1, 2],
+                    y: [0],
                 })
             );
         expect(() =>
@@ -690,6 +692,15 @@ describe("SelectionResourceManager", () => {
             components: 4,
         });
 
+        const uniforms = new UniformBuffer(layout);
+        setUniformValue.mockImplementation((name, value) =>
+            uniforms.setValue(name, value)
+        );
+        const boundsEntry = uniforms.entries.get(
+            intervalSelectionBoundsName("brush", 0)
+        );
+        if (!boundsEntry) throw new Error("Missing interval bounds");
+        const bounds = new Uint32Array(uniforms.data, boundsEntry.offset, 4);
         manager.initializeSelections(new Map());
         setUniformValue.mockClear();
         const lower = 2 ** 32 + 1;
@@ -699,10 +710,19 @@ describe("SelectionResourceManager", () => {
             { range0: [lower, upper] },
             new Map()
         );
-        expect(setUniformValue).toHaveBeenCalledWith(
-            intervalSelectionBoundsName("brush", 0),
-            [...packHighPrecisionU32(lower), ...packHighPrecisionU32(upper)]
+        expect(Array.from(bounds)).toEqual([
+            ...packHighPrecisionU32(lower),
+            ...packHighPrecisionU32(upper),
+        ]);
+        manager.updateSelection(
+            manager.selection("brush"),
+            { range0: [upper, lower] },
+            new Map()
         );
+        expect(Array.from(bounds)).toEqual([
+            ...packHighPrecisionU32(upper),
+            ...packHighPrecisionU32(lower),
+        ]);
         setUniformValue.mockClear();
         expect(() =>
             manager.updateSelection(

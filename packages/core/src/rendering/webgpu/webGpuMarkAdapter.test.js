@@ -55,7 +55,7 @@ describe("WebGPU mark adapter", () => {
     test("reuses subscribed property expressions for live scalar and vector resources", async () => {
         const { view, context } = await createHeadlessEngine({
             config: { mark: { color: "black" } },
-            data: { values: [{}] },
+            data: { values: [{ offset: 5 }] },
             params: [
                 { name: "style", value: 2 },
                 { name: "fade", value: 3 },
@@ -74,8 +74,33 @@ describe("WebGPU mark adapter", () => {
                         type: "text",
                         paddingX: { expr: "style" },
                         viewportEdgeFadeWidthTop: { expr: "fade" },
+                        dx: 4,
+                        dy: 5,
                     },
                     encoding: { text: { value: "A" } },
+                },
+                {
+                    mark: {
+                        type: "point",
+                        inwardStroke: { expr: "style > 3" },
+                    },
+                    encoding: {
+                        dx: {
+                            field: "offset",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                        dy: { value: { expr: "style" } },
+                    },
+                },
+                {
+                    mark: {
+                        type: "rule",
+                        strokeAlign: {
+                            expr: "style > 3 ? 'inside' : 'outside'",
+                        },
+                        strokeCap: { expr: "style > 3 ? 'round' : 'butt'" },
+                    },
                 },
             ],
         });
@@ -87,7 +112,7 @@ describe("WebGPU mark adapter", () => {
         const units = Array.from(
             view.getDescendants().filter((child) => child instanceof UnitView)
         );
-        const [rect, arrow, text] = units.map(
+        const [rect, arrow, text, point, rule] = units.map(
             (unit) =>
                 /** @type {any} */ (
                     createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
@@ -117,6 +142,21 @@ describe("WebGPU mark adapter", () => {
                 0,
                 0,
             ]);
+            expect(text.config.channels.dx).toEqual({ value: 4 });
+            expect(text.config.channels.dy).toEqual({ value: 5 });
+            expect(point.config.channels.dx.data).toEqual(
+                new Float32Array([5])
+            );
+            expect(point.config.channels.dy.value).toBe(style);
+            expect(point.config.channels.strokeAlign).toEqual(
+                dynamicValue(style > 3 ? 0 : 1, "u32")
+            );
+            expect(rule.config.channels.strokeAlign).toEqual(
+                dynamicValue(style > 3 ? 0 : 2, "u32")
+            );
+            expect(rule.config.channels.strokeCap).toEqual(
+                dynamicValue(style > 3 ? 2 : 0, "u32")
+            );
             for (const compiler of compilers)
                 expect(compiler).not.toHaveBeenCalled();
         }
@@ -338,14 +378,7 @@ describe("WebGPU mark adapter", () => {
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.fillOpacity).toEqual({ value: 0.75 });
         expect(channels.minPickingSize).toEqual({ value: 12 });
-        expect(channels.strokeAlign).toEqual({
-            ...dynamicValue(1),
-            type: "u32",
-        });
-        pointProperties.inwardStroke = true;
-        expect(channels.strokeAlign.value).toBe(0);
-        pointProperties.inwardStroke = false;
-        expect(channels.strokeAlign.value).toBe(1);
+        expect(channels.strokeAlign).toEqual({ value: 1, type: "u32" });
     });
 
     test("keeps categorical point offset scales in the renderer", () => {
@@ -479,7 +512,7 @@ describe("WebGPU mark adapter", () => {
                 { name: "angle", value: 30 },
                 { name: "strokeColor", value: "black" },
             ],
-            mark: "point",
+            mark: { type: "point", inwardStroke: true },
             encoding: {
                 size: { value: 64 },
                 fill: { value: "#336699" },
@@ -500,6 +533,7 @@ describe("WebGPU mark adapter", () => {
         expect(channels.fill).toEqual({ value: [0.2, 0.4, 0.6, 1] });
         expect(channels.angle).toEqual(dynamicValue(30));
         expect(channels.stroke).toEqual(dynamicValue([0, 0, 0, 1]));
+        expect(channels.strokeAlign).toEqual({ value: 0, type: "u32" });
 
         view.paramRuntime.runInTransaction(() => {
             view.paramRuntime.setValue("angle", 60);
@@ -738,8 +772,8 @@ describe("WebGPU mark adapter", () => {
             type: "f32",
         });
         expect(config.channels.yOffset.value).toBe(9);
-        expect(config.channels.dx).toEqual(dynamicValue(4));
-        expect(config.channels.dy).toEqual(dynamicValue(5));
+        expect(config.channels.dx).toEqual({ value: 4 });
+        expect(config.channels.dy).toEqual({ value: 5 });
         expect(config.font.getGlyph).toBeTypeOf("function");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
         expect(translated.properties.viewport).toEqual({
@@ -1142,6 +1176,8 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.strokeWidth).toEqual({ value: 0 });
         expect(config.dashPatterns).toEqual([[3, 2]]);
         expect(config.channels.strokeDashOffset).toEqual({ value: 1 });
+        expect(config.channels.strokeAlign).toEqual({ value: 2, type: "u32" });
+        expect(config.channels.strokeCap).toEqual({ value: 2, type: "u32" });
     });
 
     test("translates link geometry and rendering properties", () => {
