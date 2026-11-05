@@ -1,4 +1,4 @@
-/* global GPUBufferUsage, GPUMapMode */
+/* global document, GPUBufferUsage, GPUMapMode, GPUTextureUsage */
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
@@ -257,4 +257,129 @@ test("atlas corner distances survive competing edges and scratch reuse", async (
     for (const error of result.corners) expect(error).toBeLessThan(0.001);
     for (const error of result.errors)
         expect(error).toBeLessThanOrEqual(2 / 255);
+});
+
+test("path square corners match analytic rectangle rendering", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { pointMark },
+            { rectMark },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/point.js"),
+            import("/src/marks/rect.js"),
+            import("/src/scales/identity.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 64;
+        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
+        renderer.context.configure({
+            device: renderer.device,
+            format: renderer.format,
+            alphaMode: "premultiplied",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        renderer.updateGlobals({ width: 32, height: 32, dpr: 2 });
+        renderer.device.pushErrorScope("validation");
+        const buffer = renderer.device.createBuffer({
+            size: 64 * 64 * 4,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        /** @param {import("../src/index.js").MarkHandle} mark */
+        async function capture(mark) {
+            renderer.render({
+                items: [{ mark }],
+                clearColor: { r: 0, g: 0, b: 0, a: 0 },
+            });
+            const encoder = renderer.device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                { texture: renderer.context.getCurrentTexture() },
+                { buffer, bytesPerRow: 256 },
+                { width: 64, height: 64 }
+            );
+            renderer.device.queue.submit([encoder.finish()]);
+            await buffer.mapAsync(GPUMapMode.READ);
+            const bytes = new Uint8Array(buffer.getMappedRange()).slice();
+            buffer.unmap();
+            return bytes;
+        }
+        const paint = {
+            fill: { value: [1, 0, 0, 0.8] },
+            stroke: { value: [0, 0, 1, 0.5] },
+            strokeWidth: { value: 0.25 },
+            strokeAlign: { value: 1, type: "u32" },
+        };
+        const errors = [];
+        let referencesPainted = true;
+        try {
+            // Fractional placement exposes interpolation errors at tiny and ordinary corners.
+            for (const diameter of [1, 8]) {
+                const center = 16.375;
+                const point = renderer.createMark(pointMark, {
+                    count: 1,
+                    shape: "square",
+                    channels: {
+                        ...paint,
+                        x: { value: center, scale: identityScale() },
+                        y: { value: center, scale: identityScale() },
+                        size: { value: diameter ** 2 },
+                    },
+                });
+                const rectangle = renderer.createMark(rectMark, {
+                    count: 1,
+                    channels: {
+                        ...paint,
+                        x: {
+                            value: center - diameter / 2,
+                            scale: identityScale(),
+                        },
+                        y: {
+                            value: center - diameter / 2,
+                            scale: identityScale(),
+                        },
+                        x2: {
+                            value: center + diameter / 2,
+                            scale: identityScale(),
+                        },
+                        y2: {
+                            value: center + diameter / 2,
+                            scale: identityScale(),
+                        },
+                        minWidth: { value: 0 },
+                        minHeight: { value: 0 },
+                    },
+                });
+                const actual = await capture(point);
+                const expected = await capture(rectangle);
+                referencesPainted &&= expected.some(
+                    (value, index) => index % 4 === 3 && value > 0
+                );
+                errors.push(
+                    Math.max(
+                        ...actual.map((value, i) =>
+                            Math.abs(value - expected[i])
+                        )
+                    )
+                );
+                renderer.destroyMark(point.markId);
+                renderer.destroyMark(rectangle.markId);
+            }
+            return {
+                errors,
+                referencesPainted,
+                validation: await renderer.device.popErrorScope(),
+            };
+        } finally {
+            buffer.destroy();
+            renderer.destroy();
+        }
+    });
+    expect(result.validation).toBeNull();
+    expect(result.referencesPainted).toBe(true);
+    expect(result.errors).toEqual([0, 0]);
 });
