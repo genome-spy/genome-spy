@@ -42,3 +42,12 @@ boundary marks a native document drag; no brush/ruler controller changes.
 Visibility refresh clears stale hover/picking and uses the transaction-aware
 layout request. A finalization-during-load regression verifies no post-disposal
 layout is scheduled.
+
+Complete (2026-11-05): API, App ownership extraction, documentation and minor
+changeset implemented. Independent implementation review findings are resolved.
+Final full suite: 5,575 passing, one existing skip and two TODOs; Core/App strict
+typing, lint, all workspace builds, schema/API docs and release checks pass.
+Headless Canvas recording verifies hide/show with the identical live handle,
+rows and brush selection. No brush/ruler changes or app deployment. API writes
+during active native document drags are explicitly rejected rather than canceled.
+Recording scripts/media remain temporary; no unfinished scope remains here.
