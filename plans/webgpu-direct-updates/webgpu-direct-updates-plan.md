@@ -694,9 +694,70 @@ current attribution supports them; caller-attributed allocation alone does not
 prove closure volume or CPU cost. Keep only coherent changes with useful
 allocation/work reduction and no reproducible CPU regression.
 
-- [ ] Profile current draw preparation and identify the smallest justified
+- [x] Profile current draw preparation and identify the smallest justified
       change.
-- [ ] Implement justified local simplification with representative regression
+- [x] Implement justified local simplification with representative regression
       coverage.
-- [ ] Verify native output, picking/export and profiler-disabled CPU; review and
+- [x] Verify native output, picking/export and profiler-disabled CPU; review and
       record the outcome and source delta before delivery.
+
+Baseline for 5: `c322a6e16`, the completed 3–4 commit. Two fresh allocation
+samples of 600 updates on that commit attribute about 24 MB of 63 MB to renderer
+draw preparation. Within draw encoding, intersection and physical-scissor
+helpers account for about 3.3 MB. This confirms a bounded target on the current
+implementation rather than relying on the older profile.
+
+The implementation hoists target bounds and floored physical origins once per
+draw pass, then computes each scissor with scalar locals. It removes three
+temporary rectangles and redundant validation of already-normalized internal
+scissors. Logical intersection width/height is still computed before physical
+rounding, with the exact former arithmetic association and absolute-origin
+floor/ceil order. Group helpers, remembered draw frames, custom draw options and
+dynamic-offset arrays retain their existing ownership. The runtime grows by 11
+raw lines; no state, pool, cache or API is added.
+
+Existing tests now cover outward fractional-DPR clipping on detached targets,
+nonzero rounded group origins and retained flat picking coordinates. The native
+overlap scene uses a nonzero group origin with its prior expected pixel values.
+Independent implementation/test review found no blocker.
+
+Two alternating allocation pairs against the committed baseline reduce sampled
+allocation from 63.98 to 60.94 MB (**−4.76%**). Both pairs favor the candidate.
+The draw-encoding subtree falls from about 6.06 to 3.21 MB (**−47%**);
+attribution can move between inlined callers, so this is a sampled estimate, not
+an exact object/byte count. These diagnostics include collected objects and run
+separately from profiler-disabled CPU acceptance. Exported PNGs are byte
+identical with no browser/loading errors. Artifacts are under ignored
+`output/webgpu-direct-uniforms/draw-preparation-*`; no permanent harness is
+added.
+
+Final correctness checks pass 488 focused tests, renderer TypeScript, scoped
+lint/format, release checks and 14 native GPU tests. Core types passed for the
+preceding 3–4 commit; no Core source changes in 5. Fractional-DPR export and
+group origin/picking tests pass, and all native PNG pairs are byte-identical.
+The public renderer API and remembered-frame ownership are unchanged. No release
+bump is scheduled.
+
+CPU validation retained the full sequence after an abrupt baseline timing drop:
+
+| Run                  | Warmup updates | Alternating pairs | Baseline thread CPU | Candidate thread CPU |  Change |
+| -------------------- | -------------: | ----------------: | ------------------: | -------------------: | ------: |
+| Initial              |            600 |                 3 |           985.82 ms |          1,223.25 ms | +24.08% |
+| Same-code control    |            600 |                 3 |         1,107.37 ms |          1,024.70 ms |  −7.47% |
+| Longer steady repeat |          1,200 |                 6 |         1,353.98 ms |          1,383.61 ms |  +2.19% |
+
+The same-code row compares the baseline with itself. Four of six steady pairs
+favor the candidate; their median relative change is −2.29%, but one abrupt
+baseline drop reverses the mean. These results establish neither a general CPU
+speedup nor a consistent regression. Retain all samples rather than selecting
+only favorable pairs. A separate instrumented counter diagnostic confirms equal
+work: both versions encode 1,199 passes and 38,368 draws per 600-update sample.
+Style propagation can queue a render alongside the immediate viewport render;
+both versions execute the same count. Counter timings are diagnostic only.
+
+Keep the scalar change for its repeatable allocation reduction and deletion of
+known redundant per-draw work, with CPU benefit explicitly unproven. Broader
+scope normalization/layerization remains the larger allocation source. No
+whole-frame pool, offset/options reuse or profiler callback dispatcher is added;
+those require separate evidence and ownership design. Commit:
+`perf(webgpu): avoid temporary rectangles during draw encoding`.

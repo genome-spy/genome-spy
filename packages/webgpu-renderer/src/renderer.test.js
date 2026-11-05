@@ -69,7 +69,11 @@ describe("Renderer mark definitions", () => {
             dpr: 1.5,
         });
 
-        target.render({ draws: [{ mark }] });
+        target.render({
+            draws: [
+                { mark, scissor: { x: 0.6, y: 1.1, width: 10.2, height: 9.2 } },
+            ],
+        });
         await target.onSubmittedWorkDone();
 
         expect(context.configure).toHaveBeenCalledWith({
@@ -78,6 +82,7 @@ describe("Renderer mark definitions", () => {
             alphaMode: "premultiplied",
         });
         expect(pass.setViewport).toHaveBeenCalledWith(0, 0, 300, 150, 0, 1);
+        expect(pass.setScissorRect).toHaveBeenCalledWith(0, 1, 17, 15);
         const writes = vi.mocked(renderer.device.queue.writeBuffer).mock.calls;
         expect(
             new Float32Array(/** @type {ArrayBuffer} */ (writes.at(-1)[2]))[2]
@@ -605,7 +610,7 @@ describe("Renderer mark definitions", () => {
         expect(pass.setScissorRect).toHaveBeenCalledWith(0, 0, 99, 100);
     });
 
-    test("renders a bounded multisampled group and composites it once", () => {
+    test("renders a bounded multisampled group and retains flat picking coordinates", async () => {
         const program = createProgram("multisample");
         const definition = Object.freeze({
             type: "custom",
@@ -613,28 +618,31 @@ describe("Renderer mark definitions", () => {
         });
         const { renderer, pass, renderPassDescriptors, transientAcquires } =
             createRendererHarness();
+        renderer.canvas.width = 150;
+        renderer.canvas.height = 75;
+        renderer.updateGlobals({ width: 100, height: 50, dpr: 1.5 });
         const mark = renderer.createMark(definition, { channels: {} });
 
         renderer.render({
             items: [
                 {
                     label: "viewRoot/samples/copy-ratios",
-                    bounds: { x: 10, y: 5, width: 20, height: 10 },
+                    bounds: { x: 10.25, y: 5.5, width: 20, height: 10 },
                     opacity: 0.5,
                     items: [
                         {
                             mark,
                             viewport: {
-                                x: 10,
-                                y: 5,
+                                x: 10.25,
+                                y: 5.5,
                                 width: 20,
                                 height: 10,
                             },
                             scissor: {
-                                x: 10,
-                                y: 5,
-                                width: 20,
-                                height: 10,
+                                x: 12.5,
+                                y: 6.25,
+                                width: 15.5,
+                                height: 7.5,
                             },
                         },
                     ],
@@ -647,8 +655,8 @@ describe("Renderer mark definitions", () => {
             expect.objectContaining({ sampleCount: 4 })
         );
         expect(transientAcquires).toEqual([
-            expect.objectContaining({ width: 40, height: 20, sampleCount: 1 }),
-            expect.objectContaining({ width: 40, height: 20, sampleCount: 4 }),
+            expect.objectContaining({ width: 31, height: 16, sampleCount: 1 }),
+            expect.objectContaining({ width: 31, height: 16, sampleCount: 4 }),
         ]);
         expect(renderPassDescriptors).toHaveLength(2);
         expect(renderPassDescriptors[0].label).toBe(
@@ -661,21 +669,41 @@ describe("Renderer mark definitions", () => {
         expect(renderPassDescriptors[1].label).toBe(
             "viewRoot/samples/copy-ratios: group composite pass"
         );
-        expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 40, 20, 0, 1);
-        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 0, 0, 40, 20);
+        expect(pass.setViewport).toHaveBeenNthCalledWith(
+            1,
+            expect.closeTo(0.375),
+            expect.closeTo(0.25),
+            30,
+            15,
+            0,
+            1
+        );
+        expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 3, 1, 24, 12);
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             2,
-            20,
-            10,
-            40,
-            20,
+            15,
+            8,
+            31,
+            16,
             0,
             1
         );
         expect(renderer._renderFrame).toHaveLength(1);
 
+        pass.setViewport.mockClear();
+        pass.setScissorRect.mockClear();
         renderer.renderPicking();
+        await renderer.pick(15, 10);
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
+        expect(pass.setViewport).toHaveBeenCalledWith(
+            15.375,
+            8.25,
+            30,
+            15,
+            0,
+            1
+        );
+        expect(pass.setScissorRect).toHaveBeenCalledWith(18, 9, 24, 12);
     });
 
     test("reuses grouped render textures across unchanged frames", () => {
