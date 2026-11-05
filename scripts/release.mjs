@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { getReleasePlan } from "@changesets/get-release-plan";
+import { format, resolveConfig } from "prettier";
 import { parseNote } from "./changelog.mjs";
 
 const releaseHeading = /^#{1,2} \[\d+\.\d+\.\d+\]/m;
@@ -223,11 +224,18 @@ export async function prepareRelease(cwd, { intro = "" } = {}) {
         );
     }
     const release = plan.releases[0];
-    const notes =
+    const changelogPath = path.join(cwd, "CHANGELOG.md");
+    const notes = await format(
         [intro.trim(), (await aggregateNotes(cwd, plan)).trim()]
             .filter(Boolean)
-            .join("\n\n") + "\n";
-    const changelogPath = path.join(cwd, "CHANGELOG.md");
+            .join("\n\n"),
+        {
+            ...(await resolveConfig(changelogPath)),
+            parser: "markdown",
+            proseWrap: "always",
+            embeddedLanguageFormatting: "off",
+        }
+    );
     const changelog = await readFile(changelogPath, "utf8");
     const firstRelease = changelog.search(releaseHeading);
     if (firstRelease === -1) {
@@ -402,7 +410,12 @@ export async function releaseNotes(cwd, { github = false } = {}) {
             encoding: "utf8",
         }).trim(),
     });
-    return notes + (credits ? "\n\n" + credits : "") + "\n";
+    // GitHub release bodies render soft line breaks; keep source files wrapped.
+    return format(notes + (credits ? "\n\n" + credits : ""), {
+        parser: "markdown",
+        proseWrap: "never",
+        embeddedLanguageFormatting: "off",
+    });
 }
 
 /**

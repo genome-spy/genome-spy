@@ -27,11 +27,9 @@ jobs:
             - run: npm ci
             - run: npm run lint
             - run: npm --workspaces run test:tsc --if-present
-            - run: npm -w @genome-spy/react-component run test
-            - run: npm -w @genome-spy/embed-examples run test
             - run: npm -w @genome-spy/embed-examples run build:smoke
             - run: npm run build
-            - run: npm run test
+            - run: npm test -- --reporter=agent
 
     playground-e2e:
         runs-on: ubuntu-latest

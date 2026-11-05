@@ -28,7 +28,7 @@ export const POINT_CHANNEL_SPECS = {
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     angle: { type: "f32", components: 1, default: 0.0 },
     gradientStrength: { type: "f32", components: 1, default: 0.0 },
-    inwardStroke: { type: "u32", components: 1, default: 0 },
+    strokeAlign: { type: "u32", components: 1, default: 1 },
     minPickingSize: { type: "f32", components: 1, default: 2.0 },
 };
 
@@ -57,7 +57,7 @@ struct VSOut {
     @location(6) strokeOpacity: f32,
     @location(7) halfStrokeWidth: f32,
     @location(8) gradientStrength: f32,
-    @location(9) @interpolate(flat) inwardStroke: u32,
+    @location(9) @interpolate(flat) strokeAlign: u32,
     @location(10) @interpolate(flat) pickId: u32,
 };
 
@@ -76,7 +76,7 @@ fn culledPoint() -> VSOut {
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
     out.gradientStrength = 0.0;
-    out.inwardStroke = 0u;
+    out.strokeAlign = 0u;
     out.pickId = 0u;
     return out;
 }
@@ -105,16 +105,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
 
     // WebGL clamps subpixel fill geometry before enlarging the picking sprite.
-    if (pickingEnabled && (strokeWidth <= 0.0 || getScaled_inwardStroke(i) > 0u)) {
+    if (pickingEnabled && (strokeWidth <= 0.0 || getScaled_strokeAlign(i) == 0u)) {
         diameter = max(diameter, 1.0 / globals.dpr);
     }
 
     let aaPadding = 1.0 / globals.dpr;
-    let strokePadding = select(
-        strokeWidth,
-        0.0,
-        getScaled_inwardStroke(i) > 0u
-    );
+    let strokePadding = strokeWidth * f32(getScaled_strokeAlign(i));
     let padding = strokePadding + aaPadding;
 
     // Match WebGL's enlarged point sprite without expanding its silhouette
@@ -173,7 +169,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = strokeWidth * 0.5;
     out.gradientStrength = getScaled_gradientStrength(i);
-    out.inwardStroke = getScaled_inwardStroke(i);
+    out.strokeAlign = getScaled_strokeAlign(i);
     out.pickId = 0u;
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
@@ -187,7 +183,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     let d = circle(p, r);
 
     if (pickingEnabled) {
-        if (d > in.halfStrokeWidth) { discard; }
+        if (d > in.halfStrokeWidth * select(1.0, 2.0, in.strokeAlign == 2u)) { discard; }
         return vec4<f32>(1.0);
     }
 
@@ -207,11 +203,10 @@ fn shade(in: VSOut) -> vec4<f32> {
     let fillCoverage = distanceToRatio(-d);
     var color = fillColor * fillCoverage;
     if (in.halfStrokeWidth > 0.0) {
-        let inward = in.inwardStroke > 0u;
-        let innerCoverage = distanceToRatio(
-            -d - select(in.halfStrokeWidth, 2.0 * in.halfStrokeWidth, inward)
-        );
-        let outerCoverage = select(distanceToRatio(in.halfStrokeWidth - d), fillCoverage, inward);
+        let outset = in.halfStrokeWidth * f32(in.strokeAlign);
+        let inset = 2.0 * in.halfStrokeWidth - outset;
+        let innerCoverage = distanceToRatio(-d - inset);
+        let outerCoverage = distanceToRatio(outset - d);
         color = innerCoverage * fillColor
             + (fillCoverage - innerCoverage) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
             + (outerCoverage - fillCoverage) * strokeColor;

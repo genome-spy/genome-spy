@@ -822,7 +822,12 @@ export type PointChannelName =
     | "strokeOpacity"
     | "angle"
     | "gradientStrength"
-    | "inwardStroke"
+    /**
+     * Stroke placement: 0 inside, 1 center (default), 2 outside.
+     * Path-backed points clamp stroke widths to the atlas distance range;
+     * fixed analytic circles do not have this limit.
+     */
+    | "strokeAlign"
     | "minPickingSize";
 
 export type PointChannels = Partial<
@@ -902,6 +907,7 @@ export type LinkChannelName =
 export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
 
 export type ArrowChannelName =
+    | "opacity"
     | "xClampRange"
     | "yClampRange"
     | "uniqueId"
@@ -918,6 +924,12 @@ export type ArrowChannelName =
     | "fillOpacity"
     | "strokeOpacity"
     | "strokeWidth"
+    /**
+     * Full-width border alignment: 0 inside, 1 center (default), 2 outside.
+     * Nominal fill, open-head arm thickness and repeated-head spacing are
+     * independent of the border width and alignment.
+     */
+    | "strokeAlign"
     | "size"
     | "direction";
 

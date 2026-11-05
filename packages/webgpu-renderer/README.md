@@ -307,6 +307,13 @@ transient attachments are pooled within a bounded free-cache budget.
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
 
+### Arrow opacity
+
+Arrow `opacity` multiplies each occurrence's completed fill/stroke paint once,
+including its repeated heads. It defaults to 1 and accepts scalar, series and
+conditional inputs. Scope opacity remains separate. Open-head geometry and
+geometric picking are unchanged, including when arrow opacity is zero.
+
 ### Rule fill and borders
 
 Rules use `fill` (formerly `color`) for the body, with `size` as its thickness.

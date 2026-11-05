@@ -131,6 +131,27 @@ for (const dpr of [1, 2]) {
                     }
                     set({ strokeWidth: 0, hatchPattern: 0 });
                 }
+                // Unequal radii expose a top/bottom inversion hidden by symmetric corners.
+                set({
+                    cornerRadiusTopLeft: 12,
+                    cornerRadiusTopRight: 0,
+                    cornerRadiusBottomLeft: 4,
+                    cornerRadiusBottomRight: 8,
+                });
+                const asymmetric = await capture();
+                const cornerPositions = [
+                    [18, 18],
+                    [47, 18],
+                    [18, 46],
+                    [47, 47],
+                ];
+                const corners = cornerPositions.map(([x, y]) =>
+                    pixel(asymmetric, x * dpr, y * dpr)
+                );
+                const cornerPicks = [];
+                for (const [x, y] of cornerPositions) {
+                    cornerPicks.push(await renderer.pick(x, y));
+                }
                 set({
                     cornerRadiusTopLeft: 0,
                     cornerRadiusTopRight: 0,
@@ -325,6 +346,8 @@ for (const dpr of [1, 2]) {
                 ]);
                 const clippedBorder = await renderer.pick(32, 13);
                 return {
+                    corners,
+                    cornerPicks,
                     aligned,
                     oversizedInside,
                     hatchAlignmentErrors,
@@ -356,6 +379,13 @@ for (const dpr of [1, 2]) {
             }
         }, dpr);
         expect(result.error).toBeNull();
+        expect(result.corners).toEqual([
+            [0, 0, 0, 0],
+            [255, 0, 0, 255],
+            [255, 0, 0, 255],
+            [0, 0, 0, 0],
+        ]);
+        expect(result.cornerPicks).toEqual([null, 7, 7, null]);
         expect(Math.max(...result.transparentErrors)).toBeLessThanOrEqual(2);
         const close = (actual, expected) =>
             actual.forEach((v, i) =>

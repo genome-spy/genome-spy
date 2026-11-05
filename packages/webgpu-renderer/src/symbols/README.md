@@ -163,10 +163,13 @@ difference between contours offset outward and inward by half the requested
 width, so a zero-width stroke contributes exactly no coverage. The shader
 premultiplies both layers, paints the fill first, and composites the stroke over
 it with source-over blending, matching SVG and Canvas paint order in one pass.
-For `inwardStroke`, the nominal path boundary remains the outer edge and the
-full requested stroke band is composed toward the interior. Its quad therefore
-omits directional outer-miter padding and retains only the fill antialiasing
-guard.
+The point `strokeAlign` channel selects inside (0), center (1, the default), or
+outside (2). Inside places the full band toward the interior; outside preserves
+the nominal fill and places the full band outward. The quad includes the
+corresponding directional outer-miter padding and antialiasing guard. Stroke
+widths on path-backed points are clamped to the atlas's representable distance
+range; this limit also applies to outside strokes and does not apply to fixed
+analytic circles.
 
 Path-backed points also preserve `fillGradientStrength`. The shader normalizes
 positive reconstructed interior distance by the delivered device-pixel radius,

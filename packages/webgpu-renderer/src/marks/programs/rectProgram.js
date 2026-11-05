@@ -93,7 +93,8 @@ fn clampMinSize(pos: ptr<function, f32>, frac: f32, size: f32, minSize: f32) -> 
 
 fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: vec4<f32>) -> f32 {
     let pair = select(r.zw, r.xy, p.x > 0.0);
-    let radius = select(pair.y, pair.x, p.y > 0.0);
+    // Screen-space Y grows downward; negative local Y selects the top radius.
+    let radius = select(pair.y, pair.x, p.y < 0.0);
     let q = abs(p) - b + radius;
     return min(max(q.x, q.y), 0.0) + length(max(q, vec2<f32>(0.0))) - radius;
 }

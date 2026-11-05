@@ -159,6 +159,14 @@ describe("WebGPU mark adapter", () => {
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
         expect(channels.minPickingSize).toEqual(dynamicValue(12));
+        expect(channels.strokeAlign).toEqual({
+            ...dynamicValue(1),
+            type: "u32",
+        });
+        pointProperties.inwardStroke = true;
+        expect(channels.strokeAlign.value).toBe(0);
+        pointProperties.inwardStroke = false;
+        expect(channels.strokeAlign.value).toBe(1);
         pointProperties.minPickingSize = 20;
         expect(channels.minPickingSize.value).toBe(20);
     });

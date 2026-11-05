@@ -1,0 +1,6 @@
+interface:
+    display_name: "Prepare GenomeSpy Changelog"
+    short_description: "Curate release notes and consolidate related entries"
+    default_prompt:
+        "Use $prepare-genomespy-changelog to prepare a reviewable release
+        changelog, consolidate related entries, and summarize its key themes."

@@ -97,7 +97,20 @@ export const PositionClamping = withSource(
     }
 );
 
+const pointStrokeControls = {
+    strokeAlign: {
+        control: {
+            type: "select",
+            labels: { 0: "inside", 1: "center", 2: "outside" },
+        },
+        options: [0, 1, 2],
+    },
+    strokeOpacity: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
+};
+
 export const Points = withSource("runPointScene", null, {
+    args: { strokeAlign: 1, strokeOpacity: 1 },
+    argTypes: pointStrokeControls,
     render: (args) => renderScene(runPointScene, args),
 });
 
@@ -105,8 +118,9 @@ export const PathPoints = withSource(
     "runPathPointScene",
     { backend: "wgsl" },
     {
-        args: { backend: "wgsl" },
+        args: { backend: "wgsl", strokeAlign: 1, strokeOpacity: 0.5 },
         argTypes: {
+            ...pointStrokeControls,
             backend: {
                 control: "select",
                 options: ["wgsl", "msdfgen"],
@@ -226,9 +240,37 @@ export const Links = withSource("runLinkScene", null, {
     render: (args) => renderScene(runLinkScene, args),
 });
 
-export const Arrows = withSource("runArrowScene", null, {
-    render: (args) => renderScene(runArrowScene, args),
-});
+export const Arrows = withSource(
+    "runArrowScene",
+    { opacity: 1 },
+    {
+        args: {
+            opacity: 1,
+            strokeAlign: 1,
+            strokeWidth: 1,
+            strokeOpacity: 0.5,
+        },
+        argTypes: {
+            opacity: {
+                control: { type: "range", min: 0, max: 1, step: 0.05 },
+            },
+            strokeAlign: {
+                options: [0, 1, 2],
+                control: {
+                    type: "select",
+                    labels: { 0: "Inside", 1: "Center", 2: "Outside" },
+                },
+            },
+            strokeWidth: {
+                control: { type: "range", min: 0, max: 12, step: 0.25 },
+            },
+            strokeOpacity: {
+                control: { type: "range", min: 0, max: 1, step: 0.05 },
+            },
+        },
+        render: (args) => renderScene(runArrowScene, args),
+    }
+);
 
 export const Text = withSource(
     "runTextScene",
