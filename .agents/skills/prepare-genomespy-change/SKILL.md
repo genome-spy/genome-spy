@@ -57,6 +57,9 @@ for draft PRs, direct commits, and pre-merge cleanup.
 
 ## Draft pull request metadata
 
+Use [write-clear-pr-text](../write-clear-pr-text/SKILL.md) for PR titles,
+descriptions and review replies, and check the final wording before posting.
+
 - Use a Conventional Commit-style PR title and Markdown notes.
 - Do not hard-wrap prose in PR notes. Keep each paragraph on one source line and
   let GitHub wrap it when rendering HTML. Use line breaks only for Markdown

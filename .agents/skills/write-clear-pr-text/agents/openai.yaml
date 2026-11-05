@@ -1,0 +1,7 @@
+interface:
+    display_name: "Write Clear PR Text"
+    short_description: "Make PR descriptions and comments easy to review"
+    default_prompt:
+        "Use $write-clear-pr-text to rewrite this PR description or comment in
+        plain language while preserving the facts, verification and important
+        limitations."

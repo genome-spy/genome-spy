@@ -53,6 +53,9 @@ Capture-only tasks finish by returning the local video without changing a PR.
 
 ## Prepare and upload
 
+Use [write-clear-pr-text](../write-clear-pr-text/SKILL.md) for the recording
+comment or PR description before uploading it.
+
 Read the current PR description before replacing it, preserving relevant content.
 Write the complete description or comment to a UTF-8 file. State what to watch
 and any relevant before/after revisions. A recording illustrates behavior;
