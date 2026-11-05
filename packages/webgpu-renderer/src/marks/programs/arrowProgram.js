@@ -191,13 +191,6 @@ fn polygonDistance(p: vec2<f32>, vertices: array<vec2<f32>, 6>) -> f32 {
     return select(distance, -distance, inside);
 }
 
-fn repeatDistance(x: f32, spacing: f32) -> f32 {
-    if (x >= spacing) {
-        return x - floor(x / spacing) * spacing;
-    }
-    return x;
-}
-
 fn headNotchOffset(
     halfWidth: f32,
     headSlope: f32,
@@ -357,33 +350,26 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     var head = 1e20;
     if (in.headSpacing >= 0.0) {
-        let halfStroke = in.strokeWidth * 0.5;
         let headAxisLength = in.headHalfWidth * in.headSlope;
         let headStrokeLength = in.headStrokeWidth
             / length(vec2<f32>(in.headSlope, 1.0));
-        let headRepeatFootprintLength = headAxisLength
-            + headStrokeLength
-            + halfStroke * 2.0;
-        let spacing = max(in.headSpacing, headRepeatFootprintLength);
+        let footprint = headAxisLength + headStrokeLength;
+        let spacing = max(in.headSpacing, footprint);
+        let lastHead = floor(max(in.halfLength * 2.0 - footprint, 0.0) / spacing);
         let distanceFromStart = in.halfLength - p.x;
-        let headOffset = repeatDistance(distanceFromStart + halfStroke, spacing)
-            - halfStroke;
-        let headTipDistance = distanceFromStart - headOffset;
-        let headEndDistance = headTipDistance
-            + headRepeatFootprintLength
-            - halfStroke;
-        if (
-            headTipDistance <= 0.0
-            || headEndDistance <= in.halfLength * 2.0
-        ) {
-            head = headDistance(
+        // Nominal footprints do not overlap. The two bracketing admitted heads
+        // suffice; clamping also retains their borders beyond either endpoint.
+        let index = clamp(floor((distanceFromStart - footprint * 0.5) / spacing), 0.0, lastHead);
+        for (var neighbor = 0u; neighbor < 2u; neighbor++) {
+            let headIndex = min(index + f32(neighbor), lastHead);
+            head = min(head, headDistance(
                 p,
-                p.x + headOffset,
+                in.halfLength - headIndex * spacing,
                 in.headHalfWidth,
                 in.headSlope,
                 in.notchSlope,
                 in.headStrokeWidth
-            );
+            ));
         }
     } else {
         head = headDistance(
