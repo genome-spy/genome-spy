@@ -1787,6 +1787,16 @@ export default class SampleView extends ContainerView {
      */
     propagateInteraction(event) {
         propagateInteraction(this, event, () => {
+            for (const region of Object.values(this.#gridChild.legends)) {
+                if (
+                    region.isActive() &&
+                    region.coords.containsPoint(event.point.x, event.point.y)
+                ) {
+                    region.propagateInteraction(event);
+                    return;
+                }
+            }
+
             const mainPaneZoomCoords = this.#getMainPaneZoomCoords();
             const inMainPane = this.childCoords.containsPoint(
                 event.point.x,

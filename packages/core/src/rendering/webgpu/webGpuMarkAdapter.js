@@ -104,6 +104,12 @@ const BASELINE_CODES = new Map([
     ["bottom", 3],
 ]);
 
+const STROKE_ALIGN_CODES = new Map([
+    ["inside", 0],
+    ["center", 1],
+    ["outside", 2],
+]);
+
 const STROKE_CAP_CODES = new Map([
     ["butt", 0],
     ["square", 1],
@@ -794,6 +800,7 @@ function createPointVisibilitySelections(mark) {
  */
 function createRuleConfig(mark, data, coords, viewOpacity) {
     mark.initializeRenderingRevisions([
+        "strokeAlign",
         "minLength",
         "strokeCap",
         "strokeDashOffset",
@@ -816,6 +823,13 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
             fill: createColorChannel(mark, "fill", data),
             ...(mark.getType() === "rule"
                 ? {
+                      strokeAlign: liveValue(
+                          () =>
+                              STROKE_ALIGN_CODES.get(
+                                  readProperty(mark, "strokeAlign")
+                              ) ?? 2,
+                          "u32"
+                      ),
                       fillOpacity: createNumericChannel(
                           mark,
                           "fillOpacity",

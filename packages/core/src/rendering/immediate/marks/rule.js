@@ -25,7 +25,15 @@ import {
 
 /** @param {import("../../../marks/rule.js").default} mark */
 export function resolveRuleProperties(mark) {
+    // Ticks share the rule renderer but do not define stroke alignment.
+    const align =
+        "strokeAlign" in mark.properties
+            ? resolveMarkProperty(mark, mark.properties.strokeAlign)
+            : "outside";
+
     return {
+        strokeAlign:
+            align === "inside" || align === "center" ? align : "outside",
         minLength: resolveMarkProperty(mark, mark.properties.minLength),
         strokeCap: resolveMarkProperty(mark, mark.properties.strokeCap),
     };

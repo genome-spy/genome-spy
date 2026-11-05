@@ -16,6 +16,7 @@ flat in float vBodyFactor;
 #ifdef RULE_STROKE
 flat in vec4 vStroke;
 flat in float vBorderWidth;
+flat in float vPaintOpacity;
 flat in float vNominalSize;
 flat in float vSpan;
 #endif
@@ -38,22 +39,35 @@ float ribbonDistance(float along, float radius) {
 }
 
 float boundaryCoverage(float along, float outset) {
-    float width = vNominalSize + 2.0 * outset;
+    float width = max(0.0, vNominalSize + 2.0 * outset);
+    if (width == 0.0) return 0.0;
     float radius = 0.5 * max(width, 1.0 / uDevicePixelRatio) - outset;
     float distance = ribbonDistance(along, radius) - outset;
     return clamp(0.5 - distance * uDevicePixelRatio, 0.0, 1.0) * min(1.0, width * uDevicePixelRatio);
 }
 
-vec2 ribbonCoverage(float along) {
-    float body = boundaryCoverage(along, 0.0);
-    if (vBorderWidth == 0.0) return vec2(body);
-    return vec2(body, boundaryCoverage(along, vBorderWidth));
+vec3 ribbonCoverage(float along, float halfSpan) {
+    float cf = boundaryCoverage(along, 0.0);
+    if (vBorderWidth == 0.0) return vec3(cf);
+    float outset = vBorderWidth * float(uStrokeAlign) * 0.5;
+    float inset = vBorderWidth - outset;
+    float co = outset > 0.0 ? boundaryCoverage(along, outset) : cf;
+    float ci = cf;
+    if (inset > 0.0) {
+        float maxInset = vNominalSize * 0.5;
+        if (uStrokeCap != ROUND) {
+            float end = uStrokeCap == SQUARE ? vNominalSize * 0.5 : 0.0;
+            maxInset = min(maxInset, halfSpan + end);
+        }
+        ci = inset >= maxInset ? 0.0 : boundaryCoverage(along, -inset);
+    }
+    return vec3(ci, cf, co);
 }
 
-vec2 ruleCoverage() {
+vec3 ruleCoverage() {
     vec2 bounds = vec2(0.0, vSpan);
     if (uDashTextureSize == 0.0) {
-        return ribbonCoverage(max(-vPosInPixels.x, vPosInPixels.x - vSpan));
+        return ribbonCoverage(max(-vPosInPixels.x, vPosInPixels.x - vSpan), vSpan * 0.5);
     }
     float query = clamp(vPosInPixels.x, bounds.x, bounds.y);
     float local = mod(query + uStrokeDashOffset, uDashTextureSize);
@@ -64,23 +78,30 @@ vec2 ruleCoverage() {
     vec2 right = vec2(max(bounds.x, intervals.z), min(bounds.y, intervals.w));
     bool leftValid = left.x <= left.y && (left.x < left.y || uStrokeCap != BUTT);
     bool rightValid = right.x <= right.y && (right.x < right.y || uStrokeCap != BUTT);
-    if (!leftValid && !rightValid) return vec2(0.0);
+    if (!leftValid && !rightValid) return vec3(0.0);
 
     float leftAlong = max(left.x - vPosInPixels.x, vPosInPixels.x - left.y);
     float rightAlong = max(right.x - vPosInPixels.x, vPosInPixels.x - right.y);
+    // Contraction can consume a short dash, so retain its individual length.
+    if (uStrokeAlign != 2 && vBorderWidth > 0.0) {
+        return max(leftValid ? ribbonCoverage(leftAlong, (left.y - left.x) * 0.5) : vec3(0.0),
+            rightValid ? ribbonCoverage(rightAlong, (right.y - right.x) * 0.5) : vec3(0.0));
+    }
     float along = leftValid ? leftAlong : rightAlong;
     if (rightValid) along = min(along, rightAlong);
 
     // Both cap distances are monotone in along. Their minimum gives the coverage
     // union for each boundary, including its independent thin-width compensation.
-    return ribbonCoverage(along);
+    return ribbonCoverage(along, vSpan * 0.5);
 }
 #endif
 
 void main(void) {
 #ifdef RULE_STROKE
-    vec2 coverage = ruleCoverage();
-    fragColor = coverage.x * vColor + (coverage.y - coverage.x) * vStroke;
+    vec3 coverage = ruleCoverage();
+    vec4 overlap = vStroke + (1.0 - vStroke.a) * vColor;
+    fragColor = (coverage.x * vColor + (coverage.y - coverage.x) * overlap +
+        (coverage.z - coverage.y) * vStroke) * vPaintOpacity;
     if (uPickingEnabled) fragColor = vPickingColor;
 #else
     float dpr = uDevicePixelRatio;

@@ -77,6 +77,21 @@ async function renderRules({ renderer, dpr }) {
             hollow: true,
         },
         { name: "square dots", cap: "square", border: 0, dash: [0, 28] },
+        // Short/dot intervals still have cap interiors for aligned strokes.
+        {
+            name: "inward round fragments",
+            cap: "round",
+            border: 3,
+            dash: [2, 30],
+            align: "inside",
+        },
+        {
+            name: "centered square dots",
+            cap: "square",
+            border: 3,
+            dash: [0, 28],
+            align: "center",
+        },
         { name: "empty butt dots", cap: "butt", border: 3, dash: [0, 28] },
         {
             name: "butt dots beside body",
@@ -142,6 +157,7 @@ async function renderRules({ renderer, dpr }) {
                         fillOpacity: item.hollow ? 0 : 1,
                         stroke: "blue",
                         strokeWidth: item.border,
+                        strokeAlign: item.align ?? "outside",
                         strokeCap: item.cap,
                         strokeDash: item.dash ?? [18, 24],
                         strokeDashOffset: item.offset ?? 0,

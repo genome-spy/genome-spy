@@ -1035,6 +1035,90 @@
           "additionalProperties": false,
           "description": "Interval endpoints keyed by encoding channel.",
           "properties": {
+            "color": {
+              "anyOf": [
+                {
+                  "items": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "const": "Infinity",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  ],
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fill": {
+              "anyOf": [
+                {
+                  "items": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "const": "Infinity",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  ],
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "stroke": {
+              "anyOf": [
+                {
+                  "items": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "const": "Infinity",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  ],
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "x": {
               "anyOf": [
                 {
@@ -1508,7 +1592,7 @@
           "anyOf": [
             {
               "items": {
-                "type": "number"
+                "type": ["string", "number", "boolean"]
               },
               "type": "array"
             },
@@ -1523,7 +1607,7 @@
               "type": "null"
             }
           ],
-          "description": "Boundaries before which to insert grouping gaps on positional index or locus scales. A cut at 10 separates bands 9 and 10. Positions are sorted and deduplicated. `\"chromosomes\"` uses the bound locus assembly's internal chromosome boundaries. An expression may return an array or null.\n\nConstant null or an empty array completely disables grouping gaps. __Default value:__ null."
+          "description": "Boundaries before which to insert grouping gaps on positional band, point, index, or locus scales. For band/point scales, list domain category values; numeric categories are values, not ranks. Missing or first categories add no gap. Index/locus cuts use numeric coordinates: 10 separates bands 9 and 10. `\"chromosomes\"` inserts gaps between the assembly's chromosomes. Positions are deduplicated in domain order. An expression may return an array or null.\n\nConstant null or an empty array completely disables grouping gaps. __Default value:__ null."
         },
         "gapWidth": {
           "anyOf": [
@@ -1537,7 +1621,7 @@
               "type": "null"
             }
           ],
-          "description": "Grouping gap width in CSS pixels, independent of zoom and device pixel ratio. An expression may return a nonnegative number or null. Constant zero or null completely disables grouping gaps. __Default value:__ 6 when gapPositions is supplied, otherwise 0."
+          "description": "Grouping gap width in CSS pixels, independent of zoom and device pixel ratio. An expression may return a nonnegative number or null. Constant zero or null completely disables grouping gaps. With step-based sizing, gaps add to plot size while the base step stays fixed. Band/point gaps do not support `round: true`. Nested categorical offsets under a gapped band require an explicit offset range. On a step-sized axis, gap expressions must be independent of the resulting plot width or height. __Default value:__ 6 when gapPositions is supplied, otherwise 0."
         },
         "interpolate": {
           "anyOf": [
@@ -1646,6 +1730,22 @@
           "$ref": "#/definitions/ScaleType",
           "description": "The type of scale. GenomeSpy follows the Vega-Lite scale model; the links below refer to the Vega-Lite documentation:\n\n1) [**Continuous Scales**](https://vega.github.io/vega-lite/docs/scale.html#continuous) -- mapping continuous domains to continuous output ranges ([`\"linear\"`](https://vega.github.io/vega-lite/docs/scale.html#linear), [`\"pow\"`](https://vega.github.io/vega-lite/docs/scale.html#pow), [`\"sqrt\"`](https://vega.github.io/vega-lite/docs/scale.html#sqrt), [`\"symlog\"`](https://vega.github.io/vega-lite/docs/scale.html#symlog), [`\"log\"`](https://vega.github.io/vega-lite/docs/scale.html#log), [`\"time\"`](https://vega.github.io/vega-lite/docs/scale.html#time), [`\"utc\"`](https://vega.github.io/vega-lite/docs/scale.html#utc)).\n\n2) [**Discrete Scales**](https://vega.github.io/vega-lite/docs/scale.html#discrete) -- mapping discrete domains to discrete ([`\"ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#ordinal)) or continuous ([`\"band\"`](https://vega.github.io/vega-lite/docs/scale.html#band) and [`\"point\"`](https://vega.github.io/vega-lite/docs/scale.html#point)) output ranges.\n\n3) [**Discretizing Scales**](https://vega.github.io/vega-lite/docs/scale.html#discretizing) -- mapping continuous domains to discrete output ranges [`\"bin-ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#bin-ordinal), [`\"quantile\"`](https://vega.github.io/vega-lite/docs/scale.html#quantile), [`\"quantize\"`](https://vega.github.io/vega-lite/docs/scale.html#quantize) and [`\"threshold\"`](https://vega.github.io/vega-lite/docs/scale.html#threshold).\n\nGenomeSpy also provides [index](https://genomespy.app/docs/grammar/scale/#index-scale) and [locus](https://genomespy.app/docs/grammar/scale/#locus-scale) scales for sequence and genomic coordinates.\n\n__Default value:__ please see the [Vega-Lite scale type table](https://vega.github.io/vega-lite/docs/scale.html#type)."
         },
+        "viewport": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Initial and reset scale viewport for positional band or point scales, expressed as a half-open rank interval. Fractional endpoints allow smooth navigation. Intervals narrower than one category expand around their midpoint to span one category. The categorical domain retains its membership and order. Categorical zoom uses boolean `zoom` and is bounded by the full domain.\n\nThis scale viewport differs from a layout viewport, which scrolls already-laid-out content using `viewportWidth` or `viewportHeight`.\n\n__Default value:__ `null`, fitting all categories."
+        },
         "zero": {
           "description": "If `true`, ensures that a zero baseline value is included in the scale domain.\n\n__Default value:__ `true` for x and y channels if the quantitative field is not binned and no custom `domain` is provided; `false` otherwise.\n\n__Note:__ Log scales do not support `zero`.",
           "type": "boolean"
@@ -1659,7 +1759,7 @@
               "$ref": "#/definitions/ZoomParams"
             }
           ],
-          "description": "If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively."
+          "description": "Enable interactive zooming and panning on a positional scale. Band and point scales accept a boolean and navigate their scale viewport while retaining the full categorical domain. Continuous scales also accept zoom extent options.\n\n__Default value:__ `true` for index and locus scales; `false` otherwise."
         }
       },
       "type": "object"
@@ -2009,7 +2109,7 @@
               "type": "string"
             }
           ],
-          "description": "The boundaries that limit zoom and pan interactions.\n\nA domain array sets explicit boundaries. `\"data\"` derives the boundaries from the data that contributes to the scale domain. For index and quantitative scales, `\"unbounded\"` allows zooming and panning without fixed boundaries. Locus scales do not support unbounded zoom.\n\nWith an unbounded extent, the initial scale domain is used as the reference for the `zoomLevel()` expression helper and its channel-specific form, such as `zoomLevel(\"x\")`.\n\n__Default value:__ The initial scale domain, except the whole genome for locus scales."
+          "description": "The boundaries that limit zoom and pan interactions on continuous scales. Band and point scales use the full categorical domain as their bounds and accept only a boolean `zoom` property.\n\nA domain array sets explicit boundaries. `\"data\"` derives the boundaries from the data that contributes to the scale domain. For index and quantitative scales, `\"unbounded\"` allows zooming and panning without fixed boundaries. Locus scales do not support unbounded zoom.\n\nWith an unbounded extent, the initial scale domain is used as the reference for the `zoomLevel()` expression helper and its channel-specific form, such as `zoomLevel(\"x\")`.\n\n__Default value:__ The initial scale domain, except the whole genome for locus scales."
         }
       },
       "type": "object"

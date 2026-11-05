@@ -113,9 +113,9 @@ for (const dpr of [1, 2]) {
                 [12, 20],
                 [64, 20],
                 [116, 20],
-                [18, 14], // Painted antialiasing fringe outside the hit silhouette.
+                [18, 8.5], // Painted antialiasing fringe outside the hit silhouette.
                 [12, 0],
-                [4, 38], // Probe the interior of the left head's upper wing.
+                [18, 40], // Probe the interior of the left head's upper wing.
                 [64, 48],
                 [116, 48],
                 [12, 76],

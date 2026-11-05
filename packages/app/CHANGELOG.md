@@ -1,5 +1,70 @@
 # Change Log
 
+## 1.3.0
+
+### Minor Changes
+
+- Add categorical membership to point selections with typed raw values, scoped
+  selection APIs, and expression helpers including allocation-free membership tests.
+  Link categorical positions, colors, and shapes across plots with independent scales.
+  Category selections also support App history, bookmarks, and agent parameter
+  actions without requiring record keys.
+
+  Point capabilities and snapshots now distinguish `membership: "records"` from
+  `"categories"`; after narrowing to `type: "point"`, check membership before reading
+  record `data` or category `encodings` and `values`. For semantic-zoom sampling,
+  record and interval leaves referenced by appearance conditions independently
+  preserve their matching rows, including under `and` and `not`. Category leaves
+  and conditions used only for drawing order do not preserve rows. ([#614](https://github.com/genome-spy/genome-spy/pull/614)) [@tuner](https://github.com/tuner)
+
+- Keep GenomeSpy App open while inserting, removing, or replacing its sample cohort.
+  Replacement clears cohort metadata and history while preserving independent
+  annotation tracks and navigation. Controls and bookmark persistence follow the
+  attached cohort, with an explicit API for changing its bookmark context. Removed
+  or failed views release their keyboard handlers and retained readers before their
+  source URLs can be released. ([#631](https://github.com/genome-spy/genome-spy/pull/631)) [@tuner](https://github.com/tuner)
+- Add a [Figwig](https://github.com/jmschrei/figwig) lazy source for multiple
+  signal tracks in one file, with reactive track selection and cached,
+  viewport-focused reads. The default fast mode uses approximate, zero-filled
+  summaries for overviews and raw values at close zooms; `mode: "exact"`
+  computes missing-aware means from raw values. `maxSummaryPixels` controls
+  summary detail. The App loads typed embedded track attributes as sample
+  metadata and can derive sample IDs and labels from Figwig or matrix metadata
+  without a separate sample-list file. ([#617](https://github.com/genome-spy/genome-spy/pull/617), [#627](https://github.com/genome-spy/genome-spy/pull/627), [`be31682`](https://github.com/genome-spy/genome-spy/commit/be31682a6c8596f0d7342c28538bf00a19b19be4), [`c5565d6`](https://github.com/genome-spy/genome-spy/commit/c5565d606cae8a129b67e798ef273269822120ad)) [@tuner](https://github.com/tuner)
+- Brush numeric ranges directly on continuous color legends and combine them with
+  ordinary selection predicates across linked charts. Reaching the legend's
+  numeric maximum removes the upper limit while keeping the full color key stable.
+  Range brushes also work in sample-pane legends.
+  Open ranges survive App bookmarks and undo/redo.
+  Interval APIs read and clear shared values independently of brush hosts, and
+  programmatic replacement cancels active gestures without restoring stale bounds. ([#643](https://github.com/genome-spy/genome-spy/pull/643)) [@tuner](https://github.com/tuner)
+
+### Patch Changes
+
+- Fix sample grouping when a group's title equals its name. Group labels now load
+  without a missing-field error, allowing grouped visualizations and bookmarks to
+  finish restoring. ([#617](https://github.com/genome-spy/genome-spy/pull/617)) [@tuner](https://github.com/tuner)
+- Hide directories without JSON specs in the App dev server's main listing, including
+  directory trees that contain only other file types. ([`215a057`](https://github.com/genome-spy/genome-spy/commit/215a057ea5c1ed1aa2962bdebd454365bb2ca3a3)) [@tuner](https://github.com/tuner)
+- Parse and format genomic locations through the optional `@genome-spy/core/coordinates`
+  entry, with optional validation against a locus scale's resolved assembly. App
+  uses the same utilities, rejects invalid coordinate input, and leaves unknown bare
+  names available for datum search. Custom contig names now take precedence over
+  aliases, and locus domain readback correctly covers
+  one-base views and fractional chromosome boundaries. The internal
+  `Genome.parseInterval()` method was removed; use `parseCoordinates()`, which
+  returns a tagged result containing chromosome-relative endpoints instead of
+  whole-genome numeric offsets. Both parsers use zero-based half-open intervals. ([#616](https://github.com/genome-spy/genome-spy/pull/616)) [@tuner](https://github.com/tuner)
+- Look up loaded searchable records through the optional `@genome-spy/core/search`
+  entry without navigating or copying the full dataset. Bounded results include
+  multiple loci, record-derived targets, and publication metadata for consumer-owned
+  suggestions. App uses the shared lookup with field-labelled examples that refresh
+  when opened after updates, retaining its navigation and sample-command policies.
+  App Agent uses the same lookup and refreshed field examples, with explicit
+  truncation metadata; coordinate parsing remains separate. ([#616](https://github.com/genome-spy/genome-spy/pull/616)) [@tuner](https://github.com/tuner)
+- Updated dependencies [[`3428cd4`](https://github.com/genome-spy/genome-spy/commit/3428cd44466a024c266859208f82a36bad6cd770), [`1a2d54c`](https://github.com/genome-spy/genome-spy/commit/1a2d54c4451a297fe20cda447673e88aa81c6149), [`9685315`](https://github.com/genome-spy/genome-spy/commit/9685315993b593721c5ae6b63bfd5e1ef1711a02), [`482e9a1`](https://github.com/genome-spy/genome-spy/commit/482e9a1d42d5b6bb1c293737a9cf0b647f229f3e), [`0feddbb`](https://github.com/genome-spy/genome-spy/commit/0feddbb1d279b10f3cf6dd2e6f13ea3dcb91d275), [`c4a0701`](https://github.com/genome-spy/genome-spy/commit/c4a0701cfbe4be7f8dbe07321cc4a04c62edb446), [`ef5689d`](https://github.com/genome-spy/genome-spy/commit/ef5689d465b152ec5d4874901286fa55e9b226c3), [`e8aeae2`](https://github.com/genome-spy/genome-spy/commit/e8aeae207a71a869725393987dc32fe73db98e18), [`43e9661`](https://github.com/genome-spy/genome-spy/commit/43e96614fd405e7e699df03f6a91648c64966960), [`435721f`](https://github.com/genome-spy/genome-spy/commit/435721f53a4031107a979382cae3d1e0bc3bca84), [`be31682`](https://github.com/genome-spy/genome-spy/commit/be31682a6c8596f0d7342c28538bf00a19b19be4), [`435721f`](https://github.com/genome-spy/genome-spy/commit/435721f53a4031107a979382cae3d1e0bc3bca84), [`c5565d6`](https://github.com/genome-spy/genome-spy/commit/c5565d606cae8a129b67e798ef273269822120ad), [`074d741`](https://github.com/genome-spy/genome-spy/commit/074d741332f5c93265d761391df093f9cec4f22b), [`a126a14`](https://github.com/genome-spy/genome-spy/commit/a126a14490381c1ab8c346469eaec918bde67234), [`f7d7bd8`](https://github.com/genome-spy/genome-spy/commit/f7d7bd8c0efd120b0c3cfe9f337d06f832b7439a), [`8459b03`](https://github.com/genome-spy/genome-spy/commit/8459b03585b20fcb840cf2bc732479375a45198e), [`007d593`](https://github.com/genome-spy/genome-spy/commit/007d593020e40155e6db0cf6a6230b89152485d7), [`bdf3bcc`](https://github.com/genome-spy/genome-spy/commit/bdf3bcc08914c6f86e43d4e129690ab9ac26823f), [`d531c1f`](https://github.com/genome-spy/genome-spy/commit/d531c1faa8fa6d86652c9ae8645dfcdf499ab294), [`8bd96c8`](https://github.com/genome-spy/genome-spy/commit/8bd96c818fc403c8b5fe19317b495faf7282a77b), [`679b6b5`](https://github.com/genome-spy/genome-spy/commit/679b6b59dbb427bda3050fd8bca48c4fafb59557), [`d983873`](https://github.com/genome-spy/genome-spy/commit/d983873abaa5e21b8b7eb35e55221a6e9a19f3da), [`69a346d`](https://github.com/genome-spy/genome-spy/commit/69a346d64f5d37a9499d688f6d9f1fabfd12c882), [`69a346d`](https://github.com/genome-spy/genome-spy/commit/69a346d64f5d37a9499d688f6d9f1fabfd12c882), [`46dc40b`](https://github.com/genome-spy/genome-spy/commit/46dc40b8c4c551b532cd427dfef8097c339dd89c), [`0cf15c4`](https://github.com/genome-spy/genome-spy/commit/0cf15c46866119ae89aaeb75d3299607de5ebbb8), [`4788c08`](https://github.com/genome-spy/genome-spy/commit/4788c08b3b6b8c858eec87e689ab897cb0ffd690), [`608b6c2`](https://github.com/genome-spy/genome-spy/commit/608b6c254d2c1a15c1d376c48b4479141efdc626), [`febc402`](https://github.com/genome-spy/genome-spy/commit/febc402867c5e1a833d7b876c9909b0cb49d95b5), [`8a4075b`](https://github.com/genome-spy/genome-spy/commit/8a4075b9ca8b3294d2f543d802894bd6b3f3c478), [`8389096`](https://github.com/genome-spy/genome-spy/commit/83890960e0a955fff48fd7c76c8703d496c82546), [`1a2d54c`](https://github.com/genome-spy/genome-spy/commit/1a2d54c4451a297fe20cda447673e88aa81c6149), [`7e219a0`](https://github.com/genome-spy/genome-spy/commit/7e219a03442916d9c5042dd760a28f307d137ab7), [`ddd67a3`](https://github.com/genome-spy/genome-spy/commit/ddd67a36170b286fa1a2de952ef0201fbc5e873b), [`298123b`](https://github.com/genome-spy/genome-spy/commit/298123b87260c910f46ae7d0f6d0c469866f49cd), [`773e217`](https://github.com/genome-spy/genome-spy/commit/773e217732465d72f4a2b2f9ef22df78e2adcf2e), [`fd9dfb6`](https://github.com/genome-spy/genome-spy/commit/fd9dfb6d97139c1fa592895790e687b4fbf79573), [`a3fe658`](https://github.com/genome-spy/genome-spy/commit/a3fe6589cacb3c6650c5e78a0aca2544fab448ac), [`1bf9535`](https://github.com/genome-spy/genome-spy/commit/1bf9535058a17e06c94eb23265f14e33862bef5f), [`eb46b68`](https://github.com/genome-spy/genome-spy/commit/eb46b680824b5f12ffa251886fba0253c0b5f25d)]:
+  - @genome-spy/core@1.3.0
+
 ## 1.2.0
 
 ### Minor Changes

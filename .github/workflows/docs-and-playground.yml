@@ -21,6 +21,9 @@ on:
 permissions:
     contents: read
 
+env:
+    DEPLOY_REF: ${{ inputs.ref || (github.event_name == 'release' && github.event.release.tag_name) || github.sha }}
+
 concurrency:
     group: docs-and-playground-deploy
     cancel-in-progress: true
@@ -29,8 +32,8 @@ jobs:
     build:
         runs-on: ubuntu-latest
         timeout-minutes: 45
-        env:
-            DEPLOY_REF: ${{ inputs.ref || (github.event_name == 'release' && github.event.release.tag_name) || github.sha }}
+        outputs:
+            artifact-id: ${{ steps.artifact.outputs.artifact-id }}
 
         steps:
             - uses: actions/checkout@v6
@@ -73,6 +76,63 @@ jobs:
               env:
                   EMBED_EXAMPLES_BASE: /docs/api/embed-examples/
 
+            - name: Read published schemas and examples
+              uses: actions/checkout@v6
+              with:
+                  repository: genome-spy/genome-spy.github.io
+                  ref: master
+                  path: deploy-site
+                  persist-credentials: false
+                  sparse-checkout: |
+                      schema
+                      docs/example-specs
+
+            - name: Record schema validation inputs
+              run: |
+                  mkdir site-artifact
+                  git -C deploy-site rev-parse HEAD:schema > site-artifact/schema-tree
+                  git -C deploy-site rev-parse HEAD:docs/example-specs > site-artifact/example-specs-tree
+
+            - name: Verify published schema aliases
+              if: github.event_name != 'release' && inputs.publish_schemas != true
+              run: node scripts/verify-schema-aliases.mjs --site-dir deploy-site
+
+            - name: Publish versioned schemas
+              if: inputs.publish_schemas == true || (github.event_name == 'release' && github.event.release.prerelease == false)
+              run: node scripts/publish-schemas.mjs --site-dir deploy-site
+
+            - name: Assemble site artifact
+              # TODO: Route previews and maintenance docs separately from this
+              # primary site; see CONTRIBUTING.md#future-major-release-lines.
+              run: |
+                  mkdir -p site-artifact/docs/api/embed-examples site-artifact/playground
+                  cp -R site/. site-artifact/docs/
+                  cp -R packages/embed-examples/dist/. site-artifact/docs/api/embed-examples/
+                  cp -R packages/playground/dist/. site-artifact/playground/
+                  cp -R deploy-site/schema site-artifact/schema
+
+            - name: Upload site artifact
+              id: artifact
+              uses: actions/upload-artifact@v7
+              with:
+                  name: docs-and-playground-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: site-artifact/
+                  if-no-files-found: error
+                  retention-days: 7
+                  include-hidden-files: true
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Download built site
+              uses: actions/download-artifact@v8
+              with:
+                  artifact-ids: ${{ needs.build.outputs.artifact-id }}
+                  path: site-artifact
+                  merge-multiple: true
+
             - name: Check out site repository
               uses: actions/checkout@v6
               with:
@@ -81,31 +141,24 @@ jobs:
                   path: deploy-site
                   ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
 
-            - name: Verify published schema aliases
-              if: github.event_name != 'release' && inputs.publish_schemas != true
-              run: node scripts/verify-schema-aliases.mjs --site-dir deploy-site
-
-            - name: Publish versioned schemas
-              if: inputs.publish_schemas == true || (github.event_name == 'release' && github.event.release.prerelease == false)
+            - name: Verify schema validation inputs are unchanged
               run: |
-                  node scripts/publish-schemas.mjs --site-dir deploy-site
-                  git -C deploy-site add schema
+                  if [ "$(git -C deploy-site rev-parse HEAD:schema)" != "$(cat site-artifact/schema-tree)" ] || \
+                     [ "$(git -C deploy-site rev-parse HEAD:docs/example-specs)" != "$(cat site-artifact/example-specs-tree)" ]; then
+                      echo "Published schemas or examples changed after this site was built. Re-run the docs build job and its dependent deploy job to rebuild and validate against the current site."
+                      exit 1
+                  fi
 
             - name: Update site contents
-              # TODO: Route previews and maintenance docs separately from this
-              # primary site; see CONTRIBUTING.md#future-major-release-lines.
               run: |
-                  rm -rf deploy-site/docs deploy-site/playground
-                  mkdir -p deploy-site/docs/api/embed-examples deploy-site/playground
-                  cp -R site/. deploy-site/docs/
-                  cp -R packages/embed-examples/dist/. deploy-site/docs/api/embed-examples/
-                  cp -R packages/playground/dist/. deploy-site/playground/
+                  rm -rf deploy-site/docs deploy-site/playground deploy-site/schema
+                  cp -R site-artifact/docs site-artifact/playground site-artifact/schema deploy-site/
 
             - name: Commit and push site update
               run: |
                   git -C deploy-site config user.name "github-actions[bot]"
                   git -C deploy-site config user.email "github-actions[bot]@users.noreply.github.com"
-                  git -C deploy-site add docs playground
+                  git -C deploy-site add docs playground schema
                   git -C deploy-site diff --cached --quiet && exit 0
                   git -C deploy-site commit -m "Deploy docs and playground (${DEPLOY_REF})"
                   git -C deploy-site push origin master

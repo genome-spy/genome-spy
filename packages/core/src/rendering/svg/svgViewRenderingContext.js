@@ -79,7 +79,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
  * @prop {(gradient: SvgLegendGradient) => string} getLegendGradientUrl
- * @prop {(path: string, length: number, radius: number, padding: number) => string} getRuleStrokeMaskUrl
+ * @prop {(path: string, length: number, radius: number, padding: number, inside?: boolean) => string} getRuleStrokeMaskUrl
  * @prop {(message: string) => void} warn
  */
 
@@ -437,12 +437,19 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                         this.#countingInstances
                             ? ""
                             : this.getShadowFilterUrl(shadow),
-                    getRuleStrokeMaskUrl: (path, length, radius, padding) =>
+                    getRuleStrokeMaskUrl: (
+                        path,
+                        length,
+                        radius,
+                        padding,
+                        inside
+                    ) =>
                         this.getRuleStrokeMaskUrl(
                             path,
                             length,
                             radius,
-                            padding
+                            padding,
+                            inside
                         ),
                     getShadowClipPathUrl: (cutoutPath) =>
                         this.#countingInstances
@@ -727,13 +734,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
-     * Subtract the nominal ribbon union, including overlapping native dash caps.
+     * Select the inside or outside of the nominal ribbon union.
      * @param {string} path
      * @param {number} length
      * @param {number} radius
      * @param {number} padding
+     * @param {boolean} [inside]
      */
-    getRuleStrokeMaskUrl(path, length, radius, padding) {
+    getRuleStrokeMaskUrl(path, length, radius, padding, inside = false) {
         const id = "rule-stroke-" + this.#nextClipId++;
         const bounds = {
             x: -radius - padding,
@@ -749,8 +757,15 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             "mask-type": "luminance",
         });
         mask.append(
-            createSvgElement("rect", { ...bounds, fill: "white" }),
-            createSvgElement("path", { d: path, fill: "black", stroke: "none" })
+            createSvgElement("rect", {
+                ...bounds,
+                fill: inside ? "black" : "white",
+            }),
+            createSvgElement("path", {
+                d: path,
+                fill: inside ? "white" : "black",
+                stroke: "none",
+            })
         );
         this.#defs.appendChild(mask);
         return `url(#${id})`;

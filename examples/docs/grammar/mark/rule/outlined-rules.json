@@ -1,0 +1,48 @@
+{
+  "description": [
+    "Outlined rules",
+    "Solid, dashed, and dotted rules with a shared fill and outside border."
+  ],
+
+  "data": { "values": [{ "start": 10, "end": 90 }] },
+
+  "config": {
+    "rule": {
+      "size": 8,
+      "fill": "skyblue",
+      "stroke": "midnightblue",
+      "strokeWidth": 2,
+      "strokeCap": "round"
+    }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": null
+    },
+    "x2": { "field": "end" }
+  },
+
+  "vconcat": [
+    {
+      "title": "Solid",
+      "height": 32,
+      "mark": "rule"
+    },
+
+    {
+      "title": "Dashed",
+      "height": 32,
+      "mark": { "type": "rule", "strokeDash": [24, 16] }
+    },
+
+    {
+      "title": "Dotted",
+      "height": 32,
+      "mark": { "type": "rule", "strokeDash": [0, 24] }
+    }
+  ]
+}

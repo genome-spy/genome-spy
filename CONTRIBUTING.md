@@ -11,9 +11,9 @@ Thank you for considering contributing to GenomeSpy.
 
 ## How to Contribute
 
-Start with a local development environment, then review the coding, testing,
-and submission guidelines below. For questions or help choosing a contribution,
-see [Community and Communication](#community-and-communication).
+Start with a local development environment, then review the coding, testing, and
+submission guidelines below. For questions or help choosing a contribution, see
+[Community and Communication](#community-and-communication).
 
 ### Setting Up Your Development Environment
 
@@ -72,9 +72,8 @@ schema instead of Core, or vice versa.
 
 Other editors can use the same generated schema files. Configure the editor to
 associate the Core and App example paths with their respective files, or add an
-explicit `$schema` to private specifications. For example, a file directly
-under `private/` can use `../packages/core/dist/schema.json` for the current
-checkout.
+explicit `$schema` to private specifications. For example, a file directly under
+`private/` can use `../packages/core/dist/schema.json` for the current checkout.
 
 ### Debugging
 
@@ -116,8 +115,8 @@ npm run docs:install
 npm run docs:serve
 ```
 
-Use `npm run build:docs` when you want the same one-shot docs build that CI runs.
-If CairoSVG cannot find `cairo`, install the native libraries first:
+Use `npm run build:docs` when you want the same one-shot docs build that CI
+runs. If CairoSVG cannot find `cairo`, install the native libraries first:
 `brew install cairo` on macOS, or
 `apt-get install libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
 on Ubuntu/Debian.
@@ -130,7 +129,8 @@ Our codebase is primarily JavaScript, utilizing
 [JSDoc](https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html)
 for type annotations. The TypeScript language server in VSCode uses the JSDoc
 comments for type checking. Before pushing your changes, ensure that your code
-is correctly typed and passes the type checking. You can run the type checking with:
+is correctly typed and passes the type checking. You can run the type checking
+with:
 
 ```sh
 npm -ws --if-present run test:tsc
@@ -180,8 +180,8 @@ npm test -- --reporter=agent
 npm run lint
 ```
 
-Run the type checks described under [Language and Typings](#language-and-typings)
-as well.
+Run the type checks described under
+[Language and Typings](#language-and-typings) as well.
 
 ## Commit Guidelines
 
@@ -193,12 +193,12 @@ review your commits to ensure each represents a single logical change.
 
 ### Conventional Commits and Commitlint
 
-We adhere strictly to the [conventional
-commits](https://www.conventionalcommits.org/en/v1.0.0/) specification to
-maintain a clean, navigable, and informative commit history. To facilitate this,
-commit messages should be validated using
-[commitlint](https://commitlint.js.org/). Running `npm install` will install
-git hooks that will validate your commit messages automatically.
+We adhere strictly to the
+[conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
+specification to maintain a clean, navigable, and informative commit history. To
+facilitate this, commit messages should be validated using
+[commitlint](https://commitlint.js.org/). Running `npm install` will install git
+hooks that will validate your commit messages automatically.
 
 If applicable, the scope in the commit message should be the package name, e.g.,
 `core` or `app`. However, when making commits that will be squashed into a
@@ -224,17 +224,17 @@ fixes, `minor` for compatible functionality, and `major` for breaking API or
 specification changes. Every breaking note must explain the required migration.
 
 Start the fragment body with `<!-- category: feature -->`,
-`<!-- category: improvement -->`, or `<!-- category: fix -->`, followed by a blank
-line and a concise changelog entry. Categories control presentation independently
-of version bumps; any major bump appears under **Breaking changes**. Empty
-no-release markers do not need a category.
+`<!-- category: improvement -->`, or `<!-- category: fix -->`, followed by a
+blank line and a concise changelog entry. Categories control presentation
+independently of version bumps; any major bump appears under **Breaking
+changes**. Empty no-release markers do not need a category.
 
-Reuse the feature's existing fragment as the implementation evolves, keeping
-its entry concise. Supporting tests, documentation, and refactoring need no
-additional fragments. Use separate notes for independent user-visible
-changes. When the whole contribution has no release impact, such as tests, CI,
-pure refactoring, development dependency maintenance, or internal documentation,
-no fragment is needed. Existing empty fragments remain valid and do not bump
+Reuse the feature's existing fragment as the implementation evolves, keeping its
+entry concise. Supporting tests, documentation, and refactoring need no
+additional fragments. Use separate notes for independent user-visible changes.
+When the whole contribution has no release impact, such as tests, CI, pure
+refactoring, development dependency maintenance, or internal documentation, no
+fragment is needed. Existing empty fragments remain valid and do not bump
 versions.
 
 CI validates existing fragments, including their categories, package names, and
@@ -261,22 +261,20 @@ please feel free to reach out through GitHub
 
 ## Releases
 
-This section is for maintainers preparing and publishing releases. Direct commits
-to `master` or `main` follow the same release-note policy as pull requests.
-Version commits consume fragments and need no additional fragment.
+This section is for maintainers preparing and publishing releases. Direct
+commits to `master` or `main` follow the same release-note policy as pull
+requests. Version commits consume fragments and need no additional fragment.
 
 The eight release packages share one fixed version, so selecting a single
-affected package propagates the bump to the group. Private applications are
-versioned but never published or tagged. The private WebGPU prototype remains
-outside the group, at its own development version.
+affected package propagates the bump to the group. Only Core, App, Inspector,
+and the React component are published. Private applications are versioned but
+never published or tagged; the WebGPU prototype remains outside the group.
 
 ### Prepare a stable release
 
-`v1.0.0` was the final release calculated with Lerna Lite and Conventional
-Commits. Preserve the existing versions and changelog history as the baseline;
-start accumulating Changesets fragments for subsequent changes.
-
-Prepare a stable release from a clean checkout with committed fragments:
+Start from a clean checkout with committed fragments and a `GITHUB_TOKEN` with
+the Changesets GitHub formatter's
+[read permissions](https://changesets.dev/packages/changelog-github):
 
 ```sh
 npm run release:status
@@ -285,20 +283,12 @@ npm run release:version
 git diff
 ```
 
-`release:status` inspects the calculated versions without modifying the repo.
-`release:version` runs Changesets, consumes pending fragments, updates manifests
-and package changelogs, synchronizes `package-lock.json`, and
-adds a root changelog entry grouped into breaking changes, new features,
-improvements, and fixes, with readable labels for directly affected packages.
-Each logical fragment appears once in the root entry, even when several fixed
-packages are affected. The shared formatter removes category metadata and puts
-descriptions before PR/commit links and contributor attribution. Package
-changelogs retain Changesets' version-bump headings. Release preparation needs a
-`GITHUB_TOKEN` with the GitHub formatter's documented read permissions. See the
-[formatter documentation](https://changesets.dev/packages/changelog-github).
-Empty fragments alone do not create a release. This command supports stable
-releases. The deferred branch policy and required prerelease work are recorded
-under [future major release lines](#future-major-release-lines).
+`release:status` previews versions. `release:version` consumes fragments and
+updates manifests, package changelogs, the lockfile, and the grouped root
+changelog. Use this wrapper instead of plain `changeset version`. Empty
+fragments alone do not create a release. Only stable releases are currently
+supported; see [future major release lines](#future-major-release-lines) for the
+deferred policy.
 
 For optional release-wide prose, prepare a Markdown file outside the working
 tree (or commit it first) and run:
@@ -308,33 +298,18 @@ npm run release:version -- --intro /tmp/genomespy-release-intro.md
 ```
 
 The prose appears above the grouped entries. You can also edit the prepared root
-release entry before committing it, including paragraphs, links, or headings.
-Both offline and GitHub release-note output preserve this prose; individual
-changeset entries remain concise.
+changelog directly. Review the release notes and commit all generated changes
+using Conventional Commits.
 
-Review and commit all generated changes using Conventional Commits, then run the
-normal lint, type, build, and test checks before publication.
-
-Before a release, smoke-test all curated examples in headless Chromium:
+Before publication, smoke-test curated examples and inspect the package list:
 
 ```sh
 npm run smoke:examples
-```
-
-The check resolves imports, loads data, and waits for rendering to settle. It
-does not write screenshots. Network access is required by examples that use
-remote data.
-
-Inspect the npm publication candidates with:
-
-```sh
 npm run release:plan
 ```
 
-Only App, Core, Inspector, and the React component are published. npm workspaces
-builds packages in the explicit order in the root `build` script, with Core and
-the plugins before App and the frontends. Update that order when introducing a
-new build dependency.
+The smoke check loads and renders examples without writing screenshots. Examples
+using remote data require network access.
 
 ### Set up npm trusted publishing once
 
@@ -350,104 +325,68 @@ Actions trusted publisher with:
 
 New trusted publisher configurations default to staged publishing, which this
 Changesets workflow does not use. Enable direct publishing explicitly. The
-workflow uses a GitHub-hosted runner, Node 24, npm 11 (at least 11.5.1), and
-`id-token: write`. npm exchanges the workflow identity for a short-lived publish
-credential and automatically supplies provenance for these public packages.
-No `NPM_TOKEN` or `NODE_AUTH_TOKEN` secret is needed. See
+workflow needs no npm token secret; see
 [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
-After verifying the first successful trusted release, restrict legacy token
-publishing and revoke unused automation tokens in npm settings.
 
 Keep the existing `ACTIONS_DEPLOY_KEY` repository secret for the separate site
 repository. The release action needs permission to create repository tags and
-GitHub releases; repository rules must permit those operations by GitHub Actions.
+GitHub releases; repository rules must permit those operations by GitHub
+Actions.
 
 ### Publish a reviewed release commit
 
-Push the reviewed version commit to `master` and let CI pass. In GitHub Actions,
-select **Publish GenomeSpy**, choose **Run workflow** on `master`, and enter the
-exact prepared manifest version, such as `1.0.1`. The run uses the commit selected
-when it starts; subsequent commits do not change that checkout.
+Push the reviewed version commit to `master` and wait for **Node.js CI** and
+**Changesets** to pass for that exact commit. In GitHub Actions, select
+**Publish GenomeSpy → Run workflow** on `master` and enter the prepared manifest
+version, such as `1.0.1`.
 
-The action verifies the expected stable version, synchronized packages, consumed
-release fragments, root release notes, and absence of the global tag. It then
-runs lint, type checks, tests, embedding-example builds, then the complete
-ordered build and real npm packing with lifecycle scripts. The final build runs
-after tests because bundle smoke tests rewrite App outputs without its schema.
-Archive validation checks runtime and type entry files before publication. Core's packing hook rewrites its source
-exports to built files and restores the working manifest afterward.
+The [publish workflow](.github/workflows/publish.yml) publishes the packages,
+creates the `vX.Y.Z` tag and GitHub release, and calls the
+[docs/Playground workflow](.github/workflows/docs-and-playground.yml) at that
+tag. The GitHub release uses the reviewed root changelog entry plus contributor
+credits. Preview the wrapped entry locally with `npm run release:notes`. Adding
+`-- --github` unwraps prose paragraphs and includes credits; it requires
+`GH_TOKEN` or `GITHUB_TOKEN` with Contents write permission, supplied
+automatically in the workflow.
 
-Changesets publishes the four public packages at their reviewed versions and
-skips versions already present on npm. Publication reuses the completed
-builds; publishing does not repeat them. The action creates the single
-annotated `vX.Y.Z` tag at that commit and a GitHub release containing the root
-changelog entry after npm succeeds. Package-specific Git tags are disabled.
+For failed runs:
 
-Before publishing, `npm run release:notes -- --github` enriches that entry with
-GitHub's **New Contributors** section when present and a thank-you line mentioning
-release contributors. GitHub renders those mentions as its contributor avatar
-list. Credits include PR authors and GitHub-linked commit authors across every
-page of the release comparison, including direct commits. First-contribution
-recognition follows GitHub's PR-based release-note generator. This command needs
-`GH_TOKEN` or `GITHUB_TOKEN` with Contents write permission; the action supplies
-its existing token. Plain `release:notes` reads the reviewed entry offline.
-Contributor credits are added to the GitHub release body; fragments and the root
-changelog stay focused on the changes. API failures stop the job before npm
-publication.
-
-The action explicitly calls the docs/Playground deployment workflow at the new
-tag, including versioned schemas and alias updates. A GitHub release created
-with `GITHUB_TOKEN` does not trigger another release-event workflow. Human-created
-releases and manual docs deployments still use the existing triggers. See
-[GitHub's workflow trigger rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
-
-If npm publication fails partway through, rerun the publish job at the same
-commit; Changesets skips successfully published package versions. If the tag and
-GitHub release already exist and only docs failed, rerun the failed docs job.
-The publish job rejects an existing global tag, so inspect a failure during tag
-or release creation and complete that step manually before deploying docs.
-
-`npm run release:publish` is the action's publishing command and performs a real
-npm publication. Do not run it during preparation or rehearsal. Use
-`npm run release:version` instead of plain `changeset version` so the lockfile
-and root changelog are prepared too.
+- If npm publication stopped before tagging, rerun the publish job at the same
+  commit; already-published package versions are skipped.
+- If tag or GitHub release creation failed, inspect and complete that step
+  manually before deploying docs. Publication rejects an existing global tag.
+- If only docs deployment failed, select **Re-run failed jobs** to reuse the
+  built artifact. If it expired after seven days or published schemas/examples
+  changed, rerun the docs build and its dependent deploy job. Once the tag
+  exists, rerun only docs jobs, not publication.
 
 ### Publish a package preview
 
-The **Publish GenomeSpy preview** workflow publishes the selected commit's Core,
-App, Inspector, and React packages to [pkg.pr.new](https://pkg.pr.new/) for testing.
-It requires the [pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new) to be
-installed on the repository. No npm publishing credentials are needed.
+The [preview workflow](.github/workflows/preview.yml) publishes the four public
+packages to [pkg.pr.new](https://pkg.pr.new/) for testing. Install the
+[pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new) on the repository
+first.
 
-Once `preview.yml` exists on the default branch, open **Actions → Publish GenomeSpy
-preview → Run workflow** and select the branch to test. The branch must contain
-the workflow and the locked `pkg-pr-new` development dependency. The run checks
-out that branch's commit at dispatch time; later pushes do not change its contents.
-Only pushed, committed changes are included. Alternatively, dispatch it with:
+Open **Actions → Publish GenomeSpy preview → Run workflow** and select the
+branch to test. It must contain the workflow and locked `pkg-pr-new` dependency;
+only pushed commits are included. Alternatively:
 
 ```sh
 gh workflow run preview.yml --repo genome-spy/genome-spy --ref YOUR_BRANCH
 ```
 
-The workflow runs lint, type checks, tests, the ordered production build, and
-package archive validation before publishing all four packages together. Open
-the completed run's **Summary** for installation commands. Running one in a
-consumer project saves the preview URL in `package.json` and updates its lockfile.
-Imports continue to use the normal `@genome-spy/...` package names.
-
-Packages receive `0.0.0-preview-<sha>` versions, and dependencies between the
-published packages point to matching previews. Source versions, Changesets
-fragments, npm releases, Git tags, and the public documentation site are unchanged.
-These are temporary test dependencies: pkg.pr.new's
-[retention policy](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/)
-removes packages after more than a month without downloads or once they are over
-six months old. Switch consumer projects back to npm releases after testing.
+Open the completed run's **Summary** for installation commands. Imports keep the
+normal `@genome-spy/...` names. Previews are temporary dependencies subject to
+pkg.pr.new's
+[retention policy](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/);
+switch consumer projects back to npm releases after testing.
 
 ### Rehearse without publishing
 
-Use a disposable checkout or worktree to rehearse versioning. `changeset version`
-has no non-mutating dry run. `release:status` and `release:plan` inspect plans;
-versioning consumes fragments and changes files. To build and pack locally:
+Use a disposable checkout or worktree to rehearse versioning.
+`changeset version` has no non-mutating dry run. `release:status` and
+`release:plan` inspect plans; versioning consumes fragments and changes files.
+To build and pack locally:
 
 ```sh
 npm run build
@@ -459,23 +398,22 @@ git diff --exit-code -- packages/*/package.json
 ```
 
 Packing runs the actual `prepack`/`postpack` lifecycle and writes only the four
-public tarballs. Inspect their manifests and entry files before release. Never
-run publication, tag pushes, or GitHub-release creation during rehearsal.
+public tarballs. Inspect their manifests and entry files before release.
+`npm run release:publish` performs a real publication; do not run it, push tags,
+or create GitHub releases during rehearsal.
 
 ### Publishing versioned schemas
 
 The documentation deployment publishes Core and App schemas only for a stable
 GitHub release. It writes immutable exact files and updates the matching minor
 and major aliases under `https://genomespy.app/schema/`. Manual documentation
-deployments and prereleases do not change the public schema tree.
-Manual deployments stop before updating the site if the current Core or App
-major has no published alias yet.
+deployments and prereleases leave schemas unchanged. Manual deployments require
+an existing published alias for the current Core and App majors.
 
 Before advancing a major alias, the release job validates compatible examples
 from the currently deployed documentation against the new schema. A failure
 means the schema or specification types must be corrected, or the change must
-move to a new major version. The late-v0 corpus is also checked for the first v1
-release because that transition is intentionally compatible.
+move to a new major version.
 
 To exercise publication without touching the live site, build both schemas and
 run the publisher against a temporary copy or empty directory:
@@ -485,11 +423,8 @@ npm run build:schemas
 node scripts/publish-schemas.mjs --site-dir /path/to/site-copy
 ```
 
-Inspect `schema/core/` and `schema/app/` in that directory. Each contains exact,
-minor, and major files plus a manifest that records alias targets. Reusing an
-exact version with different content fails, rerunning the same release is
-idempotent, and publishing an older release cannot move aliases backward. Core
-and App package versions are handled independently.
+Inspect `schema/core/` and `schema/app/` in that directory. Exact versions
+cannot be overwritten with different content, and aliases cannot move backward.
 
 ### Future major release lines
 
@@ -515,19 +450,19 @@ maintenance branch, not a branch per feature.
 
 Breaking PRs target `master` and include a major changeset with migration
 instructions. Compatible work also targets `master` by default. Merging a PR
-records release intent; it does not publish packages. Once prerelease support
-is ready, enter Changesets prerelease mode with `next` on `master` and prepare
-reviewed previews such as `2.0.0-next.0`. When the major is ready, exit prerelease
-mode and prepare the final stable version commit. See the
+records release intent; it does not publish packages. Once prerelease support is
+ready, enter Changesets prerelease mode with `next` on `master` and prepare
+reviewed previews such as `2.0.0-next.0`. When the major is ready, exit
+prerelease mode and prepare the final stable version commit. See the
 [Changesets prerelease guide](https://changesets.dev/guide/prereleases).
 
 For changes needed by both lines, merge the implementation into `master`, then
-open a backport PR against `release/1.x` by cherry-picking or adapting it. Include
-a changeset appropriate to the 1.x behavior, usually patch for a fix. Fix bugs
-specific to 1.x on the maintenance branch and forward-port them when relevant.
-Keep release/version commits, generated changelogs, lockfile version updates,
-and prerelease state local to each line; port individual implementation changes
-rather than routinely merging whole release branches. See the
+open a backport PR against `release/1.x` by cherry-picking or adapting it.
+Include a changeset appropriate to the 1.x behavior, usually patch for a fix.
+Fix bugs specific to 1.x on the maintenance branch and forward-port them when
+relevant. Keep release/version commits, generated changelogs, lockfile version
+updates, and prerelease state local to each line; port individual implementation
+changes rather than routinely merging whole release branches. See the
 [Changesets backporting guide](https://changesets.dev/guide/backporting-changes).
 
 The intended npm channel policy is:
@@ -546,17 +481,19 @@ releases must not replace the current major as the latest GitHub release. See
 
 Before activating this policy, complete the following work:
 
-- Extend `scripts/release.mjs` and release validation for Changesets
-  prerelease entry, repeated previews, and exit. Preserve the fixed/private
-  package policy, handle archived `.changeset/pre/` notes in the final changelog,
-  and check the expected version against the selected release channel.
+- Extend `scripts/release.mjs` and release validation for Changesets prerelease
+  entry, repeated previews, and exit. Preserve the fixed/private package policy,
+  handle archived `.changeset/pre/` notes in the final changelog, and check the
+  expected version against the selected release channel.
 - Extend both CI workflows to cover maintenance branches and their PRs.
 - Make `publish.yml` validate the branch, version, and npm channel together,
-  including the transition from 1.x `latest` to 2.x `latest`. Preserve the global
-  Git tags and mark GitHub releases with the appropriate prerelease/latest status.
+  including the transition from 1.x `latest` to 2.x `latest`. Preserve the
+  global Git tags and mark GitHub releases with the appropriate
+  prerelease/latest status.
 - Route preview and maintenance docs and Playground builds separately from the
   primary stable site. Publish schemas and advance aliases for the appropriate
-  release line; previews and old-major docs must not replace current stable docs.
+  release line; previews and old-major docs must not replace current stable
+  docs.
 - Rehearse repeated previews, finalization, and maintenance publication in
   disposable fixtures before enabling the workflow, including checking that a
   backport cannot move npm's `latest` or overwrite the primary site.

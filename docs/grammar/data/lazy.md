@@ -104,7 +104,7 @@ EXAMPLE examples/docs/grammar/data/lazy/bigwig-gc-content.json height=120 spechi
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js 9.2.1](https://github.com/GMOD/bbi-js/tree/v9.2.1) library.
 
-## Figwig (experimental)
+## Figwig
 
 The `"figwig"` source loads multiple signal tracks from one
 [Figwig](https://github.com/jmschrei/figwig) file. Rows contain `chrom`, `start`,

@@ -531,6 +531,8 @@ export interface StrokeStyleProps {
     strokeCap?: "butt" | "square" | "round" | ExprRef;
 }
 
+export type StrokeAlign = "inside" | "center" | "outside";
+
 export interface RuleProps
     extends
         MarkPropsBase,
@@ -539,6 +541,17 @@ export interface RuleProps
         StrokeStyleProps,
         FillAndStrokeProps {
     type: "rule";
+
+    /**
+     * Position of the full-width stroke band relative to the nominal body.
+     * Inside strokes extend inward by `strokeWidth`, centered strokes extend
+     * half inward and half outward, and outside strokes extend entirely outward.
+     * The nominal body is unchanged. Canvas uses an outside-style approximation
+     * for all alignments.
+     *
+     * __Default value:__ `"outside"`
+     */
+    strokeAlign?: StrokeAlign | ExprRef;
 }
 
 export interface TickProps extends MarkPropsBase, StrokeStyleProps {
