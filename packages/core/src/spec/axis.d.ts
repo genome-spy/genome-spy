@@ -270,7 +270,8 @@ export interface Axis extends BaseAxis, ZIndexProps {
 
     /**
      * Add ticks at both ends of the current continuous scale domain without
-     * changing the domain. They update with the scale and take the same label
+     * changing the domain. Set to `"only"` to show only the endpoints, omitting
+     * generated ticks and `extraValues`. They update with the scale and take the same label
      * priority as `extraValues`. Use `labelFlush: true` to align their labels
      * inward along the axis.
      *
@@ -278,7 +279,7 @@ export interface Axis extends BaseAxis, ZIndexProps {
      *
      * __Default value:__ `false`
      */
-    tickEndpoints?: boolean;
+    tickEndpoints?: boolean | "only";
 
     /**
      * Z-order of the axis relative to the view content.

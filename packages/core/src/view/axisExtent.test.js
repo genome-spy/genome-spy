@@ -222,7 +222,7 @@ describe("Axis extent measurement", () => {
         const before = await getSettledAxisSnapshot(spec, "left");
         const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(
-            { ...spec, config: { axisQuantitative: { tickEndpoints: true } } },
+            { ...spec, config: { axisQuantitative: { style: "track-axis" } } },
             context
         );
         await settleLayout(root, context);
@@ -231,6 +231,8 @@ describe("Axis extent measurement", () => {
             findLabelsView(axis).getCollector().getData()
         );
         const [lower, upper] = before.domain;
+        expect(labels.map((row) => row.value)).toEqual([lower, upper]);
+        expect(axis.axisProps.tickSize).toBe(4);
 
         expect(axis.dataParent.getScaleResolution("y").getDomain()).toEqual(
             before.domain

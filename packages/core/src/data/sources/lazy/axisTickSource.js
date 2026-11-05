@@ -113,11 +113,17 @@ export default class AxisTickSource extends SingleAxisLazySource {
 
         const count = tickCount(scale, requestedCount, axisParams.tickMinStep);
 
+        const endpointMode = isContinuous(scale.type)
+            ? axisParams.tickEndpoints
+            : false;
         const generatedTicks = axisParams.values
             ? validTicks(scale, axisParams.values, count)
-            : tickValues(scale, count);
-        let extraValues = axisParams.extraValues ?? [];
-        if (axisParams.tickEndpoints && isContinuous(scale.type)) {
+            : endpointMode === "only"
+              ? []
+              : tickValues(scale, count);
+        let extraValues =
+            endpointMode === "only" ? [] : (axisParams.extraValues ?? []);
+        if (endpointMode) {
             const domain = scale.domain();
             // Add the existing limits; never round or expand the scale itself.
             extraValues = extraValues.concat(

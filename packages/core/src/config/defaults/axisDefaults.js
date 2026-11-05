@@ -86,3 +86,17 @@ export const LOCUS_AXIS_DEFAULTS = {
     chromGridOpacity: 1,
     chromGridWidth: 1,
 };
+
+/** Compact quantitative axes for stacked genome-browser tracks. */
+/** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
+export const AXIS_STYLE_DEFAULTS = {
+    "track-axis": {
+        tickEndpoints: "only",
+        labelFlush: true,
+        tickSize: 4,
+        labelPadding: 3,
+        domain: true,
+        grid: false,
+        title: null,
+    },
+};

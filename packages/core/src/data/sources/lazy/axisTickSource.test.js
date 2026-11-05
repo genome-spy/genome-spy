@@ -262,7 +262,7 @@ describe("AxisTickSource", () => {
                 axis: {
                     values: [10, 20],
                     extraValues: [50],
-                    tickEndpoints: true,
+                    tickEndpoints: "only",
                 },
             },
             /** @type {any} */ (view)
@@ -321,6 +321,25 @@ describe("AxisTickSource", () => {
             );
             expect(scale.domain()).toEqual(domain);
         }
+        source.dispose();
+    });
+
+    test("endpoint-only mode omits generated ticks and extraValues", async () => {
+        const { view } = createViewStub({ axisLength: 100 });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { tickEndpoints: "only", extraValues: [50] },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+        await source.load();
+        expect(Array.from(collector.getData()).map((row) => row.value)).toEqual(
+            [0, 100]
+        );
         source.dispose();
     });
 
