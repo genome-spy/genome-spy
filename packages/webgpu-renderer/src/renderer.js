@@ -1592,6 +1592,10 @@ export class Renderer {
         sampleCount = 1
     ) {
         const dpr = this._globals.dpr;
+        const targetX = Math.floor(target.logicalX * dpr);
+        const targetY = Math.floor(target.logicalY * dpr);
+        const targetRight = target.logicalX + target.width / dpr;
+        const targetBottom = target.logicalY + target.height / dpr;
         const state = new RenderPassState(pass);
         for (const draw of draws) {
             if (picking && draw.orderPass & 4) {
@@ -1610,23 +1614,30 @@ export class Renderer {
                 0,
                 1
             );
-            const targetScissor = intersectRects(draw.scissor, {
-                x: target.logicalX,
-                y: target.logicalY,
-                width: target.width / dpr,
-                height: target.height / dpr,
-            });
-            const scissor = toPhysicalScissor(
-                targetScissor,
-                dpr,
-                Math.floor(target.logicalX * dpr) + target.width,
-                Math.floor(target.logicalY * dpr) + target.height
+            const scissor = draw.scissor;
+            const left = Math.max(scissor.x, target.logicalX);
+            const top = Math.max(scissor.y, target.logicalY);
+            const width = Math.max(
+                0,
+                Math.min(scissor.x + scissor.width, targetRight) - left
             );
+            const height = Math.max(
+                0,
+                Math.min(scissor.y + scissor.height, targetBottom) - top
+            );
+            const x = Math.floor(left * dpr);
+            const y = Math.floor(top * dpr);
             state.setScissorRect(
-                scissor.x - Math.floor(target.logicalX * dpr),
-                scissor.y - Math.floor(target.logicalY * dpr),
-                scissor.width,
-                scissor.height
+                x - targetX,
+                y - targetY,
+                Math.min(
+                    targetX + target.width,
+                    Math.ceil((left + width) * dpr)
+                ) - x,
+                Math.min(
+                    targetY + target.height,
+                    Math.ceil((top + height) * dpr)
+                ) - y
             );
             state.setBindGroup(0, this.#globalBindGroup, [
                 draw.uniformIndex * this.#globalUniformStride,
