@@ -49,6 +49,7 @@ export default class TextMark extends Mark {
             "y2Offset",
             "size",
             "fill",
+            "fillOpacity",
             "text",
             "angle",
         ];
