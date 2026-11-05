@@ -202,6 +202,7 @@ void main(void) {
     } else {
         fragColor = cf * vFillColor;
     }
+    fragColor *= uViewOpacity;
 
     if (uPickingEnabled) {
         if (d >= vHalfStrokeWidth) discard;

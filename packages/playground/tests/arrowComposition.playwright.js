@@ -57,6 +57,9 @@ for (const dpr of [1, 2]) {
                 "empty",
             ]);
             expect(result.picks).toEqual(["arrow", "empty", "empty"]);
+            expect(result.opacityErrors.every((error) => error <= 2)).toBe(
+                true
+            );
         } finally {
             await browser.close();
         }
@@ -96,6 +99,7 @@ async function renderArrows({ dpr, entry, registration }) {
         host,
         {
             name: "arrow",
+            opacity: { expr: "viewOpacity" },
             width: 64,
             height: 64,
             padding: 0,
@@ -110,6 +114,7 @@ async function renderArrows({ dpr, entry, registration }) {
                 fillAlpha: 1,
                 strokeAlpha: 1,
                 head: "triangle",
+                viewOpacity: 1,
                 stem: true,
                 spacing: null,
                 direction: "forward",
@@ -187,6 +192,41 @@ async function renderArrows({ dpr, entry, registration }) {
             [pixel(wide), [64, 0, 128, 191]],
             [pixel(wide, 32), [128, 0, 128, 255]]
         );
+        const opacityErrors = [];
+        for (const head of ["triangle", "open"]) {
+            const full = await paint({
+                head,
+                stem: head === "triangle",
+                size: 8,
+                width: 8,
+                fillAlpha: 0.6,
+                strokeAlpha: 0.5,
+                viewOpacity: 1,
+            });
+            const faded = await paint({ viewOpacity: 0.5 });
+            opacityErrors.push(
+                faded.reduce(
+                    (error, value, i) =>
+                        Math.max(error, Math.abs(value - full[i] * 0.5)),
+                    0
+                )
+            );
+        }
+        // Filled-stem overlap: opaque blue must remain blue under a common fade.
+        samples.push([
+            pixel(
+                await paint({
+                    head: "triangle",
+                    stem: true,
+                    width: 20,
+                    fillAlpha: 1,
+                    strokeAlpha: 1,
+                }),
+                32
+            ),
+            [0, 0, 128, 128],
+        ]);
+        await paint({ viewOpacity: 1, strokeAlpha: 0.5 });
         const transparentErrors = [];
         for (const head of ["triangle", "open"]) {
             const nominal = await paint({
@@ -203,7 +243,7 @@ async function renderArrows({ dpr, entry, registration }) {
                 )
             );
         }
-        await paint({ width: 1, strokeAlpha: 1 });
+        await paint({ width: 1, strokeAlpha: 1, viewOpacity: 0.5 });
         const view = api.views.get({ scope: [], view: "arrow" });
         const bounds = api.views.getLayoutBounds(view),
             picks = [];
@@ -243,6 +283,7 @@ async function renderArrows({ dpr, entry, registration }) {
         const actual = await paint({
             head: "open",
             direction: "forward",
+            viewOpacity: 1,
             width: 24,
             strokeAlpha: 1,
         });
@@ -336,6 +377,7 @@ async function renderArrows({ dpr, entry, registration }) {
             repeatErrors,
             samples,
             transparentErrors,
+            opacityErrors,
             picks,
             size: [canvas.width, canvas.height],
             glError: gl.getError(),
