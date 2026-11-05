@@ -919,6 +919,9 @@ export class LegendRegionView extends ContainerView {
     /** @type {number[][] | undefined} */
     #lines;
 
+    /** @type {LegendView[]} Legends used by the cached wrap indices. */
+    #lineViews = [];
+
     /** @type {import("../spec/legend.js").LegendRegionAnchor} */
     #anchor;
 
@@ -976,7 +979,18 @@ export class LegendRegionView extends ContainerView {
      * @returns {LegendView[]}
      */
     #getVisibleLegendViews() {
-        return this.#legendViews.filter((legendView) => legendView.isActive());
+        const visible = this.#legendViews.filter((legendView) =>
+            legendView.isActive()
+        );
+        // Visibility may change before the next layout pass. Old wrap indices
+        // belong to the previous list and cannot size or arrange this one.
+        if (
+            this.#lineViews.length !== visible.length ||
+            visible.some((view, index) => view !== this.#lineViews[index])
+        ) {
+            this.#lines = undefined;
+        }
+        return visible;
     }
 
     /**
@@ -1002,6 +1016,7 @@ export class LegendRegionView extends ContainerView {
         });
         const changed = !sameLines(this.#lines, lines);
         this.#lines = lines;
+        this.#lineViews = legendViews;
         return changed;
     }
 
