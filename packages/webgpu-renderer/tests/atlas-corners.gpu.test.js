@@ -101,7 +101,8 @@ test("atlas corner distances survive competing edges and scratch reuse", async (
                 shapePadding: 40,
                 spread: 32,
             };
-            atlases.push(generator.createAtlas(largePaths, largeOptions));
+            const firstLarge = generator.createAtlas(largePaths, largeOptions);
+            atlases.push(firstLarge);
             // Original bundled-font bar contours, with reflected winding.
             const rectangle = generator.createAtlas(
                 [
@@ -117,11 +118,23 @@ test("atlas corner distances survive competing edges and scratch reuse", async (
                     normalizationSpan: 2000,
                 }
             );
-            atlases.push(
-                rectangle,
-                generator.createAtlas(largePaths, largeOptions)
+            const resumedLarge = generator.createAtlas(
+                largePaths,
+                largeOptions
             );
+            atlases.push(rectangle, resumedLarge);
             const values = await read(rectangle);
+            const [firstValues, resumedValues] = await Promise.all([
+                read(firstLarge),
+                read(resumedLarge),
+            ]);
+            let reuseError = 0;
+            for (let i = 0; i < firstValues.length; i++) {
+                reuseError = Math.max(
+                    reuseError,
+                    Math.abs(firstValues[i] - resumedValues[i])
+                );
+            }
             const corners = [];
             for (const job of rectangle.jobs) {
                 const left =
@@ -226,6 +239,7 @@ test("atlas corner distances survive competing edges and scratch reuse", async (
             await Promise.all(atlases.map((atlas) => atlas.completion));
             return {
                 corners,
+                reuseError,
                 calibration,
                 errors,
                 validation: await device.popErrorScope(),
@@ -237,6 +251,7 @@ test("atlas corner distances survive competing edges and scratch reuse", async (
         }
     });
     expect(result.validation).toBeNull();
+    expect(result.reuseError).toBe(0);
     expect(result.calibration[0]).toBeCloseTo(-0.5, 2);
     expect(result.calibration[1]).toBeCloseTo(0.5, 2);
     for (const error of result.corners) expect(error).toBeLessThan(0.001);
