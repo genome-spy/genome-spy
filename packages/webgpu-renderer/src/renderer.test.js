@@ -40,7 +40,7 @@ test.each([134217728, 536870912])(
 );
 
 describe("Renderer mark definitions", () => {
-    test("renders detached targets with target-local globals", async () => {
+    test("renders detached targets without replacing live or picking draws", async () => {
         const { renderer, pass } = createRendererHarness();
         renderer.format = "bgra8unorm";
         renderer.alphaMode = "premultiplied";
@@ -68,6 +68,13 @@ describe("Renderer mark definitions", () => {
             height: 100,
             dpr: 1.5,
         });
+        const liveDraw = {
+            mark,
+            viewport: { x: 10, y: 5, width: 20, height: 10 },
+            firstInstance: 1,
+            instanceCount: 2,
+        };
+        renderer.render({ draws: [liveDraw] });
 
         target.render({
             draws: [
@@ -88,10 +95,34 @@ describe("Renderer mark definitions", () => {
             new Float32Array(/** @type {ArrayBuffer} */ (writes.at(-1)[2]))[2]
         ).toBe(1.5);
         expect(renderer._globals).toEqual({ width: 100, height: 50, dpr: 2 });
-        expect(renderer._renderFrame).toBeNull();
         expect(
             renderer.device.queue.onSubmittedWorkDone
         ).toHaveBeenCalledOnce();
+
+        await renderer.pick(15, 10);
+        expect(program.preparePick).toHaveBeenLastCalledWith(
+            expect.anything(),
+            {
+                firstInstance: 1,
+                instanceCount: 2,
+                sampleCount: 1,
+            }
+        );
+        expect(pass.setViewport).toHaveBeenLastCalledWith(20, 10, 40, 20, 0, 1);
+
+        renderer.renderPicking({
+            draws: [{ ...liveDraw, firstInstance: 3, instanceCount: 4 }],
+        });
+        target.render({ draws: [{ mark }] });
+        await renderer.pick(15, 10);
+        expect(program.preparePick).toHaveBeenLastCalledWith(
+            expect.anything(),
+            {
+                firstInstance: 3,
+                instanceCount: 4,
+                sampleCount: 1,
+            }
+        );
 
         target.destroy();
         target.destroy();
@@ -838,18 +869,20 @@ describe("Renderer mark definitions", () => {
             createRendererHarness();
         const exon = renderer.createMark(definition, { channels: {} });
         const body = renderer.createMark(definition, { channels: {} });
-        const bounds = { x: 0, y: 0, width: 100, height: 50 };
-
-        renderer.render({
-            items: [
-                {
-                    label: "viewRoot/transcripts",
+        const bounds = Object.freeze({ x: 0, y: 0, width: 100, height: 50 });
+        const scope = Object.freeze({
+            label: "viewRoot/transcripts",
+            bounds,
+            opacity: 0.5,
+            items: Object.freeze([
+                Object.freeze({
                     bounds,
-                    opacity: 0.5,
-                    items: [{ mark: exon }, { mark: body }],
-                },
-            ],
+                    items: Object.freeze([Object.freeze({ mark: exon })]),
+                }),
+                Object.freeze({ mark: body }),
+            ]),
         });
+        renderer.render({ items: Object.freeze([scope]) });
 
         expect(transientAcquires).toEqual([
             expect.objectContaining({ sampleCount: 1 }),
@@ -870,6 +903,64 @@ describe("Renderer mark definitions", () => {
             expect.anything(),
             expect.objectContaining({ sampleCount: 1 })
         );
+
+        renderer.render({ items: [{ ...scope, opacity: 1 }] });
+
+        expect(
+            renderPassDescriptors.slice(4).map((pass) => pass.label)
+        ).toEqual([
+            "viewRoot/transcripts: multisample group pass",
+            "viewRoot/transcripts: group composite pass",
+            "webgpu-renderer: main render pass",
+        ]);
+        expect(exonProgram.draw).toHaveBeenLastCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 4 })
+        );
+        expect(bodyProgram.draw).toHaveBeenLastCalledWith(
+            expect.anything(),
+            expect.objectContaining({ sampleCount: 1 })
+        );
+        expect(exonProgram.draw.mock.invocationCallOrder.at(-1)).toBeLessThan(
+            bodyProgram.draw.mock.invocationCallOrder.at(-1)
+        );
+    });
+
+    test("keeps mixed scope sampling when its direct child is clipped away", () => {
+        const coverageProgram = createProgram("multisample");
+        const directProgram = createProgram();
+        const definition = {
+            type: "custom",
+            createProgram: vi
+                .fn()
+                .mockReturnValueOnce(coverageProgram)
+                .mockReturnValueOnce(directProgram),
+        };
+        const { renderer, transientAcquires } = createRendererHarness();
+        const coverage = renderer.createMark(definition, { channels: {} });
+        const direct = renderer.createMark(definition, { channels: {} });
+
+        renderer.render({
+            items: [
+                {
+                    bounds: { x: 0, y: 0, width: 100, height: 50 },
+                    opacity: 0.5,
+                    items: [
+                        { mark: coverage },
+                        {
+                            bounds: { x: 200, y: 0, width: 10, height: 10 },
+                            items: [{ mark: direct }],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        expect(transientAcquires.map(({ sampleCount }) => sampleCount)).toEqual(
+            [1, 1, 4]
+        );
+        expect(coverageProgram.draw).toHaveBeenCalledOnce();
+        expect(directProgram.draw).not.toHaveBeenCalled();
     });
 
     test("clips inferred MSAA children to an opaque semantic scope", () => {
