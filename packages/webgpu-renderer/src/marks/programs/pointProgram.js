@@ -95,6 +95,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     );
 
     let size = getScaled_size(i);
+    if (size < 0.0) { return culledPoint(); }
     var diameter = sqrt(size);
 
     var strokeWidth = getScaled_strokeWidth(i);

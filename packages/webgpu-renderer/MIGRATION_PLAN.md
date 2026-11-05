@@ -59,6 +59,7 @@ Point circle and path programs support the renderer-generic strokeAlign channel
 legacy inwardStroke property to 0/1 without exposing new grammar. Path atlas
 width limits, shared Core opacity/alignment normalization and x/+ arm semantics
 remain separate; atlas resources and tiny path UV-clamping geometry are unchanged.
+Negative analytic-circle sizes no longer create invisible picking coverage.
 
 ## Active integration: selection predicate composition
 
