@@ -52,6 +52,7 @@ struct VSOut {
     @location(8) @interpolate(flat) strokeAlign: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
+    @location(14) @interpolate(flat) atlasBounds: vec4<f32>,
 };
 
 fn culledPoint() -> VSOut {
@@ -61,6 +62,7 @@ fn culledPoint() -> VSOut {
 #endif
     out.pos = vec4<f32>(0.0);
     out.uv = vec2<f32>(0.0);
+    out.atlasBounds = vec4<f32>(0.0);
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
     out.fillOpacity = 0.0;
@@ -174,11 +176,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     let atlasPixelsPerScreen = params.uShapePixels / max(diameter, 0.001);
     let tileCenter = vec2<f32>(params.uTileSize * 0.5);
-    let tilePixel = clamp(
-        tileCenter + localScreen * atlasPixelsPerScreen,
-        vec2<f32>(0.5),
-        vec2<f32>(params.uTileSize - 0.5)
-    );
+    // Clamp at sampling: clamped quad corners would stretch the nominal shape.
+    let tilePixel = tileCenter + localScreen * atlasPixelsPerScreen;
     let tileUnit = (tilePixel - vec2<f32>(0.5)) /
         max(params.uTileSize - 1.0, 1.0);
 
@@ -192,6 +191,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         1.0
     );
     out.uv = mix(entry.uvBounds.xy, entry.uvBounds.zw, tileUnit);
+    out.atlasBounds = entry.uvBounds;
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
     out.fillOpacity = getScaled_fillOpacity(i);
@@ -214,9 +214,11 @@ fn median3(value: vec3<f32>) -> f32 {
 
 fn signedDistanceInDevicePixels(
     uv: vec2<f32>,
+    bounds: vec4<f32>,
     devicePixelsPerAtlas: f32
 ) -> f32 {
-    let sample = textureSample(pathAtlas, pathAtlasSampler, uv).rgb;
+    let sampleUv = clamp(uv, bounds.xy, bounds.zw);
+    let sample = textureSample(pathAtlas, pathAtlasSampler, sampleUv).rgb;
     let median = median3(sample);
     return median * devicePixelsPerAtlas;
 }
@@ -224,6 +226,7 @@ fn signedDistanceInDevicePixels(
 fn shade(in: VSOut) -> vec4<f32> {
     let distance = signedDistanceInDevicePixels(
         in.uv,
+        in.atlasBounds,
         in.devicePixelsPerAtlas
     );
     if (pickingEnabled) {
