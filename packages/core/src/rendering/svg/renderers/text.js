@@ -4,6 +4,7 @@ import {
 } from "../../immediate/marks/text.js";
 import { createSvgElement } from "../svgElement.js";
 import {
+    encodeNumber,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -44,10 +45,6 @@ export function renderTextSvg(baseMark, options) {
         );
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.color, transform: toPaintString },
-        "fill-opacity": {
-            encoder: encoders.opacity,
-            transform: (value) => +value * viewOpacity,
-        },
         "font-size": {
             encoder: encoders.size,
             transform: (value) => formatSvgNumber(+value),
@@ -107,6 +104,20 @@ export function renderTextSvg(baseMark, options) {
             if (options.countOnly) {
                 return;
             }
+            const opacity =
+                encodeNumber(encoders.opacity, instance.datum) *
+                viewOpacity *
+                instance.fadeOpacity;
+
+            // Opacity belongs to each completed label, not individual glyph paints
+            // or the mark group containing separate label occurrences.
+            const styles = {
+                ...encodeStyles(instance.datum),
+                ...(opacity == 1
+                    ? {}
+                    : { opacity: formatSvgUnitless(opacity) }),
+            };
+
             if (instance.logoTransform) {
                 if (instance.multiCharacterLogo) {
                     options.warn(
@@ -137,7 +148,7 @@ export function renderTextSvg(baseMark, options) {
                     y: 0,
                     "text-anchor": "start",
                     transform: transforms.join(" "),
-                    ...encodeStyles(instance.datum),
+                    ...styles,
                     "font-size": instance.size,
                 });
                 text.textContent = instance.text;
@@ -165,10 +176,7 @@ export function renderTextSvg(baseMark, options) {
                 dy: formatSvgNumber(
                     getNativeBaselineOffset(properties.baseline, instance.size)
                 ),
-                ...encodeStyles(instance.datum),
-                ...(instance.fadeOpacity == 1
-                    ? {}
-                    : { opacity: formatSvgUnitless(instance.fadeOpacity) }),
+                ...styles,
                 transform: transforms.join(" "),
             });
             text.textContent = instance.text;

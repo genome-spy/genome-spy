@@ -1,12 +1,97 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test } from "vitest";
-import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
 
 describe("SVG text renderer", () => {
+    test.each([false, true])(
+        "keeps constant opacity on each label (logoLetters: %s)",
+        async (logoLetters) => {
+            const { view } = await createHeadlessEngine({
+                data: { values: [{ label: "A" }, { label: "A" }] },
+                mark: { type: "text", size: 20, opacity: 0.5, logoLetters },
+                encoding: {
+                    x: { value: 0.2 },
+                    x2: { value: 0.8 },
+                    y: { value: 0.2 },
+                    y2: { value: 0.8 },
+                    text: { field: "label" },
+                    color: { value: "black" },
+                },
+            });
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 200,
+                logicalHeight: 100,
+                background: null,
+            });
+            const group = svg.querySelector('[data-mark-type="text"]');
+            const labels = Array.from(group.querySelectorAll("text"));
+
+            // Group opacity would fade the overlap of separate labels only once.
+            expect(group.hasAttribute("opacity")).toBe(false);
+            expect(group.hasAttribute("fill-opacity")).toBe(false);
+            expect(
+                labels.map((label) => label.getAttribute("opacity"))
+            ).toEqual(["0.5", "0.5"]);
+        }
+    );
+
+    test("combines encoded opacity with view opacity and squeeze fading", async () => {
+        const context = createHeadlessViewContext();
+        const label = "A fitted label";
+        const size = 20;
+        const textWidth = context.textMetrics
+            .requestFont({})
+            .measureWidth(label, size);
+        // A 20px label fades halfway at this range width, between 3px and 6px.
+        const rangeWidth = textWidth * 0.225;
+        const { view } = await createHeadlessEngine(
+            {
+                opacity: 0.8,
+                data: {
+                    values: [
+                        { label, alpha: 0.5 },
+                        { label, alpha: 0.25 },
+                    ],
+                },
+                mark: { type: "text", size, squeeze: true },
+                encoding: {
+                    x: { value: 0.2 },
+                    x2: { value: 0.2 + rangeWidth / 200 },
+                    y: { value: 0.5 },
+                    text: { field: "label" },
+                    color: { value: "black" },
+                    opacity: {
+                        field: "alpha",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            },
+            { context }
+        );
+        const { svg } = createSvg({
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            background: null,
+        });
+        const labels = Array.from(
+            svg.querySelectorAll('[data-mark-type="text"] text')
+        );
+        expect(labels.map((text) => text.getAttribute("opacity"))).toEqual([
+            "0.2",
+            "0.1",
+        ]);
+    });
+
     test("positions and squeezes text inside an encoded range", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ label: "A fitted label" }] },
