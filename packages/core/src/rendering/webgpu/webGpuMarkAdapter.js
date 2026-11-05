@@ -176,7 +176,6 @@ const PLACEMENT_INDEX_CACHE = new WeakMap();
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number | (() => number)} [viewOpacity]
  * @param {object[]} [dataOverride]
  * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} [placementIndex]
  * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object, properties: Record<string, {value: any, dynamic?: boolean}>} | undefined}
@@ -185,14 +184,10 @@ export function createWebGpuMarkConfig(
     mark,
     options,
     coords,
-    viewOpacity = 1,
     dataOverride,
     placementIndex
 ) {
     initializeWebGpuMarkRevisions(mark);
-    const readViewOpacity =
-        typeof viewOpacity == "function" ? viewOpacity : () => viewOpacity;
-
     const data = dataOverride ?? getMarkData(mark, options);
     if (data.length == 0) {
         return undefined;
@@ -214,28 +209,22 @@ export function createWebGpuMarkConfig(
 
     if (markType == "point") {
         definition = pointMark;
-        config = createPointConfig(mark, data, coords, readViewOpacity);
+        config = createPointConfig(mark, data, coords);
     } else if (markType == "rect") {
         definition = rectMark;
-        config = createRectConfig(
-            mark,
-            data,
-            coords,
-            readViewOpacity,
-            typeof viewOpacity != "function"
-        );
+        config = createRectConfig(mark, data, coords);
     } else if (markType == "rule" || markType == "tick") {
         definition = ruleMark;
-        config = createRuleConfig(mark, data, coords, readViewOpacity);
+        config = createRuleConfig(mark, data, coords);
     } else if (markType == "text") {
         definition = textMark;
-        config = createTextConfig(mark, data, coords, readViewOpacity);
+        config = createTextConfig(mark, data, coords);
     } else if (markType == "link") {
         definition = linkMark;
-        config = createLinkConfig(mark, data, coords, readViewOpacity);
+        config = createLinkConfig(mark, data, coords);
     } else if (markType == "arrow") {
         definition = arrowMark;
-        config = createArrowConfig(mark, data, coords, readViewOpacity);
+        config = createArrowConfig(mark, data, coords);
     } else {
         throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
@@ -533,11 +522,9 @@ function createSelectionCondition(mark, predicate) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
- * @param {boolean} staticViewOpacity
  * @returns {object}
  */
-function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
+function createRectConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
         "cornerRadius",
         "cornerRadiusTopRight",
@@ -554,7 +541,6 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
         "shadowColor",
         "hatch",
     ]);
-    const readShadowOpacity = createPropertyReader(mark, "shadowOpacity");
     return {
         count: data.length,
         channels: {
@@ -569,18 +555,8 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
-                mark,
-                "fillOpacity",
-                data,
-                viewOpacity
-            ),
-            strokeOpacity: createOpacityChannel(
-                mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
-            ),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             cornerRadiusTopRight: cornerRadiusValue(
                 mark,
@@ -601,19 +577,7 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
             shadowOffsetX: numericPropertyValue(mark, "shadowOffsetX", 0),
             shadowOffsetY: numericPropertyValue(mark, "shadowOffsetY", 0),
             shadowBlur: numericPropertyValue(mark, "shadowBlur", 0),
-            shadowOpacity: staticOrLivePropertyValue(
-                mark,
-                ["shadowOpacity"],
-                () =>
-                    readNumericProperty(
-                        mark,
-                        "shadowOpacity",
-                        0,
-                        readShadowOpacity
-                    ) * viewOpacity(),
-                undefined,
-                !staticViewOpacity
-            ),
+            shadowOpacity: numericPropertyValue(mark, "shadowOpacity", 0),
             shadowColor: staticOrLivePropertyValue(mark, ["shadowColor"], () =>
                 toRgba(mark, readProperty(mark, "shadowColor") ?? "black")
             ),
@@ -631,10 +595,9 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createPointConfig(mark, data, coords, viewOpacity) {
+function createPointConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
         "fillGradientStrength",
         "inwardStroke",
@@ -659,18 +622,8 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             dy: createGlyphOffsetChannel(mark, "y", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
-                mark,
-                "fillOpacity",
-                data,
-                viewOpacity
-            ),
-            strokeOpacity: createOpacityChannel(
-                mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
-            ),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             angle: createNumericChannel(mark, "angle", data),
             gradientStrength: numericPropertyValue(
                 mark,
@@ -797,10 +750,9 @@ function createPointVisibilitySelections(mark) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createRuleConfig(mark, data, coords, viewOpacity) {
+function createRuleConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
         "strokeAlign",
         "minLength",
@@ -850,7 +802,7 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
                       ),
                   }
                 : {}),
-            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            opacity: createNumericChannel(mark, "opacity", data),
             minLength: numericPropertyValue(mark, "minLength"),
             strokeCap: liveValue(
                 () => mapProperty(mark, "strokeCap", STROKE_CAP_CODES),
@@ -867,10 +819,9 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createTextConfig(mark, data, coords, viewOpacity) {
+function createTextConfig(mark, data, coords) {
     const viewport = [coords.x, coords.y, coords.x2, coords.y2];
     const retainedProperties = {
         viewport: { value: viewport },
@@ -957,7 +908,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
                 type: "u32",
             },
             fill: createColorChannel(mark, "fill", data),
-            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            opacity: createNumericChannel(mark, "opacity", data),
         },
         font: outlineFont,
         fontStyle: readProperty(mark, "fontStyle"),
@@ -988,10 +939,9 @@ function createTextConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createLinkConfig(mark, data, coords, viewOpacity) {
+function createLinkConfig(mark, data, coords) {
     const retainedProperties = createDynamicProperties(mark, {
         arcFadingDistance: (value) => value || [0, 0],
         noFadingOnSecondPass: (value) => !!value,
@@ -1018,7 +968,7 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             size: createNumericChannel(mark, "size", data),
             color: createColorChannel(mark, "color", data),
-            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            opacity: createNumericChannel(mark, "opacity", data),
         },
         minPickingSize: readNumericProperty(mark, "minPickingSize", 3),
         linkShape: readProperty(mark, "linkShape") ?? "arc",
@@ -1038,10 +988,9 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createArrowConfig(mark, data, coords, viewOpacity) {
+function createArrowConfig(mark, data, coords) {
     const retainedProperties = createDynamicProperties(mark, {
         headAngle: (value) => value,
         headNotchAngle: (value) => value,
@@ -1070,18 +1019,8 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
-                mark,
-                "fillOpacity",
-                data,
-                viewOpacity
-            ),
-            strokeOpacity: createOpacityChannel(
-                mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
-            ),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             size: createNumericChannel(mark, "size", data),
             direction: createEnumChannel(
@@ -1400,7 +1339,6 @@ function createNumericBranch(mark, channel, data, encoder) {
                           mark,
                           channel,
                           encoder.scale,
-                          1,
                           readDomain
                       )
                     : createBandPositionScale(
@@ -1421,84 +1359,6 @@ function createNumericBranch(mark, channel, data, encoder) {
     };
     const scale = createNonPositionalScale(mark, channel, encoder.scale);
     return scale ? { ...config, scale } : config;
-}
-
-/**
- * Applies view opacity after channel scaling by multiplying numeric scale
- * ranges. Unscaled series are multiplied while materializing the column.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- * @param {() => number} viewOpacity
- * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
- */
-function createOpacityChannel(mark, channel, data, viewOpacity) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
-        createOpacityBranch(mark, channel, data, viewOpacity, encoder)
-    );
-}
-
-/**
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- * @param {() => number} viewOpacity
- * @param {import("../../types/encoder.js").Encoder} encoder
- * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
- */
-function createOpacityBranch(mark, channel, data, viewOpacity, encoder) {
-    if (encoder.constant) {
-        return liveValue(() => Number(encoder(data[0])) * viewOpacity());
-    }
-
-    const accessor = encoder.branches[0].accessor;
-    if (encoder.scale?.type == "ordinal") {
-        const { values, readDomain } = toCategoricalArray(
-            mark,
-            channel,
-            data,
-            accessor,
-            encoder.scale
-        );
-        return {
-            data: values,
-            type: "u32",
-            scale: createNonPositionalScale(
-                mark,
-                channel,
-                encoder.scale,
-                viewOpacity,
-                readDomain
-            ),
-        };
-    }
-    const scale =
-        encoder.scale?.type == "identity"
-            ? undefined
-            : createNonPositionalScale(
-                  mark,
-                  channel,
-                  encoder.scale,
-                  viewOpacity
-              );
-    if (scale) {
-        return {
-            data: toFloat32Array(mark, channel, data, accessor),
-            type: "f32",
-            scale,
-        };
-    }
-
-    return {
-        data: toFloat32Array(mark, channel, data, accessor),
-        type: "f32",
-        scale: retainScaleLeaves(
-            linearScale({ domain: [0, 1], range: [0, viewOpacity()] }),
-            undefined,
-            () => [0, viewOpacity()]
-        ),
-    };
 }
 
 /**
@@ -1721,39 +1581,25 @@ function createColorScale(mark, channel, scale, readOrdinalDomain) {
         return retainScaleLeaves(
             thresholdScale({
                 domain: scale.domain().map(Number),
-                range: normalizeColorRange(mark, scale.range()),
+                range: scale.range(),
             }),
             () => scale.domain().map(Number),
-            () => normalizeColorRange(mark, scale.range())
+            () => scale.range()
         );
     } else if (scale.type == "quantize") {
         return retainScaleLeaves(
             quantizeScale({
                 domain: scale.domain().map(Number),
-                range: normalizeColorRange(mark, scale.range()),
+                range: scale.range(),
             }),
             () => scale.domain().map(Number),
-            () => normalizeColorRange(mark, scale.range())
+            () => scale.range()
         );
     }
 
     throw unsupported(
         mark,
         `Scale type "${scale.type}" on channel "${channel}" is not supported.`
-    );
-}
-
-/**
- * Materialize Core's CSS colors for discrete renderer scales. The renderer
- * also accepts CSS strings, but passing normalized vectors keeps the scale
- * output contract explicit for four-component mark channels.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {Array<number | number[] | string>} range
- */
-function normalizeColorRange(mark, range) {
-    return range.map((value) =>
-        typeof value == "string" ? toRgba(mark, value) : value
     );
 }
 
@@ -1905,33 +1751,21 @@ function createPositionScale(mark, channel, scale, range) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale | undefined} scale
- * @param {number | (() => number)} [rangeMultiplier]
  * @param {number[] | (() => number[])} [domain]
  * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<"identity" | "linear"> | undefined}
  */
-function createNonPositionalScale(
-    mark,
-    channel,
-    scale,
-    rangeMultiplier = 1,
-    domain
-) {
+function createNonPositionalScale(mark, channel, scale, domain) {
     if (!scale || scale.type == "null") {
         return undefined;
     }
     if (scale.type == "identity") {
         return identityScale();
     }
-    const readRangeMultiplier =
-        typeof rangeMultiplier == "function"
-            ? rangeMultiplier
-            : () => rangeMultiplier;
     return createNumericScale(
         mark,
         channel,
         scale,
-        () =>
-            scale.range().map((value) => Number(value) * readRangeMultiplier()),
+        () => scale.range().map(Number),
         domain
     );
 }
@@ -2510,20 +2344,10 @@ function numericPropertyValue(mark, property, fallback) {
  * @param {string[]} properties
  * @param {() => number | number[]} read
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
- * @param {boolean} [forceDynamic]
  */
-function staticOrLivePropertyValue(
-    mark,
-    properties,
-    read,
-    type,
-    forceDynamic = false
-) {
+function staticOrLivePropertyValue(mark, properties, read, type) {
     const rawProperties = /** @type {Record<string, any>} */ (mark.properties);
-    if (
-        forceDynamic ||
-        properties.some((property) => isExprRef(rawProperties[property]))
-    ) {
+    if (properties.some((property) => isExprRef(rawProperties[property]))) {
         return liveValue(read, type);
     }
     return {

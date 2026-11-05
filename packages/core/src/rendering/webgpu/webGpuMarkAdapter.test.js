@@ -305,8 +305,7 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(
             mark,
             /** @type {any} */ ({}),
-            Rectangle.create(10, 20, 100, 200),
-            0.5
+            Rectangle.create(10, 20, 100, 200)
         );
         if (!translated) {
             throw new Error("Expected a translated point mark.");
@@ -337,7 +336,7 @@ describe("WebGPU mark adapter", () => {
             },
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
-        expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
+        expect(channels.fillOpacity).toEqual({ value: 0.75 });
         expect(channels.minPickingSize).toEqual({ value: 12 });
         expect(channels.strokeAlign).toEqual({
             ...dynamicValue(1),
@@ -383,35 +382,94 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
-    test("keeps navigation and opacity leaves live in one config", () => {
-        const domain = /** @type {[number, number]} */ ([0, 2]);
-        let opacity = 0.75;
-        let viewOpacity = 0.5;
-        const opacityEncoder = createConstantEncoder(opacity);
-        /** @type {any} */ (opacityEncoder).branches[0].accessor = () =>
-            opacity;
-        const mark = createMark("point", [{ x: 1 }], {
-            x: createEncoder((datum) => datum.x, {
-                scale: createLinearScale(domain),
-            }),
-            fillOpacity: opacityEncoder,
+    test("retains native opacity encodings and raw color palettes", async () => {
+        const { view } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{ opacity: 0.25 }] },
+            resolve: { scale: { fillOpacity: "independent" } },
+            params: [
+                { name: "alpha", value: 0.75 },
+                { name: "chosen", select: "point" },
+            ],
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        fillOpacity: {
+                            condition: {
+                                param: "chosen",
+                                value: { expr: "alpha" },
+                            },
+                            field: "opacity",
+                            type: "quantitative",
+                            scale: { domain: [0, 1], range: [0, 0.5] },
+                        },
+                        fill: {
+                            field: "opacity",
+                            type: "quantitative",
+                            scale: {
+                                type: "threshold",
+                                domain: [0.5],
+                                range: ["transparent", "rgba(255, 0, 0, 0.5)"],
+                            },
+                        },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        fillOpacity: {
+                            field: "opacity",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                    },
+                },
+            ],
         });
-
-        const translated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.create(0, 0, 100, 100),
-            () => viewOpacity
+        onTestFinished(() => view.disposeSubtree());
+        const units = Array.from(
+            view.getDescendants().filter((child) => child instanceof UnitView)
         );
-        const channels = /** @type {any} */ (translated).config.channels;
+        const [scaled, unscaled] = units.map(
+            (unit) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
+                ).config.channels
+        );
+        const branch = scaled.fillOpacity.conditions[0].channel;
+        expect(scaled.fillOpacity.data).toEqual(new Float32Array([0.25]));
+        expect(scaled.fillOpacity.scale.range).toEqual([0, 0.5]);
+        expect(branch.value).toBe(0.75);
+        expect(branch.dynamic).toBe(true);
+        expect(unscaled.fillOpacity).toEqual({
+            data: new Float32Array([0.25]),
+            type: "f32",
+        });
+        expect(scaled.fill.scale.range).toEqual([
+            "transparent",
+            "rgba(255, 0, 0, 0.5)",
+        ]);
 
-        domain[0] = 1;
-        domain[1] = 3;
-        opacity = 0.5;
-        viewOpacity = 0.25;
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("alpha", 0.5);
+            units[0]
+                .getScaleResolution("fillOpacity")
+                .getScale()
+                .range([0.25, 0.75]);
+            units[0]
+                .getScaleResolution("fill")
+                .getScale()
+                .range(["rgba(0, 255, 0, 0.25)", "transparent"]);
+        });
+        await view.paramRuntime.whenPropagated();
 
-        expect(channels.x.scale.domain).toEqual([1, 3]);
-        expect(channels.fillOpacity.value).toBe(0.125);
+        expect(branch.value).toBe(0.5);
+        expect(scaled.fillOpacity.scale.range).toEqual([0.25, 0.75]);
+        expect(scaled.fill.scale.range).toEqual([
+            "rgba(0, 255, 0, 0.25)",
+            "transparent",
+        ]);
     });
 
     test("keeps literal numeric and color channels static while expressions stay live", async () => {
@@ -466,26 +524,6 @@ describe("WebGPU mark adapter", () => {
         /** @type {any} */ (mark).advanceRenderingRevision("resources");
         /** @type {any} */ (mark).advanceRenderingRevision("resources");
         expect(getWebGpuMarkResourceRevision(mark)).toBe(2);
-    });
-
-    test("applies live view opacity to an unscaled retained series", () => {
-        let viewOpacity = 0.5;
-        const mark = createMark("point", [{ opacity: 0.25 }], {
-            fillOpacity: createEncoder((datum) => datum.opacity),
-        });
-        const translated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.ZERO,
-            () => viewOpacity
-        );
-        const opacity = /** @type {any} */ (translated).config.channels
-            .fillOpacity;
-
-        expect(opacity.data).toEqual(new Float32Array([0.25]));
-        expect(opacity.scale.range).toEqual([0, 0.5]);
-        viewOpacity = 0.25;
-        expect(opacity.scale.range).toEqual([0, 0.25]);
     });
 
     test.each(["text", "rect"])(
@@ -1538,7 +1576,7 @@ describe("WebGPU mark adapter", () => {
             /** @param {object[]} rows */
             const translate = (rows) =>
                 /** @type {any} */ (
-                    createWebGpuMarkConfig(mark, {}, Rectangle.ZERO, 1, rows)
+                    createWebGpuMarkConfig(mark, {}, Rectangle.ZERO, rows)
                         .config
                 ).channels.x.data;
 
@@ -1855,10 +1893,7 @@ describe("WebGPU mark adapter", () => {
                 type: "threshold",
                 definition: thresholdScaleDefinition,
                 domain: [0],
-                range: [
-                    [1, 1, 1, 1],
-                    [0, 0, 0, 1],
-                ],
+                range: ["white", "black"],
             },
         });
     });

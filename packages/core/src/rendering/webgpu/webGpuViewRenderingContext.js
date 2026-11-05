@@ -477,7 +477,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     state.mark,
                     first.options,
                     configCoords,
-                    1,
                     packed.data,
                     createPlacementIndexConfig(state)
                 )

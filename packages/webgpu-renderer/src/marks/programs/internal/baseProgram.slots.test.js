@@ -191,6 +191,43 @@ describe("BaseProgram slot handles", () => {
         ).toBe(4);
     });
 
+    it.each(/** @type {const} */ (["threshold", "quantize"]))(
+        "packs transparent CSS %s palettes on creation and retained range updates",
+        (scaleType) => {
+            const program = createSlotProgram(createMockRenderer(), {
+                channels: {
+                    uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                    x: { data: new Float32Array([0, 1]), type: "f32" },
+                    size: { value: 1 },
+                    fill: {
+                        data: new Float32Array([0.25, 0.75]),
+                        type: "f32",
+                        inputComponents: 1,
+                        scale: {
+                            type: scaleType,
+                            domain: scaleType === "threshold" ? [0.5] : [0, 1],
+                            range: ["transparent", "rgba(255, 0, 0, 0.5)"],
+                        },
+                    },
+                },
+            });
+            const entry =
+                program._uniformBufferState.entries.get("uRange_fill");
+            const rgba = new Float32Array(
+                program._uniformBufferState.data,
+                entry.offset,
+                8
+            );
+            expect(Array.from(rgba)).toEqual([0, 0, 0, 0, 1, 0, 0, 0.5]);
+
+            program
+                .getSlotHandles()
+                .scales.fill.setRange(["rgba(0, 255, 0, 0.25)", "transparent"]);
+
+            expect(Array.from(rgba)).toEqual([0, 1, 0, 0.25, 0, 0, 0, 0]);
+        }
+    );
+
     it("updates dynamic values through slots", () => {
         const renderer = createMockRenderer();
         const packed = new Uint32Array([0, 0xfedcba98, 4, 0]).subarray(1, 3);
