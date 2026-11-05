@@ -127,6 +127,9 @@ test("prepares finite RGBA constants and expression uniforms", () => {
     expect(literal.accessorGlsl).toContain("vec4(0.0, 0.0, 0.0, 0.0)");
     const dynamic = generateDynamicValueGlslAndUniform("stroke", 0);
     expect(dynamic.uniformGlsl).toContain("uniform vec4");
+    expect(dynamic.adjuster(null)).toEqual([0, 0, 0, 0]);
     expect(dynamic.adjuster("transparent")).toEqual([0, 0, 0, 0]);
+    expect(() => dynamic.adjuster(undefined)).toThrow("Invalid color");
+    expect(() => dynamic.adjuster("invalid")).toThrow("Invalid color");
     expect(dynamic.adjuster("rgba(255,0,0,0.5)")).toEqual([1, 0, 0, 0.5]);
 });

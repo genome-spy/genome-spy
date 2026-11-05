@@ -35,16 +35,15 @@ float resolveHeadHalfWidth(float arrowSize) {
     return max(headWidth, 0.0) * 0.5;
 }
 
-// Width along the arrow axis needed by one repeated head, including stroke.
+// Nominal width along the arrow axis needed by one repeated head.
 float headRepeatFootprintLength(
     float halfWidth,
     float rHeadSlope,
-    float headStrokeWidth,
-    float halfStrokeWidth
+    float headStrokeWidth
 ) {
     float headAxisLength = halfWidth * rHeadSlope;
     float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
-    return headAxisLength + headStrokeLength + halfStrokeWidth * 2.0;
+    return headAxisLength + headStrokeLength;
 }
 
 // Distance from the head tip to its centerline notch/join point.
@@ -289,8 +288,7 @@ void main(void) {
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
         vRHeadSlope,
-        vHeadStrokeWidth,
-        vHalfStrokeWidth
+        vHeadStrokeWidth
     );
     vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
     vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);

@@ -125,10 +125,6 @@ float sdArrowHead(
     return sdPolygon(vertices, p);
 }
 
-float repeat(float x, float spacing) {
-    return x >= spacing ? x - floor(x / spacing) * spacing : x;
-}
-
 float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     float stemDistance = sdStem(
         arrowPos,
@@ -139,46 +135,45 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
         bidirectional
     );
 
-    bool headRepeat = vHeadSpacing >= 0.0;
-    float spacing = headRepeat
-        ? max(vHeadSpacing, vHeadRepeatFootprintLength)
-        : INFINITY_SUBSTITUTE;
     float distanceFromStart = arrowPos.x + arrowHalfLength;
-
-    // Keep the stroked tip inside the repeated head's local window.
-    float arrowHeadX = repeat(
-        distanceFromStart + vHalfStrokeWidth,
-        spacing
-    ) - vHalfStrokeWidth;
-
-    float headDistance = sdArrowHead(
-        vec2(arrowHeadX, arrowPos.y),
-        vHeadHalfWidth,
-        vRHeadSlope,
-        vRHeadNotchSlope,
-        vHeadStrokeWidth
-    );
-
-    if (bidirectional) {
-        float endHeadDistance = sdArrowHead(
-            vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+    float headDistance = INFINITY_SUBSTITUTE;
+    if (vHeadSpacing >= 0.0) {
+        float spacing = max(vHeadSpacing, vHeadRepeatFootprintLength);
+        float lastHead = floor(max(
+            arrowHalfLength * 2.0 - vHeadRepeatFootprintLength, 0.0
+        ) / spacing);
+        // Bracket nominal footprint centers, then clamp to admitted endpoint
+        // heads so their borders remain visible outside the repeat interval.
+        float index = clamp(floor(
+            (distanceFromStart - vHeadRepeatFootprintLength * 0.5) / spacing
+        ), 0.0, lastHead);
+        for (int neighbor = 0; neighbor < 2; neighbor++) {
+            float headIndex = min(index + float(neighbor), lastHead);
+            headDistance = min(headDistance, sdArrowHead(
+                vec2(distanceFromStart - headIndex * spacing, arrowPos.y),
+                vHeadHalfWidth,
+                vRHeadSlope,
+                vRHeadNotchSlope,
+                vHeadStrokeWidth
+            ));
+        }
+    } else {
+        headDistance = sdArrowHead(
+            vec2(distanceFromStart, arrowPos.y),
             vHeadHalfWidth,
             vRHeadSlope,
             vRHeadNotchSlope,
             vHeadStrokeWidth
         );
-        headDistance = min(headDistance, endHeadDistance);
-    }
-
-    if (headRepeat) {
-        // Cull heads that would be partially clipped.
-        float headTipDistance = distanceFromStart - arrowHeadX;
-        float headEndDistance = headTipDistance
-            + vHeadRepeatFootprintLength
-            - vHalfStrokeWidth;
-
-        if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
-            headDistance = INFINITY_SUBSTITUTE;
+        if (bidirectional) {
+            float endHeadDistance = sdArrowHead(
+                vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+                vHeadHalfWidth,
+                vRHeadSlope,
+                vRHeadNotchSlope,
+                vHeadStrokeWidth
+            );
+            headDistance = min(headDistance, endHeadDistance);
         }
     }
 

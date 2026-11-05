@@ -61,6 +61,7 @@ export async function createPointExample(
                 type: "f32",
                 scale: linearScale({ domain: [0, 1], range: [0, 100] }),
             },
+            strokeAlign: { value: 1, type: "u32", dynamic: true },
             y: {
                 data: new Float32Array([1, 0]),
                 type: "f32",
@@ -68,6 +69,7 @@ export async function createPointExample(
             },
         },
     });
+    points.values.strokeAlign.set(2);
     points.series.replace({
         x: new Float32Array([0.25, 0.75]),
         y: new Float32Array([0.75, 0.25]),

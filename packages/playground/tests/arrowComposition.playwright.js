@@ -45,6 +45,17 @@ for (const dpr of [1, 2]) {
             );
             expect(result.overlapAlpha).toBe(255);
             expect(result.overlapPicks).toEqual(["arrow", "arrow", "empty"]);
+            expect(Math.max(...result.repeatErrors)).toBeLessThanOrEqual(1);
+            expect(result.referenceError).toBeLessThanOrEqual(2);
+            expect(result.referenceCoverage.every((count) => count > 0)).toBe(
+                true
+            );
+            expect(result.repeatPicks).toEqual([
+                "arrow",
+                "arrow",
+                "arrow",
+                "empty",
+            ]);
             expect(result.picks).toEqual(["arrow", "empty", "empty"]);
         } finally {
             await browser.close();
@@ -100,6 +111,8 @@ async function renderArrows({ dpr, entry, registration }) {
                 strokeAlpha: 1,
                 head: "triangle",
                 stem: true,
+                spacing: null,
+                direction: "forward",
             }).map(([name, value]) => ({ name, value })),
             mark: {
                 type: "arrow",
@@ -114,6 +127,8 @@ async function renderArrows({ dpr, entry, registration }) {
                 headShape: { expr: "head" },
                 stem: { expr: "stem" },
                 headWidth: 2,
+                headSpacing: { expr: "spacing" },
+                direction: { expr: "direction" },
             },
             encoding: {
                 x: position("x"),
@@ -203,27 +218,98 @@ async function renderArrows({ dpr, entry, registration }) {
             });
             picks.push(hit.status === "hit" ? hit.hit.datum.id : hit.status);
         }
-        // A later head's empty quad overlaps an earlier head's opaque border.
-        const spacing = 8 + 8 / Math.SQRT2;
-        api.datasets.set(
-            "arrows",
-            Array.from({ length: 3 }, (_, i) => ({
-                id: "arrow",
-                x: 8,
-                x2: 56 - i * spacing,
-                y: cy,
-                y2: cy,
-            }))
-        );
-        const overlapping = await paint({
+        const repeatErrors = [];
+        for (const head of ["triangle", "open"]) {
+            for (const direction of ["forward", "reverse"]) {
+                const nominal = await paint({
+                    head,
+                    direction,
+                    stem: false,
+                    spacing: 0.5,
+                    width: 0,
+                });
+                for (const width of [4, 24]) {
+                    const transparent = await paint({ width, strokeAlpha: 0 });
+                    repeatErrors.push(
+                        transparent.reduce(
+                            (max, v, i) =>
+                                Math.max(max, Math.abs(v - nominal[i])),
+                            0
+                        )
+                    );
+                }
+            }
+        }
+        const actual = await paint({
             head: "open",
-            stem: false,
-            size: 8,
+            direction: "forward",
             width: 24,
             strokeAlpha: 1,
         });
+        const pickRepeats = async () => {
+            const hits = [];
+            for (const [x, y] of [
+                [7, 32],
+                [40, 42],
+                [57, 32],
+                [0, 0],
+            ]) {
+                const hit = await view.marks.pick({
+                    x: bounds.x + x,
+                    y: bounds.y + y,
+                });
+                hits.push(hit.status === "hit" ? hit.hit.datum.id : hit.status);
+            }
+            return hits;
+        };
+        const repeatPicks = await pickRepeats();
+        const spacing = 8 + 8 / Math.SQRT2;
+        api.datasets.set(
+            "arrows",
+            Array.from(
+                { length: Math.floor((48 - spacing) / spacing) + 1 },
+                (_, i) => ({
+                    id: "arrow",
+                    x: 8,
+                    x2: 56 - i * spacing,
+                    y: cy,
+                    y2: cy,
+                })
+            )
+        );
+        const expected = await paint({ spacing: null });
+        let referenceError = 0,
+            foreground = 0,
+            background = 0;
+        // Independent heads are an opaque geometry oracle away from AA overlaps.
+        for (let y = 1; y < canvas.height - 1; y++) {
+            for (let x = 1; x < canvas.width - 1; x++) {
+                const i = (y * canvas.width + x) * 4 + 3,
+                    alpha = expected[i];
+                if (alpha !== 0 && alpha !== 255) continue;
+                let stable = true;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (
+                            expected[i + (dy * canvas.width + dx) * 4] !== alpha
+                        )
+                            stable = false;
+                    }
+                }
+                if (stable) {
+                    if (alpha === 255) foreground++;
+                    else background++;
+                    referenceError = Math.max(
+                        referenceError,
+                        Math.abs(actual[i] - alpha)
+                    );
+                }
+            }
+        }
+        // The independent heads also exercise an empty later quad overlapping
+        // an earlier opaque border. Reuse the geometry oracle scene above.
         const overlapAlpha =
-            overlapping[
+            expected[
                 ((canvas.height - 1 - 42 * dpr) * canvas.width + 40 * dpr) * 4 +
                     3
             ];
@@ -244,6 +330,10 @@ async function renderArrows({ dpr, entry, registration }) {
         return {
             overlapAlpha,
             overlapPicks,
+            referenceError,
+            referenceCoverage: [foreground, background],
+            repeatPicks,
+            repeatErrors,
             samples,
             transparentErrors,
             picks,

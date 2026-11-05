@@ -4,9 +4,10 @@ import { linearScale } from "../src/scales/linear.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @returns {Promise<() => void>}
+ * @param {{opacity?: number, strokeAlign?: number, strokeWidth?: number, strokeOpacity?: number}} [options]
+ * @returns {Promise<{update: (options: {opacity?: number, strokeAlign?: number, strokeWidth?: number, strokeOpacity?: number}) => void, cleanup: () => void}>}
  */
-export default async function runArrowScene(canvas) {
+export default async function runArrowScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
     const count = 6;
     const x = new Float32Array([0.1, 0.1, 0.1, 0.15, 0.15, 0.15]);
@@ -22,9 +23,10 @@ export default async function runArrowScene(canvas) {
         ARROW_DIRECTIONS.both,
     ]);
 
-    const { series, scales } = renderer.createMark(arrowMark, {
+    const mark = renderer.createMark(arrowMark, {
         count,
         channels: {
+            opacity: { value: options.opacity ?? 1, dynamic: true },
             x: {
                 data: x,
                 type: "f32",
@@ -49,8 +51,16 @@ export default async function runArrowScene(canvas) {
             size: { value: 8 },
             fill: { value: [0.36, 0.56, 0.94, 1] },
             stroke: { value: [0.05, 0.08, 0.16, 1] },
-            strokeWidth: { value: 1 },
-            strokeOpacity: { value: 0.5 },
+            strokeWidth: { value: options.strokeWidth ?? 1, dynamic: true },
+            strokeAlign: {
+                value: options.strokeAlign ?? 1,
+                type: "u32",
+                dynamic: true,
+            },
+            strokeOpacity: {
+                value: options.strokeOpacity ?? 0.5,
+                dynamic: true,
+            },
         },
         headAngle: 45,
         headNotchAngle: 75,
@@ -62,6 +72,7 @@ export default async function runArrowScene(canvas) {
         stem: true,
     });
 
+    const { series, scales } = mark;
     const updateRanges = ({ width, height }) => {
         const padding = 40;
         const xRange = [padding, Math.max(padding, width - padding)];
@@ -76,8 +87,19 @@ export default async function runArrowScene(canvas) {
     series.replace({ x, x2, y, y2, direction }, count);
     renderer.render();
 
-    return () => {
-        cleanupResize();
-        renderer.destroy();
+    return {
+        update(options) {
+            mark.batchUpdates(() => {
+                mark.values.opacity.set(options.opacity ?? 1);
+                mark.values.strokeAlign.set(options.strokeAlign ?? 1);
+                mark.values.strokeWidth.set(options.strokeWidth ?? 1);
+                mark.values.strokeOpacity.set(options.strokeOpacity ?? 0.5);
+            });
+            renderer.render();
+        },
+        cleanup() {
+            cleanupResize();
+            renderer.destroy();
+        },
     };
 }

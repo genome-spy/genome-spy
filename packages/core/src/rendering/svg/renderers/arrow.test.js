@@ -322,6 +322,50 @@ describe("SVG arrow renderer", () => {
         }
     );
 
+    test.each(["triangle", "open"])(
+        "keeps repeated %s geometry when an invisible border changes width",
+        async (headShape) => {
+            const paths = [];
+            for (const strokeWidth of [0, 4, 24]) {
+                const { view } = await createHeadlessEngine({
+                    data: { values: [{}] },
+                    mark: {
+                        type: "arrow",
+                        headShape: /** @type {"triangle" | "open"} */ (
+                            headShape
+                        ),
+                        stem: false,
+                        size: 8,
+                        headWidth: 2,
+                        headSpacing: 0.5,
+                        fill: "red",
+                        stroke: "blue",
+                        strokeOpacity: 0,
+                        strokeWidth,
+                    },
+                    encoding: {
+                        x: { value: 0.08 },
+                        x2: { value: 0.56 },
+                        y: { value: 0.5 },
+                    },
+                });
+                const { svg } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 100,
+                    logicalHeight: 100,
+                    background: null,
+                });
+                const path = svg
+                    .querySelector('[data-mark-type="arrow"] > path')
+                    .getAttribute("d");
+                expect(path.match(/\bM /g).length).toBeGreaterThan(1);
+                paths.push(path);
+            }
+            expect(paths[1]).toBe(paths[0]);
+            expect(paths[2]).toBe(paths[0]);
+        }
+    );
+
     test("skips polygon union for fill-only repeated heads", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{}] },

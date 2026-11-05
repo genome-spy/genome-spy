@@ -183,7 +183,7 @@ export function generateDynamicValueGlslAndUniform(channel, conditionNumber) {
 
     if (isColorChannel(channel)) {
         dataType = "vec4";
-        adjuster = (x) => cssColorToRgba(x);
+        adjuster = (x) => (x === null ? [0, 0, 0, 0] : cssColorToRgba(x));
     } else if (isDiscreteChannel(channel)) {
         adjuster = getDiscreteRangeMapper(channel);
     }

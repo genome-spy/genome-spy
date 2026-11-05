@@ -660,3 +660,61 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         1 / result.atlasDimensions[1]
     );
 });
+
+test("initially empty text has valid resources through retained updates", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { textMark },
+            { identityScale },
+            { createSyntheticOutlineFont },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/text.js"),
+            import("/src/scales/identity.js"),
+            import("/tests/fixtures/syntheticOutlineFont.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 64;
+        document.body.append(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        const picks = [];
+        try {
+            // Plain and effect pipelines declare different empty storage elements.
+            for (const strokeWidth of [0, 2]) {
+                const mark = renderer.createMark(textMark, {
+                    count: 1,
+                    font: createSyntheticOutlineFont(1),
+                    channels: {
+                        text: { data: [""] },
+                        x: { value: 32, scale: identityScale() },
+                        y: { value: 32, scale: identityScale() },
+                        uniqueId: { value: 7, type: "u32" },
+                        strokeWidth: { value: strokeWidth },
+                    },
+                });
+                for (const text of ["", "Ā", ""]) {
+                    mark.series.replace({ text: [text] });
+                    renderer.render({ items: [{ mark }] });
+                    await renderer.device.queue.onSubmittedWorkDone();
+                    picks.push(await renderer.pick(32, 32));
+                }
+                renderer.destroyMark(mark.markId);
+            }
+            return {
+                picks,
+                error: (await renderer.device.popErrorScope())?.message ?? null,
+            };
+        } finally {
+            renderer.destroy();
+            canvas.remove();
+        }
+    });
+    expect(result.error).toBeNull();
+    expect(result.picks).toEqual([null, 7, null, null, 7, null]);
+});
