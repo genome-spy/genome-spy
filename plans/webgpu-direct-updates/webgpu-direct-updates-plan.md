@@ -761,3 +761,211 @@ scope normalization/layerization remains the larger allocation source. No
 whole-frame pool, offset/options reuse or profiler callback dispatcher is added;
 those require separate evidence and ownership design. Commit:
 `perf(webgpu): avoid temporary rectangles during draw encoding`.
+
+## Frame preparation with the existing API
+
+Baseline: `fd57f4f9d`. The user authorized the next frame-preparation
+opportunity, requires this plan update before implementation, and requires CPU
+verification with real wheel zoom and drag pan. Keep the renderer API, accepted
+mutable inputs, validation, picking and detached-export behavior intact.
+
+### Ownership and proposed simplification
+
+Core owns its frame-plan commands and per-paint semantic items. The renderer
+validates those inputs into its own normalized draw/group data. Only the flat
+normalized draws survive for later picking; normalization/layerization working
+arrays belong to the current synchronous render call. Public caller arrays and
+objects must never become scratch storage.
+
+Start with renderer-local reuse rather than a new retained-frame API or a pool:
+
+- Build the existing normalized group representation during normalization,
+  deriving its sample count from child coverage and resolving inherited labels.
+  Remove the separate intermediate semantic-scope representation where its
+  metadata is already equivalent to a normalized group.
+- Layerization may update the renderer-owned group bounds and child arrays in
+  place. It must retain the existing flattening, opacity isolation, coverage-run
+  ordering, clipping, labels and group-count decisions.
+- Evaluate returning already-owned draw-only leaves directly, but retain the
+  general traversal unless native-input CPU measurements justify the added
+  pre-scan and branch. This shortcut is discarded after the initial comparisons
+  show no reliable CPU benefit and the user explicitly prefers KISS.
+- Inspect Core scope-array lifetimes before considering any Core reuse. Reuse
+  there is optional and belongs in this change only if it is demonstrably safe,
+  smaller and independently useful; do not rewrite private snapshot contracts
+  merely to reduce a file count. Renderer-local improvements are sufficient if
+  Core reuse would require another ownership protocol.
+
+No cross-frame object pool, identity cache, revision handle, generic dispatcher
+or new subscription is authorized. Retained draw/viewport/scissor data, dynamic
+bind offsets and custom program draw options preserve their current ownership.
+Do not add profiler-callback or effective-scale-range work to this milestone.
+
+### Verification and acceptance
+
+Use existing renderer/Core tests for nested groups, mixed single/multisample
+coverage, conditional ordering, zero/one/fractional opacity transitions, mutable
+caller input detachment, later picking and detached targets. Extend only the
+cases that protect a distinct ownership or composition boundary. Native output,
+picking and export must remain equivalent to the baseline at controlled states.
+
+Reuse the existing browser measurement infrastructure for fixed native input
+traces: actual wheel events and mouse down/move/up pan events over an
+interactive plot. Do not call `zoomTo(..., {renderImmediately:true})` or mutate
+style parameters inside CPU measurement windows. Assert that the interaction
+really changes the relevant domain/viewport, and that both versions receive the
+same input trace. Record interaction settling, source hashes, browser/GPU
+details, errors and render/frame counts when available. Keep counter diagnostics
+separate if instrumentation is needed to establish equal work.
+
+CPU acceptance uses hardware-backed Chrome/Metal, explicit CDP threadTicks
+metrics, alternating baseline/candidate order, warmed interaction state and a
+same-code control. Measure representative scope-heavy views and a committed real
+example. Do not run CPU/allocation samplers, traces, tests or parallel browser
+benchmarks during acceptance. Run allocation sampling separately using the same
+inputs. Record all samples, including unfavorable ones. Retain only a coherent
+change with useful work/allocation reduction and no reproducible CPU regression.
+Claim a CPU speedup only when direction and magnitude exceed control variation;
+otherwise report CPU as unchanged or inconclusive.
+
+The user's measurement refinement replaces the small example as the main load
+with grids of 20 and 40 complete copies of the committed clustered heatmap,
+including dendrograms, matrix, axes and legends. Preserve independent cameras:
+native gestures move one matrix while frame preparation visits all copies. Size
+the canvas to render every copy and record actual view counts. Keep the
+generated specifications and measurement drivers as local diagnostic artifacts.
+
+Headed input diagnostics caught physical desktop mouse movements during an
+automated held-button drag. Use headless Chrome with the same native Metal
+adapter for the isolated CPU comparisons, as in the existing native GPU suite.
+Dispatch trusted wheel/mouse events through CDP Input without Playwright's drag
+interception scripts. Verify event cadence separately, include 1,600 ms for pan
+inertia, and reject camera movement during a further 400 ms outside the timing
+window or while another page receives input. These results cover renderer-main-
+thread CPU per interaction trace, not headed compositor cost or UI latency.
+
+- [x] Confirm internal ownership and the smallest coherent implementation.
+- [x] Simplify normalized scope/group handling and reuse owned groups.
+- [x] Verify representative tests, types, native rendering/picking/export and
+      independent implementation review.
+- [x] Compare baseline/candidate CPU using real wheel and pan, and allocation in
+      separate diagnostic runs; address any correctness or performance finding.
+- [x] Record source size, release impact and all measurement limits, then commit
+      the accepted change as `refactor(webgpu): reuse normalized render groups`.
+
+This is unpublished renderer/internal Core work. Reuse the existing empty
+changeset; no public renderer migration or package version bump is intended.
+
+Implementation stays entirely in renderer normalization/layerization. Core scope
+reuse is deferred: prior Core scope results preserve their numeric opacity
+values, so reusing them would change a private result lifetime contract. The
+renderer-local change needs no such ownership change. After discarding the
+unproven draw-only shortcut, its source shrinks from 2,021 to 2,006 raw lines,
+including deletion of the duplicate intermediate scope types.
+
+The implementation fixes each group's sample count from its normalized children
+before clipping or flattening, preserving the old mixed-scope classification.
+Nearest-parent labels are resolved during normalization. Only newly owned group
+bounds/items are replaced during layerization without mutating draw records.
+Both group constructors use the same property order. The independent final
+source/test review found no correctness issue; the single general traversal
+preserves the original coverage flush and group-count decisions.
+
+Current correctness checks pass 489 focused tests across 53 files, renderer
+TypeScript, scoped lint/format and 14 native GPU tests. Coverage includes frozen
+nested caller inputs, fractional-to-opaque rerenders, preservation of initial
+sampling classification when a child clips away, and live/explicit picking
+frames across detached export. No Core source or public declaration changed.
+
+### Native-input results and final KISS decision
+
+Measured on 2026-11-05 with Chrome 156.0.8078.80, Apple M5, native Apple Metal-3
+WebGPU, DPR 1. Each grid contains the complete example, including its two
+dendrograms, matrix, axes and local legend. The 20/40-copy scenes visit
+621/1,241 views and encode 300/600 draws per ordinary render, respectively. All
+matrices fit the canvas; initial baseline/candidate raster exports match byte
+for byte at both sizes. Generated manual-test specs are kept locally as
+`output/webgpu-direct-uniforms/heatmaps20-spec.json` and
+`output/webgpu-direct-uniforms/heatmaps40-spec.json`.
+
+The temporary driver is `/private/tmp/webgpu-native-input-measure.mjs`. Final
+CPU invocations use `--scene=heatmaps --heatmaps=20` or `40`, `--headless`,
+`--pairs=3 --warmup=2 --wheel-events=24 --drag-steps=48 --drags=2 --event-ms=1 --settle-ms=1600`;
+40-copy runs also use `--reverse-init`. Controls add `--baseline-control`,
+serving the baseline source to both pages. Measured order alternates
+baseline/candidate and candidate/baseline. A separate input diagnostic verifies
+exactly two down/up pairs and 96 trusted drag moves per page, median move
+spacing about 16.7 ms. Page-activation, cross-page camera guards and the
+post-window stability check pass. Vite development transport and console
+forwarding are disabled in the temporary harness for both versions. No render
+observers, Core profiler, samplers or tracing run in CPU acceptance.
+
+All CPU samples below are main-thread milliseconds per fixed input trace;
+controls compare two pages running identical baseline code. Negative change
+favors the candidate/page B. Keep the unfavorable samples too.
+
+| Run                                             | Baseline/page A samples   | Candidate/page B samples  | Change of means |
+| ----------------------------------------------- | ------------------------- | ------------------------- | --------------- |
+| 20-copy control                                 | 474.329, 480.536, 469.890 | 458.846, 459.308, 493.072 | -0.95%          |
+| 20-copy initial shortcut                        | 467.349, 470.406, 468.234 | 488.869, 501.579, 488.078 | +5.16%          |
+| 20-copy aligned group fields, shortcut retained | 444.477, 486.346, 504.791 | 485.470, 481.107, 483.333 | +1.00%          |
+| 20-copy final single traversal                  | 480.005, 492.908, 489.628 | 452.068, 476.986, 489.501 | -3.01%          |
+| 40-copy control                                 | 642.147, 652.722, 662.753 | 688.547, 699.020, 684.527 | +5.85%          |
+| 40-copy final single traversal                  | 664.800, 672.873, 641.998 | 674.739, 753.413, 678.881 | +6.43%          |
+
+Neither a general CPU speedup nor a reproducible regression beyond the control
+and interaction variation is established. Individual control pairs span -4.42%
+to +4.93% at 20 copies and +3.29% to +7.23% at 40 copies. The final candidate's
+pairs span -5.82% to -0.03% and +1.50% to +11.97%, respectively. Matching group
+property order removes an unnecessary representation difference, but these
+timings do not establish that it caused the earlier result. The draw-only
+pre-scan/shortcut has no demonstrated CPU benefit and is removed at the user's
+KISS direction. Keep only the smaller shared group representation and reuse of
+its owned fields; retain the original single layerization walk.
+
+Separate frame diagnostics confirm 274 ordinary renders and five picking passes
+for both versions at both sizes. Ordinary draw totals match at 82,200/164,400,
+group totals at 10,960/21,920, and view visits at 170,154/340,034. These are
+coordinator passes, not presented display frames, and are not used to normalize
+CPU from another run. Reactive work is not identical: retained resource writes
+are 5,247 vs 3,544 at 20 copies and 3,624 vs 3,644 at 40. Native camera spans
+agree to floating-point precision, while maximum paired endpoint differences are
+0.034%/0.114% of the span. Small inertial trajectory and reactive-update
+differences limit attribution even when rendered work counts match. All final
+samples have no loading/rendering errors and pass camera-stability and
+cross-page guards.
+
+Allocation runs use the same native inputs with
+`--mode=allocation --pairs=2 --warmup=1`, separately from CPU acceptance. Values
+below are means of two statistically sampled allocation estimates, including
+collected objects, in decimal MB. The preparation subtree is the union rooted at
+renderer `#normalizeRenderItems`, without double-counting recursive nodes.
+
+| Copies | Total baseline -> candidate | Preparation baseline -> candidate |
+| ------ | --------------------------- | --------------------------------- |
+| 20     | 154.036 -> 152.687 (-0.88%) | 61.491 -> 61.405 (-0.14%)         |
+| 40     | 290.048 -> 288.250 (-0.62%) | 119.271 -> 118.934 (-0.28%)       |
+
+These differences are small; do not claim a substantial allocation improvement
+or CPU gain. Raw total samples are 154.890/153.182 vs 153.858/151.517 MB at 20
+copies and 290.301/289.795 vs 289.149/287.351 MB at 40. Sampled main-thread GC
+intervals also vary: baseline/candidate union durations are 21.600/18.802 and
+28.496/19.037 ms at 20 copies, 24.408/25.035 and 38.650/24.437 ms at 40.
+Instrumented timings are diagnostic only and do not establish a GC benefit.
+
+All artifacts remain under `output/webgpu-direct-uniforms/` with prefixes
+`native-frameprep-{20,40}-{control,kiss-cpu,allocation,frames}`. Earlier
+shortcut experiments use `native-frameprep-20-cpu` and
+`native-frameprep-20-shaped-cpu`. Metadata records source/driver/scene hashes,
+hardware, input counts and camera snapshots; profiles and GC traces are kept.
+The aggregate is `native-frameprep-comparison-summary.json`, produced by the
+temporary `/private/tmp/summarize-native-frameprep.py`. Earlier headed and
+short-tail smoke/control runs are retained as diagnostics, excluded from
+acceptance because of truncated inertia, physical desktop input or development
+WebSocket errors. Headless results do not establish headed compositor cost,
+physical display cadence or user-input latency.
+
+The final version passes 489 focused tests across 53 files, 14 native Metal GPU
+tests, renderer TypeScript and scoped ESLint. Release policy/status checks pass
+with no package bump. Source decreases by 15 raw lines; no public declaration or
+Core production file changes. The temporary verification server is stopped.
