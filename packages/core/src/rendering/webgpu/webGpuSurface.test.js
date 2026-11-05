@@ -84,6 +84,7 @@ vi.mock("../canvasSizeHelper.js", () => ({
 }));
 
 import WebGpuSurface from "./webGpuSurface.js";
+import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../view/layout/rectangle.js";
@@ -383,6 +384,95 @@ describe("WebGpuSurface", () => {
         expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
         expect(getProgramKey).toHaveBeenCalledTimes(2);
         expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+    });
+
+    test("recreates placement programs when one occurrence becomes many and back", async () => {
+        const { view } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{ x: 1 }, { x: 2 }] },
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        const unit = /** @type {UnitView} */ (view);
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => {
+            view.disposeSubtree();
+            surface.finalize();
+        });
+        const coords = Rectangle.create(0, 0, 100, 50);
+        const render = (/** @type {number} */ occurrences) => {
+            const context = new WebGpuViewRenderingContext({ surface });
+            for (let i = 0; i < occurrences; i++) {
+                context.pushView(unit, coords);
+                context.renderMark(unit.mark, {});
+                context.popView(unit);
+            }
+            context.finish();
+            surface.render(context.render());
+        };
+
+        render(1);
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        render(2);
+        render(2);
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
+        render(1);
+        render(1);
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(3);
+        expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(2);
+        expect(
+            mocks.renderer.createMark.mock.calls.map(
+                (call) => /** @type {any} */ (call)[1].placementIndex
+            )
+        ).toEqual([undefined, { source: "draw" }, undefined]);
+    });
+
+    test("retains placement series updates but recreates different compile modes", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        const mark = /** @type {any} */ ({});
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        configureMockMark(mark, definition);
+        const config = createConfig(0);
+        const instance = {
+            ...config,
+            placementIndex: { data: new Uint32Array([0, 1]), type: "u32" },
+        };
+        surface.updateMark(mark, definition, instance);
+        const indices = new Uint32Array([1, 0]);
+        surface.updateMark(mark, definition, {
+            ...instance,
+            placementIndex: { data: indices, type: "u32" },
+        });
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).toHaveBeenCalledWith(
+            { x: config.channels.x.data, __placementIndex: indices },
+            config.count
+        );
+
+        surface.updateMark(mark, definition, {
+            ...config,
+            placementIndex: { source: "draw" },
+        });
+        surface.updateMark(mark, definition, instance);
+        surface.updateMark(mark, definition, config);
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(4);
+        expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(3);
     });
 
     test("replaces logical text and position series on retained text marks", async () => {
