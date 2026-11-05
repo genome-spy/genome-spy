@@ -340,14 +340,14 @@ fn labelGlyphRect(
     scales: vec4<f32>,
     offsets: vec2<f32>
 ) -> vec4<f32> {
-    // Match the existing glyph quad: X includes its final atlas pixel, Y does not.
-    var dimensions = (metrics.texRect.zw + vec2<f32>(1.0, 0.0)) * scales.x;
+    // Proof prerequisite: full tile bounds in both dimensions.
+    var dimensions = (metrics.texRect.zw + vec2<f32>(1.0)) * scales.x;
     var origin = vec2<f32>(
         offsets.x + glyph.xOffset * scales.y,
         offsets.y - glyph.yOffset * scales.y + metrics.metrics.x * scales.x
     );
     if (params.uLogoLetters != 0u) {
-        dimensions = scales.zw * metrics.texRect.zw / metrics.metrics.yz;
+        dimensions = scales.zw * (metrics.texRect.zw + vec2<f32>(1.0)) / metrics.metrics.yz;
         origin = -0.5 * dimensions;
     }
     return vec4<f32>(origin, dimensions);
@@ -512,7 +512,7 @@ ${effectSetup}
         params.uDescent
     );
     if (params.uLogoLetters != 0u) {
-        let logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
+        let logoAtlasScale = (metrics.texRect.zw + vec2<f32>(1.0)) / metrics.metrics.yz;
         width = logoSize.x * logoAtlasScale.x;
         height = logoSize.y * logoAtlasScale.y;
         x = -0.5 * width;
@@ -556,7 +556,7 @@ ${effectSetup}
         0.0,
         1.0
     );
-    out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
+    out.uv = (metrics.texRect.xy - vec2<f32>(0.5) + local * (metrics.texRect.zw + vec2<f32>(1.0))) * params.uAtlasScale;
     out.color = layerColor;
     out.opacity = opacity * layerOpacityMultiplier;
     out.glyphOffsets = glyphOffsets;
@@ -692,7 +692,6 @@ fn labelPaint(in: VSOut, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
     // candidates at bin boundaries idempotent, without a per-fragment set.
     var cf = vec4<f32>(0.0);
     var co = vec4<f32>(0.0);
-    var band = vec4<f32>(0.0);
     for (var bin = first; bin <= last; bin++) {
         var begin = text.glyphStart;
         var end = text.glyphEnd;
@@ -724,28 +723,25 @@ fn labelPaint(in: VSOut, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
                 if (any(local < vec2<f32>(0.0)) || any(local > vec2<f32>(1.0))) {
                     continue;
                 }
-                let uv = (m.texRect.xy + local * m.texRect.zw) * params.uAtlasScale;
+                let uv = (m.texRect.xy - vec2<f32>(0.5) + local * (m.texRect.zw + vec2<f32>(1.0))) * params.uAtlasScale;
                 let texel = textureSampleLevel(fontAtlas, fontSampler, uv, 0.0);
                 let distance = median(texel.r, texel.g, texel.b)
                     * in.devicePixelsPerAtlas + in.stemDarkening;
-                // RGB reconstructs sharp fill; A gives round Euclidean offsets.
-                let trueDistance = texel.a * in.devicePixelsPerAtlas + in.stemDarkening;
+                // Proof only: sharp pseudo-distance outside expansion.
                 let guard = (0.5 + in.stemDarkening) / in.devicePixelsPerAtlas + 1.0;
                 let localPosition = local * (m.texRect.zw + vec2<f32>(1.0));
                 let fillInside = all(localPosition >= vec2<f32>(params.uSpread - guard))
                     && all(localPosition <= m.texRect.zw
                         + vec2<f32>(1.0 - params.uSpread + guard));
                 fill[j] = select(0.0, clamp(distance + 0.5, 0.0, 1.0), fillInside);
-                let expanded = max(fill[j], clamp(trueDistance + in.extent + 0.5, 0.0, 1.0));
+                let expanded = max(fill[j], clamp(distance + in.extent + 0.5, 0.0, 1.0));
                 outer[j] = select(expanded, fill[j], in.extent <= 0.0);
             }
             cf = max(cf, fill);
             co = max(co, outer);
-            band = max(band, outer - fill);
         }
     }
-    // Retain each original contour's band even inside another glyph's fill.
-    // These nested coverages coincide with Ci/Cf/Co for an isolated glyph.
+    // Proof only: combined fill protects neighboring contours.
     let gamma = getGammaForColor(in.color.rgb);
     let fillCoverage = pow(dot(cf, vec4<f32>(0.25)), gamma);
     let fill = premultiplyAlpha(in.color);
@@ -753,14 +749,8 @@ fn labelPaint(in: VSOut, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
     if (in.extent <= 0.0 || stroke.a <= 0.0) {
         return fill * (fillCoverage * in.opacity);
     }
-    let ci = min(cf, max(co - band, vec4<f32>(0.0)));
-    let innerCoverage = pow(dot(ci, vec4<f32>(0.25)), gamma);
-    let outerCoverage = pow(dot(co, vec4<f32>(0.25)), gamma);
-    return (
-        innerCoverage * fill
-        + (fillCoverage - innerCoverage) * (stroke + (1.0 - stroke.a) * fill)
-        + (outerCoverage - fillCoverage) * stroke
-    ) * in.opacity;
+    let outerCoverage = pow(dot(max(co, cf), vec4<f32>(0.25)), gamma);
+    return (fillCoverage * fill + (outerCoverage - fillCoverage) * stroke) * in.opacity;
 }
 
 fn shadeBase(in: VSOut, edgeFadeOpacity: f32) -> vec4<f32> {

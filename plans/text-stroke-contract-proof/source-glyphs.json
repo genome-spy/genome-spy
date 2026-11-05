@@ -1,0 +1,34 @@
+{
+  "unitsPerEm": 2000,
+  "capHeight": 1433,
+  "glyphs": [
+    {
+      "label": "|",
+      "codePoint": 124,
+      "glyphId": 124,
+      "advanceWidth": 501,
+      "leftSideBearing": 181,
+      "bounds": {
+        "xMin": 181,
+        "yMin": -349,
+        "xMax": 320,
+        "yMax": 1533
+      },
+      "path": "M181 -1533L320 -1533L320 349L181 349Z"
+    },
+    {
+      "label": "_",
+      "codePoint": 95,
+      "glyphId": 129,
+      "advanceWidth": 918,
+      "leftSideBearing": 65,
+      "bounds": {
+        "xMin": 65,
+        "yMin": -285,
+        "xMax": 853,
+        "yMax": -165
+      },
+      "path": "M853 165L853 285L65 285L65 165Z"
+    }
+  ]
+}

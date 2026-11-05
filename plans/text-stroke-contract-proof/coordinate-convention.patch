@@ -1,0 +1,47 @@
+--- a/packages/webgpu-renderer/src/marks/programs/textProgram.js
++++ b/packages/webgpu-renderer/src/marks/programs/textProgram.js
+@@ -340,14 +340,14 @@
+     scales: vec4<f32>,
+     offsets: vec2<f32>
+ ) -> vec4<f32> {
+-    // Match the existing glyph quad: X includes its final atlas pixel, Y does not.
+-    var dimensions = (metrics.texRect.zw + vec2<f32>(1.0, 0.0)) * scales.x;
++    // Proof prerequisite: full tile bounds in both dimensions.
++    var dimensions = (metrics.texRect.zw + vec2<f32>(1.0)) * scales.x;
+     var origin = vec2<f32>(
+         offsets.x + glyph.xOffset * scales.y,
+         offsets.y - glyph.yOffset * scales.y + metrics.metrics.x * scales.x
+     );
+     if (params.uLogoLetters != 0u) {
+-        dimensions = scales.zw * metrics.texRect.zw / metrics.metrics.yz;
++        dimensions = scales.zw * (metrics.texRect.zw + vec2<f32>(1.0)) / metrics.metrics.yz;
+         origin = -0.5 * dimensions;
+     }
+     return vec4<f32>(origin, dimensions);
+@@ -512,7 +512,7 @@
+         params.uDescent
+     );
+     if (params.uLogoLetters != 0u) {
+-        let logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
++        let logoAtlasScale = (metrics.texRect.zw + vec2<f32>(1.0)) / metrics.metrics.yz;
+         width = logoSize.x * logoAtlasScale.x;
+         height = logoSize.y * logoAtlasScale.y;
+         x = -0.5 * width;
+@@ -556,7 +556,7 @@
+         0.0,
+         1.0
+     );
+-    out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
++    out.uv = (metrics.texRect.xy - vec2<f32>(0.5) + local * (metrics.texRect.zw + vec2<f32>(1.0))) * params.uAtlasScale;
+     out.color = layerColor;
+     out.opacity = opacity * layerOpacityMultiplier;
+     out.glyphOffsets = glyphOffsets;
+@@ -724,7 +724,7 @@
+                 if (any(local < vec2<f32>(0.0)) || any(local > vec2<f32>(1.0))) {
+                     continue;
+                 }
+-                let uv = (m.texRect.xy + local * m.texRect.zw) * params.uAtlasScale;
++                let uv = (m.texRect.xy - vec2<f32>(0.5) + local * (m.texRect.zw + vec2<f32>(1.0))) * params.uAtlasScale;
+                 let texel = textureSampleLevel(fontAtlas, fontSampler, uv, 0.0);
+                 let distance = median(texel.r, texel.g, texel.b)
+                     * in.devicePixelsPerAtlas + in.stemDarkening;
