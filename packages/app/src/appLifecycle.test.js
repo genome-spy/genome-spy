@@ -685,6 +685,31 @@ test("switches source bookmark contexts and clears old hash actions while preser
     expect(app.globalBookmarkDatabase).toBeUndefined();
 });
 
+test("embed visibility writes share App Redux and bookmark restoration", async () => {
+    const app = await createApp();
+    const annotation = app.views.get({ scope: [], view: "annotation" });
+    await app.views.visibility.set(annotation, false);
+    expect(app.store.getState().viewSettings.visibilities).toEqual({
+        'v:{"scope":[],"view":"annotation"}': false,
+    });
+    const bookmark = createBookmarkWithCurrentState(app);
+    expect(bookmark.viewSettings.visibilities).toEqual([
+        { scope: [], view: "annotation", visible: false },
+    ]);
+    await app.views.visibility.reset();
+    expect(app.store.getState().viewSettings.visibilities).toEqual({});
+    await restoreBookmark(bookmark, app);
+    expect(app.views.visibility.getSnapshot()[0].children[0].visible).toBe(
+        false
+    );
+    await app.views.visibility.set(app.views.root(), false);
+    expect(app.views.visibility.getSnapshot()[0]).toMatchObject({
+        selector: { scope: [], view: "host" },
+        visible: false,
+    });
+    expect(annotation.isAlive()).toBe(true);
+});
+
 test("embedded persistence changes do not own bookmark storage or the page URL", async () => {
     const fetchBookmarks = vi.fn();
     vi.stubGlobal("fetch", fetchBookmarks);

@@ -31,9 +31,7 @@ import {
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import {
     buildViewSettingsPayload,
-    getViewVisibilityOverride,
     normalizeViewSettingsPayload,
-    resolveRadioVisibilityConflicts,
 } from "./viewSettingsUtils.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
@@ -599,54 +597,13 @@ export default class App {
     }
 
     #setupViewVisibilityHandling() {
-        /** @type {Record<string, boolean>} */
-        const EMPTY_VISIBILITIES = {};
-        const visibilitiesSelector = (
-            /** @type {ReturnType<typeof this.store.getState>} */ state
-        ) => state.viewSettings?.visibilities ?? EMPTY_VISIBILITIES;
-
-        /** @type {Record<string, boolean>} */
-        let cachedInput = EMPTY_VISIBILITIES;
-        /** @type {import("@genome-spy/core/view/view.js").default | undefined} */
-        let cachedRoot;
-        let cachedRevision = -1;
-        /** @type {Record<string, boolean>} */
-        let cachedResolved = EMPTY_VISIBILITIES;
-
-        const getResolvedVisibilities = () => {
-            const input = visibilitiesSelector(this.store.getState());
-            const root = this.genomeSpy.viewRoot;
-
-            const revision = this.store.getState().lifecycle.hierarchyRevision;
-            if (
-                input === cachedInput &&
-                root === cachedRoot &&
-                revision === cachedRevision
-            ) {
-                return cachedResolved;
-            }
-
-            cachedInput = input;
-            cachedRoot = root;
-            cachedRevision = revision;
-            cachedResolved = root
-                ? resolveRadioVisibilityConflicts(root, input)
-                : input;
-
-            return cachedResolved;
-        };
-
-        const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
-        this.genomeSpy.viewVisibilityPredicate = (view) => {
-            const override = getViewVisibilityOverride(
-                getResolvedVisibilities(),
-                view
+        // Redux remains the only visibility store for App embeds and bookmarks.
+        this.genomeSpy.getViewVisibilityOverrides = () =>
+            this.store.getState().viewSettings.visibilities;
+        this.genomeSpy.setViewVisibilityOverrides = (visibilities) => {
+            this.store.dispatch(
+                viewSettingsSlice.actions.setViewSettings({ visibilities })
             );
-            if (override !== undefined) {
-                return override;
-            }
-
-            return originalPredicate(view);
         };
     }
 
@@ -809,23 +766,19 @@ export default class App {
         this.#registerDisposer(
             subscribeTo(
                 this.store,
-                (state) => state.viewSettings?.visibilities,
+                (state) => ({
+                    visibilities: state.viewSettings?.visibilities,
+                    hierarchyRevision: state.lifecycle.hierarchyRevision,
+                }),
                 withMicrotask(() => {
                     if (this.#finalized) {
                         return;
                     }
-                    // TODO: Optimize: only invalidate the affected views
-                    void this.genomeSpy.initializeVisibleViewData();
-                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
-                        "size",
-                        "progeny"
-                    );
-
-                    const context = this.genomeSpy.viewRoot.context;
-                    clearHiddenViewCoords(this.genomeSpy.viewRoot);
-                    context.highlightView(null);
-                    context.requestLayoutReflow();
-                })
+                    void this.genomeSpy.refreshViewVisibility();
+                }),
+                (next, previous) =>
+                    next.visibilities === previous.visibilities &&
+                    next.hierarchyRevision === previous.hierarchyRevision
             )
         );
         this.#registerDisposer(
@@ -1156,20 +1109,4 @@ function setFavicon(favImg) {
     setFavicon.setAttribute("rel", "shortcut icon");
     setFavicon.setAttribute("href", favImg);
     headTitle.appendChild(setFavicon);
-}
-
-/**
- * Clears cached layout coordinates from views that are not effectively visible.
- *
- * Hidden views are skipped during layout/rendering and may otherwise keep stale
- * coordinates from earlier passes.
- *
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- */
-function clearHiddenViewCoords(viewRoot) {
-    viewRoot.visit((view) => {
-        if (!view.isVisible()) {
-            view.facetCoords.clear();
-        }
-    });
 }
