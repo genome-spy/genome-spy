@@ -95,13 +95,16 @@ async function renderPoints({ dpr, core }) {
             spacing: 0,
             config: { background: null },
             datasets: { rows: [] },
-            params: Object.entries(values).map(([name, value]) => ({
-                name,
-                value,
-            })),
+            params: Object.entries({ ...values, viewOpacity: 1 }).map(
+                ([name, value]) => ({
+                    name,
+                    value,
+                })
+            ),
             hconcat: [
                 {
                     name: "records",
+                    opacity: { expr: "viewOpacity" },
                     width: 64,
                     height: 64,
                     data: { name: "rows" },
@@ -246,6 +249,41 @@ async function renderPoints({ dpr, core }) {
             await update({ strokeWidth: 4, strokeOpacity: 0 });
             controls.push(read().every((v, i) => v === baseline[i]));
         }
+        // View opacity scales the composed occurrence, including overlapping paints.
+        await update(
+            {
+                size: 256,
+                strokeWidth: 4,
+                strokeOpacity: 0.5,
+                fillOpacity: 0.6,
+                inwardStroke: true,
+            },
+            point("square")
+        );
+        const fullOpacity = read();
+        await update({ viewOpacity: 0.5 });
+        const faded = read();
+        controls.push(
+            faded.every(
+                (value, i) => Math.abs(value - fullOpacity[i] * 0.5) <= 2
+            )
+        );
+        samples.push([pixel(faded, 38), [38, 0, 64, 102]]);
+        await update({ fillOpacity: 1, strokeOpacity: 1 });
+        samples.push([pixel(read(), 38), [0, 0, 128, 128]]);
+        controls.push((await pick(38)) === "A");
+        await update({ viewOpacity: 1 });
+        // Keep the existing minimum-diameter fade as a common paint factor.
+        await update({ size: 0.25, strokeWidth: 0 });
+        const faint = read();
+        await update({ viewOpacity: 0.5 });
+        controls.push(
+            faint.some((value) => value > 0) &&
+                read().every(
+                    (value, i) => Math.abs(value - faint[i] * 0.5) <= 2
+                )
+        );
+        await update({ viewOpacity: 1, size: 256 });
         for (const shape of ["x", "+"]) {
             await update(
                 { strokeWidth: 1, strokeOpacity: 0, inwardStroke: false },
@@ -254,6 +292,13 @@ async function renderPoints({ dpr, core }) {
             const thin = read();
             await update({ strokeWidth: 4 });
             const thick = read();
+            await update({ viewOpacity: 0.5 });
+            controls.push(
+                read().every(
+                    (value, i) => Math.abs(value - thick[i] * 0.5) <= 2
+                )
+            );
+            await update({ viewOpacity: 1 });
             await update({ strokeOpacity: 1 });
             const blue = read();
             controls.push(
