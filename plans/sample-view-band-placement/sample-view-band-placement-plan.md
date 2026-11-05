@@ -525,7 +525,7 @@ now pass on both backends with eight groups and matching 384-sample membership.
 The historical failure above is retained as evidence about the old baseline,
 rather than a claim that the corrected stack still fails.
 
-### Current backend CPU comparison
+### Backend CPU comparison before the occurrence follow-up
 
 Hardware-backed headless Chrome 156.0.8078.80 on Apple M5 uses ANGLE/Metal for
 WebGL and Apple Metal-3 for WebGPU. The normal App harness runs without Core
@@ -568,7 +568,7 @@ initial summary attempt failed before timing; the no-summary attempt was stopped
 before timing to fix the real summary failure. Neither is performance evidence.
 The preliminary ungrouped smoke is also excluded.
 
-### Attribution and remaining correctness limitation
+### Attribution and resolved real-cohort failures
 
 A separate one-pair stress profile requests 1,000-microsecond V8 sampling.
 WebGPU occurrence refresh accounts for about 166.6 ms inclusive sampled wall
@@ -581,26 +581,66 @@ first follow-up is a bounded audit of scalar materialization at the existing
 occurrence/scope boundary, with unsampled A/B verification before retaining any
 change. No new invalidation or cache protocol is proposed.
 
-Fresh real MCCA checks use the exact Copy-number patterns bookmark with 486
-samples, seven CancerType groups and seven G-score summary slots. WebGL passes
-complete loading, native brush creation/change and public clear, the actual UI
-threshold slider (0.5 -> 0.9 with changed summary data and unchanged row
-geometry), native closeup/scroll, sort/filter and undo restoring sample
-identity/order. Initial WebGPU loading is now clean as well; the stale
-placement-program error is fixed. However, the interaction sequence reports 59
-invalid render-scope-bounds errors even though all five data sources complete
-and state assertions succeed. The WebGPU correctness check therefore fails. This
-second error was documented on the earlier baseline and remains unresolved;
-synthetic timing success does not establish real-cohort interaction correctness.
+The first real MCCA interaction check passed WebGL but reported 59 invalid
+WebGPU scope bounds, despite complete loading and successful state assertions.
+Browser instrumentation identified the first failure during closeup scroll:
+`viewRoot/samples/grid_layers` had finite bounds x=286, y=85, width=1025,
+height=-105.55048641099647. Offscreen chromosome grids also became empty.
+Core Rectangle intersections intentionally allow negative empty dimensions;
+renderer scopes require nonnegative dimensions.
 
-Capture the failing scope label and numeric bounds next. Core currently forwards
-signed scope dimensions, so a transient negative empty intersection is
-plausible, but the artifact cannot distinguish negative dimensions from NaN
-conclusively. Only clamp to zero if negative emptiness is confirmed; preserve
-NaN rejection and the renderer API. Do not apply an unconfirmed recovery
-workaround at delivery. Real-check artifacts use `mcca-bookmark-final-*`;
-separate attribution uses `sampleview-grouped-stress-profile-*` in the same
-ignored output directory.
+The foundation now translates those empty scope dimensions to zero, preserving
+NaN validation and live reentry. Both historical WebGPU failures are resolved:
+placement compile-mode transitions and empty clipped scope bounds. The complete
+real MCCA Copy-number patterns sequence now passes on both backends: 486
+samples, seven CancerType groups and G-score slots, all five data sources
+complete, native brush creation/change and public clear, UI threshold slider
+0.5 -> 0.9 with changed summary data and unchanged rows, closeup scrolling,
+sort/filter and undo restoring identity/order. The final scalar candidate has
+zero browser or reported errors. Its artifacts use `mcca-scalar-clip-*`.
+
+### Accepted scalar clipping follow-up
+
+The foundation retains inherited clipping plus the captured static mark clip
+mode instead of composing another Rectangle graph. Scissor intersections use
+scalar inputs; directional clipping, `never`, signed empty scissors, double
+precision and inherited-only anchor culling are preserved. Existing placement
+and x-index checks reject unused occurrences before visible-range refresh.
+There is no new cache, invalidation protocol or renderer API change.
+
+Four warmed alternating pairs compare baseline `554723f91` with the candidate
+on WebGPU, using the same native grouped wheel/pan/closeup trace. Three matching
+same-code pairs per scene establish context/order variation:
+
+| Scene | Baseline / scalar CPU means (ms) | Change | Same-code A / B means (ms) | Control change |
+| --- | --- | --- | --- | --- |
+| 384 samples, 8 groups | 864.252 / 758.774 | -12.20% | 879.673 / 858.742 | -2.38% |
+| 1,536 samples, 24 groups | 931.574 / 814.980 | -12.52% | 964.512 / 929.222 | -3.66% |
+
+All four stress pairs improve; three moderate pairs improve and the last is
++4.74%. Controls show nonzero context/order bias; do not subtract percentages
+or promise a universal speedup. All 28 comparison/control traces pass identity,
+loading, grouping, movement and settling checks. Initial PNGs are byte-identical.
+Candidate camera endpoint differences stay below 0.058% of the span and scroll
+checkpoints match. Profiling, tracing, allocation sampling and frame observers
+remain disabled. These are native hardware headless renderer-main-thread CPU
+measurements, not headed cadence, input latency or GPU execution time.
+
+The smaller deletion-only candidate did not establish a consistent benefit
+(+7.04% moderate, -5.34% stress with mixed pairs). The scalar candidate adds
+54 and deletes 46 non-comment production lines, net +8, justified by the larger
+measured reduction beyond controls. Foundation tests pass 52 cases and upper
+stack tests 51; Core types, scoped lint/format and release checks pass. The
+[foundation plan](../webgpu-direct-updates/webgpu-direct-updates-plan.md)
+records all samples, rejected experiments and source hashes. Follow-up artifacts
+use `sampleview-scalar-clip-{cpu,control}-*`; the accepted upper module SHA-256 is
+`273eb7b76ee0174bfc131c7e873d6c1f482517d7aa62c20ef326c64756522247`.
+Delivery rebase preserves that module and its regression tests byte for byte.
+
+The older backend table above predates this change. Do not combine measurements
+from separate runs to infer a new WebGL gap, or claim the historical +18.5%
+pane comparison is resolved. Reprofile normalization and submission before
+choosing another optimization; the larger shared-geometry cache remains deferred.
 
 ## Plan retention
 
