@@ -1286,7 +1286,7 @@ export default class TextProgram extends BaseProgram {
             glyphMetrics[metricOffset + 6] =
                 (glyph.bounds.yMax - glyph.bounds.yMin) * atlasScale;
         }
-        return this._writeExtraBuffer("glyphMetrics", glyphMetrics);
+        return this._writeExtraBuffer("glyphMetrics", glyphMetrics, 32);
     }
 
     /**
@@ -1306,7 +1306,7 @@ export default class TextProgram extends BaseProgram {
             glyphF32[base + 2] = layout.xOffset[i];
             glyphF32[base + 3] = layout.yOffset ? layout.yOffset[i] : 0;
         }
-        let changed = this._writeExtraBuffer("glyphs", glyphData);
+        let changed = this._writeExtraBuffer("glyphs", glyphData, 16);
 
         const stringCount = layout.textWidth.length;
         const stringData = new Float32Array(stringCount * 2);
@@ -1316,12 +1316,12 @@ export default class TextProgram extends BaseProgram {
             stringData[base + 1] = layout.textHeight[i];
         }
         changed =
-            this._writeExtraBuffer("stringMetrics", stringData) || changed;
+            this._writeExtraBuffer("stringMetrics", stringData, 8) || changed;
         const effects = /** @type {TextEffects} */ (this._markConfig.effects);
         if (effects.enabled) {
             const renderItems = buildTextRenderItems(layout, effects);
             changed =
-                this._writeExtraBuffer("renderItems", renderItems.data) ||
+                this._writeExtraBuffer("renderItems", renderItems.data, 8) ||
                 changed;
             /** @internal Populated during super(), before subclass branding. */
             this._drawOffsets = renderItems.offsets;
@@ -1334,12 +1334,14 @@ export default class TextProgram extends BaseProgram {
     /**
      * @param {string} name
      * @param {ArrayBuffer | ArrayBufferView} data
+     * @param {number} minimumSize Byte size of one declared WGSL array element.
      * @returns {boolean} Whether the buffer identity changed.
      * @internal Called by initialization hooks during super(), before private branding.
      */
-    _writeExtraBuffer(name, data) {
+    _writeExtraBuffer(name, data, minimumSize) {
         const byteLength = data.byteLength;
-        const requiredSize = Math.max(4, byteLength);
+        // Zero-instance draws still validate the storage element binding size.
+        const requiredSize = Math.max(minimumSize, byteLength);
         let buffer = this._extraBuffers.get(name);
         const changed = !buffer || buffer.size < requiredSize;
         if (changed) {

@@ -36,19 +36,29 @@ Solid/dashed ribbons share SDF coverage and six-vertex geometry. Remaining work:
 WebGL/native parity and shared Core
 paint normalization before exposing #604. The Rules story exercises combined strokes, dash patterns and retained controls.
 
-Rectangle centered strokes now preserve nominal fill beneath transparent paint,
-including hatches. Shared rectangle alignment and shadow-only picking exclusion
-remain #604 follow-ups; this correction does not expose new Core grammar.
+Rectangles support renderer-generic inside/center/outside stroke alignment with
+combined paint coverage, aligned picking and existing shadows. Center remains
+the default, nominal bounds and hatch stripe widths stay fixed, and plain
+heatmap antialiasing is unchanged. Shared Core rectangle alignment remains a
+#604 follow-up; this renderer slice does not expose new Core grammar.
 
 ## Active integration: arrow paint composition
 
-Arrow centered strokes preserve nominal fill beneath translucent paint (#604).
-Open-head geometry and picking policy remain unchanged; tightly packed repeated
-heads still have stroke-dependent layout. WebGL parity and Core common-opacity
-normalization remain separate follow-ups.
-Point circle and path programs now resolve existing centered/inward paint
-coverage together. Shared Core opacity/alignment normalization and x/+ arm
-semantics remain separate; tiny path UV-clamping geometry is unchanged.
+Standalone arrows support full-width inside/center/outside strokes with combined
+paint coverage and aligned picking (#604). Center remains the default. Common
+arrow opacity applies once to the completed occurrence, including repeated heads;
+zero opacity preserves geometric picking. Open-head arm geometry is unchanged.
+Repeated heads use their nominal footprint for spacing, phase and endpoint
+admission; invisible borders do not move or remove them. Neighboring head distances
+retain expanded borders across period boundaries and beyond endpoint heads.
+Core alignment and common-opacity normalization remain separate follow-ups;
+WebGL centered composition is already implemented.
+
+Point circle and path programs support the renderer-generic strokeAlign channel
+(0 inside, 1 center, 2 outside), reusing combined paint coverage. Core maps its
+legacy inwardStroke property to 0/1 without exposing new grammar. Path atlas
+width limits, shared Core opacity/alignment normalization and x/+ arm semantics
+remain separate; atlas resources and tiny path UV-clamping geometry are unchanged.
 
 ## Active integration: selection predicate composition
 

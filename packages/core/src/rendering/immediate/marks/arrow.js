@@ -315,9 +315,7 @@ export function visitArrowSkeletonInstances(
                 ? properties.headShape
                 : "triangle";
         const headRepeatFootprint =
-            headAxisLength +
-            headStrokeWidth / Math.hypot(rHeadSlope, 1) +
-            strokeWidth;
+            headAxisLength + headStrokeWidth / Math.hypot(rHeadSlope, 1);
         const repeatSpacing =
             !properties.repeatHeads || bidirectional
                 ? Infinity
@@ -396,8 +394,7 @@ export function visitArrowHeadPositions(instance, visitor) {
     ) {
         if (
             distance > 0 &&
-            distance + instance.headRepeatFootprint - instance.strokeWidth / 2 >
-                instance.geometryLength
+            distance + instance.headRepeatFootprint > instance.geometryLength
         ) {
             break;
         }
