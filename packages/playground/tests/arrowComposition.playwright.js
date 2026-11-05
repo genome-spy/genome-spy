@@ -258,22 +258,6 @@ async function renderArrows({ dpr, entry, registration }) {
             });
             picks.push(hit.status === "hit" ? hit.hit.datum.id : hit.status);
         }
-<<<<<<< HEAD
-        // A later head's empty quad overlaps an earlier head's opaque border.
-        const spacing = 8 + 8 / Math.SQRT2;
-        api.datasets.set(
-            "arrows",
-            Array.from({ length: 3 }, (_, i) => ({
-                id: "arrow",
-                x: 8,
-                x2: 56 - i * spacing,
-                y: cy,
-                y2: cy,
-            }))
-        );
-        const overlapping = await paint({
-            viewOpacity: 1,
-=======
         const repeatErrors = [];
         for (const head of ["triangle", "open"]) {
             for (const direction of ["forward", "reverse"]) {
@@ -297,9 +281,9 @@ async function renderArrows({ dpr, entry, registration }) {
             }
         }
         const actual = await paint({
->>>>>>> origin/codex/webgl-arrow-picking-coverage
             head: "open",
             direction: "forward",
+            viewOpacity: 1,
             width: 24,
             strokeAlpha: 1,
         });
