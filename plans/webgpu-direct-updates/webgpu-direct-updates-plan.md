@@ -315,6 +315,137 @@ caching or silently change snapshot semantics. Do not add a retained frame API
 without the user's approval. No such optimization is implemented in this
 follow-up. Keep KISS and the previously accepted scalar implementation.
 
+## Narrow scale synchronization follow-up
+
+The user authorized investigating precise scale synchronization within the
+current renderer API. Shared GPU scale resources and bind-group grouping are
+deferred to [#698](https://github.com/genome-spy/genome-spy/issues/698), including
+the standalone renderer feature and Core/App integration.
+
+Today `Mark.initializeRenderingRevisions` collapses completed scale mapping
+publications into a mark-wide resource revision. `WebGpuSurface.updateMark`
+then rereads every scale binding on that mark, including unrelated independent
+scales. Only changed leaves reach renderer setters, but band/numeric range
+readers still allocate while checking unchanged inputs.
+
+Try guarding compiled scale updates with the existing resolution-owned
+`getMappingRef()` publication. Keep the adapter's association with its source
+private; do not add subscriptions, a parallel dirty registry or renderer API.
+Physical scale replacement preserves this dependency identity. Keep ordinary
+untracked configs on the existing read/compare path, preserve conditional
+scale-dependent values, and reevaluate replaced configurations and expression
+updates normally. Do not assume effective range identity follows viewport or
+domain identity: schemes and rangeStep also depend on domain cardinality.
+
+Review the source association and completed-publication semantics before source
+changes. Extend real headless adapter/Surface coverage for independent scales,
+navigation, reactive range changes and replacement; review existing overlapping
+tests. Run focused tests, Core types and scoped lint/format, then compare native
+wheel/pan/closeup CPU against upper head `0399d5d75` on moderate and stress
+SampleView fixtures. Retain a candidate only for a useful measured gain, use
+same-code controls if it reaches acceptance, and verify real grouped MCCA
+interactions. Freeze measured sources during each run, record size and raw
+results, and prefer the simpler baseline if added dispatch costs outweigh the
+saved work. Tentative commit: `perf(core): narrow WebGPU scale synchronization`.
+
+The candidate associates translated scale configs with their source mapping ref
+once in `createConditionalChannel`, where Core branch aliases and scale
+ownership are already resolved. Each existing compiled scale binding retains
+the last completed mapping and skips its reader during scale-only updates when
+that publication is unchanged. Full synchronization bypasses the guard and
+refreshes its token. Non-scale values and semantic thresholds keep their
+existing behavior. This is passive observation of existing graph outputs, not a
+second subscription or dirty-state registry.
+
+Raw production size changes from 3,410 to 3,447 lines (+37 across adapter and
+Surface). Adapter/Surface 104 tests pass, plus 33 context/coordinator/raster
+export tests, Core types and scoped lint/format. The expanded existing headless
+test covers independent x/y updates, style transactions, config replacement and
+physical linear-to-pow scale replacement with the same source ref. Native
+acceptance uses `sampleview-scale-dispatch-cpu-*`, with the two Core modules
+isolated against upper head `0399d5d75`, four alternating pairs and two warmups
+per scene/version. This growth is not justified merely by the fewer source
+reads established in the regression test.
+
+### Outcome: revert the passive mapping guard
+
+Four native pairs measure moderate 1,017.215 -> 1,060.320 ms (+4.24%, three of
+four candidate pairs higher) and stress 983.843 -> 986.440 ms (+0.26%, three
+small improvements followed by a larger reversal). This does not justify the
+added source checks and 37 raw production lines. Revert the adapter, Surface
+and temporary test extensions in both worktrees. Existing runtime and renderer
+API remain unchanged. All 16 timed traces pass identity, input, settling and
+error checks, and both scenes have byte-identical baseline/candidate initial
+PNGs. Independent implementation review found no correctness issue. No
+acceptance controls are warranted for this rejected candidate.
+
+| Scene | Baseline CPU samples (ms) | Candidate CPU samples (ms) |
+| ----- | ------------------------- | -------------------------- |
+| Moderate | 816.333, 966.670, 1134.067, 1151.791 | 932.235, 956.250, 1171.700, 1181.095 |
+| Stress | 998.819, 1002.421, 999.662, 934.470 | 993.600, 967.851, 996.971, 987.339 |
+
+## Renderer placement clipping follow-up
+
+Continue with the bounded renderer opportunity identified in the same review.
+`Renderer.#normalizeDraw` still constructs a placement rectangle, a directional
+clip envelope and a replacement intersection even though its initial scissor is
+already renderer-owned and clipped to the canvas. Use the existing numeric
+`clipMode` to intersect selected axes directly into that scissor. Preserve the
+public validation and input-copy boundary, arithmetic order, unclipped axes,
+empty intersections, retained picking and detached exports. Do not add object
+pooling or reuse caller-owned records. Keep the normalized placement fields
+delivered to custom programs unchanged.
+
+Review the exact mutation/ownership boundary, extend existing renderer behavior
+coverage only for uncovered contracts, and run focused renderer tests/types and
+lint/format. Measure raw size. Then use the same native moderate/stress
+interaction A/B against upper head `0399d5d75`, isolating only renderer.js.
+Retain only a simpler implementation with no demonstrated CPU loss; require
+substantial measured gains for growth. Use matching controls for a candidate
+that reaches acceptance and native GPU/MCCA checks before delivery. Tentative
+commit: `perf(webgpu): simplify placement clipping preparation`.
+
+The candidate removes three temporary rectangles and repeated string checks,
+using the already-computed numeric clipping flags. Clipped-axis operations keep
+the original arithmetic association; unselected axes retain the initial
+canvas-clamped scissor. Raw renderer size is 2,006 -> 2,008 lines (+2), with two
+explicit axis branches instead of allocation-producing envelopes. Renderer 37
+tests, renderer types and scoped lint/format pass. One focused behavior test
+covers x/y/xy clipping, fractional DPR, frozen inputs, remembered picking and
+empty placements. Root's independent review found no supported-input change.
+
+### Outcome: revert scalar placement clipping
+
+Four pairs measure moderate 1,145.142 -> 1,144.059 ms (-0.09%, mixed paired
+directions) and stress 941.186 -> 986.724 ms (+4.84%, three of four candidate
+pairs higher). The candidate passes 11 native Metal GPU cases for render
+groups, picking coverage, mark clamping and point definitions. All 16 timed
+traces have clean loading/input/identity/settling checks and byte-identical
+baseline/candidate initial PNGs. Removing allocation-producing source code does
+not establish that V8 or the whole interaction does less CPU work.
+
+| Scene | Baseline CPU samples (ms) | Candidate CPU samples (ms) |
+| ----- | ------------------------- | -------------------------- |
+| Moderate | 1085.171, 1175.075, 1210.521, 1109.803 | 1146.274, 1138.989, 1150.569, 1140.405 |
+| Stress | 987.073, 903.648, 930.804, 943.218 | 1003.143, 992.628, 1033.505, 917.621 |
+
+Revert renderer.js and the temporary test addition in both worktrees. No
+production or test change from either experiment is retained; current sources
+are byte-identical to the starting runtime. Artifact prefix is
+`sampleview-placement-scalar-cpu-*`, with four alternating pairs, two warmups
+per scene/version and only renderer.js source isolation. These outcomes reject
+the candidate without claiming a proven causal regression; no acceptance
+controls are needed for a trial that showed no useful gain.
+
+The two candidates together contribute 32 timed native traces. The first
+candidate saved unrelated getter reads but added checks; the second removed
+temporary rectangles but did not show useful CPU savings. Prioritizing visible
+indirection or allocation estimates was insufficient. Before another change,
+establish the CPU share and frequency of the exact work to remove. Empty
+render-target intersection rejection remains an unimplemented candidate, not a
+measured gain. Shared scale ownership/grouping stays in #698. Do not accumulate
+unproven guards, pools or API changes in this PR.
+
 ## Goal and constraints
 
 Reduce CPU work tracking changing shader inputs and preparing their GPU updates,
