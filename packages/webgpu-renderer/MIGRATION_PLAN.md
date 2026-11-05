@@ -98,6 +98,9 @@ Remaining path/font follow-up includes a compact wide-range tier for tiny
 stroked points, portable Core/Canvas/SVG text effects, and public contract
 documentation.
 
+Text fillOpacity is independent of common opacity on the existing glyph path.
+Label-wide composition, stroke geometry and width changes remain separate work.
+
 ## Active integration: categorical grouping gaps
 
 Categorical band scales now share grouping-gap tables, fit checks, and retained

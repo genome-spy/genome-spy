@@ -11,6 +11,7 @@ const STRINGS = ["GenomeSpy", "Outlined labels", "SDF glow", "AV M&W 50%"];
  * @prop {number} [size]
  * @prop {number} [angle]
  * @prop {string} [fill]
+ * @prop {number} [fillOpacity]
  * @prop {string} [outlineColor]
  * @prop {number} [outlineWidth]
  * @prop {number} [outlineOpacity]
@@ -57,6 +58,7 @@ export default async function runTextEffectsScene(canvas, options = {}) {
         size: options.size ?? 64,
         angle: options.angle ?? -6,
         fill: options.fill ?? "#f7f8ff",
+        fillOpacity: options.fillOpacity ?? 1,
         outlineColor: options.outlineColor ?? "#14213d",
         outlineWidth: options.outlineWidth ?? 4,
         outlineOpacity: options.outlineOpacity ?? 1,
@@ -101,6 +103,7 @@ export default async function runTextEffectsScene(canvas, options = {}) {
             align: { value: 1, type: "u32" },
             baseline: { value: 1, type: "u32" },
             fill: { value: parseColor(initial.fill), dynamic: true },
+            fillOpacity: { value: initial.fillOpacity, dynamic: true },
             stroke: {
                 value: parseColor(initial.outlineColor),
                 dynamic: true,
@@ -147,6 +150,7 @@ export default async function runTextEffectsScene(canvas, options = {}) {
             values.size.set(next.size ?? initial.size);
             values.angle.set(next.angle ?? initial.angle);
             values.fill.set(parseColor(next.fill ?? initial.fill));
+            values.fillOpacity.set(next.fillOpacity ?? initial.fillOpacity);
             values.stroke.set(
                 parseColor(next.outlineColor ?? initial.outlineColor)
             );
