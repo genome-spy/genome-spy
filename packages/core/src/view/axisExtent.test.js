@@ -239,7 +239,7 @@ describe("Axis extent measurement", () => {
         expect(
             labels.map(
                 (row) =>
-                    Math.abs(row.labelOffset) - labelMark.properties.size / 2
+                    Math.abs(row.labelOffset) - axis.axisProps.labelFontSize / 2
             )
         ).toEqual([3, 3]);
 
