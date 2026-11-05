@@ -57,6 +57,122 @@ CPU savings. Investigate one-time scalar materialization at the existing draw
 boundary before introducing any new revision/cache protocol. No additional
 performance implementation is included in this rebase/testing task.
 
+## Native occurrence geometry follow-up
+
+The user authorized continuing after the November 5 SampleView measurements.
+Keep Core's retained frame-plan ownership and the renderer API unchanged. Start
+with the independently reviewed local deletion: select each visible-range axis
+from its inherited clip or occurrence coordinates before reading live Rectangle
+values, instead of reading values that clipped axes overwrite. Keep
+self-clipping separate, refresh after `onBeforeRender` for paint and picking,
+and preserve placement-relative bounds and detached targets.
+
+Also defer visible-range materialization until existing placement and x-index
+checks accept the draw. Scissor refresh remains before placement visibility;
+visible ranges feed only submitted shader commands. Move the existing code
+rather than adding another early-culling pass, cache or revision state. The
+independent review confirms rejected draws do not expose stale private fields;
+verify offscreen-to-visible reentry with changed inherited culling bounds.
+
+Use focused context/Surface tests and native grouped SampleView A/B wheel, pan
+and closeup traces on the same WebGPU backend. Pin baseline `554723f91`, isolate
+changed module sources and record a same-code A/A control. Keep a candidate only
+if unsampled renderer-thread CPU improves beyond variation; otherwise retain
+KISS. If the local deletion is insufficient, investigate direct scalar clipping
+at the existing refresh boundary before any shared cache or geometry revision
+machinery. Record all accepted and rejected measurements. Tentative delivery:
+`perf(core): skip overwritten WebGPU geometry reads`.
+
+The first deletion-only A/B completed four pairs per scene. It did not establish
+a consistent gain: stress improved about 5.3% while moderate regressed on
+average with mixed pairs. Retain the raw results, then test the bounded scalar
+option: capture inherited clipping and the static mark clip mode on each
+occurrence, remove the composed Rectangle graph and duplicate `cullClip`
+reference, and intersect scalar bounds during scissor refresh. Preserve
+directional clipping, `never`, signed empty scissors, full-double coordinates,
+and deferred culling. This adds 17 lines to the deletion candidate, eight versus
+the starting code; keep that growth only for a substantial CPU improvement
+beyond a same-code control. The renderer API and layout ownership remain
+unchanged.
+
+Browser diagnosis confirms the MCCA failure starts during closeup scrolling:
+`viewRoot/samples/grid_layers` has finite bounds x=286, y=85, width=1025 and
+height=-105.55048641099647; `chromosome_lines` also becomes empty offscreen.
+Core's clipped Rectangle intentionally allows negative empty intersections,
+while renderer scopes require nonnegative sizes. Clamp width and height to zero
+at `writeScopeBounds`, preserving NaN rejection and the renderer API. Extend the
+existing live coalesced-scope test with empty intersections and reentry, then
+rerun the real bookmark sequence. The failing baseline scene remains excluded
+from performance comparisons; synthetic A/B includes both localized corrections.
+
+#### Native comparison results
+
+The final scalar candidate preserves the independently reviewed deferred cull
+boundary and source-before-read deletion. Native Metal Chrome 156.0.8078.80 on
+Apple M5 runs the same normal App input trace and grouped summary fixtures as
+the November 5 comparison, with Core profiling, samplers, tracing and frame
+observers disabled. Baseline `554723f91` and candidate differ only through the
+isolated context module; four alternating pairs follow two warmups per version.
+
+| Scene                    | Baseline CPU samples (ms)           | Scalar CPU samples (ms)            | Mean baseline / scalar (ms) | Change  |
+| ------------------------ | ----------------------------------- | ---------------------------------- | --------------------------- | ------- |
+| 384 samples, 8 groups    | 1044.769, 874.675, 758.050, 779.515 | 781.153, 683.455, 754.019, 816.468 | 864.252 / 758.774           | -12.20% |
+| 1,536 samples, 24 groups | 906.817, 984.972, 929.538, 904.969  | 845.978, 801.002, 800.497, 812.442 | 931.574 / 814.980           | -12.52% |
+
+All four stress pairs improve (-6.71%, -18.68%, -13.88%, -10.22%). Moderate
+pairs are -25.23%, -21.86%, -0.53% and +4.74%; preserve that variability. All 16
+traces have matching membership, counts, scroll checkpoints and settled state,
+with no browser/loading errors. Initial PNGs are byte-identical per scene.
+Maximum paired camera endpoint differences are 0.049% and 0.058% of the span.
+These are whole renderer-main-thread CPU measurements for fixed native
+wheel/pan/closeup traces, not headed cadence or GPU-time evidence.
+
+The smaller first candidate had means 792.767 -> 848.562 ms (+7.04%) for
+moderate and 977.752 -> 925.496 ms (-5.34%) for stress, with mixed pairs. It did
+not justify a performance claim. Keep its raw `sampleview-geometry-final-cpu-*`
+artifacts; the scalar result uses `sampleview-scalar-clip-cpu-*`. The earlier
+interrupted prune attempt restored unrelated facet code while copying a
+foundation file into the upper worktree; it is excluded entirely. The corrected
+runs apply only the intended patch.
+
+Final scalar source SHA-256 is
+`273eb7b76ee0174bfc131c7e873d6c1f482517d7aa62c20ef326c64756522247` in the upper
+worktree. Metadata records raw/served sources, optimized dependency manifest,
+fixture hashes and the working package diff. The root context grows from 1,033
+to 1,041 raw lines (+8).
+
+The matching same-code control serves baseline bytes to both contexts, with
+three warmed alternating pairs per scene. Preserve every sample:
+
+| Scene    | Control A CPU samples (ms) | Control B CPU samples (ms) | Mean A / B (ms)   | Change |
+| -------- | -------------------------- | -------------------------- | ----------------- | ------ |
+| Moderate | 909.667, 887.828, 841.524  | 873.330, 825.783, 877.113  | 879.673 / 858.742 | -2.38% |
+| Stress   | 976.446, 965.277, 951.812  | 948.544, 917.846, 921.276  | 964.512 / 929.222 | -3.66% |
+
+Control pairs range from -6.99% to +4.23% in moderate and -4.91% to -2.86% in
+stress. The context/order bias is nonzero; do not subtract it to invent an
+adjusted speedup. Retain the scalar candidate because its larger mean reduction,
+all four improving stress pairs, smaller clip graph and unchanged output justify
+eight added lines. All 28 comparison/control traces pass correctness, identity
+and settling checks; control camera differences stay below 0.143% of the span.
+Control sources and initial PNGs are identical. Artifacts use
+`sampleview-scalar-clip-control-*`, with the combined offline summary at
+`/private/tmp/sampleview-scalar-clip-final-summary.json`.
+
+These results apply to the two measured native headless workloads. They do not
+establish a new WebGL/WebGPU gap, remove the historical SampleView architecture
+tradeoff, or measure physical-display cadence or GPU execution. Reprofile the
+remaining normalization/submission work before choosing another optimization; do
+not add further geometry cache plumbing to this completed follow-up.
+
+The real MCCA scalar candidate passes the complete 486-sample/seven-group
+bookmark interaction sequence with zero errors, including brush changes,
+threshold slider, closeup scroll and sort/filter/undo. Focused tests pass 52
+cases in the foundation and 51 in the upper stack, including overlapping
+directional clips and live offscreen/reentry behavior. Core types, scoped lint
+and formatting pass. No renderer API changes or release fragments are needed for
+this unpublished backend-only follow-up.
+
 ## Goal and constraints
 
 Reduce CPU work tracking changing shader inputs and preparing their GPU updates,
