@@ -27,6 +27,9 @@ packed quadratic edge buffer + atlas job buffer
 GPU render pass: nearest true RGB edge distances
     |
     v
+GPU render pass: nearest-edge alignment
+    |
+    v
 GPU render pass: accepted endpoint pseudo-distances
     |
     v
@@ -108,17 +111,25 @@ Each atlas pixel has three interleaved `atomic<u32>` distance slots. Finite
 low bit retains the sign, allowing a cleared zero buffer and `atomicMax` to
 retain the smallest signed edge distance without floating-point atomics.
 
-Generation uses two edge passes:
+Generation uses three ordered edge passes:
 
 1. The first pass records the nearest true finite-segment distance per channel.
-2. The second pass considers tangent-based endpoint pseudo-distances. A pseudo
-   candidate must have the same sign as that channel's nearest true edge. This
-   mirrors msdfgen's choice between its nearest positive and negative
-   perpendicular candidates while allowing a relevant adjacent edge to supply
-   the corner continuation.
+2. The second pass selects the least-aligned endpoint among equal-distance
+   candidates, retaining full floating-point precision.
+3. The third pass considers tangent-based endpoint pseudo-distances. The
+   selected nearest edge can continue perpendicularly beyond a sharp endpoint;
+   other candidates remain bounded by the corner bisector. Candidates must
+   retain the nearest true edge's sign.
 
-The second pass starts from a copy of the true-distance buffer. Queue ordering
+The third pass starts from a copy of the true-distance buffer. Queue ordering
 makes the generated atlas visible to later draws without CPU readback.
+
+This follows the nearest-edge conversion in
+[msdfgen's perpendicular-distance selector](https://github.com/Chlumsky/msdfgen/blob/1874bcf7d9624ccc85b4bc9a85d78116f690f35b/core/edge-selectors.cpp).
+The existing positive-sign preference for opposite-sign distance ties remains.
+Temporary generation storage uses 44 bytes per pixel, previously 32. The
+scratch budget remains 64 MiB, so very large jobs can reach it earlier. The
+extra pass runs during atlas preparation, not ordinary repainting.
 
 ### 3. Sign and correction compute passes
 
