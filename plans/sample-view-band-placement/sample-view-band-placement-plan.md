@@ -494,13 +494,113 @@ the current delivery puts all selected reusable WebGPU work in that PR.
 This upper PR contains SampleView placement/navigation, the metadata placement
 texture and internal facet removal across backends, exact imperative viewport
 publication, retained group-origin updates and SampleView benchmark-driver
-coverage. The independently authored clustered-heatmap example remains a separate
-commit here. No rejected routing or visible-row reflow experiment is restored.
-The original milestone history remains on `codex/sample-view-before-webgpu-split`.
+coverage. The clustered-heatmap example is now already on master, so its
+duplicate commit was dropped during the November 5 rebase. No rejected routing
+or visible-row reflow experiment is restored. The original milestone history
+remains on `codex/sample-view-before-webgpu-split`.
 
-Package-tree equality against `a13287481` is the integration acceptance check for
-this history-only split; fresh performance measurements are unnecessary. The
-main checkout remains on `codex/sample-view-band-placement` for manual testing.
+Package-tree equality against `a13287481` was the original history-only split
+check. The November 5 rebase and native checks below supersede that delivery
+status. PR #660 remains based on #659; merge the foundation first and then
+retarget the upper PR to master.
+
+## November 5 rebase and native verification
+
+The foundation was rebased onto master `5a2b42d33` and this SampleView commit
+replayed on top. Both remain draft PRs. The combined stack passes all 5,595
+existing unit tests (one skipped and two todo), all workspace types and lint,
+and WebGL point/arrow/rule composition checks at DPR 1 and 2. All 141 native
+Metal renderer GPU tests pass across the initial run and six corrected reruns:
+four needed checksum-pinned ignored oracle assets, while the placement-picking
+fixture needed to request its documented optional clipping explicitly. Release
+policy/status checks pass with the existing fixed-group patch fragments.
+
+Grouped summaries reproduced the historical WebGPU placement failure. The
+foundation now recreates a retained GPU mark when its placement compile mode
+changes: grouping turns a single unplaced summary into several draw placements.
+This is a Core handle-ownership correction, with no renderer API change or App
+bypass. Its 51 Surface/context tests, Core types and scoped lint/format pass;
+the production condition adds three raw lines. Native grouped synthetic warmups
+now pass on both backends with eight groups and matching 384-sample membership.
+The historical failure above is retained as evidence about the old baseline,
+rather than a claim that the corrected stack still fails.
+
+### Current backend CPU comparison
+
+Hardware-backed headless Chrome 156.0.8078.80 on Apple M5 uses ANGLE/Metal for
+WebGL and Apple Metal-3 for WebGPU. The normal App harness runs without Core
+profiling, samplers, tracing or frame/long-task observers. CDP's threadTicks
+measures whole renderer-main-thread CPU; render counts are deliberately not
+instrumented. Grouping uses the same augmented App action as its menu, outside
+the timing window. Exact displayed IDs and full membership match across
+backends.
+
+Each scene/backend receives two warmups followed by three alternating paired
+traces. A trace contains 24 native wheel zoom events, two horizontal drags with
+48 moves each, E-held closeup, 24 vertical scroll events and key release.
+Inertia settles for 1,600 ms after each phase. Windows last about 16.4 seconds.
+All 12 traces verify camera movement, scrolling, settled closed state and
+absence of browser/loading errors. Maximum paired camera endpoint difference is
+0.080% of the current span for moderate and 0.172% for stress; scroll endpoints
+match.
+
+| Scene                                         | WebGL CPU samples (ms)    | WebGPU CPU samples (ms)    | Means GL / GPU (ms) | GPU difference |
+| --------------------------------------------- | ------------------------- | -------------------------- | ------------------- | -------------- |
+| 384 samples, 8 groups, 8 metadata columns     | 948.147, 816.649, 879.437 | 883.752, 858.679, 847.079  | 881.411 / 863.170   | -2.07%         |
+| 1,536 samples, 24 groups, 32 metadata columns | 769.519, 728.073, 650.491 | 1014.689, 946.073, 949.904 | 716.028 / 970.222   | +35.50%        |
+
+Both fixtures include 32 signal segments per sample and grouped summary tracks.
+Moderate pairs vary in direction, so there is no clear CPU winner. Every stress
+pair uses more WebGPU CPU (+31.86%, +29.94%, +46.03%). This is a backend
+comparison on the corrected stack, not a PR before/after result or a measurement
+against the retired pane architecture. Keep the historical +18.5% tradeoff
+separate. No headed cadence, input latency, browser-process CPU or GPU-time
+claim follows.
+
+Artifacts use
+`output/sample-view-band-benchmark/sampleview-grouped-summary-final-cpu-*`. The
+tested upper head is `5bcdad94697671d99bb3ef54fb89349d4e732837`, with an empty
+package diff and source manifest SHA-256
+`df0a1936b1eab2bfa233fd65fec3bbdddf5ba4b03ae4b886ae737f96c489686e`. Later
+delivery notes and commit-message wrapping do not change those package contents.
+The temporary driver and all fixture/source hashes are recorded in metadata. The
+initial summary attempt failed before timing; the no-summary attempt was stopped
+before timing to fix the real summary failure. Neither is performance evidence.
+The preliminary ungrouped smoke is also excluded.
+
+### Attribution and remaining correctness limitation
+
+A separate one-pair stress profile requests 1,000-microsecond V8 sampling.
+WebGPU occurrence refresh accounts for about 166.6 ms inclusive sampled wall
+time, with repeated live Rectangle/clip getter evaluation prominent. Renderer
+normalization is about 70.6 ms inclusive; draw normalization about 38.8 ms self.
+Uniform writes and native command submission also appear. Sampled GC wall time
+is about 49.9 ms WebGPU versus 23.1 ms WebGL. Inclusive rows overlap; do not sum
+them or interpret wall samples as a CPU decomposition of the 35.50% gap. The
+first follow-up is a bounded audit of scalar materialization at the existing
+occurrence/scope boundary, with unsampled A/B verification before retaining any
+change. No new invalidation or cache protocol is proposed.
+
+Fresh real MCCA checks use the exact Copy-number patterns bookmark with 486
+samples, seven CancerType groups and seven G-score summary slots. WebGL passes
+complete loading, native brush creation/change and public clear, the actual UI
+threshold slider (0.5 -> 0.9 with changed summary data and unchanged row
+geometry), native closeup/scroll, sort/filter and undo restoring sample
+identity/order. Initial WebGPU loading is now clean as well; the stale
+placement-program error is fixed. However, the interaction sequence reports 59
+invalid render-scope-bounds errors even though all five data sources complete
+and state assertions succeed. The WebGPU correctness check therefore fails. This
+second error was documented on the earlier baseline and remains unresolved;
+synthetic timing success does not establish real-cohort interaction correctness.
+
+Capture the failing scope label and numeric bounds next. Core currently forwards
+signed scope dimensions, so a transient negative empty intersection is
+plausible, but the artifact cannot distinguish negative dimensions from NaN
+conclusively. Only clamp to zero if negative emptiness is confirmed; preserve
+NaN rejection and the renderer API. Do not apply an unconfirmed recovery
+workaround at delivery. Real-check artifacts use `mcca-bookmark-final-*`;
+separate attribution uses `sampleview-grouped-stress-profile-*` in the same
+ignored output directory.
 
 ## Plan retention
 
