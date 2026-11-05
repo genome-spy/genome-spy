@@ -132,10 +132,15 @@ export default class ConcatView extends GridView {
      *
      * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} childSpec
      * @param {number} [index]
+     * @param {(view: import("./view.js").default) => void} [beforeInitialize] Runs after attachment, before guide/data initialization.
      * @returns {Promise<import("./view.js").default>}
      */
-    async addChildSpec(childSpec, index) {
-        return this.#getMutationHelper().addChildSpec(childSpec, index);
+    async addChildSpec(childSpec, index, beforeInitialize) {
+        return this.#getMutationHelper().addChildSpec(
+            childSpec,
+            index,
+            beforeInitialize
+        );
     }
 
     /**

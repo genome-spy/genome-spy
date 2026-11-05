@@ -54,6 +54,10 @@ import { DEFAULT_THEME_NAME, resolveThemeSelection } from "./config/themes.js";
 import { warnOnce } from "./utils/warning.js";
 import { formatErrorMessage, logError } from "./utils/errorPresentation.js";
 import {
+    getViewVisibilityOverride,
+    resolveRadioVisibilityConflicts,
+} from "./view/viewVisibilityUtils.js";
+import {
     createCanvasBackgroundReader,
     getExportBackground,
 } from "./genomeSpy/canvasBackground.js";
@@ -144,13 +148,40 @@ export default class GenomeSpy {
         /** @type {GenomeStore} */
         this.genomeStore = undefined;
 
-        /**
-         * View visibility is checked using a predicate that can be overridden
-         * for more dynamic visibility management.
-         *
-         * @type {(view: View) => boolean}
-         */
-        this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
+        // Reuse resolved choices across layout/render passes until state changes.
+        let cachedInput = this.getViewVisibilityOverrides();
+        /** @type {View} */
+        let cachedRoot;
+        let cachedRevision = -1;
+        let resolved = cachedInput;
+        /** @type {(view: View) => boolean} */
+        this.viewVisibilityPredicate = this.#nativeVisibilityPredicate = (
+            view
+        ) => {
+            // Hosts may retain this function as their authored-default fallback.
+            if (
+                this.viewVisibilityPredicate !== this.#nativeVisibilityPredicate
+            ) {
+                return view.isVisibleInSpec();
+            }
+            const input = this.getViewVisibilityOverrides();
+            if (
+                input !== cachedInput ||
+                this.viewRoot !== cachedRoot ||
+                cachedRevision !== this.#visibilityRevision
+            ) {
+                cachedInput = input;
+                cachedRoot = this.viewRoot;
+                cachedRevision = this.#visibilityRevision;
+                resolved = cachedRoot
+                    ? resolveRadioVisibilityConflicts(cachedRoot, input)
+                    : input;
+            }
+            return (
+                getViewVisibilityOverride(resolved, view) ??
+                view.isVisibleInSpec()
+            );
+        };
 
         /** @type {Record<string, import("./tooltip/tooltipHandler.js").TooltipHandler>}> */
         this.tooltipHandlers = {
@@ -699,6 +730,81 @@ export default class GenomeSpy {
         }
     }
 
+    /** @type {Record<string, boolean>} */
+    #viewVisibilities = {};
+
+    /** @type {Promise<void> | undefined} */
+    #visibilityUpdate;
+
+    #visibilityRevision = 0;
+
+    /** @type {(view: View) => boolean} */
+    #nativeVisibilityPredicate;
+
+    /** Return visibility overrides for the mounted embed. */
+    getViewVisibilityOverrides() {
+        return this.#viewVisibilities;
+    }
+
+    /**
+     * Replace visibility choices without changing authored defaults.
+     * @param {Record<string, boolean>} overrides
+     */
+    setViewVisibilityOverrides(overrides) {
+        this.#viewVisibilities = overrides;
+    }
+
+    /** Reject writes when a host or native document gesture owns visibility. */
+    assertViewVisibilityChangeAllowed() {
+        if (this.viewVisibilityPredicate !== this.#nativeVisibilityPredicate) {
+            throw new Error(
+                "The host owns view visibility; use its visibility controls."
+            );
+        }
+
+        if (this.#interactionController?.isHoverTrackingSuspended()) {
+            throw new Error("Cannot change visibility during an active drag.");
+        }
+    }
+
+    /** Discard resolved group choices after a structural change. */
+    invalidateViewVisibility() {
+        this.#visibilityRevision++;
+    }
+
+    /** Apply the latest choices, loading newly shown views and clearing hidden hit areas. */
+    refreshViewVisibility() {
+        // Structural changes can alter radio-group membership without a store write.
+        this.invalidateViewVisibility();
+        if (!this.#visibilityUpdate) {
+            this.#visibilityUpdate = Promise.resolve().then(async () => {
+                try {
+                    if (!this.viewRoot || this.#destroyed) return;
+                    // App writes and agent writes may arrive while data is loading.
+                    let applied;
+                    let revision;
+                    do {
+                        applied = this.getViewVisibilityOverrides();
+                        revision = this.#visibilityRevision;
+                        this.viewRoot.visit((view) => {
+                            if (!view.isVisible()) view.facetCoords.clear();
+                        });
+                        this.viewRoot.context.highlightView?.(null);
+                        this.#interactionController?.clearHover();
+                        await this.initializeVisibleViewData();
+                    } while (
+                        !this.#destroyed &&
+                        (applied !== this.getViewVisibilityOverrides() ||
+                            revision !== this.#visibilityRevision)
+                    );
+                } finally {
+                    this.#visibilityUpdate = undefined;
+                }
+            });
+        }
+        return this.#visibilityUpdate;
+    }
+
     async initializeVisibleViewData() {
         if (!this.viewRoot) {
             return;
@@ -710,12 +816,13 @@ export default class GenomeSpy {
             this.viewRoot.context.textMetrics
         );
 
+        if (this.#destroyed) return;
+
         // Visibility toggles can change sizes; ensure layout is recomputed even
         // when callers don't explicitly request it.
         this.viewRoot._invalidateCacheByPrefix("size", "progeny");
         this.#surface.invalidateSize();
-        this.computeLayout();
-        this.animator.requestRender();
+        this.viewRoot.context.requestLayoutReflow();
     }
 
     /**
