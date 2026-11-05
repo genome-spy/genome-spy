@@ -489,60 +489,68 @@ describe("WebGpuViewRenderingContext", () => {
         expect(surface.prepareDraw).toHaveBeenCalledOnce();
     });
 
-    test("translates directional Core clips to a canvas-relative scissor", () => {
-        const surface = {
-            getDevicePixelRatio: () => 2,
-            getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
-            updateMark: vi.fn(),
-            prepareDraw: vi.fn(),
-        };
-        const context = createContext(surface);
-        const view = createView();
-        const mark = {
-            encoders: {},
-            getType: () => "point",
-            properties: { clip: "x" },
-            unitView: {
-                getEffectiveOpacity: () => 0.25,
-            },
-        };
-        const coords = Rectangle.create(20, 30, 100, 80);
+    test.each([false, true])(
+        "translates directional Core clips with inherited x clipping %s",
+        (clipX) => {
+            const surface = {
+                getDevicePixelRatio: () => 2,
+                getLogicalCanvasSize: () => ({ width: 300, height: 200 }),
+                updateMark: vi.fn(),
+                prepareDraw: vi.fn(),
+            };
+            const context = createContext(surface);
+            const view = createView();
+            const mark = {
+                encoders: {},
+                getType: () => "point",
+                properties: { clip: "x" },
+                unitView: {
+                    getEffectiveOpacity: () => 0.25,
+                },
+            };
+            const coords = Rectangle.create(20, 30, 100, 80);
 
-        context.pushView(/** @type {any} */ (view), coords);
-        context.renderMark(/** @type {any} */ (mark), {
-            clip: {
-                rect: Rectangle.create(10, 40, 200, 50),
-                clipX: false,
-                clipY: true,
-            },
-        });
-        context.popView(/** @type {any} */ (view));
-        context.finish();
-        context.render();
+            context.pushView(/** @type {any} */ (view), coords);
+            context.renderMark(/** @type {any} */ (mark), {
+                clip: {
+                    rect: Rectangle.create(50, 40, 40, 50),
+                    clipX,
+                    clipY: true,
+                },
+            });
+            context.popView(/** @type {any} */ (view));
+            context.finish();
+            context.render();
 
-        const adapterCalls = /** @type {any[][]} */ (
-            mocks.createWebGpuMarkConfig.mock.calls
-        );
-        const markCoords = adapterCalls[0][2];
-        expect([
-            markCoords.x,
-            markCoords.y,
-            markCoords.width,
-            markCoords.height,
-        ]).toEqual([20.5, 30.5, 100, 80]);
-        expect(adapterCalls[0][3]).toBe(mocks.packed.data);
+            const adapterCalls = /** @type {any[][]} */ (
+                mocks.createWebGpuMarkConfig.mock.calls
+            );
+            const markCoords = adapterCalls[0][2];
+            expect([
+                markCoords.x,
+                markCoords.y,
+                markCoords.width,
+                markCoords.height,
+            ]).toEqual([20.5, 30.5, 100, 80]);
+            expect(adapterCalls[0][3]).toBe(mocks.packed.data);
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
-        expect(surface.prepareDraw).toHaveBeenCalledWith(
-            mark,
-            expect.objectContaining({
-                firstInstance: 0,
-                instanceCount: 1,
-                scissor: { x: 20, y: 40, width: 100, height: 50 },
-            }),
-            undefined
-        );
-    });
+            expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+            expect(surface.prepareDraw).toHaveBeenCalledWith(
+                mark,
+                expect.objectContaining({
+                    firstInstance: 0,
+                    instanceCount: 1,
+                    scissor: {
+                        x: clipX ? 50 : 20,
+                        y: 40,
+                        width: clipX ? 40 : 100,
+                        height: 50,
+                    },
+                }),
+                undefined
+            );
+        }
+    );
 
     test("passes anchor-culling bounds without enabling a scissor", () => {
         const surface = {
@@ -705,10 +713,12 @@ describe("WebGpuViewRenderingContext", () => {
 
         context.beginSampleFacetBatch();
         for (const x of [0, 60]) {
-            const coords = Rectangle.create(x, 10, 20, 30).translate(
-                () => offset,
-                0
-            );
+            const coords = Rectangle.create(x, 10, 20, 30)
+                .translate(
+                    () => offset,
+                    () => offset
+                )
+                .intersect(Rectangle.create(0, 0, 100, 100));
             context.pushView(/** @type {any} */ (view), coords);
             context.renderMark(/** @type {any} */ (mark), {});
             context.popView(/** @type {any} */ (view));
@@ -719,8 +729,17 @@ describe("WebGpuViewRenderingContext", () => {
         const first = { .../** @type {any} */ (context.render()[0]).bounds };
         const second = { .../** @type {any} */ (context.render()[0]).bounds };
 
-        expect(first).toEqual({ x: 5, y: 10, width: 80, height: 30 });
-        expect(second).toEqual({ x: 10, y: 10, width: 80, height: 30 });
+        expect(first).toEqual({ x: 5, y: 15, width: 80, height: 30 });
+        expect(second).toEqual({ x: 10, y: 20, width: 80, height: 30 });
+
+        // A live clipped rectangle has negative dimensions while fully outside.
+        offset = 500;
+        expect(/** @type {any} */ (context.render()[0]).bounds).toMatchObject({
+            width: 0,
+            height: 0,
+        });
+        offset = 0;
+        expect(/** @type {any} */ (context.render()[0]).bounds).toEqual(first);
     });
 
     test("omits non-picking marks from the pick draw list", () => {
@@ -1290,6 +1309,15 @@ describe("WebGpuViewRenderingContext", () => {
     });
 
     test("submits only visible ranges from a 2,000-placement source", () => {
+        let clipX = 0;
+        const clip = {
+            rect: Rectangle.create(0, 0, 100, 100).modify({
+                x: () => clipX,
+                width: () => 100 - clipX,
+            }),
+            clipX: true,
+            clipY: false,
+        };
         const count = 2_000;
         const rectangles = new Float32Array(count * 4);
         for (let index = 0; index < count; index++) {
@@ -1315,7 +1343,7 @@ describe("WebGpuViewRenderingContext", () => {
             encoders: {},
             getType: () => "point",
             isPickingParticipant: () => true,
-            properties: {},
+            properties: { clip: "never", cullByVisibleRange: "x" },
             unitView: {
                 getEffectiveOpacity: () => 1,
                 getCollector: () => ({}),
@@ -1326,6 +1354,7 @@ describe("WebGpuViewRenderingContext", () => {
         for (let index = 0; index < count; index++) {
             context.pushView(/** @type {any} */ (view), coords);
             context.renderMark(/** @type {any} */ (mark), {
+                clip,
                 placement: { source, index },
             });
             context.popView(/** @type {any} */ (view));
@@ -1341,5 +1370,15 @@ describe("WebGpuViewRenderingContext", () => {
             )
         ).toEqual([1, 2]);
         expect(frame).toHaveLength(2);
+
+        // A previously rejected occurrence must use current bounds on reentry.
+        const next = rectangles.slice();
+        next.set([0.25, 0.25, 0.5, 0.5], 12);
+        source.replaceGeometry(next);
+        clipX = 20;
+        expect(collectDraws(context.render()).at(-1)).toMatchObject({
+            placement: { index: 3 },
+            visibleRange: { x1: 19.5, x2: 99.5 },
+        });
     });
 });
