@@ -958,6 +958,7 @@ export type TextChannelName =
     | "baseline"
     | "fill"
     | "stroke"
+    | "fillOpacity"
     | "opacity"
     | "strokeOpacity"
     | "strokeWidth"
