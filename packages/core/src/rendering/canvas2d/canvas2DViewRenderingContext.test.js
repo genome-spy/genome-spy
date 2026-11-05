@@ -557,10 +557,15 @@ describe("Canvas2DViewRenderingContext", () => {
         }
     );
 
-    test("passes indexed source-row bounds to immediate marks", async () => {
+    test("passes nonzero indexed source-row bounds through text and path visitors", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },
-            mark: "point",
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.2, label: "first" },
+                    { x: 0.5, x2: 0.7, label: "middle" },
+                    { x: 0.9, x2: 1, label: "last" },
+                ],
+            },
             encoding: {
                 x: {
                     field: "x",
@@ -571,6 +576,21 @@ describe("Canvas2DViewRenderingContext", () => {
                 size: { value: 4 },
                 color: { value: "black" },
             },
+            layer: [
+                { mark: "text", encoding: { text: { field: "label" } } },
+                {
+                    mark: { type: "link", linkShape: "line" },
+                    encoding: { x2: { field: "x2" }, y2: { value: 0.5 } },
+                },
+                {
+                    mark: "arrow",
+                    encoding: {
+                        x2: { field: "x2" },
+                        y2: { value: 0.5 },
+                        fill: { value: "black" },
+                    },
+                },
+            ],
         });
         const recording = createRecordingContext();
         const xIndexManager = /** @type {any} */ ({
@@ -582,12 +602,21 @@ describe("Canvas2DViewRenderingContext", () => {
             }),
         });
 
-        render(view, recording.context, xIndexManager);
+        try {
+            render(view, recording.context, xIndexManager);
 
-        expect(xIndexManager.prepare).toHaveBeenCalledOnce();
-        expect(xIndexManager.query).toHaveBeenCalledOnce();
-        expect(recording.calls.arcs).toHaveLength(1);
-        expect(recording.calls.arcs[0][0]).toBe(50);
+            expect(xIndexManager.prepare).toHaveBeenCalledTimes(3);
+            expect(xIndexManager.query).toHaveBeenCalledTimes(3);
+            expect(recording.calls.fillTexts.map(([text]) => text)).toEqual([
+                "middle",
+            ]);
+            expect(recording.calls.beziers).toHaveLength(1);
+            expect(recording.calls.beziers[0].slice(-2)).toEqual([70, 50]);
+            expect(recording.calls.moves).toContainEqual([70, 50]);
+            expect(recording.context.fill).toHaveBeenCalledOnce();
+        } finally {
+            view.disposeSubtree();
+        }
     });
 
     test("skips marks rejected by the selective-render predicate", async () => {

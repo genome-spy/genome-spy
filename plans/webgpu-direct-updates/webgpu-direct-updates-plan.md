@@ -969,3 +969,182 @@ The final version passes 489 focused tests across 53 files, 14 native Metal GPU
 tests, renderer TypeScript and scoped ESLint. Release policy/status checks pass
 with no package bump. Source decreases by 15 raw lines; no public declaration or
 Core production file changes. The temporary verification server is stopped.
+
+## CPU attribution against WebGL
+
+Baseline: `e58dde16c`. The user authorized profiling the 40-heatmap native
+wheel/pan workload in both backends, followed by one small, evidence-backed
+optimization and unsampled verification. Keep the current renderer API and
+choose KISS if the measured difference does not justify extra machinery.
+
+Reuse the local 40-copy spec and native-input driver. First collect separate
+Chrome CPU sampling profiles with Core instrumentation disabled for both WebGL
+and WebGPU. Verify hardware rendering, complete view/mark composition, camera
+movement/settling and page isolation. Backend font metrics and antialiasing can
+differ, so compare layout/camera work and visible content rather than requiring
+cross-backend PNG equality. Sampling is attribution evidence only; retain
+profiler-disabled main-thread CPU timing for acceptance.
+
+Select the largest demonstrated WebGPU-specific cost, checking its real owner
+and caller contract before changing code. The disabled-profiler view callbacks
+are a lead, not proof of allocation or CPU cost: V8 may eliminate them. Do not
+add pooling, retained-frame ownership protocols, range-publication machinery or
+an instrumentation dispatcher without evidence. Any API inadequacy remains a
+proposal requiring permission. A local simplification can affect shared
+instrumentation only if its measured benefit and profiler behavior are verified.
+
+- [x] Attribute current CPU work with 40-heatmap WebGL/WebGPU sampling profiles.
+- [x] Implement one justified simplification, or record that no code change is
+      warranted; independently review any production change.
+- [x] Verify affected contracts and compare unsampled native wheel/pan CPU,
+      using same-code controls and separate work-count checks as needed.
+- [x] Record all results, source size and release impact; commit the coherent
+      milestone and stop the temporary verification server.
+
+Initial attribution rejects the profiler-wrapper hypothesis: the four profiles
+have no self samples in `measurePerformance`, and its inclusive samples are the
+actual callback work. The strongest repeated JavaScript lead is
+`#prepareMarkState` and its packed-data/rectangle checks. In particular, 24 of
+25 sampled `zoomExtent` getter calls come directly from `getPackedMarkData`.
+
+The first candidate limited extent tracking to the factory's existing point/
+rect whitelist. It measured less CPU, but the user correctly challenged whether
+that whitelist represents a real constraint. History shows limited initial
+implementation scope, not a renderer requirement. Rules, arrows and links have
+logical row ranges; text already translates logical strings to glyph ranges.
+Discard the type-based packing guard and its unsupported-text regression.
+
+Correct shared eligibility and then use it to avoid irrelevant cache lookups:
+
+- Extract the existing cheap encoder prerequisites into one shared
+  `getMarkXIndexScaleResolution` helper, consumed by the spec factory and both
+  WebGPU/Canvas cache owners. Check actual index configuration, numeric scale
+  and branch compatibility before resolving scale/extent. Do not add a cache,
+  revision protocol, listener or capability registry. Finite-extent validation
+  remains in spec construction so invalid-to-valid extent transitions work.
+- Remove the blanket point/rect restriction. Endpoint intervals cover rules,
+  ticks, text and arrows under the existing one-viewport geometry margin.
+  Rectangles/rules/ticks that clamp by clipping or hiding collapsed intervals
+  remain indexable. X-clamped point/text/arrow/link anchors need a full-range
+  fallback because offscreen raw coordinates can become visible at the edge.
+- Links need geometry-based eligibility: known literal line, orthogonal,
+  diagonal and dome shapes stay inside their endpoint x envelope; generic arcs
+  can bow outside it. Arc and expression-driven shapes retain the conservative
+  fallback until a suitable envelope is available. Both cache owners reevaluate
+  eligibility: safe/unsafe shape or clamp changes toggle the existing cached
+  resolution between its object and undefined, so no new revision is needed.
+- Canvas text/link/arrow visitors currently ignore nonempty start/end candidate
+  ranges. Honor the same optional absolute row bounds already used by the
+  point/rect/rule visitors. SVG callers without bounds retain complete
+  traversal; Canvas rendering and picking must consume the same indexed rows.
+
+Verify shared eligibility, clamping/curve fallbacks, domain transitions,
+placement/facet ranges, text logical-to-glyph mapping and actual Canvas row
+visitation. Retain the renderer API. Shared Canvas indexing changes have
+published Core release impact and require a patch changeset. Repeat unsampled
+native-input CPU verification for the final generic implementation; the first
+whitelist-based candidate is diagnostic evidence only.
+
+### Attribution, correction and measured outcome
+
+The native hardware is unchanged: Chrome 156.0.8078.80 on Apple M5. The active
+WebGL canvas reports `ANGLE Metal Renderer: Apple M5`; WebGPU reports Apple
+Metal-3. Both backends render all 40 matrices and 120 public unit views. The
+first matrix has the same 180 by 110 plot bounds at (60, 60), and paired camera
+endpoint differences stay within 0.047% of the span. Backend font metrics and
+antialiasing differ, so cross-backend PNGs are inspected as equivalent content,
+not required to have identical hashes.
+
+The temporary `/private/tmp/webgpu-backend-cpu-measure.mjs` reuses the native
+input driver. Attribution uses
+`--comparison=backends --mode=profile --pairs=2 --warmup=2 --scene=heatmaps --heatmaps=40 --headless --wheel-events=24 --drag-steps=48 --drags=2 --event-ms=1 --settle-ms=1600`.
+CDP sampling requests 1,000 microseconds; weighted sample intervals are about
+1.25 ms. Sampled stack time includes wall time in native calls and must not be
+interpreted as measured thread CPU. `#prepareMarkState` has about 58/65 ms self
+samples, packed-data lookup 21/24 ms, and the zoom-extent getter 23.5/7.6 ms.
+The absence of wrapper self samples is not proof of zero cost, but provides no
+basis for the proposed profiler rewrite; leave that instrumentation unchanged.
+
+Unsampled backend comparison uses `--mode=cpu --pairs=3` with the same inputs:
+
+| Backend         | Main-thread CPU samples (ms) | Mean (ms) |
+| --------------- | ---------------------------- | --------- |
+| WebGL           | 1044.662, 1022.588, 1000.355 | 1022.535  |
+| WebGPU baseline | 660.371, 655.351, 685.012    | 666.911   |
+
+WebGPU uses 34.78% less main-thread CPU in this specific scene before the new
+change. This is not a claim about every scene, headed presentation latency,
+total browser-process CPU or GPU cost.
+
+The preliminary point/rect guard measured -9.26% CPU (674.487 -> 612.024 ms),
+with a -0.81% same-code control. Its samples remain in
+`native-index40-{cpu,control}`. Discard the implementation despite that result:
+duplicating an incomplete mark whitelist would preserve a capability bug.
+
+The final implementation shares actual eligibility across the spec factory and
+both cache owners, and completes candidate-range consumption in Canvas text,
+link and arrow visitors. The existing cache keys handle eligibility changes; no
+listener, retained-frame protocol or new cache state is added. Core's
+renderer-neutral index subsystem owns these rules. No renderer package API or
+view/parameter ownership contract changes.
+
+Final CPU comparisons use
+`--comparison=changes --backend=webgpu --base=e58dde16c --mode=cpu --pairs=4 --warmup=2`
+and the same native input arguments above. Controls add `--baseline-control`.
+Keep every sample:
+
+| Run                          | Baseline/page A samples (ms)       | Candidate/page B samples (ms)      | Change of means |
+| ---------------------------- | ---------------------------------- | ---------------------------------- | --------------- |
+| Final generic implementation | 617.871, 659.658, 645.639, 626.782 | 613.943, 614.689, 592.531, 580.884 | -5.80%          |
+| Matching same-code control   | 644.379, 637.699, 628.626, 647.567 | 633.198, 661.629, 645.508, 649.642 | +1.24%          |
+
+The final mean is 637.488 -> 600.512 ms. All four candidate pairs favor the
+change (-0.64%, -6.82%, -8.23%, -7.32%); control pairs range from -1.74% to
++3.75%. Retain the small generic change for its corrected dependency boundary,
+broader mark support and measured benefit in this workload. Do not generalize
+the effect size. Maximum paired camera endpoint variation is 0.034% of the span
+in the candidate run and 0.101% in the control. Camera isolation/settling,
+source hashes and loading/rendering error checks pass.
+
+A separate frame diagnostic matches 274 visible renders, five picking passes,
+164,400 ordinary draws, 21,920 groups and 346,239 view visits in both versions.
+Retained resource writes vary (3,635 vs 5,273), so rendered count equality does
+not establish identical reactive update work. Counter timings are not CPU
+acceptance and are not used to normalize another run.
+
+The temporary `/private/tmp/webgpu-xindex-output-check.mjs` verifies the actual
+Core-to-WebGPU path with 200 sorted rows and numeric rule/text/arrow/line-link
+tracks. This deterministic correctness check sets the public viewport to [80,
+90]; it is not an interaction timing sample. Enabling indexing reduces 800
+source rows to 163 candidates across four queries. Indexed and full-range
+exports are byte-identical, including variable-length text strings, and public
+scoped picking returns row 85 at the same coordinates for all four mark types.
+The native adapter and loading/rendering checks pass.
+
+Artifacts are under `output/webgpu-direct-uniforms/`:
+
+- `native-backends40-profile-{webgl,webgpu}-{0,1}.cpuprofile` and the
+  corresponding metadata/results; offline attribution is in
+  `/private/tmp/native-backends40-profile-analysis.json`.
+- `native-backends40-cpu` for the unsampled backend comparison.
+- `native-index40-generic-cpu-v2`, `native-index40-generic-control` and
+  `native-index40-generic-frames` for final candidate verification.
+- `native-core-xindex-output-report.json` with specifications, PNGs and picking
+  identities for the deterministic check.
+
+The first generic timing attempt stopped before collecting any samples because
+the source-substitution harness did not resolve a newly intercepted bare
+dependency. The corrected harness uses Vite's optimized dependency manifest and
+canonical versioned URLs, preserving module identity for both versions. Its
+failure artifact is retained and excluded from timing evidence.
+
+Final verification passes 703 Core rendering tests across 80 files, Core
+TypeScript, scoped ESLint/format and independent cross-consumer review. Existing
+renderer logical-string-to-glyph range handling is retained. The six changed
+production JavaScript files grow from 1,698 to 1,739 raw lines (+41), including
+shared eligibility documentation and visitor range types. This growth fixes
+missing mark support and is justified by the native output/picking and CPU
+results; the wider branch remains smaller in runtime code. The existing
+changeset now requests a Core patch, propagated to the eight-package fixed
+release group; release policy/status checks pass. The temporary server is
+stopped. Deliver as `fix(core): index eligible mark geometry across renderers`.

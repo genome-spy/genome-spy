@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
     buildMarkXIndex,
     createMarkXIndexSpec,
+    getMarkXIndexScaleResolution,
     resolveMarkXIndexQuery,
 } from "./markXIndex.js";
 
@@ -58,7 +59,7 @@ function createFixture(type = "point") {
         },
         getType: () => type,
         unitView: {
-            getScaleResolution: () => resolution,
+            getScaleResolution: vi.fn(() => resolution),
         },
     };
     return { mark, resolution, scale };
@@ -107,39 +108,71 @@ describe("createMarkXIndexSpec", () => {
         expect(spec.indexDomain).toEqual([0, 100]);
     });
 
-    test("accepts a compatible ranged accessor", () => {
-        const { mark, scale } = createFixture("rect");
-        mark.encoders.x2 = createEncoder("x2", scale);
+    test.each(["rect", "rule", "tick", "text", "arrow"])(
+        "accepts compatible %s endpoint ranges",
+        (type) => {
+            const { mark, scale } = createFixture(type);
+            mark.encoders.x2 = createEncoder("x2", scale);
+            if (["rect", "rule", "tick"].includes(type))
+                mark.properties.clamp = "x";
 
-        const spec = createMarkXIndexSpec(mark);
-        expect(spec.x2Accessor({ x2: 23 })).toBe(23);
+            const spec = createMarkXIndexSpec(mark);
+            expect(spec.x2Accessor({ x2: 23 })).toBe(23);
+        }
+    );
+
+    test.each(["point", "text", "arrow", "link"])(
+        "keeps offscreen %s rows available when x anchors are clamped",
+        (type) => {
+            const { mark } = createFixture(type);
+            if (type === "link") mark.properties.linkShape = "line";
+            mark.properties.clamp = "x";
+            expect(createMarkXIndexSpec(mark)).toBeUndefined();
+
+            mark.properties.clamp = "y";
+            expect(createMarkXIndexSpec(mark)).toBeDefined();
+        }
+    );
+
+    test("only indexes links with literal endpoint-bounded shapes", () => {
+        const { mark, resolution } = createFixture("link");
+        expect(getMarkXIndexScaleResolution(mark)).toBeUndefined();
+        for (const shape of ["line", "diagonal", "orthogonal", "dome"]) {
+            mark.properties.linkShape = shape;
+            expect(getMarkXIndexScaleResolution(mark)).toBe(resolution);
+            expect(createMarkXIndexSpec(mark)).toBeDefined();
+        }
+        for (const shape of ["arc", { expr: "shape" }]) {
+            mark.properties.linkShape = shape;
+            expect(getMarkXIndexScaleResolution(mark)).toBeUndefined();
+        }
     });
 
-    test("keeps offscreen points available when x anchors are clamped", () => {
+    test("skips scale resolution when indexing is disabled", () => {
         const { mark } = createFixture();
-        mark.properties.clamp = "x";
+        mark.encoders.x.channelDef.buildIndex = false;
+
+        expect(getMarkXIndexScaleResolution(mark)).toBeUndefined();
+        expect(mark.unitView.getScaleResolution).not.toHaveBeenCalled();
+    });
+
+    test("keeps the scale dependency while an extent becomes valid", () => {
+        const { mark, resolution } = createFixture();
+        resolution.zoomExtent = [0, 0];
+        expect(getMarkXIndexScaleResolution(mark)).toBe(resolution);
         expect(createMarkXIndexSpec(mark)).toBeUndefined();
 
-        mark.properties.clamp = "y";
-        expect(createMarkXIndexSpec(mark)).toBeDefined();
+        resolution.zoomExtent = [0, 100];
+        expect(createMarkXIndexSpec(mark).indexDomain).toEqual([0, 100]);
     });
 
     const ineligibleCases = /** @type {[string, (fixture: any) => void][]} */ ([
-        [
-            "disabled indexing",
-            (fixture) =>
-                (fixture.mark.encoders.x.channelDef.buildIndex = false),
-        ],
         [
             "unbounded zoom",
             (fixture) =>
                 (fixture.resolution.zoomExtent = [-Infinity, Infinity]),
         ],
         ["discrete scale", (fixture) => (fixture.scale.type = "band")],
-        [
-            "unsupported mark",
-            (fixture) => (fixture.mark.getType = () => "text"),
-        ],
         [
             "conditional x",
             (fixture) =>
