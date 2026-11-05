@@ -630,7 +630,9 @@ function createPointConfig(mark, data, coords) {
                 mark,
                 "fillGradientStrength"
             ),
-            strokeAlign: liveValue(
+            strokeAlign: staticOrLivePropertyValue(
+                mark,
+                ["inwardStroke"],
                 () => (readProperty(mark, "inwardStroke") ? 0 : 1),
                 "u32"
             ),
@@ -778,7 +780,9 @@ function createRuleConfig(mark, data, coords) {
             fill: createColorChannel(mark, "fill", data),
             ...(mark.getType() === "rule"
                 ? {
-                      strokeAlign: liveValue(
+                      strokeAlign: staticOrLivePropertyValue(
+                          mark,
+                          ["strokeAlign"],
                           () =>
                               STROKE_ALIGN_CODES.get(
                                   readProperty(mark, "strokeAlign")
@@ -805,7 +809,9 @@ function createRuleConfig(mark, data, coords) {
                 : {}),
             opacity: createNumericChannel(mark, "opacity", data),
             minLength: numericPropertyValue(mark, "minLength"),
-            strokeCap: liveValue(
+            strokeCap: staticOrLivePropertyValue(
+                mark,
+                ["strokeCap"],
                 () => mapProperty(mark, "strokeCap", STROKE_CAP_CODES),
                 "u32"
             ),
@@ -1660,7 +1666,7 @@ function createGlyphOffsetChannel(mark, axis, data) {
     const channel = axis == "x" ? "dx" : "dy";
     const encoder = mark.encoders[channel];
     if (!encoder) {
-        return liveValue(() => readNumericProperty(mark, channel));
+        return numericPropertyValue(mark, channel);
     }
 
     assertUnconditional(mark, channel, encoder);

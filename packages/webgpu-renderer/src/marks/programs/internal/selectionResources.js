@@ -19,6 +19,7 @@ import { packHighPrecisionU32Array } from "../../../utils/highPrecision.js";
  * @typedef {import("../../../index.d.ts").SelectionType} SelectionType
  * @typedef {import("../../../index.d.ts").VisibilityPredicate} VisibilityPredicate
  * @typedef {import("../../../types.js").ScalarType} ScalarType
+ * @typedef {import("../../../utils/uniformBuffer.js").UniformValue} UniformValue
  *
  * @typedef {number | Uint32Array | Readonly<Partial<Record<string, readonly [number, number] | null>>>} SelectionValue
  *
@@ -366,7 +367,7 @@ export class SelectionResourceManager {
     /** @type {string} */
     #label;
 
-    /** @type {(name: string, value: number|number[]) => void} */
+    /** @type {(name: string, value: UniformValue) => void} */
     #setUniformValue;
 
     /** @type {Map<string, SelectionDef>} */
@@ -386,7 +387,7 @@ export class SelectionResourceManager {
      * @param {VisibilityPredicate} [params.visibleWhen]
      * @param {import("../../../index.d.ts").MarkOrder} [params.order]
      * @param {string} [params.label]
-     * @param {(name: string, value: number|number[]) => void} params.setUniformValue
+     * @param {(name: string, value: UniformValue) => void} params.setUniformValue
      */
     constructor({
         device,
@@ -569,7 +570,7 @@ export class SelectionResourceManager {
                 const bounds = representation
                     ? active
                         ? representation.inputComponents === 2
-                            ? Array.from(packHighPrecisionU32Array(interval))
+                            ? packHighPrecisionU32Array(interval)
                             : Array.from(interval)
                         : representation.inputComponents === 2
                           ? INACTIVE_PACKED_BOUNDS
