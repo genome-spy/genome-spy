@@ -42,12 +42,16 @@ remain #604 follow-ups; this correction does not expose new Core grammar.
 
 ## Active integration: arrow paint composition
 
-Arrow centered strokes preserve nominal fill beneath translucent paint (#604).
-Open-head geometry and picking policy remain unchanged. Repeated heads use their
-nominal footprint for spacing, phase and endpoint admission; invisible borders no
-longer move or remove them. Neighboring head distances retain expanded borders
-across period boundaries and beyond endpoint heads. WebGL parity and Core common-opacity
-normalization remain separate follow-ups.
+Standalone arrows support full-width inside/center/outside strokes with combined
+paint coverage and aligned picking (#604). Center remains the default. Common
+arrow opacity applies once to the completed occurrence, including repeated heads;
+zero opacity preserves geometric picking. Open-head arm geometry is unchanged.
+Repeated heads use their nominal footprint for spacing, phase and endpoint
+admission; invisible borders do not move or remove them. Neighboring head distances
+retain expanded borders across period boundaries and beyond endpoint heads.
+Core alignment and common-opacity normalization remain separate follow-ups;
+WebGL centered composition is already implemented.
+
 Point circle and path programs now resolve existing centered/inward paint
 coverage together. Shared Core opacity/alignment normalization and x/+ arm
 semantics remain separate; tiny path UV-clamping geometry is unchanged.
