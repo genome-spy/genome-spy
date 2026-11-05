@@ -446,6 +446,95 @@ render-target intersection rejection remains an unimplemented candidate, not a
 measured gain. Shared scale ownership/grouping stays in #698. Do not accumulate
 unproven guards, pools or API changes in this PR.
 
+## Frame-local draw handle resolution follow-up
+
+The user authorized another small API-preserving draw-preparation experiment
+after the shared-scale attribution. Keep shared resources in #698 and leave the
+renderer API unchanged.
+
+Surface currently resolves its retained mark and placement set for every
+accepted occurrence. The coarse stress capture submits 531,251 ordinary draws
+over 388 normal renders, plus nine picking replays. Many occurrences share one logical mark and placement
+source. Earlier sampled profiles attribute about 14–15 ms self and 24–27 ms
+inclusive wall time to `prepareDraw`; these are motivation, not predicted CPU
+savings. `getPlacementSet` repeats source snapshot, WeakMap and revision checks
+even when the same paint already resolved that source.
+
+Replace the frame-local `updated` flag with the first accepted prepared draw. On
+that occurrence, perform the existing lazy resource update and
+`surface.prepareDraw`; later occurrences copy the resolved mark and placement
+handles. Reset the reference at every paint/picking replay. All view hooks run
+before submission, placement topology is validated by the existing owner, and
+detached exports compile their own context. This adds no cross-frame validity
+protocol, public input cache, pool, renderer contract or second resource owner.
+Keep live occurrence geometry/ranges and original draw order.
+
+Extend existing context/Surface coverage for multiple accepted occurrences,
+offscreen-first activation, source geometry changes and handle recreation across
+paints/picking. Review the implementation independently. Run focused tests, Core
+types and scoped lint/format; count source size. Compare only the changed
+context module against stacked head `721b33fda` using the existing
+uninstrumented native moderate/stress wheel, pan and closeup driver, alternating
+order and matching source/output/membership/settling checks. Use same-code
+controls if a candidate reaches acceptance. Keep a change only for a repeatable
+useful CPU gain; otherwise restore the simpler original path and record all
+results.
+
+This is unpublished backend work with no release impact or public migration.
+Tentative delivery, if accepted:
+`perf(core): resolve WebGPU draw handles once per paint`.
+
+### Outcome: revert frame-local handle reuse
+
+The trial passes 52 focused context/Surface tests, Core TypeScript, scoped lint
+and formatting. Independent review finds no correctness issue. Production grows
+1,041 -> 1,047 raw lines (+6); rewritten existing tests grow by one raw line and
+assert actual submitted draws/resources instead of per-occurrence preparation
+mock calls. The tests cover replacement handles across ordinary paints and
+picking, plus first-occurrence rejection and reentry.
+
+The native CPU comparison fails the acceptance gate. Four alternating pairs
+after two warmups per version give the following whole renderer-main-thread
+CPU in milliseconds per fixed wheel/pan/closeup trace:
+
+| Scene | Baseline samples (ms) | Candidate samples (ms) | Mean baseline / candidate (ms) | Change |
+| --- | --- | --- | --- | --- |
+| Moderate | 958.214, 997.573, 816.142, 912.100 | 814.638, 932.783, 919.517, 871.650 | 921.007 / 884.647 | -3.95% |
+| Stress | 1026.514, 997.096, 1005.575, 946.516 | 1034.820, 997.206, 991.904, 1049.787 | 993.925 / 1018.429 | +2.47% |
+
+Moderate pairs vary from -14.98% to +12.67%. Stress has three higher candidate
+pairs, with changes +0.81%, +0.01%, -1.36% and +10.91%. This does not establish a
+useful repeatable gain or a proven causal regression. Reject the candidate
+without further acceptance controls; preserve the smaller original path.
+
+All 16 timed traces pass input movement, sample identity/grouping, loading,
+closed-closeup and settling checks. Initial PNGs match byte for byte per scene;
+maximum paired final camera differences are 0.0915%/0.1659% of the span.
+Measurements use native Apple M5 / Metal WebGPU with Chrome 157.0.8103.39,
+Core profiling/samplers/tracing/observers disabled, and only the context module
+isolated against `721b33fda`. They do not measure physical display cadence or
+GPU execution. No tests or concurrent browser diagnostics run during timing.
+
+Artifacts under the upper worktree's ignored
+`output/sample-view-band-benchmark/` use `sampleview-frame-handles-cpu-*`.
+Metadata includes source/served hashes, driver identity, fixture membership,
+input parameters and machine. The rejected production patch is retained as
+`sampleview-frame-handles-trial.patch` alongside the results. Candidate source
+SHA-256 is `be793d932ef5753e98d6708d6c9eb83e37bec609ad5968659ededa2623aaf315`.
+
+Source and test changes are reverted; both worktrees are byte-identical to
+their starting runtime. The renderer API is unchanged. The owned port-4173
+server is stopped and the temporary private-data symlink removed. Only this
+investigation record is retained; no release fragment is needed.
+
+This completes the local optimization investigation for the current PR. Keep
+the previously accepted runtime and stop adding speculative preparation
+shortcuts. Six rejected local experiments total 92 timed native interaction
+traces. The separate [resource-lifetime proposal](../webgpu-resource-lifetimes/webgpu-resource-lifetimes-plan.md)
+and [scale attribution](../webgpu-resource-lifetimes/cpu-attribution-results.md)
+record deferred directions; they do not authorize API implementation or
+establish future CPU gains.
+
 ## Goal and constraints
 
 Reduce CPU work tracking changing shader inputs and preparing their GPU updates,
