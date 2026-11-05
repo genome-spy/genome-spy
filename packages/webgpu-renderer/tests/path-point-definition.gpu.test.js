@@ -56,9 +56,7 @@ test("PathPoint renders and picks an MSDF path with an outline", async ({
     expect(result).toEqual({ center: 7, outside: null });
 });
 
-test("PathPoint keeps inward strokes inside the nominal shape", async ({
-    page,
-}) => {
+test("PathPoint aligns strokes around the nominal shape", async ({ page }) => {
     await ensureWebGPU(page);
 
     const result = await page.evaluate(async () => {
@@ -69,8 +67,8 @@ test("PathPoint keeps inward strokes inside the nominal shape", async ({
                 import("/src/scales/identity.js"),
             ]);
 
-        /** @param {number} inwardStroke */
-        const render = async (inwardStroke) => {
+        /** @param {number} strokeAlign */
+        const render = async (strokeAlign) => {
             const dpr = 2;
             const canvas = document.createElement("canvas");
             canvas.width = 64 * dpr;
@@ -87,7 +85,7 @@ test("PathPoint keeps inward strokes inside the nominal shape", async ({
                     fill: { value: [0.2, 0.4, 0.8, 1] },
                     stroke: { value: [0, 0, 0, 1] },
                     strokeWidth: { value: 4 },
-                    inwardStroke: { value: inwardStroke, type: "u32" },
+                    strokeAlign: { value: strokeAlign, type: "u32" },
                 },
             });
             renderer.render({ draws: [{ mark }] });
@@ -115,11 +113,14 @@ test("PathPoint keeps inward strokes inside the nominal shape", async ({
         };
 
         return {
-            centered: await render(0),
-            inward: await render(1),
+            centered: await render(1),
+            inward: await render(0),
+            outside: await render(2),
         };
     });
 
+    expect(result.outside.inner).toEqual(result.centered.inner);
+    expect(result.outside.outer[0]).toBeLessThan(80);
     expect(result.centered.inner[2]).toBeGreaterThan(150);
     expect(result.inward.inner[2]).toBeLessThan(50);
     expect(result.centered.outer[0]).toBeLessThan(80);
@@ -439,29 +440,38 @@ test("PathPoint bounds thick-stroke pseudo-distances to corner miters", async ({
                 shape: { value: 0 },
                 fill: { value: [0.95, 0.55, 0.2, 1] },
                 stroke: { value: [0, 0, 0, 1] },
-                strokeWidth: { value: 12 },
+                strokeWidth: { value: 12, dynamic: true },
+                strokeAlign: { value: 1, type: "u32", dynamic: true },
                 angle: { value: 45 },
             },
         });
 
-        renderer.render({ draws: [{ mark: handle }] });
-        await renderer.device.queue.onSubmittedWorkDone();
-        const center = await renderer.pick(64, 64);
-        const detached = await Promise.all([
-            renderer.pick(64, 20),
-            renderer.pick(64, 108),
-            renderer.pick(20, 64),
-            renderer.pick(108, 64),
-        ]);
+        const results = [];
+        for (const strokeAlign of [1, 2]) {
+            handle.batchUpdates(() => {
+                handle.values.strokeAlign.set(strokeAlign);
+                handle.values.strokeWidth.set(12 / strokeAlign);
+            });
+            renderer.render({ draws: [{ mark: handle }] });
+            const center = await renderer.pick(64, 64);
+            const detached = await Promise.all([
+                renderer.pick(64, 20),
+                renderer.pick(64, 108),
+                renderer.pick(20, 64),
+                renderer.pick(108, 64),
+            ]);
+            results.push({ center, detached });
+        }
         renderer.destroy();
         canvas.remove();
-        return { center, detached };
+        return results;
     });
 
-    expect(result).toEqual({
-        center: 17,
-        detached: [null, null, null, null],
-    });
+    for (const alignment of result)
+        expect(alignment).toEqual({
+            center: 17,
+            detached: [null, null, null, null],
+        });
 });
 
 test("PathPoint retains symmetric circle coverage near quad boundaries", async ({
@@ -709,10 +719,10 @@ test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
         const cellSize = 32;
         const rows = paths.flatMap((_, shape) =>
             diameters.flatMap((diameter) =>
-                [0, 1].map((inwardStroke) => ({
+                [0, 1, 2].map((strokeAlign) => ({
                     shape,
                     diameter,
-                    inwardStroke,
+                    strokeAlign,
                     angle: (shape * 29 + diameter * 17) % 180,
                 }))
             )
@@ -780,10 +790,10 @@ test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
                         ),
                         type: "f32",
                     },
-                    inwardStroke: {
+                    strokeAlign: {
                         data: Uint32Array.from(
                             instances,
-                            (instance) => instance.inwardStroke
+                            (instance) => instance.strokeAlign
                         ),
                         type: "u32",
                     },

@@ -52,9 +52,11 @@ retain expanded borders across period boundaries and beyond endpoint heads.
 Core alignment and common-opacity normalization remain separate follow-ups;
 WebGL centered composition is already implemented.
 
-Point circle and path programs now resolve existing centered/inward paint
-coverage together. Shared Core opacity/alignment normalization and x/+ arm
-semantics remain separate; tiny path UV-clamping geometry is unchanged.
+Point circle and path programs support the renderer-generic strokeAlign channel
+(0 inside, 1 center, 2 outside), reusing combined paint coverage. Core maps its
+legacy inwardStroke property to 0/1 without exposing new grammar. Path atlas
+width limits, shared Core opacity/alignment normalization and x/+ arm semantics
+remain separate; atlas resources and tiny path UV-clamping geometry are unchanged.
 
 ## Active integration: selection predicate composition
 

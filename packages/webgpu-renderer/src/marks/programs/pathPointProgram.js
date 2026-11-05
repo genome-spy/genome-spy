@@ -49,7 +49,7 @@ struct VSOut {
     @location(5) halfStrokeWidth: f32,
     @location(6) @interpolate(flat) pickId: u32,
     @location(7) @interpolate(flat) devicePixelsPerAtlas: f32,
-    @location(8) @interpolate(flat) inwardStroke: u32,
+    @location(8) @interpolate(flat) strokeAlign: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
 };
@@ -68,7 +68,7 @@ fn culledPoint() -> VSOut {
     out.halfStrokeWidth = 0.0;
     out.pickId = 0u;
     out.devicePixelsPerAtlas = 0.0;
-    out.inwardStroke = 0u;
+    out.strokeAlign = 0u;
     out.gradientStrength = 0.0;
     out.deviceRadius = 0.0;
     return out;
@@ -99,8 +99,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         strokeWidth = 0.0;
     }
     let entry = pathAtlasEntries[shape];
-    let inwardStroke = getScaled_inwardStroke(i);
-    if (pickingEnabled && (strokeWidth <= 0.0 || inwardStroke != 0u)) {
+    let strokeAlign = getScaled_strokeAlign(i);
+    if (pickingEnabled && (strokeWidth <= 0.0 || strokeAlign == 0u)) {
         diameter = max(diameter, 1.0 / globals.dpr);
     }
     if (diameter <= 0.0) {
@@ -113,17 +113,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // The generated field saturates at uSpread. Clamp effects before their AA
     // transition reaches that boundary; otherwise tiny marks with thick
     // strokes sample the saturated tile edge and produce malformed contours.
-    let strokeDistanceMultiplier = select(1.0, 2.0, inwardStroke != 0u);
+    let strokeDistanceMultiplier = max(f32(strokeAlign), 2.0 - f32(strokeAlign));
     let maxHalfStrokeWidth = max(
         params.uSpread * devicePixelsPerAtlas - AA_COVERAGE_RADIUS_PIXELS,
         0.0
     ) / (strokeDistanceMultiplier * globals.dpr);
     let halfStrokeWidth = min(strokeWidth * 0.5, maxHalfStrokeWidth);
-    let outwardStroke = halfStrokeWidth > 0.0 && inwardStroke == 0u;
+    let outwardStroke = halfStrokeWidth > 0.0 && strokeAlign > 0u;
     // The antialiased outer contour is another offset curve, so its radius
     // must use the path-specific miter extent too. Keep the remaining
     // pixel-center and rasterization safety isotropic.
-    let coverageRadius = select(0.0, halfStrokeWidth, outwardStroke) +
+    let coverageRadius = halfStrokeWidth * f32(strokeAlign) +
         AA_COVERAGE_RADIUS_PIXELS / globals.dpr;
     let rasterSafety = select(
         FILL_RASTER_SAFETY_PIXELS,
@@ -143,7 +143,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
     // WebGL enlarges the padded sprite while retaining its local silhouette.
-    let paddedDiameter = diameter + select(strokeWidth, 0.0, inwardStroke != 0u) + 1.0 / globals.dpr;
+    let paddedDiameter = diameter + strokeWidth * f32(strokeAlign) + 1.0 / globals.dpr;
     let pickingScale = select(1.0,
         max(1.0, getScaled_minPickingSize(i) / paddedDiameter), pickingEnabled);
     let screenOffset = rot * localScreen * pickingScale;
@@ -199,7 +199,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.halfStrokeWidth = halfStrokeWidth;
     out.pickId = 0u;
     out.devicePixelsPerAtlas = devicePixelsPerAtlas;
-    out.inwardStroke = inwardStroke;
+    out.strokeAlign = strokeAlign;
     out.gradientStrength = getScaled_gradientStrength(i);
     out.deviceRadius = diameter * globals.dpr * 0.5;
 #if defined(uniqueId_DEFINED)
@@ -227,7 +227,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         in.devicePixelsPerAtlas
     );
     if (pickingEnabled) {
-        if (distance + in.halfStrokeWidth * globals.dpr < 0.0) { discard; }
+        if (distance + in.halfStrokeWidth * globals.dpr * select(1.0, 2.0, in.strokeAlign == 2u) < 0.0) { discard; }
         return vec4<f32>(1.0);
     }
     let shapeCoverage = clamp(distance + 0.5, 0.0, 1.0);
@@ -245,10 +245,11 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     var color = fillColor * shapeCoverage;
     if (in.halfStrokeWidth > 0.0) {
-        let inward = in.inwardStroke != 0u;
         let width = in.halfStrokeWidth * globals.dpr;
-        let innerCoverage = clamp(distance - select(width, 2.0 * width, inward) + 0.5, 0.0, 1.0);
-        let outerCoverage = select(clamp(distance + width + 0.5, 0.0, 1.0), shapeCoverage, inward);
+        let outset = width * f32(in.strokeAlign);
+        let inset = 2.0 * width - outset;
+        let innerCoverage = clamp(distance - inset + 0.5, 0.0, 1.0);
+        let outerCoverage = clamp(distance + outset + 0.5, 0.0, 1.0);
         color = innerCoverage * fillColor
             + (shapeCoverage - innerCoverage) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
             + (outerCoverage - shapeCoverage) * strokeColor;
