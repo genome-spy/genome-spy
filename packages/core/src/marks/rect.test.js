@@ -39,3 +39,16 @@ test("unfilled rectangles keep their fill hidden while common opacity stays inde
     expect(view.mark.encoders.strokeOpacity({})).toBe(1);
     expect(view.mark.encoders.opacity({})).toBe(0.4);
 });
+
+test("filled rectangles keep missing paint opacities independent of common opacity", async () => {
+    const view = await createAndInitialize(
+        {
+            data: { values: [{}] },
+            mark: { type: "rect", opacity: 0.4, stroke: "blue" },
+        },
+        UnitView
+    );
+    expect(view.mark.encoders.fillOpacity({})).toBe(1);
+    expect(view.mark.encoders.strokeOpacity({})).toBe(1);
+    expect(view.mark.encoders.opacity({})).toBe(0.4);
+});
