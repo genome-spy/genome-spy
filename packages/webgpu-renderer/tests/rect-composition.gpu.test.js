@@ -41,6 +41,7 @@ for (const dpr of [1, 2]) {
                     y2: { ...dynamic(48 + 0.5 / dpr), scale: identityScale() },
                     fill: dynamic([1, 0, 0, 1]),
                     stroke: dynamic([0, 0, 1, 0]),
+                    opacity: dynamic(1),
                     fillOpacity: dynamic(1),
                     minWidth: dynamic(0),
                     minHeight: dynamic(0),
@@ -104,6 +105,28 @@ for (const dpr of [1, 2]) {
                     for (const [name, value] of Object.entries(values))
                         mark.values[name].set(value);
                 });
+            const checkOpacity = async (handle) => {
+                const items = [{ mark: handle }];
+                const full = await capture(items);
+                handle.values.opacity.set(0.5);
+                const half = await capture(items);
+                handle.values.opacity.set(0);
+                const zero = await capture(items);
+                const pick = await renderer.pick(32, 32);
+                handle.values.opacity.set(1);
+                const restored = await capture(items);
+                return {
+                    visible: full.some(Boolean),
+                    shadow: pixel(full, 54 * dpr, 32 * dpr)[3],
+                    error: half.reduce(
+                        (m, v, i) => Math.max(m, Math.abs(v - full[i] * 0.5)),
+                        0
+                    ),
+                    zero: zero.some(Boolean),
+                    pick,
+                    restored: restored.every((v, i) => v === full[i]),
+                };
+            };
             try {
                 // Compare the complete nominal shape, not just an interior sample.
                 const transparentErrors = [];
@@ -257,6 +280,33 @@ for (const dpr of [1, 2]) {
                     32 * dpr
                 );
                 set({
+                    fillOpacity: 0.6,
+                    strokeOpacity: 0.5,
+                    hatchPattern: 3,
+                    cornerRadiusTopLeft: 6,
+                    cornerRadiusBottomRight: 6,
+                });
+                const common = await checkOpacity(mark);
+                // Static plain edges retain multisample coverage with dynamic opacity.
+                const plain = renderer.createMark(rectMark, {
+                    count: 1,
+                    channels: {
+                        uniqueId: { value: 19, type: "u32" },
+                        x: { value: 16.25, scale: identityScale() },
+                        x2: { value: 48.25, scale: identityScale() },
+                        y: { value: 16.25, scale: identityScale() },
+                        y2: { value: 48.25, scale: identityScale() },
+                        fill: { value: [1, 0, 0, 0.6] },
+                        strokeWidth: { value: 0 },
+                        opacity: dynamic(1),
+                    },
+                });
+                const plainCommon = await checkOpacity(plain);
+                renderer.destroyMark(plain.markId);
+                set({
+                    hatchPattern: 0,
+                    cornerRadiusTopLeft: 0,
+                    cornerRadiusBottomRight: 0,
                     shadowOpacity: 0,
                     fillOpacity: 1,
                     strokeOpacity: 1,
@@ -290,6 +340,7 @@ for (const dpr of [1, 2]) {
                     );
                     set({ strokeOpacity: 0.5 });
                     aligned.push({
+                        opacityError: (await checkOpacity(mark)).error,
                         transparentError,
                         edge: pixel(await capture(), 32 * dpr, 16 * dpr),
                         picks: [
@@ -354,6 +405,8 @@ for (const dpr of [1, 2]) {
                     envelopeErrors,
                     clippedBorder,
                     fades,
+                    common,
+                    plainCommon,
                     shadowOnly,
                     shadowOverlap,
                     transparentErrors,
@@ -386,6 +439,17 @@ for (const dpr of [1, 2]) {
             [0, 0, 0, 0],
         ]);
         expect(result.cornerPicks).toEqual([null, 7, 7, null]);
+        for (const [common, pick] of [
+            [result.common, 7],
+            [result.plainCommon, 19],
+        ]) {
+            expect(common.visible).toBe(true);
+            expect(common.error).toBeLessThanOrEqual(1);
+            expect(common.zero).toBe(false);
+            expect(common.pick).toBe(pick);
+            expect(common.restored).toBe(true);
+        }
+        expect(result.common.shadow).toBeGreaterThan(0);
         expect(Math.max(...result.transparentErrors)).toBeLessThanOrEqual(2);
         const close = (actual, expected) =>
             actual.forEach((v, i) =>
@@ -434,6 +498,7 @@ for (const dpr of [1, 2]) {
         expect(Math.max(...result.hatchAlignmentErrors)).toBeLessThanOrEqual(1);
         expect(Math.max(...result.envelopeErrors)).toBeLessThanOrEqual(1);
         expect(result.aligned.every((a) => a.transparentError <= 1)).toBe(true);
+        expect(result.aligned.every((a) => a.opacityError <= 1)).toBe(true);
         close(result.oversizedInside, [0, 0, 255, 255]);
         expect(result.clippedBorder).toBeNull();
         close(result.overlap, [128, 128, 0, 255]);
