@@ -214,7 +214,8 @@ void main(void) {
     float cf = hasArea ? distanceToRatio(-fillDistance) : 0.0;
     vec4 paint = cf * vFillColor;
     if (vHalfStrokeWidth > 0.0) {
-        float ci = hasArea ? distanceToRatio(-d - strokeInset) : 0.0;
+        bool hasInner = min(vHalfSizeInPixels.x, vHalfSizeInPixels.y) > strokeInset;
+        float ci = hasInner ? distanceToRatio(-d - strokeInset) : 0.0;
         float co = distanceToRatio(-fillDistance + vStrokeOutset);
         paint = ci * vFillColor
             + (cf - ci) * (vStrokeColor + (1.0 - vStrokeColor.a) * vFillColor)

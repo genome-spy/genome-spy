@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
+import { platform } from "node:os";
 import { expect, test } from "@playwright/test";
 
 const core =
@@ -11,7 +12,9 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
         }) => {
             const browser = await playwright.chromium.launch({
                 args: [
-                    "--use-angle=swiftshader",
+                    renderer === "webgpu" && platform() === "darwin"
+                        ? "--use-angle=metal"
+                        : "--use-angle=swiftshader",
                     "--enable-unsafe-swiftshader",
                     "--enable-unsafe-webgpu",
                     "--ignore-gpu-blocklist",
@@ -35,12 +38,10 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     renderer,
                 });
                 if (result.mismatches.length) {
-                    await test
-                        .info()
-                        .attach("alignment-errors", {
-                            body: JSON.stringify(result),
-                            contentType: "application/json",
-                        });
+                    await test.info().attach("alignment-errors", {
+                        body: JSON.stringify(result),
+                        contentType: "application/json",
+                    });
                     await page.screenshot({
                         path: test.info().outputPath("live.png"),
                         omitBackground: true,
@@ -59,12 +60,201 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     });
                     expect(reuse).toEqual({ live: true, png: true });
                 }
+                {
+                    await page.evaluate(prepareLiveRectangle, {
+                        core,
+                        renderer,
+                    });
+                    try {
+                        for (const align of ["inside", "center", "outside"]) {
+                            await page.evaluate(async (align) => {
+                                globalThis.liveRectApi.params
+                                    .get("align")
+                                    .setValue(align);
+                                await new Promise((resolve) =>
+                                    globalThis.requestAnimationFrame(() =>
+                                        globalThis.requestAnimationFrame(
+                                            resolve
+                                        )
+                                    )
+                                );
+                            }, align);
+                            const colors = await readLiveColors(page, dpr);
+                            const red = [255, 0, 0, 255],
+                                blue = [0, 0, 255, 255],
+                                empty = [0, 0, 0, 0];
+                            expect(colors.slice(0, 7)).toEqual(
+                                align === "inside"
+                                    ? [
+                                          empty,
+                                          empty,
+                                          blue,
+                                          red,
+                                          empty,
+                                          empty,
+                                          empty,
+                                      ]
+                                    : align === "center"
+                                      ? [
+                                            empty,
+                                            blue,
+                                            blue,
+                                            red,
+                                            blue,
+                                            empty,
+                                            empty,
+                                        ]
+                                      : [
+                                            blue,
+                                            blue,
+                                            red,
+                                            red,
+                                            blue,
+                                            blue,
+                                            empty,
+                                        ]
+                            );
+                            const picks = await page.evaluate(async () => {
+                                const view = globalThis.liveRectApi.views.get({
+                                    scope: [],
+                                    view: "live-rect",
+                                });
+                                const result = [];
+                                for (const x of [12, 32, 60])
+                                    result.push(
+                                        (await view.marks.pick({ x, y: 32 }))
+                                            .status
+                                    );
+                                return result;
+                            });
+                            expect(picks).toEqual([
+                                align === "outside" ? "hit" : "empty",
+                                "hit",
+                                "empty",
+                            ]);
+                            if (renderer !== "canvas" && align === "outside")
+                                expect(colors[7][3]).toBe(255);
+                        }
+                        if (renderer !== "canvas") {
+                            await page.evaluate(
+                                async ({ dpr }) => {
+                                    globalThis.liveRectApi.params
+                                        .get("width")
+                                        .setValue(0.25 / dpr);
+                                    globalThis.liveRectApi.params
+                                        .get("left")
+                                        .setValue((15.5 + 0.5 / dpr) / 64);
+                                    await new Promise((resolve) =>
+                                        globalThis.requestAnimationFrame(() =>
+                                            globalThis.requestAnimationFrame(
+                                                resolve
+                                            )
+                                        )
+                                    );
+                                },
+                                { dpr }
+                            );
+                            // Cf=.5, Co=.75: the thin outside band contributes .25 blue coverage.
+                            const thin = (await readLiveColors(page, dpr))[7];
+                            for (const [i, value] of [
+                                170, 0, 85, 191,
+                            ].entries())
+                                expect(
+                                    Math.abs(thin[i] - value)
+                                ).toBeLessThanOrEqual(2);
+                        }
+                    } finally {
+                        await page.evaluate(() =>
+                            globalThis.liveRectApi.finalize()
+                        );
+                    }
+                }
                 expect(errors).toEqual([]);
             } finally {
                 await browser.close();
             }
         });
     }
+}
+
+/** @param {import("@playwright/test").Page} page @param {number} dpr */
+async function readLiveColors(page, dpr) {
+    // Observe the compositor; a Canvas2D copy of a presented WebGPU texture can be empty.
+    const screenshot = await page
+        .locator("#live-rect canvas")
+        .screenshot({ omitBackground: true });
+    return page.evaluate(
+        async ({ encoded, dpr }) => {
+            const blob = await (
+                await globalThis.fetch("data:image/png;base64," + encoded)
+            ).blob();
+            const image = await globalThis.createImageBitmap(blob);
+            const canvas = new globalThis.OffscreenCanvas(
+                image.width,
+                image.height
+            );
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(image, 0, 0);
+            image.close();
+            return [12, 15, 18, 32, 50, 53, 57, 16].map((x) =>
+                Array.from(ctx.getImageData(x * dpr, 32 * dpr, 1, 1).data)
+            );
+        },
+        { encoded: screenshot.toString("base64"), dpr }
+    );
+}
+
+/** @param {{core: string, renderer: string}} options */
+async function prepareLiveRectangle({ core, renderer }) {
+    const { embed } = await import(core + "minimal.js");
+    globalThis.document.body.style.margin = "0";
+    const host = globalThis.document.createElement("div");
+    host.id = "live-rect";
+    host.style.cssText = "width:64px;height:64px";
+    globalThis.document.body.append(host);
+    globalThis.liveRectApi = await embed(
+        host,
+        {
+            name: "live-rect",
+            width: 64,
+            height: 64,
+            padding: 0,
+            config: {
+                background: null,
+                view: { stroke: null, strokeWidth: 0 },
+            },
+            data: { values: [{}] },
+            params: [
+                { name: "align", value: "inside" },
+                { name: "width", value: 6 },
+                { name: "left", value: 0.25 },
+            ],
+            mark: {
+                type: "rect",
+                fill: "red",
+                stroke: "blue",
+                strokeWidth: { expr: "width" },
+                strokeAlign: { expr: "align" },
+                minWidth: 0,
+                minHeight: 0,
+            },
+            encoding: {
+                x: { value: { expr: "left" } },
+                x2: { value: 0.75 },
+                y: { value: 0.25 },
+                y2: { value: 0.75 },
+            },
+        },
+        {
+            renderer,
+            onError: (error) => {
+                throw error;
+            },
+        }
+    );
+    await globalThis.liveRectApi.awaitVisibleLazyData(
+        globalThis.AbortSignal.timeout(10000)
+    );
 }
 
 /** @param {{core: string, dpr: number}} options */
@@ -119,7 +309,7 @@ async function checkScratchReuse({ core, dpr }) {
         const host = globalThis.document.createElement("div");
         host.style.cssText = "width:128px;height:96px";
         globalThis.document.body.append(host);
-        const api = await embed(host, structuredClone(spec), {
+        const api = await embed(host, globalThis.structuredClone(spec), {
             renderer: "canvas",
         });
         try {
@@ -400,6 +590,27 @@ async function checkAlignment({ core, dpr, renderer }) {
                 ctx.drawImage(image, 0, 0);
                 image.close();
                 const png = ctx.getImageData(0, 0, 64 * dpr, 64 * dpr).data;
+                const targets = [
+                    ...(renderer === "webgpu" ? [] : [["live", bytes]]),
+                    ["png", png],
+                ];
+                if (renderer === "canvas") {
+                    const vector = await api.imageExport.svg({
+                        background: null,
+                    });
+                    const url = globalThis.URL.createObjectURL(vector.blob);
+                    const image = new globalThis.Image();
+                    image.src = url;
+                    await image.decode();
+                    ctx.clearRect(0, 0, scratch.width, scratch.height);
+                    ctx.drawImage(image, 0, 0, scratch.width, scratch.height);
+                    globalThis.URL.revokeObjectURL(url);
+                    targets.push([
+                        "svg",
+                        ctx.getImageData(0, 0, scratch.width, scratch.height)
+                            .data,
+                    ]);
+                }
                 const bounds = shape.bounds.slice();
                 if (renderer !== "canvas") {
                     // Core's GPU placements include the existing half-logical-pixel raster offset.
@@ -438,7 +649,9 @@ async function checkAlignment({ core, dpr, renderer }) {
                 );
                 let caseChecked = 0,
                     interiorChecked = 0;
-                const caseErrors = { live: 0, png: 0 },
+                const caseErrors = Object.fromEntries(
+                        targets.map(([target]) => [target, 0])
+                    ),
                     worst = {};
                 for (let py = 0; py < 64 * dpr; py++)
                     for (let px = 0; px < 64 * dpr; px++) {
@@ -471,10 +684,7 @@ async function checkAlignment({ core, dpr, renderer }) {
                             (s + (1 - s) * f) * factor * 255,
                         ];
                         const i = (py * 64 * dpr + px) * 4;
-                        for (const [target, data] of [
-                            ["live", bytes],
-                            ["png", png],
-                        ]) {
+                        for (const [target, data] of targets) {
                             const alpha = data[i + 3];
                             const actual = [
                                 (data[i] * alpha) / 255,
@@ -541,7 +751,28 @@ async function checkAlignment({ core, dpr, renderer }) {
         await settle();
         const overlapOffset =
             (Math.floor(30 * dpr) * canvas.width + Math.floor(31 * dpr)) * 4;
-        const overlap = readCanvas().slice(overlapOffset, overlapOffset + 4);
+        let overlapBytes = readCanvas();
+        if (renderer === "webgpu") {
+            const { blob } = await api.imageExport.raster({
+                pixelRatio: dpr,
+                background: null,
+            });
+            const image = await globalThis.createImageBitmap(blob);
+            const scratch = new globalThis.OffscreenCanvas(
+                image.width,
+                image.height
+            );
+            const context = scratch.getContext("2d");
+            context.drawImage(image, 0, 0);
+            image.close();
+            overlapBytes = context.getImageData(
+                0,
+                0,
+                scratch.width,
+                scratch.height
+            ).data;
+        }
+        const overlap = overlapBytes.slice(overlapOffset, overlapOffset + 4);
         const overlapError = Math.max(
             Math.abs(overlap[0]),
             Math.abs(overlap[1]),

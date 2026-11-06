@@ -125,7 +125,7 @@ export function renderRectSvg(baseMark, options) {
                 fill != "none" &&
                 fillOpacity * fillAlpha(fill) == 1 &&
                 opacityFactor == 1;
-            if (hasOpaqueFill) {
+            if (hasOpaqueFill && instance.strokeOutset === 0) {
                 group.appendChild(shadowElement);
             } else {
                 // Translucent fills would reveal the blurred source inside the
@@ -147,12 +147,7 @@ export function renderRectSvg(baseMark, options) {
         }
         const stroke = toPaintString(encoders.stroke(datum));
         const strokeOpacity = encodeNumber(encoders.strokeOpacity, datum);
-        if (
-            properties.strokeAlign === "center" ||
-            strokeWidth <= 0 ||
-            stroke === "none" ||
-            strokeOpacity <= 0
-        ) {
+        if (strokeWidth <= 0 || stroke === "none" || strokeOpacity <= 0) {
             group.appendChild(
                 createRectElement(x, y, width, height, radii, styles)
             );
