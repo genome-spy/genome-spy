@@ -11,7 +11,6 @@ for (const renderer of ["canvas", "webgl", "webgpu"])
             baseURL,
         }) => {
             const browser = await playwright.chromium.launch({
-                channel: renderer === "webgpu" ? "chrome" : undefined,
                 args: [
                     "--enable-unsafe-webgpu",
                     "--ignore-gpu-blocklist",
@@ -52,10 +51,11 @@ for (const renderer of ["canvas", "webgl", "webgpu"])
                 expect(result.hybridImages).toBe(2);
                 expect(result.allRasterImages).toBe(2);
                 expect(result.clips).toBeGreaterThan(0);
-                expect(result.maxError).toBeLessThanOrEqual(2);
+                expect(result.mismatches).toEqual([]);
                 expect(result.hidden).toBe(true);
                 expect(result.restored).toBe(true);
                 expect(result.pngUnchanged).toBe(true);
+                expect(result.pngInk).toBeGreaterThan(50);
                 expect(errors).toEqual([]);
             } finally {
                 await browser.close();
@@ -258,16 +258,21 @@ async function checkExports({ core, renderer, dpr }) {
                 [0, 255, 0, 38],
             ],
         ];
-        let maxError = 0;
-        for (const result of [vector, hybrid, allRaster])
+        const mismatches = [];
+        for (const [mode, result] of [
+            ["vector", vector],
+            ["hybrid", hybrid],
+            ["all-raster", allRaster],
+        ])
             for (const [x, y, rgba] of probes) {
                 const offset =
                     (Math.floor(y * dpr) * 128 * dpr + Math.floor(x * dpr)) * 4;
-                for (let c = 0; c < 4; c++)
-                    maxError = Math.max(
-                        maxError,
-                        Math.abs(result.pixels[offset + c] - rgba[c])
-                    );
+                const actual = result.pixels.slice(offset, offset + 4);
+                if (
+                    actual.length !== 4 ||
+                    actual.some((value, c) => Math.abs(value - rgba[c]) > 2)
+                )
+                    mismatches.push({ mode, x, y, expected: rgba, actual });
             }
         api.params.get("fade").setValue(0);
         const hidden = (await exportSvg(0)).pixels.every(
@@ -280,14 +285,18 @@ async function checkExports({ core, renderer, dpr }) {
         const pngUnchanged = (await capturePng()).every(
             (value, i) => value === pngBefore[i]
         );
+        const pngInk = pngBefore.filter(
+            (value, i) => i % 4 === 3 && value > 0
+        ).length;
         return {
             pngUnchanged,
+            pngInk,
             vectorImages: vector.document.querySelectorAll("image").length,
             hybridImages: hybrid.document.querySelectorAll("image").length,
             allRasterImages:
                 allRaster.document.querySelectorAll("image").length,
             clips: vector.document.querySelectorAll("clipPath").length,
-            maxError,
+            mismatches,
             hidden,
             restored,
         };
