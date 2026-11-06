@@ -1,6 +1,8 @@
 import { acquireOpacityLayer } from "../canvasOpacityLayer.js";
 import {
     resolveRectProperties,
+    createRectBoundary,
+    setRectBoundary,
     visitRectInstances,
 } from "../../immediate/marks/rect.js";
 import {
@@ -33,9 +35,9 @@ export function renderRectCanvas(baseMark, options) {
     /** @type {string | undefined} */
     let fillStyle;
 
-    /** @type {string | undefined} */
-    let strokeStyle;
     const radii = [0, 0, 0, 0];
+    const outer = createRectBoundary();
+    const inner = createRectBoundary();
     const strokeOpacityIsConstant = encoders.strokeOpacity.constant;
     const constantStroke = getDrawConstantPaint(encoders.stroke, options);
     const hasInvisibleConstantStroke = constantStroke == "none";
@@ -100,12 +102,12 @@ export function renderRectCanvas(baseMark, options) {
                 options.opacityLayers,
                 options.opacityLayerIndex,
                 width,
-                height
+                height,
+                true
             );
             context.setTransform(dpr, 0, 0, dpr, -left, -top);
             opacityFactor = 1;
             fillStyle = undefined;
-            strokeStyle = undefined;
         }
         const rounded =
             properties.hasCornerRadii &&
@@ -113,7 +115,7 @@ export function renderRectCanvas(baseMark, options) {
                 instance.radii.topRight != 0 ||
                 instance.radii.bottomRight != 0 ||
                 instance.radii.bottomLeft != 0);
-        if (rounded && (fillVisible || strokeVisible)) {
+        if (rounded && fillVisible) {
             radii[0] = instance.radii.topLeft;
             radii[1] = instance.radii.topRight;
             radii[2] = instance.radii.bottomRight;
@@ -147,64 +149,37 @@ export function renderRectCanvas(baseMark, options) {
         }
 
         if (strokeVisible) {
-            if (strokeStyle != stroke) {
-                context.strokeStyle = stroke;
-                strokeStyle = stroke;
+            if (fillStyle != stroke) {
+                context.fillStyle = stroke;
+                fillStyle = stroke;
             }
             setAlpha(context, strokeOpacity * opacityFactor);
-            context.lineJoin = rounded ? "round" : "miter";
-            const clipped = properties.strokeAlign !== "center";
-            setLineWidth(context, instance.strokeWidth * (clipped ? 2 : 1));
-            if (clipped) {
-                context.save();
-                context.beginPath();
-                if (properties.strokeAlign === "outside") {
-                    context.rect(
-                        options.visibleBounds.x1,
-                        options.visibleBounds.y1,
-                        options.visibleBounds.x2 - options.visibleBounds.x1,
-                        options.visibleBounds.y2 - options.visibleBounds.y1
-                    );
-                }
-                if (rounded)
-                    context.roundRect(
-                        instance.x,
-                        instance.y,
-                        instance.width,
-                        instance.height,
-                        radii
-                    );
-                else
-                    context.rect(
-                        instance.x,
-                        instance.y,
-                        instance.width,
-                        instance.height
-                    );
-                context.clip(
-                    properties.strokeAlign === "outside" ? "evenodd" : "nonzero"
-                );
-                context.beginPath();
-                if (rounded)
-                    context.roundRect(
-                        instance.x,
-                        instance.y,
-                        instance.width,
-                        instance.height,
-                        radii
-                    );
-            }
-            if (rounded) {
-                context.stroke();
-            } else {
+            if (
+                properties.strokeAlign === "center" &&
+                (instance.width === 0 || instance.height === 0)
+            ) {
+                // Preserve Canvas's existing butt-ended line and empty-point behavior.
+                context.strokeStyle = stroke;
+                context.lineWidth = instance.strokeWidth;
                 context.strokeRect(
                     instance.x,
                     instance.y,
                     instance.width,
                     instance.height
                 );
+            } else {
+                setRectBoundary(outer, instance, instance.strokeOutset);
+                setRectBoundary(
+                    inner,
+                    instance,
+                    instance.strokeOutset - instance.strokeWidth
+                );
+                context.beginPath();
+                appendBoundary(context, outer, radii);
+                if (inner.width > 0 && inner.height > 0)
+                    appendBoundary(context, inner, radii);
+                context.fill("evenodd");
             }
-            if (clipped) context.restore();
         }
         if (isolated) {
             const source = context.canvas;
@@ -224,7 +199,6 @@ export function renderRectCanvas(baseMark, options) {
             );
             context.restore();
             fillStyle = undefined;
-            strokeStyle = undefined;
         }
     });
 }
@@ -286,9 +260,21 @@ function setAlpha(context, value) {
     }
 }
 
-/** @param {CanvasRenderingContext2D} context @param {number} value */
-function setLineWidth(context, value) {
-    if (context.lineWidth != value) {
-        context.lineWidth = value;
+/**
+ * @param {CanvasRenderingContext2D} context
+ * @param {import("../../immediate/marks/rect.js").RectBoundary} boundary
+ * @param {number[]} radii Reused native corner arguments.
+ */
+function appendBoundary(context, boundary, radii) {
+    const { x, y, width, height } = boundary;
+    const r = boundary.radii;
+    if (r.topLeft || r.topRight || r.bottomRight || r.bottomLeft) {
+        radii[0] = r.topLeft;
+        radii[1] = r.topRight;
+        radii[2] = r.bottomRight;
+        radii[3] = r.bottomLeft;
+        context.roundRect(x, y, width, height, radii);
+    } else {
+        context.rect(x, y, width, height);
     }
 }

@@ -9,9 +9,15 @@ const MAX_RETAINED_OPACITY_LAYER_PIXELS = 16_777_216;
  * @param {number} index
  * @param {number} width
  * @param {number} height
+ * @param {boolean} [reuseLarger] Caller copies only the requested source region.
  */
-export function acquireOpacityLayer(layers, index, width, height) {
-    const pixelCount = width * height;
+export function acquireOpacityLayer(
+    layers,
+    index,
+    width,
+    height,
+    reuseLarger = false
+) {
     let context = layers[index];
     const retainedWithoutLayer = layers.reduce(
         (sum, retained, retainedIndex) =>
@@ -20,9 +26,23 @@ export function acquireOpacityLayer(layers, index, width, height) {
                 : sum + retained.canvas.width * retained.canvas.height,
         0
     );
+    let canvasWidth = width;
+    let canvasHeight = height;
+    if (reuseLarger && context) {
+        const capacityWidth = Math.max(width, context.canvas.width);
+        const capacityHeight = Math.max(height, context.canvas.height);
+        if (
+            retainedWithoutLayer + capacityWidth * capacityHeight <=
+            MAX_RETAINED_OPACITY_LAYER_PIXELS
+        ) {
+            canvasWidth = capacityWidth;
+            canvasHeight = capacityHeight;
+        }
+    }
     const retain =
         index < MAX_RETAINED_OPACITY_LAYERS &&
-        retainedWithoutLayer + pixelCount <= MAX_RETAINED_OPACITY_LAYER_PIXELS;
+        retainedWithoutLayer + canvasWidth * canvasHeight <=
+            MAX_RETAINED_OPACITY_LAYER_PIXELS;
 
     if (!context || !retain) {
         const canvas = document.createElement("canvas");
@@ -35,9 +55,12 @@ export function acquireOpacityLayer(layers, index, width, height) {
         }
     }
 
-    if (context.canvas.width != width || context.canvas.height != height) {
-        context.canvas.width = width;
-        context.canvas.height = height;
+    if (
+        context.canvas.width != canvasWidth ||
+        context.canvas.height != canvasHeight
+    ) {
+        context.canvas.width = canvasWidth;
+        context.canvas.height = canvasHeight;
     } else {
         context.resetTransform();
         context.clearRect(0, 0, width, height);

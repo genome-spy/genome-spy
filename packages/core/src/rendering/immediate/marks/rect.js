@@ -108,6 +108,49 @@ export function resolveRectProperties(mark) {
 }
 
 /**
+ * @typedef {object} RectBoundary
+ * @prop {number} x
+ * @prop {number} y
+ * @prop {number} width
+ * @prop {number} height
+ * @prop {CornerRadii} radii
+ */
+
+/** @returns {RectBoundary} */
+export function createRectBoundary() {
+    return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        radii: { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 },
+    };
+}
+
+/**
+ * Offsets the resolved nominal boundary. A consumed interior has zero area;
+ * painters must omit its contour rather than stroke a collapsed centerline.
+ *
+ * @param {RectBoundary} target Caller-owned scratch geometry.
+ * @param {RectInstance} instance
+ * @param {number} offset Positive outwards, negative inwards.
+ */
+export function setRectBoundary(target, instance, offset) {
+    target.x = instance.x - offset;
+    target.y = instance.y - offset;
+    target.width = Math.max(0, instance.width + offset * 2);
+    target.height = Math.max(0, instance.height + offset * 2);
+    const r = instance.radii;
+    const rounded = !hasZeroCornerRadii(r);
+    target.radii.topLeft = rounded ? Math.max(0, r.topLeft + offset) : 0;
+    target.radii.topRight = rounded ? Math.max(0, r.topRight + offset) : 0;
+    target.radii.bottomRight = rounded
+        ? Math.max(0, r.bottomRight + offset)
+        : 0;
+    target.radii.bottomLeft = rounded ? Math.max(0, r.bottomLeft + offset) : 0;
+}
+
+/**
  * Visits visible rectangle instances using one mutable record. The visitor
  * must consume each record synchronously and must not retain it.
  *
