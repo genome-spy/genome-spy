@@ -1,9 +1,9 @@
 import { fileURLToPath, URL } from "node:url";
 import process from "node:process";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "playwright/test";
 
 const coreSource =
-    "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
+    "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 for (const renderer of ["canvas", "webgl", "webgpu"])
     for (const dpr of [1, 2]) {
         test(`${renderer} text fill opacity at DPR ${dpr}`, async ({
@@ -171,7 +171,7 @@ async function verifyTextOpacity({ coreSource, renderer, dpr }) {
         await api.awaitVisibleLazyData(globalThis.AbortSignal.timeout(10000));
         apps.push({ api, host, reference });
     }
-    /** @param {import("../../core/src/types/embedApi.js").EmbedResult} api */
+    /** @param {import("../src/types/embedApi.js").EmbedResult} api */
     async function capture(api) {
         const { blob } = await api.imageExport.raster({
             pixelRatio: dpr,
