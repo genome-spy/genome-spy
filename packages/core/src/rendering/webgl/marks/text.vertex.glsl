@@ -105,7 +105,7 @@ ivec2 fixAlignForAngle(ivec2 align, float angleInDegrees) {
 void main(void) {
 #pragma orderGuard
 
-    float opacity = getScaled_opacity() * uViewOpacity;
+    float opacity = getScaled_opacity() * getScaled_fillOpacity() * uViewOpacity;
     vec2 size = vec2(getScaled_size());
     float x = getScaled_x() + getScaled_xOffset() / uViewportSize.x;
 #ifdef CLAMP_X

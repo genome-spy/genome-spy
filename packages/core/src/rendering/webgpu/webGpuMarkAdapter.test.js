@@ -599,10 +599,10 @@ describe("WebGPU mark adapter", () => {
         ]);
     });
 
-    test("passes the prepared custom outline to the renderer", () => {
+    test("forwards independent text paint factors and the prepared outline", () => {
         const mark = createMark(
             "text",
-            [{ label: "A" }],
+            [{ label: "A", alpha: 0.4 }],
             {
                 x: createConstantEncoder(0),
                 y: createConstantEncoder(0),
@@ -612,7 +612,8 @@ describe("WebGPU mark adapter", () => {
                 xOffset: createConstantEncoder(0),
                 yOffset: createConstantEncoder(0),
                 fill: createConstantEncoder("black"),
-                opacity: createConstantEncoder(1),
+                opacity: createConstantEncoder(0.5),
+                fillOpacity: createEncoder((datum) => datum.alpha),
             },
             {
                 font: "Test Sans",
@@ -634,7 +635,8 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(
             mark,
             /** @type {any} */ ({}),
-            Rectangle.ZERO
+            Rectangle.ZERO,
+            0.25
         );
         if (!translated) {
             throw new Error("Expected a translated text mark.");
@@ -644,6 +646,10 @@ describe("WebGPU mark adapter", () => {
             font: outlineFont,
             fontStyle: "italic",
             fontWeight: 700,
+            channels: {
+                opacity: { value: 0.125 },
+                fillOpacity: { data: new Float32Array([0.4]) },
+            },
         });
     });
 
@@ -2464,7 +2470,9 @@ function createMark(type, data, encoders, properties = {}) {
                     strokeWidth: createConstantEncoder(0),
                     strokeOpacity: createConstantEncoder(1),
                 }
-              : {};
+              : type == "text"
+                ? { fillOpacity: createConstantEncoder(1) }
+                : {};
     /** @type {Record<"configuration" | "resources", number>} */
     const revisions = { configuration: 0, resources: 0 };
     return /** @type {import("../../marks/mark.js").default} */ (

@@ -63,6 +63,7 @@ export default class WebGLTextMark extends WebGLMark {
             "fill",
             "size",
             "opacity",
+            "fillOpacity",
             "angle",
         ];
     }

@@ -4,6 +4,7 @@ import {
 } from "../../immediate/marks/text.js";
 import { createSvgElement } from "../svgElement.js";
 import {
+    encodeNumber,
     resolveMarkProperty,
     toPaintString,
 } from "../../immediate/markEncoding.js";
@@ -42,11 +43,20 @@ export function renderTextSvg(baseMark, options) {
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
+    const encodeOpacity = Object.assign(
+        (/** @type {object} */ datum) =>
+            encodeNumber(encoders.opacity, datum) *
+            encodeNumber(encoders.fillOpacity, datum) *
+            viewOpacity,
+        {
+            constant:
+                encoders.opacity.constant && encoders.fillOpacity.constant,
+        }
+    );
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
-            encoder: encoders.opacity,
-            transform: (value) => +value * viewOpacity,
+            encoder: encodeOpacity,
         },
         "font-size": {
             encoder: encoders.size,

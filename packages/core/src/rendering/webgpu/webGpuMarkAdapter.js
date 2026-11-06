@@ -934,6 +934,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
             },
             fill: createColorChannel(mark, "fill", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
         },
         font: outlineFont,
         fontStyle: readProperty(mark, "fontStyle"),
