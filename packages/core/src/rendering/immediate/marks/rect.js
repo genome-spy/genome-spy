@@ -150,6 +150,26 @@ export function setRectBoundary(target, instance, offset) {
     target.radii.bottomLeft = rounded ? Math.max(0, r.bottomLeft + offset) : 0;
 }
 
+/** @param {number} x @param {number} y @param {RectBoundary} boundary */
+export function containsRectBoundary(x, y, boundary) {
+    const px = x - boundary.x - boundary.width / 2;
+    const py = y - boundary.y - boundary.height / 2;
+    const r = boundary.radii;
+    const radius =
+        px > 0
+            ? py > 0
+                ? r.bottomRight
+                : r.topRight
+            : py > 0
+              ? r.bottomLeft
+              : r.topLeft;
+    if (Math.abs(px) > boundary.width / 2 || Math.abs(py) > boundary.height / 2)
+        return false;
+    const dx = Math.max(0, Math.abs(px) - boundary.width / 2 + radius);
+    const dy = Math.max(0, Math.abs(py) - boundary.height / 2 + radius);
+    return dx * dx + dy * dy <= radius * radius;
+}
+
 /**
  * Visits visible rectangle instances using one mutable record. The visitor
  * must consume each record synchronously and must not retain it.

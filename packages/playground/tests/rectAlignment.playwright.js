@@ -3,40 +3,68 @@ import { expect, test } from "@playwright/test";
 
 const core =
     "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
-for (const dpr of [1, 2]) {
-    test(`Canvas rectangle alignment at DPR ${dpr}`, async ({
-        playwright,
-        baseURL,
-    }) => {
-        const browser = await playwright.chromium.launch({
-            args: [
-                "--use-angle=swiftshader",
-                "--enable-unsafe-swiftshader",
-                `--force-device-scale-factor=${dpr}`,
-            ],
+for (const renderer of ["canvas", "webgl", "webgpu"]) {
+    for (const dpr of [1, 2]) {
+        test(`${renderer} rectangle alignment at DPR ${dpr}`, async ({
+            playwright,
+            baseURL,
+        }) => {
+            const browser = await playwright.chromium.launch({
+                args: [
+                    "--use-angle=swiftshader",
+                    "--enable-unsafe-swiftshader",
+                    "--enable-unsafe-webgpu",
+                    "--ignore-gpu-blocklist",
+                    `--force-device-scale-factor=${dpr}`,
+                ],
+            });
+            try {
+                const page = await browser.newPage({ deviceScaleFactor: dpr });
+                const errors = [];
+                page.on("pageerror", (error) => errors.push(error.message));
+                await page.route("**/rect-alignment", (route) =>
+                    route.fulfill({
+                        contentType: "text/html",
+                        body: "<body></body>",
+                    })
+                );
+                await page.goto(new URL("/rect-alignment", baseURL).href);
+                const result = await page.evaluate(checkAlignment, {
+                    core,
+                    dpr,
+                    renderer,
+                });
+                if (result.mismatches.length) {
+                    await test
+                        .info()
+                        .attach("alignment-errors", {
+                            body: JSON.stringify(result),
+                            contentType: "application/json",
+                        });
+                    await page.screenshot({
+                        path: test.info().outputPath("live.png"),
+                        omitBackground: true,
+                    });
+                }
+                expect(
+                    result.mismatches.length,
+                    JSON.stringify(result.mismatches.slice(0, 2))
+                ).toBe(0);
+                expect(result.checked).toBeGreaterThan(10000);
+                expect(result.overlapError).toBeLessThanOrEqual(2);
+                if (renderer === "canvas") {
+                    const reuse = await page.evaluate(checkScratchReuse, {
+                        core,
+                        dpr,
+                    });
+                    expect(reuse).toEqual({ live: true, png: true });
+                }
+                expect(errors).toEqual([]);
+            } finally {
+                await browser.close();
+            }
         });
-        try {
-            const page = await browser.newPage({ deviceScaleFactor: dpr });
-            const errors = [];
-            page.on("pageerror", (error) => errors.push(error.message));
-            await page.route("**/rect-alignment", (route) =>
-                route.fulfill({
-                    contentType: "text/html",
-                    body: "<body></body>",
-                })
-            );
-            await page.goto(new URL("/rect-alignment", baseURL).href);
-            const result = await page.evaluate(checkAlignment, { core, dpr });
-            expect(result.mismatches).toEqual([]);
-            expect(result.checked).toBeGreaterThan(10000);
-            expect(result.overlapError).toBeLessThanOrEqual(2);
-            const reuse = await page.evaluate(checkScratchReuse, { core, dpr });
-            expect(reuse).toEqual({ live: true, png: true });
-            expect(errors).toEqual([]);
-        } finally {
-            await browser.close();
-        }
-    });
+    }
 }
 
 /** @param {{core: string, dpr: number}} options */
@@ -148,10 +176,34 @@ async function checkScratchReuse({ core, dpr }) {
     );
 }
 
-/** @param {{core: string, dpr: number}} options */
-async function checkAlignment({ core, dpr }) {
+/** @param {{core: string, dpr: number, renderer: string}} options */
+async function checkAlignment({ core, dpr, renderer }) {
     const { embed } = await import(core + "minimal.js");
-    await import(core + "rendering/registerCanvas.js");
+    await import(
+        core +
+            {
+                canvas: "rendering/registerCanvas.js",
+                webgl: "rendering/registerWebGL.js",
+                webgpu: "rendering/webgpu/register.js",
+            }[renderer]
+    );
+    await import(core + "rendering/registerSvg.js");
+    // Preserve the real live WebGL framebuffer for observation after frame completion.
+    const original = globalThis.HTMLCanvasElement.prototype.getContext;
+    if (renderer === "webgl") {
+        globalThis.HTMLCanvasElement.prototype.getContext = function (
+            type,
+            options
+        ) {
+            return original.call(
+                this,
+                type,
+                type === "webgl2"
+                    ? { ...options, preserveDrawingBuffer: true }
+                    : options
+            );
+        };
+    }
     const host = globalThis.document.createElement("div");
     host.style.cssText = "width:64px;height:64px";
     globalThis.document.body.append(host);
@@ -213,7 +265,7 @@ async function checkAlignment({ core, dpr }) {
             },
         },
         {
-            renderer: "canvas",
+            renderer,
             onError: (error) => {
                 throw error;
             },
@@ -221,8 +273,15 @@ async function checkAlignment({ core, dpr }) {
     );
     try {
         await api.awaitVisibleLazyData(globalThis.AbortSignal.timeout(10000));
-        const canvas = host.querySelector("canvas"),
-            context = canvas.getContext("2d");
+        const canvas = host.querySelector("canvas");
+        const readCanvas = () => {
+            const scratch = globalThis.document.createElement("canvas");
+            scratch.width = canvas.width;
+            scratch.height = canvas.height;
+            const context = scratch.getContext("2d");
+            context.drawImage(canvas, 0, 0);
+            return context.getImageData(0, 0, canvas.width, canvas.height).data;
+        };
         const settle = () =>
             new Promise((resolve) =>
                 globalThis.requestAnimationFrame(() =>
@@ -243,9 +302,7 @@ async function checkAlignment({ core, dpr }) {
                 },
             ]);
             await settle();
-            return Array.from(
-                context.getImageData(0, 0, 64 * dpr, 64 * dpr).data
-            );
+            return readCanvas();
         }
         let checked = 0;
         const mismatches = [];
@@ -344,6 +401,11 @@ async function checkAlignment({ core, dpr }) {
                 image.close();
                 const png = ctx.getImageData(0, 0, 64 * dpr, 64 * dpr).data;
                 const bounds = shape.bounds.slice();
+                if (renderer !== "canvas") {
+                    // Core's GPU placements include the existing half-logical-pixel raster offset.
+                    bounds[0] += 0.5;
+                    bounds[1] += 0.5;
+                }
                 const factor = shape.minimum
                     ? Math.min(1, bounds[2] / shape.minimum)
                     : 1;
@@ -477,12 +539,9 @@ async function checkAlignment({ core, dpr }) {
             },
         ]);
         await settle();
-        const overlap = context.getImageData(
-            Math.floor(31 * dpr),
-            Math.floor(30 * dpr),
-            1,
-            1
-        ).data;
+        const overlapOffset =
+            (Math.floor(30 * dpr) * canvas.width + Math.floor(31 * dpr)) * 4;
+        const overlap = readCanvas().slice(overlapOffset, overlapOffset + 4);
         const overlapError = Math.max(
             Math.abs(overlap[0]),
             Math.abs(overlap[1]),
@@ -492,6 +551,7 @@ async function checkAlignment({ core, dpr }) {
         return { checked, mismatches, overlapError };
     } finally {
         api.finalize();
+        globalThis.HTMLCanvasElement.prototype.getContext = original;
         host.remove();
     }
 

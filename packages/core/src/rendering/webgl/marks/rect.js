@@ -118,6 +118,11 @@ export default class WebGLRectMark extends WebGLMark {
         this.registerMarkUniformValue("uMinHeight", props.minHeight);
         this.registerMarkUniformValue("uMinOpacity", props.minOpacity);
         this.registerMarkUniformValue(
+            "uStrokeAlign",
+            props.strokeAlign,
+            (align) => ["inside", "center", "outside"].indexOf(align)
+        );
+        this.registerMarkUniformValue(
             "uCornerRadiusTopRight",
             props.cornerRadiusTopRight ?? props.cornerRadius ?? 0
         );

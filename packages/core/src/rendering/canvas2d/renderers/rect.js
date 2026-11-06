@@ -48,7 +48,7 @@ export function renderRectCanvas(baseMark, options) {
 
     return visitRectInstances(mark, properties, options, (instance) => {
         if (properties.shadow.opacity > 0) {
-            drawShadow(instance, properties.shadow, options, radii);
+            drawShadow(instance, properties.shadow, options, outer, radii);
         }
         let opacityFactor = instance.opacityFactor;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
@@ -210,19 +210,12 @@ export function renderRectCanvas(baseMark, options) {
  * @param {import("../../immediate/marks/rect.js").RectInstance} instance
  * @param {import("../../immediate/marks/rect.js").ResolvedRectProperties["shadow"]} shadow
  * @param {import("./index.js").CanvasMarkRenderingOptions} options
+ * @param {import("../../immediate/marks/rect.js").RectBoundary} outer
  * @param {number[]} radii Reused scratch space for the expanded corner radii.
  */
-function drawShadow(instance, shadow, options, radii) {
+function drawShadow(instance, shadow, options, outer, radii) {
     const { context, devicePixelRatio, visibleBounds } = options;
-    const padding = instance.strokeOutset;
-    const x = instance.x - padding;
-    const y = instance.y - padding;
-    const width = instance.width + padding * 2;
-    const height = instance.height + padding * 2;
-    radii[0] = instance.radii.topLeft + padding;
-    radii[1] = instance.radii.topRight + padding;
-    radii[2] = instance.radii.bottomRight + padding;
-    radii[3] = instance.radii.bottomLeft + padding;
+    setRectBoundary(outer, instance, instance.strokeOutset);
 
     context.save();
     try {
@@ -233,7 +226,7 @@ function drawShadow(instance, shadow, options, radii) {
             visibleBounds.x2 - visibleBounds.x1,
             visibleBounds.y2 - visibleBounds.y1
         );
-        context.roundRect(x, y, width, height, radii);
+        appendBoundary(context, outer, radii);
         context.clip("evenodd");
 
         // Canvas shadow lengths ignore the current transform. Its blur uses
@@ -246,7 +239,7 @@ function drawShadow(instance, shadow, options, radii) {
         context.globalAlpha = shadow.opacity * options.viewOpacity;
         context.fillStyle = "black";
         context.beginPath();
-        context.roundRect(x, y, width, height, radii);
+        appendBoundary(context, outer, radii);
         context.fill();
     } finally {
         context.restore();

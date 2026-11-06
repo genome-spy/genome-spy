@@ -21,6 +21,9 @@ import {
 } from "../../../immediate/marks/point.js";
 import {
     resolveRectProperties,
+    createRectBoundary,
+    setRectBoundary,
+    containsRectBoundary,
     visitRectInstances,
 } from "../../../immediate/marks/rect.js";
 import {
@@ -145,19 +148,37 @@ function renderRect(baseMark, options) {
     const mark = /** @type {import("../../../../marks/rect.js").default} */ (
         baseMark
     );
-    return visitRectInstances(
-        mark,
-        resolveRectProperties(mark),
-        options,
-        (instance) =>
+    const properties = resolveRectProperties(mark);
+    const outer = createRectBoundary();
+    /** @param {number} x @param {number} y */
+    const contains = (x, y) => containsRectBoundary(x, y, outer);
+    return visitRectInstances(mark, properties, options, (instance) => {
+        if (
+            properties.strokeAlign === "center" &&
+            (instance.width === 0 || instance.height === 0)
+        )
+            return;
+        const id = getPickingId(mark, instance.datum);
+        setRectBoundary(outer, instance, instance.strokeOutset);
+        // Retain conservative nominal-interior picking, including rounded corners.
+        if (properties.hasCornerRadii) {
             options.rasterizer.fillRect(
-                getPickingId(mark, instance.datum),
+                id,
                 instance.x,
                 instance.y,
                 instance.width,
                 instance.height
-            )
-    );
+            );
+        }
+        options.rasterizer.fillRect(
+            id,
+            outer.x,
+            outer.y,
+            outer.width,
+            outer.height,
+            properties.hasCornerRadii ? contains : undefined
+        );
+    });
 }
 
 /**

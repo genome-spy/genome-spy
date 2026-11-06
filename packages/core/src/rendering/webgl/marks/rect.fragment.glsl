@@ -8,6 +8,7 @@ flat in lowp vec4 vFillColor;
 flat in float vOpacityFactor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
+flat in float vStrokeOutset;
 flat in vec4 vCornerRadii;
 
 out lowp vec4 fragColor;
@@ -171,10 +172,17 @@ void main(void) {
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
 #ifdef ROUNDED_CORNERS
     // Distance from rectangle's edge in pixels. Negative inside the rectangle.
-    float d = sdRoundedBox(vPosInPixels, vHalfSizeInPixels, vCornerRadii);
+    float d = all(lessThanEqual(vCornerRadii, vec4(0.0)))
+        ? sdSharpBox(vPosInPixels, vHalfSizeInPixels)
+        : sdRoundedBox(vPosInPixels, vHalfSizeInPixels, vCornerRadii);
 #else
     float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
 #endif
+    if (uPickingEnabled) {
+        if (d >= vStrokeOutset) { discard; }
+        fragColor = vPickingColor;
+        return;
+    }
 
     vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
 
@@ -183,13 +191,13 @@ void main(void) {
 
     float shadow = 0.0;
     // Only calculate shadow for the region outside the stroke.
-    if (d >= vHalfStrokeWidth - 1.0 && uShadowOpacity > 0.0) {
+    if (d >= vStrokeOutset - 1.0 && uShadowOpacity > 0.0) {
         shadow = roundedBoxShadow(
-            -vHalfSizeInPixels - vHalfStrokeWidth,
-            vHalfSizeInPixels + vHalfStrokeWidth,
+            -vHalfSizeInPixels - vStrokeOutset,
+            vHalfSizeInPixels + vStrokeOutset,
             vPosInPixels - vec2(uShadowOffsetX, -uShadowOffsetY),
             max(uShadowBlur / 2.5, 0.25),
-            maxCornerRadius + vHalfStrokeWidth
+            maxCornerRadius > 0.0 ? maxCornerRadius + vStrokeOutset : 0.0
         ) * uShadowOpacity * uViewOpacity;
     }
     backgroundColor = premultiplyColor(uShadowColor, shadow);
@@ -197,15 +205,17 @@ void main(void) {
 
     // Hatches change the stroke band, not the nominal fill beneath it.
     float fillDistance = d;
+    float strokeInset = vHalfStrokeWidth * 2.0 - vStrokeOutset;
     if (vHalfStrokeWidth > 0.0 && uHatchPattern > 0) {
-        d = max(d, -pattern());
+        d = max(d, vHalfStrokeWidth - strokeInset - pattern());
     }
 
-    float cf = distanceToRatio(-fillDistance);
+    bool hasArea = all(greaterThan(vHalfSizeInPixels, vec2(0.0)));
+    float cf = hasArea ? distanceToRatio(-fillDistance) : 0.0;
     vec4 paint = cf * vFillColor;
     if (vHalfStrokeWidth > 0.0) {
-        float ci = distanceToRatio(-d - vHalfStrokeWidth);
-        float co = distanceToRatio(-fillDistance + vHalfStrokeWidth);
+        float ci = hasArea ? distanceToRatio(-d - strokeInset) : 0.0;
+        float co = distanceToRatio(-fillDistance + vStrokeOutset);
         paint = ci * vFillColor
             + (cf - ci) * (vStrokeColor + (1.0 - vStrokeColor.a) * vFillColor)
             + (co - cf) * vStrokeColor;
@@ -213,11 +223,7 @@ void main(void) {
     paint *= vOpacityFactor;
     fragColor = paint + (1.0 - paint.a) * backgroundColor;
 
-    if (uPickingEnabled) {
-        if (d < vHalfStrokeWidth) {
-            fragColor = vPickingColor;
-        }
-    } else if (fragColor.a == 0.0) {
+    if (fragColor.a == 0.0) {
         discard;
     }
 #else
