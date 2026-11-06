@@ -47,10 +47,14 @@ export function renderRectCanvas(baseMark, options) {
             : 0;
 
     return visitRectInstances(mark, properties, options, (instance) => {
-        if (properties.shadow.opacity > 0) {
-            drawShadow(instance, properties.shadow, options, outer, radii);
-        }
-        let opacityFactor = instance.opacityFactor;
+        const occurrenceIsolated =
+            properties.shadow.opacity > 0 &&
+            instance.opacity > 0 &&
+            instance.opacity < 1;
+        const foregroundOpacity =
+            instance.opacityFactor *
+            (occurrenceIsolated ? 1 : instance.opacity);
+        let opacityFactor = foregroundOpacity;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
         const stroke =
             constantStroke ?? toPaintString(encoders.stroke(instance.datum));
@@ -75,8 +79,18 @@ export function renderRectCanvas(baseMark, options) {
             top = 0,
             width = 0,
             height = 0;
-        if (isolated) {
-            const pad = instance.strokeOutset + 1 / dpr;
+        if (isolated || occurrenceIsolated) {
+            const shadow = properties.shadow;
+            const pad =
+                instance.strokeOutset +
+                1 / dpr +
+                (occurrenceIsolated
+                    ? shadow.blur +
+                      Math.max(
+                          Math.abs(shadow.offsetX),
+                          Math.abs(shadow.offsetY)
+                      )
+                    : 0);
             left = Math.floor(
                 Math.max(options.visibleBounds.x1, instance.x - pad) * dpr
             );
@@ -106,8 +120,32 @@ export function renderRectCanvas(baseMark, options) {
                 true
             );
             context.setTransform(dpr, 0, 0, dpr, -left, -top);
-            opacityFactor = 1;
             fillStyle = undefined;
+        }
+        if (properties.shadow.opacity > 0) {
+            drawShadow(
+                instance,
+                properties.shadow,
+                options,
+                occurrenceIsolated ? context : parent,
+                outer,
+                radii,
+                occurrenceIsolated ? 1 : instance.opacity
+            );
+        }
+        const foregroundParent = occurrenceIsolated ? context : parent;
+        if (isolated) {
+            if (occurrenceIsolated) {
+                context = acquireOpacityLayer(
+                    options.opacityLayers,
+                    options.opacityLayerIndex + 1,
+                    width,
+                    height,
+                    true
+                );
+                context.setTransform(dpr, 0, 0, dpr, -left, -top);
+            }
+            opacityFactor = 1;
         }
         const rounded =
             properties.hasCornerRadii &&
@@ -183,9 +221,28 @@ export function renderRectCanvas(baseMark, options) {
         }
         if (isolated) {
             const source = context.canvas;
+            context = foregroundParent;
+            context.save();
+            context.globalAlpha = foregroundOpacity;
+            context.drawImage(
+                source,
+                0,
+                0,
+                width,
+                height,
+                left / dpr,
+                top / dpr,
+                width / dpr,
+                height / dpr
+            );
+            context.restore();
+            fillStyle = undefined;
+        }
+        if (occurrenceIsolated) {
+            const source = context.canvas;
             context = parent;
             context.save();
-            context.globalAlpha = instance.opacityFactor;
+            context.globalAlpha = instance.opacity;
             context.drawImage(
                 source,
                 0,
@@ -210,11 +267,13 @@ export function renderRectCanvas(baseMark, options) {
  * @param {import("../../immediate/marks/rect.js").RectInstance} instance
  * @param {import("../../immediate/marks/rect.js").ResolvedRectProperties["shadow"]} shadow
  * @param {import("./index.js").CanvasMarkRenderingOptions} options
+ * @param {CanvasRenderingContext2D} context
  * @param {import("../../immediate/marks/rect.js").RectBoundary} outer
  * @param {number[]} radii Reused scratch space for the expanded corner radii.
+ * @param {number} opacity
  */
-function drawShadow(instance, shadow, options, outer, radii) {
-    const { context, devicePixelRatio, visibleBounds } = options;
+function drawShadow(instance, shadow, options, context, outer, radii, opacity) {
+    const { devicePixelRatio, visibleBounds } = options;
     setRectBoundary(outer, instance, instance.strokeOutset);
 
     context.save();
@@ -236,7 +295,7 @@ function drawShadow(instance, shadow, options, outer, radii) {
         context.shadowOffsetX = shadow.offsetX * devicePixelRatio;
         context.shadowOffsetY = shadow.offsetY * devicePixelRatio;
         context.shadowColor = shadow.color;
-        context.globalAlpha = shadow.opacity * options.viewOpacity;
+        context.globalAlpha = shadow.opacity * options.viewOpacity * opacity;
         context.fillStyle = "black";
         context.beginPath();
         appendBoundary(context, outer, radii);

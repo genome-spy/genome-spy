@@ -6,6 +6,7 @@ flat in vec2 vHalfSizeInPixels;
 
 flat in lowp vec4 vFillColor;
 flat in float vOpacityFactor;
+flat in float vOpacity;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
 flat in float vStrokeOutset;
@@ -223,14 +224,14 @@ void main(void) {
             + (co - cf) * vStrokeColor;
     }
     paint *= vOpacityFactor;
-    fragColor = paint + (1.0 - paint.a) * backgroundColor;
+    fragColor = (paint + (1.0 - paint.a) * backgroundColor) * vOpacity;
 
     if (fragColor.a == 0.0) {
         discard;
     }
 #else
     // The trivial, non-decorated case
-    fragColor = vFillColor * vOpacityFactor;
+    fragColor = vFillColor * vOpacityFactor * vOpacity;
     if (uPickingEnabled) {
         fragColor = vPickingColor;
     }

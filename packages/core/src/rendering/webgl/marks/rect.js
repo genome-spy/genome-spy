@@ -35,6 +35,9 @@ export default class WebGLRectMark extends WebGLMark {
                     !this.#isRoundedCorners() &&
                     !this.#isStroked() &&
                     !this.properties.shadowOpacity &&
+                    isValueDef(this.encoding.opacity) &&
+                    !("condition" in this.encoding.opacity) &&
+                    this.encoding.opacity.value == 1 &&
                     isValueDef(this.encoding.fillOpacity) &&
                     this.encoding.fillOpacity.value == 1.0 &&
                     this.properties.minOpacity == 1.0
@@ -63,6 +66,7 @@ export default class WebGLRectMark extends WebGLMark {
             ),
             "fill",
             "stroke",
+            "opacity",
             "fillOpacity",
             "strokeOpacity",
             "strokeWidth",

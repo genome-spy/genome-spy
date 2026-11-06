@@ -103,6 +103,7 @@ export function renderLegendGradientSvg(mark, options) {
             height: formatSvgNumber(roundedY2 - roundedY),
             fill,
             "fill-opacity": formatSvgUnitless(fillOpacity),
+            opacity: formatSvgUnitless(Number(encoders.opacity(data[0]))),
             stroke: "none",
         })
     );

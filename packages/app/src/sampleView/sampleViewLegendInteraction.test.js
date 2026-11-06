@@ -69,7 +69,7 @@ test("routes sample-pane legend brushing and clearing to segment opacity", async
         const y = point.y + ramp.coords.height / 2;
         const opacity = () =>
             Array.from(segments.getCollector().getData(), (datum) =>
-                segments.mark.encoders.fillOpacity(datum)
+                segments.mark.encoders.opacity(datum)
             );
 
         expect(opacity()).toEqual([1, 1, 1]);
