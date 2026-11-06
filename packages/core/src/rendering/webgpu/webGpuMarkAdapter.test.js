@@ -952,6 +952,7 @@ describe("WebGPU mark adapter", () => {
                 y2Offset: createConstantEncoder(5),
                 fill: createConstantEncoder("#336699"),
                 stroke: createConstantEncoder("black"),
+                opacity: createConstantEncoder(0.4),
                 fillOpacity: createConstantEncoder(0.8),
                 strokeOpacity: createConstantEncoder(0.7),
                 strokeWidth: createConstantEncoder(2),
@@ -969,7 +970,12 @@ describe("WebGPU mark adapter", () => {
             }
         );
 
-        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.ZERO,
+            0.5
+        );
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("arrow");
@@ -979,6 +985,9 @@ describe("WebGPU mark adapter", () => {
             data: new Uint32Array([0, 1, 2]),
             type: "u32",
         });
+        expect(config.channels.opacity.value).toBe(0.2);
+        expect(config.channels.fillOpacity.value).toBe(0.8);
+        expect(config.channels.strokeOpacity.value).toBe(0.7);
         expect(config.headAngle).toBe(45);
         expect(config.headNotchAngle).toBe(90);
         expect(config.headShape).toBe("open");
@@ -1001,6 +1010,7 @@ describe("WebGPU mark adapter", () => {
                 y2Offset: createConstantEncoder(0),
                 fill: createConstantEncoder("black"),
                 stroke: createConstantEncoder(null),
+                opacity: createConstantEncoder(1),
                 fillOpacity: createConstantEncoder(1),
                 strokeOpacity: createConstantEncoder(1),
                 strokeWidth: createConstantEncoder(1),

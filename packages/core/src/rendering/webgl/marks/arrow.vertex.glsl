@@ -1,4 +1,5 @@
 flat out lowp vec4 vFillColor;
+flat out float vOpacity;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
 flat out float vArrowHalfLengthInPixels;
@@ -295,6 +296,7 @@ void main(void) {
 
     gl_Position = unitToNdc(p);
 
+    vOpacity = getScaled_opacity();
     float fillOpacity = getScaled_fillOpacity();
     vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
