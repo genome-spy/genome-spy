@@ -4,6 +4,26 @@ Status: CPU-focused implementation, independent review, native measurements and
 applicable verification are complete. Retain this temporary plan with the draft
 PR and retire it before merge.
 
+## November 6 remote-master refresh
+
+Rebased onto the verified remote master `0cd106618` and replayed the three
+SampleView commits. Preserve master's removal of the renderer migration journal;
+the scoped plans remain the investigation record. Resolve the text adapter
+conflict with the canonical `fill` encoder and the retained numeric opacity
+path. Incoming point/rectangle opacity, independent text fill opacity, affine
+path-atlas sampling and SVG opacity fixes remain intact.
+
+Fresh focused checks pass 482 renderer/Core WebGPU tests in the foundation and
+739 SampleView/Canvas/SVG tests in the combined stack. Thirteen native Metal GPU
+checks cover opacity composition, text fill opacity, path-atlas sampling,
+placement/clamping, render groups and picking at DPR 1 and 2 where applicable.
+Renderer/Core/App types, scoped adapter lint and release-policy checks pass.
+Master's new features make the fixed-group release plan minor; this PR's own
+published Canvas fix retains its existing patch fragment.
+
+Earlier CPU measurements below predate this refresh. No new timing comparison
+was run, so they do not establish performance of the newly rebased stack.
+
 ## November 5 rebase and grouped-summary verification
 
 Rebase the foundation onto master `5a2b42d33` and replay SampleView #660 on top.
