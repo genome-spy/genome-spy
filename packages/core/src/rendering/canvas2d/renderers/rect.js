@@ -1,3 +1,4 @@
+import { acquireOpacityLayer } from "../canvasOpacityLayer.js";
 import {
     resolveRectProperties,
     visitRectInstances,
@@ -24,7 +25,7 @@ export function renderRectCanvas(baseMark, options) {
     if (start === (options.end ?? options.data.length)) {
         return 0;
     }
-    const context = options.context;
+    let context = options.context;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -47,7 +48,7 @@ export function renderRectCanvas(baseMark, options) {
         if (properties.shadow.opacity > 0) {
             drawShadow(instance, properties.shadow, options, radii);
         }
-        const opacityFactor = instance.opacityFactor;
+        let opacityFactor = instance.opacityFactor;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
         const stroke =
             constantStroke ?? toPaintString(encoders.stroke(instance.datum));
@@ -55,13 +56,57 @@ export function renderRectCanvas(baseMark, options) {
             (strokeOpacityIsConstant
                 ? constantStrokeOpacity
                 : encodeNumber(encoders.strokeOpacity, instance.datum)) *
-            options.viewOpacity *
-            opacityFactor;
+            options.viewOpacity;
         const strokeVisible =
             !hasInvisibleConstantStroke &&
             stroke != "none" &&
             strokeOpacity > 0 &&
             instance.strokeWidth > 0;
+        const isolated =
+            fillVisible &&
+            strokeVisible &&
+            opacityFactor > 0 &&
+            opacityFactor < 1;
+        const parent = context;
+        const dpr = options.devicePixelRatio;
+        let left = 0,
+            top = 0,
+            width = 0,
+            height = 0;
+        if (isolated) {
+            const pad = instance.strokeOutset + 1 / dpr;
+            left = Math.floor(
+                Math.max(options.visibleBounds.x1, instance.x - pad) * dpr
+            );
+            top = Math.floor(
+                Math.max(options.visibleBounds.y1, instance.y - pad) * dpr
+            );
+            width =
+                Math.ceil(
+                    Math.min(
+                        options.visibleBounds.x2,
+                        instance.x + instance.width + pad
+                    ) * dpr
+                ) - left;
+            height =
+                Math.ceil(
+                    Math.min(
+                        options.visibleBounds.y2,
+                        instance.y + instance.height + pad
+                    ) * dpr
+                ) - top;
+            if (width <= 0 || height <= 0) return;
+            context = acquireOpacityLayer(
+                options.opacityLayers,
+                options.opacityLayerIndex,
+                width,
+                height
+            );
+            context.setTransform(dpr, 0, 0, dpr, -left, -top);
+            opacityFactor = 1;
+            fillStyle = undefined;
+            strokeStyle = undefined;
+        }
         const rounded =
             properties.hasCornerRadii &&
             (instance.radii.topLeft != 0 ||
@@ -106,8 +151,49 @@ export function renderRectCanvas(baseMark, options) {
                 context.strokeStyle = stroke;
                 strokeStyle = stroke;
             }
-            setAlpha(context, strokeOpacity);
-            setLineWidth(context, instance.strokeWidth);
+            setAlpha(context, strokeOpacity * opacityFactor);
+            context.lineJoin = rounded ? "round" : "miter";
+            const clipped = properties.strokeAlign !== "center";
+            setLineWidth(context, instance.strokeWidth * (clipped ? 2 : 1));
+            if (clipped) {
+                context.save();
+                context.beginPath();
+                if (properties.strokeAlign === "outside") {
+                    context.rect(
+                        options.visibleBounds.x1,
+                        options.visibleBounds.y1,
+                        options.visibleBounds.x2 - options.visibleBounds.x1,
+                        options.visibleBounds.y2 - options.visibleBounds.y1
+                    );
+                }
+                if (rounded)
+                    context.roundRect(
+                        instance.x,
+                        instance.y,
+                        instance.width,
+                        instance.height,
+                        radii
+                    );
+                else
+                    context.rect(
+                        instance.x,
+                        instance.y,
+                        instance.width,
+                        instance.height
+                    );
+                context.clip(
+                    properties.strokeAlign === "outside" ? "evenodd" : "nonzero"
+                );
+                context.beginPath();
+                if (rounded)
+                    context.roundRect(
+                        instance.x,
+                        instance.y,
+                        instance.width,
+                        instance.height,
+                        radii
+                    );
+            }
             if (rounded) {
                 context.stroke();
             } else {
@@ -118,6 +204,27 @@ export function renderRectCanvas(baseMark, options) {
                     instance.height
                 );
             }
+            if (clipped) context.restore();
+        }
+        if (isolated) {
+            const source = context.canvas;
+            context = parent;
+            context.save();
+            context.globalAlpha = instance.opacityFactor;
+            context.drawImage(
+                source,
+                0,
+                0,
+                width,
+                height,
+                left / dpr,
+                top / dpr,
+                width / dpr,
+                height / dpr
+            );
+            context.restore();
+            fillStyle = undefined;
+            strokeStyle = undefined;
         }
     });
 }
@@ -133,7 +240,7 @@ export function renderRectCanvas(baseMark, options) {
  */
 function drawShadow(instance, shadow, options, radii) {
     const { context, devicePixelRatio, visibleBounds } = options;
-    const padding = instance.strokeWidth / 2;
+    const padding = instance.strokeOutset;
     const x = instance.x - padding;
     const y = instance.y - padding;
     const width = instance.width + padding * 2;

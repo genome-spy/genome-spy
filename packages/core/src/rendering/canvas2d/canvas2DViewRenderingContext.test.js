@@ -1497,6 +1497,8 @@ describe("Canvas2DViewRenderingContext", () => {
                 visibleBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
                 anchorCullBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
                 viewOpacity: 1,
+                opacityLayers: [],
+                opacityLayerIndex: 0,
                 warn: vi.fn(),
             });
             for (const spy of spies) expect(spy).toHaveBeenCalledTimes(2);

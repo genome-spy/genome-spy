@@ -285,6 +285,13 @@ export interface RectProps
     type: "rect";
 
     /**
+     * Position of the full-width stroke relative to the rectangle boundary.
+     *
+     * __Default value:__ `"center"`
+     */
+    strokeAlign?: StrokeAlign | ExprRef;
+
+    /**
      * Clamps the minimum size-dependent opacity. The property does not affect the
      * `opacity` channel. Valid values are between `0` and `1`.
      *

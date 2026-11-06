@@ -23,6 +23,7 @@ const RECT_SEAM_PADDING = 0.1;
 
 /**
  * @typedef {object} ResolvedRectProperties
+ * @prop {import("../../../spec/mark.js").StrokeAlign} strokeAlign
  * @prop {CornerRadii} cornerRadii
  * @prop {number} minWidth
  * @prop {number} minHeight
@@ -43,6 +44,7 @@ const RECT_SEAM_PADDING = 0.1;
  * @prop {CornerRadii} radii
  * @prop {number} opacityFactor
  * @prop {number} strokeWidth
+ * @prop {number} strokeOutset
  * @prop {string} fill
  * @prop {number} fillOpacity
  */
@@ -55,6 +57,14 @@ const RECT_SEAM_PADDING = 0.1;
  */
 export function resolveRectProperties(mark) {
     const p = mark.properties;
+    const strokeAlign = resolveMarkProperty(mark, p.strokeAlign);
+    if (
+        strokeAlign !== "inside" &&
+        strokeAlign !== "center" &&
+        strokeAlign !== "outside"
+    ) {
+        throw new Error("Invalid rectangle stroke alignment: " + strokeAlign);
+    }
     const defaultRadius = resolveMarkProperty(mark, p.cornerRadius);
     const cornerRadii = {
         topLeft: resolveMarkProperty(
@@ -85,6 +95,7 @@ export function resolveRectProperties(mark) {
     const hasCornerRadii = !hasZeroCornerRadii(cornerRadii);
 
     return {
+        strokeAlign,
         cornerRadii,
         minWidth: resolveMarkProperty(mark, p.minWidth),
         minHeight: resolveMarkProperty(mark, p.minHeight),
@@ -170,6 +181,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         radii: { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 },
         opacityFactor: 1,
         strokeWidth: 0,
+        strokeOutset: 0,
         fill: "none",
         fillOpacity: 0,
     };
@@ -207,6 +219,13 @@ export function visitRectInstances(mark, properties, options, visitor) {
         const strokeWidth = strokeWidthIsConstant
             ? constantStrokeWidth
             : encodeNumber(encoders.strokeWidth, datum);
+        const strokeOutset =
+            strokeWidth *
+            (properties.strokeAlign === "inside"
+                ? 0
+                : properties.strokeAlign === "center"
+                  ? 0.5
+                  : 1);
         const fill = constantFill ?? toPaintString(encoders.fill(datum));
         const fillOpacity =
             (fillOpacityIsConstant
@@ -233,7 +252,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
                 y,
                 x + width,
                 y + height,
-                strokeWidth / 2 + shadowPadding
+                strokeOutset + shadowPadding
             )
         ) {
             continue;
@@ -247,6 +266,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         instance.height = height;
         instance.opacityFactor = opacityFactor;
         instance.strokeWidth = strokeWidth;
+        instance.strokeOutset = strokeOutset;
         instance.fill = fill;
         instance.fillOpacity = fillOpacity;
         if (properties.hasCornerRadii) {
