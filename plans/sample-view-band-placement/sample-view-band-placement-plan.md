@@ -3,8 +3,9 @@
 Status: native categorical viewports and scalar group translation are implemented
 and validated. Reusable WebGPU adapter, placement and uniform-writer changes now
 belong to the independent `codex/webgpu-retained-updates` foundation PR; this
-SampleView branch stacks on it. The split preserves the previously tested
-`a13287481` package tree exactly. Independent reviews have no outstanding findings.
+SampleView branch stacks on it. The original split preserved the then-tested
+`a13287481` package tree exactly; subsequent rebases incorporate newer master
+changes. Independent reviews have no outstanding findings.
 Earlier pane and native timing results below remain historical comparisons with
 their original instrumentation limits.
 
@@ -19,6 +20,21 @@ retirement.
 - Current PR base: `codex/webgpu-retained-updates`.
 - Frozen pane comparison: `914e34a9b`.
 - Branch: `codex/sample-view-band-placement`.
+
+## November 6 remote-master refresh
+
+Rebased the foundation onto remote master `0cd106618`, then replayed all three
+SampleView commits without conflicts. Range-diff confirms their patches are
+unchanged. The foundation retains master's text fill mapping, opacity and atlas
+fixes, and deletion of the renderer migration journal.
+
+Fresh combined-stack checks pass 739 focused SampleView/Canvas/SVG tests,
+renderer/Core/App types, scoped adapter lint and release-policy checks. The
+foundation also passes 482 renderer/Core WebGPU tests and 13 native Metal GPU
+checks covering opacity, text, atlas sampling, placement and picking. Reuse the
+existing App patch fragment; master's features make the shared release plan
+minor. Earlier CPU measurements predate this refresh; no new timing comparison
+was run for this rebase.
 
 ## Goals, scope and acceptance policy
 
