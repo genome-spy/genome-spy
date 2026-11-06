@@ -10,18 +10,31 @@ for (const renderer of ["canvas", "webgl", "webgpu"])
             playwright,
             baseURL,
         }) => {
+            const softwareWebGpu =
+                renderer === "webgpu" && process.platform === "linux";
             const browser = await playwright.chromium.launch({
+                channel: renderer === "webgpu" ? "chrome" : undefined,
                 args: [
                     "--enable-unsafe-webgpu",
-                    "--enable-features=WebGPU",
+                    softwareWebGpu
+                        ? "--enable-features=Vulkan"
+                        : "--enable-features=WebGPU",
                     "--ignore-gpu-blocklist",
                     `--force-device-scale-factor=${dpr}`,
-                    ...(process.platform === "darwin"
-                        ? ["--use-angle=metal"]
-                        : [
+                    ...(softwareWebGpu
+                        ? [
                               "--use-angle=swiftshader",
                               "--enable-unsafe-swiftshader",
-                          ]),
+                              "--use-vulkan=swiftshader",
+                              "--use-webgpu-adapter=swiftshader",
+                              "--disable-vulkan-surface",
+                          ]
+                        : process.platform === "darwin"
+                          ? ["--use-angle=metal"]
+                          : [
+                                "--use-angle=swiftshader",
+                                "--enable-unsafe-swiftshader",
+                            ]),
                 ],
             });
             const page = await browser.newPage({ deviceScaleFactor: dpr });
