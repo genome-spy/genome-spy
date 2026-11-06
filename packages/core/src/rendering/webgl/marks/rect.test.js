@@ -16,11 +16,33 @@ describe("WebGL Rect opacity", () => {
         ["rounded corners", { cornerRadius: 2 }],
         ["shadow", { shadowOpacity: 0.5 }],
         ["fill opacity", { fillOpacity: 0.5 }],
+        [
+            "common opacity with explicit paint",
+            { opacity: 0.4, fillOpacity: 1 },
+        ],
         ["minimum opacity", { minOpacity: 0.5 }],
         ["dynamic corners", { cornerRadius: { expr: "radius" } }],
     ])("keeps blending for %s", async (_name, properties) => {
         const { delegate } = await createDelegate(properties);
 
+        expect(delegate.opaque).toBe(false);
+    });
+
+    test("keeps blending for conditional common opacity with an opaque fallback", async () => {
+        const view = await create(
+            {
+                params: [{ name: "selected", select: "point" }],
+                mark: { type: "rect", fillOpacity: 1 },
+                encoding: {
+                    opacity: {
+                        condition: { param: "selected", value: 0.4 },
+                        value: 1,
+                    },
+                },
+            },
+            UnitView
+        );
+        const delegate = new WebGLRectMark(view.mark, /** @type {any} */ ({}));
         expect(delegate.opaque).toBe(false);
     });
 

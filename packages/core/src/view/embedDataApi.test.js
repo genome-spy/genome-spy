@@ -188,9 +188,9 @@ test.each(["point", "text", "rect"])(
         const data = Array.from(unit.getCollector().getData());
         expect(
             data.map((datum) =>
-                unit.mark.encoders[mark === "text" ? "opacity" : "fillOpacity"](
-                    datum
-                )
+                unit.mark.encoders[
+                    mark === "point" ? "fillOpacity" : "opacity"
+                ](datum)
             )
         ).toEqual([0.2, 1, 1]);
         expect(unit.mark.encoding.uniqueId).toBeDefined();

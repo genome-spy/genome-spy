@@ -2464,7 +2464,9 @@ function createMark(type, data, encoders, properties = {}) {
                     strokeWidth: createConstantEncoder(0),
                     strokeOpacity: createConstantEncoder(1),
                 }
-              : {};
+              : type == "rect"
+                ? { opacity: createConstantEncoder(1) }
+                : {};
     /** @type {Record<"configuration" | "resources", number>} */
     const revisions = { configuration: 0, resources: 0 };
     return /** @type {import("../../marks/mark.js").default} */ (

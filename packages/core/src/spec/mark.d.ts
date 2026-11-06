@@ -41,7 +41,9 @@ export interface MarkPropsBase {
     color?: string | ExprRef;
 
     /**
-     * Opacity of the mark. Affects `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
+     * Opacity of the mark. Rules and rectangles fade their combined paints once;
+     * rectangle shadows fade with them. Points and arrows use this as a default
+     * for `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
      */
     opacity?: number | ExprRef;
 
