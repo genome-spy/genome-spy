@@ -460,6 +460,29 @@ async function checkZeroSizes(page, dpr, renderer) {
     ];
     const blue = [0, 0, 255, 255],
         empty = [0, 0, 0, 0];
+    // Preserve the browser's legacy strokeRect(0, 0) behavior. Some native
+    // rasterizers paint a centered square; others leave the point empty.
+    const nativePoint =
+        renderer === "canvas"
+            ? await page.evaluate(
+                  ({ dpr, points }) => {
+                      const canvas =
+                          globalThis.document.createElement("canvas");
+                      canvas.width = canvas.height = 64 * dpr;
+                      const context = canvas.getContext("2d");
+                      context.scale(dpr, dpr);
+                      context.strokeStyle = "blue";
+                      context.lineWidth = 6;
+                      context.strokeRect(32, 32, 0, 0);
+                      return points.map(([x, y]) =>
+                          Array.from(
+                              context.getImageData(x * dpr, y * dpr, 1, 1).data
+                          )
+                      );
+                  },
+                  { dpr, points }
+              )
+            : undefined;
     const shapes = [
         {
             name: "vertical",
@@ -500,9 +523,14 @@ async function checkZeroSizes(page, dpr, renderer) {
                         : renderer === "webgpu"
                           ? shape.gpuCenter
                           : [];
-            const expected = points.map((_, i) =>
-                painted.includes(i) ? blue : empty
-            );
+            const expected =
+                renderer === "canvas" &&
+                align === "center" &&
+                shape.name === "point"
+                    ? nativePoint
+                    : points.map((_, i) =>
+                          painted.includes(i) ? blue : empty
+                      );
             expect(
                 await readLiveColors(page, dpr, points),
                 `${renderer} ${align} ${shape.name}`
