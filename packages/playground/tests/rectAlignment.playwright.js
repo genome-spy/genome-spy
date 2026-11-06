@@ -193,6 +193,7 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                                     Math.abs(thin[i] - value)
                                 ).toBeLessThanOrEqual(2);
                         }
+                        await checkZeroSizes(page, dpr, renderer);
                     } finally {
                         await page.evaluate(() =>
                             globalThis.liveRectApi.finalize()
@@ -229,25 +230,149 @@ function installPixelReader() {
     };
 }
 
-/** @param {import("@playwright/test").Page} page @param {number} dpr */
-async function readLiveColors(page, dpr) {
+/** @param {import("@playwright/test").Page} page @param {number} dpr @param {number[][]} [points] */
+async function readLiveColors(
+    page,
+    dpr,
+    points = [12, 15, 18, 32, 50, 53, 57, 16].map((x) => [x, 32])
+) {
     // Observe the compositor; a Canvas2D copy of a presented WebGPU texture can be empty.
     const screenshot = await page
         .locator("#live-rect canvas")
         .screenshot({ omitBackground: true });
     return page.evaluate(
-        async ({ encoded, dpr }) => {
+        async ({ encoded, dpr, points }) => {
             const blob = await (
                 await globalThis.fetch("data:image/png;base64," + encoded)
             ).blob();
             const pixels = await globalThis.readRectanglePixels(blob);
-            return [12, 15, 18, 32, 50, 53, 57, 16].map((x) => {
-                const offset = (32 * dpr * pixels.width + x * dpr) * 4;
+            return points.map(([x, y]) => {
+                const offset = (y * dpr * pixels.width + x * dpr) * 4;
                 return Array.from(pixels.data.slice(offset, offset + 4));
             });
         },
-        { encoded: screenshot.toString("base64"), dpr }
+        { encoded: screenshot.toString("base64"), dpr, points }
     );
+}
+
+/** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} renderer */
+async function checkZeroSizes(page, dpr, renderer) {
+    const points = [
+        [32, 32],
+        [32, 14],
+        [32, 11],
+        [14, 32],
+        [11, 32],
+        [30, 30],
+        [27, 27],
+    ];
+    const blue = [0, 0, 255, 255],
+        empty = [0, 0, 0, 0];
+    const shapes = [
+        {
+            name: "vertical",
+            row: { x: 0.5, x2: 0.5, y: 0.25, y2: 0.75 },
+            outside: [0, 1, 2, 5, 6],
+            gpuCenter: [0, 1, 5],
+            canvasCenter: [0, 5],
+        },
+        {
+            name: "horizontal",
+            row: { x: 0.25, x2: 0.75, y: 0.5, y2: 0.5 },
+            outside: [0, 3, 4, 5, 6],
+            gpuCenter: [0, 3, 5],
+            canvasCenter: [0, 5],
+        },
+        {
+            name: "point",
+            row: { x: 0.5, x2: 0.5, y: 0.5, y2: 0.5 },
+            outside: [0, 5, 6],
+            gpuCenter: [0, 5],
+            canvasCenter: [],
+        },
+    ];
+    for (const align of ["inside", "center", "outside"]) {
+        for (const shape of shapes) {
+            await page.evaluate(
+                async ({ align, row }) => {
+                    const api = globalThis.liveRectApi;
+                    api.params.get("align").setValue(align);
+                    api.params.get("width").setValue(6);
+                    api.datasets.set("rows", [row]);
+                    await new Promise((resolve) =>
+                        globalThis.requestAnimationFrame(() =>
+                            globalThis.requestAnimationFrame(resolve)
+                        )
+                    );
+                },
+                { align, row: shape.row }
+            );
+            const painted =
+                align === "outside"
+                    ? shape.outside
+                    : align === "inside"
+                      ? []
+                      : renderer === "canvas"
+                        ? shape.canvasCenter
+                        : renderer === "webgpu"
+                          ? shape.gpuCenter
+                          : [];
+            const expected = points.map((_, i) =>
+                painted.includes(i) ? blue : empty
+            );
+            expect(
+                await readLiveColors(page, dpr, points),
+                `${renderer} ${align} ${shape.name}`
+            ).toEqual(expected);
+            for (const kind of renderer === "canvas"
+                ? ["raster", "svg"]
+                : ["raster"]) {
+                const colors = await page.evaluate(
+                    async ({ kind, dpr, points }) => {
+                        const { blob } =
+                            await globalThis.liveRectApi.imageExport[kind]({
+                                background: null,
+                                ...(kind === "raster"
+                                    ? { pixelRatio: dpr }
+                                    : {}),
+                            });
+                        const pixels = await globalThis.readRectanglePixels(
+                            blob,
+                            64 * dpr,
+                            64 * dpr
+                        );
+                        return points.map(([x, y]) =>
+                            Array.from(
+                                pixels.data.slice(
+                                    (y * dpr * pixels.width + x * dpr) * 4,
+                                    (y * dpr * pixels.width + x * dpr) * 4 + 4
+                                )
+                            )
+                        );
+                    },
+                    { kind, dpr, points }
+                );
+                expect(colors, `${kind} ${align} ${shape.name}`).toEqual(
+                    kind === "svg" && align === "center"
+                        ? points.map(() => empty)
+                        : expected
+                );
+            }
+            const pick = await page.evaluate(async () => {
+                const view = globalThis.liveRectApi.views.get({
+                    scope: [],
+                    view: "live-rect",
+                });
+                return (await view.marks.pick({ x: 32, y: 32 })).status;
+            });
+            expect(pick).toBe(
+                align === "outside" ||
+                    (align === "center" && renderer === "webgpu")
+                    ? "hit"
+                    : "empty"
+            );
+        }
+    }
 }
 
 /** @param {{core: string, dpr: number}} options */
