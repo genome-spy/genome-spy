@@ -1,5 +1,8 @@
+import { acquireOpacityLayer } from "../canvasOpacityLayer.js";
 import {
     resolveRectProperties,
+    createRectBoundary,
+    setRectBoundary,
     visitRectInstances,
 } from "../../immediate/marks/rect.js";
 import {
@@ -24,7 +27,7 @@ export function renderRectCanvas(baseMark, options) {
     if (start === (options.end ?? options.data.length)) {
         return 0;
     }
-    const context = options.context;
+    let context = options.context;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -32,9 +35,9 @@ export function renderRectCanvas(baseMark, options) {
     /** @type {string | undefined} */
     let fillStyle;
 
-    /** @type {string | undefined} */
-    let strokeStyle;
     const radii = [0, 0, 0, 0];
+    const outer = createRectBoundary();
+    const inner = createRectBoundary();
     const strokeOpacityIsConstant = encoders.strokeOpacity.constant;
     const constantStroke = getDrawConstantPaint(encoders.stroke, options);
     const hasInvisibleConstantStroke = constantStroke == "none";
@@ -45,9 +48,9 @@ export function renderRectCanvas(baseMark, options) {
 
     return visitRectInstances(mark, properties, options, (instance) => {
         if (properties.shadow.opacity > 0) {
-            drawShadow(instance, properties.shadow, options, radii);
+            drawShadow(instance, properties.shadow, options, outer, radii);
         }
-        const opacityFactor = instance.opacityFactor;
+        let opacityFactor = instance.opacityFactor;
         const fillVisible = instance.fill != "none" && instance.fillOpacity > 0;
         const stroke =
             constantStroke ?? toPaintString(encoders.stroke(instance.datum));
@@ -55,20 +58,64 @@ export function renderRectCanvas(baseMark, options) {
             (strokeOpacityIsConstant
                 ? constantStrokeOpacity
                 : encodeNumber(encoders.strokeOpacity, instance.datum)) *
-            options.viewOpacity *
-            opacityFactor;
+            options.viewOpacity;
         const strokeVisible =
             !hasInvisibleConstantStroke &&
             stroke != "none" &&
             strokeOpacity > 0 &&
             instance.strokeWidth > 0;
+        const isolated =
+            fillVisible &&
+            strokeVisible &&
+            opacityFactor > 0 &&
+            opacityFactor < 1;
+        const parent = context;
+        const dpr = options.devicePixelRatio;
+        let left = 0,
+            top = 0,
+            width = 0,
+            height = 0;
+        if (isolated) {
+            const pad = instance.strokeOutset + 1 / dpr;
+            left = Math.floor(
+                Math.max(options.visibleBounds.x1, instance.x - pad) * dpr
+            );
+            top = Math.floor(
+                Math.max(options.visibleBounds.y1, instance.y - pad) * dpr
+            );
+            width =
+                Math.ceil(
+                    Math.min(
+                        options.visibleBounds.x2,
+                        instance.x + instance.width + pad
+                    ) * dpr
+                ) - left;
+            height =
+                Math.ceil(
+                    Math.min(
+                        options.visibleBounds.y2,
+                        instance.y + instance.height + pad
+                    ) * dpr
+                ) - top;
+            if (width <= 0 || height <= 0) return;
+            context = acquireOpacityLayer(
+                options.opacityLayers,
+                options.opacityLayerIndex,
+                width,
+                height,
+                true
+            );
+            context.setTransform(dpr, 0, 0, dpr, -left, -top);
+            opacityFactor = 1;
+            fillStyle = undefined;
+        }
         const rounded =
             properties.hasCornerRadii &&
             (instance.radii.topLeft != 0 ||
                 instance.radii.topRight != 0 ||
                 instance.radii.bottomRight != 0 ||
                 instance.radii.bottomLeft != 0);
-        if (rounded && (fillVisible || strokeVisible)) {
+        if (rounded && fillVisible) {
             radii[0] = instance.radii.topLeft;
             radii[1] = instance.radii.topRight;
             radii[2] = instance.radii.bottomRight;
@@ -102,22 +149,56 @@ export function renderRectCanvas(baseMark, options) {
         }
 
         if (strokeVisible) {
-            if (strokeStyle != stroke) {
-                context.strokeStyle = stroke;
-                strokeStyle = stroke;
+            if (fillStyle != stroke) {
+                context.fillStyle = stroke;
+                fillStyle = stroke;
             }
-            setAlpha(context, strokeOpacity);
-            setLineWidth(context, instance.strokeWidth);
-            if (rounded) {
-                context.stroke();
-            } else {
+            setAlpha(context, strokeOpacity * opacityFactor);
+            if (
+                properties.strokeAlign === "center" &&
+                (instance.width === 0 || instance.height === 0)
+            ) {
+                // Preserve Canvas's existing butt-ended line and empty-point behavior.
+                context.strokeStyle = stroke;
+                context.lineWidth = instance.strokeWidth;
                 context.strokeRect(
                     instance.x,
                     instance.y,
                     instance.width,
                     instance.height
                 );
+            } else {
+                setRectBoundary(outer, instance, instance.strokeOutset);
+                setRectBoundary(
+                    inner,
+                    instance,
+                    instance.strokeOutset - instance.strokeWidth
+                );
+                context.beginPath();
+                appendBoundary(context, outer, radii);
+                if (inner.width > 0 && inner.height > 0)
+                    appendBoundary(context, inner, radii);
+                context.fill("evenodd");
             }
+        }
+        if (isolated) {
+            const source = context.canvas;
+            context = parent;
+            context.save();
+            context.globalAlpha = instance.opacityFactor;
+            context.drawImage(
+                source,
+                0,
+                0,
+                width,
+                height,
+                left / dpr,
+                top / dpr,
+                width / dpr,
+                height / dpr
+            );
+            context.restore();
+            fillStyle = undefined;
         }
     });
 }
@@ -129,19 +210,12 @@ export function renderRectCanvas(baseMark, options) {
  * @param {import("../../immediate/marks/rect.js").RectInstance} instance
  * @param {import("../../immediate/marks/rect.js").ResolvedRectProperties["shadow"]} shadow
  * @param {import("./index.js").CanvasMarkRenderingOptions} options
+ * @param {import("../../immediate/marks/rect.js").RectBoundary} outer
  * @param {number[]} radii Reused scratch space for the expanded corner radii.
  */
-function drawShadow(instance, shadow, options, radii) {
+function drawShadow(instance, shadow, options, outer, radii) {
     const { context, devicePixelRatio, visibleBounds } = options;
-    const padding = instance.strokeWidth / 2;
-    const x = instance.x - padding;
-    const y = instance.y - padding;
-    const width = instance.width + padding * 2;
-    const height = instance.height + padding * 2;
-    radii[0] = instance.radii.topLeft + padding;
-    radii[1] = instance.radii.topRight + padding;
-    radii[2] = instance.radii.bottomRight + padding;
-    radii[3] = instance.radii.bottomLeft + padding;
+    setRectBoundary(outer, instance, instance.strokeOutset);
 
     context.save();
     try {
@@ -152,7 +226,7 @@ function drawShadow(instance, shadow, options, radii) {
             visibleBounds.x2 - visibleBounds.x1,
             visibleBounds.y2 - visibleBounds.y1
         );
-        context.roundRect(x, y, width, height, radii);
+        appendBoundary(context, outer, radii);
         context.clip("evenodd");
 
         // Canvas shadow lengths ignore the current transform. Its blur uses
@@ -165,7 +239,7 @@ function drawShadow(instance, shadow, options, radii) {
         context.globalAlpha = shadow.opacity * options.viewOpacity;
         context.fillStyle = "black";
         context.beginPath();
-        context.roundRect(x, y, width, height, radii);
+        appendBoundary(context, outer, radii);
         context.fill();
     } finally {
         context.restore();
@@ -179,9 +253,21 @@ function setAlpha(context, value) {
     }
 }
 
-/** @param {CanvasRenderingContext2D} context @param {number} value */
-function setLineWidth(context, value) {
-    if (context.lineWidth != value) {
-        context.lineWidth = value;
+/**
+ * @param {CanvasRenderingContext2D} context
+ * @param {import("../../immediate/marks/rect.js").RectBoundary} boundary
+ * @param {number[]} radii Reused native corner arguments.
+ */
+function appendBoundary(context, boundary, radii) {
+    const { x, y, width, height } = boundary;
+    const r = boundary.radii;
+    if (r.topLeft || r.topRight || r.bottomRight || r.bottomLeft) {
+        radii[0] = r.topLeft;
+        radii[1] = r.topRight;
+        radii[2] = r.bottomRight;
+        radii[3] = r.bottomLeft;
+        context.roundRect(x, y, width, height, radii);
+    } else {
+        context.rect(x, y, width, height);
     }
 }

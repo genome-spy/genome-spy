@@ -2,6 +2,7 @@ flat out lowp vec4 vFillColor;
 flat out float vOpacityFactor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
+flat out float vStrokeOutset;
 flat out vec4 vCornerRadii;
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
@@ -107,29 +108,36 @@ void main(void) {
 
     vOpacityFactor = opaFactor;
     size = max(size, normalizedMinSize);
+    // Preserve centered zero-area suppression; inside has no area to border.
+    if ((size.x == 0.0 || size.y == 0.0) && uStrokeAlign != 2) {
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
-    // Add an extra pixel to the stroke width to accommodate edge antialiasing
-    float aaPadding = 1.0 / uDevicePixelRatio;
+    // Keep the SDF fringe inside fully covered geometry, including MSAA samples.
+    float aaPadding = 2.0 / uDevicePixelRatio;
 
     // TODO: Only expand to the offset direction. Now high offsets result in
     // a large expansion in all directions.
     float shadowPadding = uShadowBlur + max(abs(uShadowOffsetX), abs(uShadowOffsetY));
 
     float strokeWidth = getScaled_strokeWidth();
+    float strokeOutset = strokeWidth * float(uStrokeAlign) * 0.5;
     float strokeOpacity = getScaled_strokeOpacity();
 
     vec2 centeredFrac = frac - 0.5;
-    vec2 expand = centeredFrac * (strokeWidth + aaPadding + shadowPadding * 2.0) / uViewportSize;
+    vec2 expand = centeredFrac * (strokeOutset * 2.0 + aaPadding + shadowPadding * 2.0) / uViewportSize;
     pos += expand;
 
     vec2 sizeInPixels = size * uViewportSize;
-    vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
+    vPosInPixels = centeredFrac * sizeInPixels + expand * uViewportSize;
 
     vHalfSizeInPixels = sizeInPixels / 2.0;
 
-    vCornerRadii = min(cornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
+    vCornerRadii = clamp(cornerRadii, 0.0, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
     vHalfStrokeWidth = strokeWidth / 2.0;
+    vStrokeOutset = strokeOutset;
     vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 #endif
 

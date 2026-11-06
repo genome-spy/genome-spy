@@ -109,11 +109,14 @@ fn distanceToRatio(d: f32) -> f32 {
     return clamp(d * globals.dpr + 0.5, 0.0, 1.0);
 }
 
-fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, strokeExtents: vec2<f32>, opacityFactor: f32) -> vec4<f32> {
-    let cf = distanceToRatio(-d);
+fn distanceToColor(d: f32, strokeDistance: f32, fill: vec4<f32>, stroke: vec4<f32>, background: vec4<f32>, strokeExtents: vec2<f32>, opacityFactor: f32, minHalfSize: f32) -> vec4<f32> {
+    // Centered zero-area rectangles retain their existing renderer behavior.
+    let legacyDegenerate = minHalfSize == 0.0 && all(strokeExtents > vec2<f32>(0.0));
+    let cf = select(0.0, distanceToRatio(-d), minHalfSize > 0.0 || legacyDegenerate);
     var color = cf * fill;
     if (any(strokeExtents > vec2<f32>(0.0))) {
-        let ci = distanceToRatio(-strokeDistance - strokeExtents.x);
+        let ci = select(0.0, distanceToRatio(-strokeDistance - strokeExtents.x),
+            minHalfSize > strokeExtents.x || legacyDegenerate);
         let co = distanceToRatio(-d + strokeExtents.y);
         color = ci * fill + (cf - ci) * (stroke + (1.0 - stroke.a) * fill)
             + (co - cf) * stroke;
@@ -350,7 +353,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     h = max(h, minH);
 
     let strokeWidth = getScaled_strokeWidth(i);
-    let outset = strokeWidth * f32(getScaled_strokeAlign(i)) * 0.5;
+    let strokeAlign = getScaled_strokeAlign(i);
+    if ((w == 0.0 || h == 0.0) && strokeAlign == 0u) { return culledRect(); }
+    let outset = strokeWidth * f32(strokeAlign) * 0.5;
     let shadowOffset = vec2<f32>(
         getScaled_shadowOffsetX(i),
         getScaled_shadowOffsetY(i)
@@ -459,7 +464,7 @@ fn shade(in: VSOut) -> vec4<f32> {
                 halfSize + vec2<f32>(in.strokeExtents.y),
                 centered - in.shadowOffset,
                 sigma,
-                maxCornerRadius + in.strokeExtents.y
+                select(0.0, maxCornerRadius + in.strokeExtents.y, maxCornerRadius > 0.0)
             ) * in.shadowOpacity;
             background = vec4<f32>(in.shadowColor.rgb * shadow, shadow);
         }
@@ -482,7 +487,7 @@ fn shade(in: VSOut) -> vec4<f32> {
         );
     }
 
-    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, in.strokeExtents, in.opacityFactors.x);
+    return distanceToColor(fillDistance, d, fillColor, strokeColor, background, in.strokeExtents, in.opacityFactors.x, min(halfSize.x, halfSize.y));
 }
 
 @fragment

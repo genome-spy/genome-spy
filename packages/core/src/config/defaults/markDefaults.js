@@ -26,6 +26,7 @@ export const POINT_MARK_DEFAULTS = {
 
 /** @type {import("../../spec/config.js").RectConfig} */
 export const RECT_MARK_DEFAULTS = {
+    strokeAlign: "center",
     x2: undefined,
     y2: undefined,
     filled: true,
