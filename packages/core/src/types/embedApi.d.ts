@@ -769,6 +769,36 @@ export interface ViewHandle {
     readonly marks: MarksApi;
 }
 
+/** One named view in a detached visibility snapshot. */
+export interface ViewVisibilityNode {
+    /** Stable address within its import scope. */
+    selector: ViewSelector;
+    /** View title, falling back to its explicit name. */
+    title: string;
+    /** This view's own visibility choice, independently of its parents. */
+    visible: boolean;
+    /** Whether this view and all its layout ancestors are shown. */
+    effectiveVisible: boolean;
+    /** Authored default, used by Restore defaults. */
+    defaultVisible: boolean;
+    /** Whether host controls should offer a toggle; false also for ambiguous names. */
+    configurable: boolean;
+    /** Scoped identifier shared by mutually exclusive radio choices. */
+    group?: string;
+    /** Nested named views, including hidden descendants. */
+    children: ViewVisibilityNode[];
+}
+
+/** Visibility changes retain live views, data, selections and authored defaults. */
+export interface ViewVisibilityApi {
+    /** Detached named-view hierarchy; no live handles, data or rendering primitives. */
+    getSnapshot: () => ViewVisibilityNode[];
+    /** Change a uniquely named view; radio groups update together. Resolves after data initialization, with layout scheduled. */
+    set: (address: ViewAddress, visible: boolean) => Promise<void>;
+    /** Remove all overrides and apply authored defaults, respecting radio groups. */
+    reset: () => Promise<void>;
+}
+
 /**
  * API for inspecting and mutating the live layout hierarchy.
  *
@@ -784,6 +814,8 @@ export interface ViewHandle {
  * completed.
  */
 export interface ViewApi {
+    /** Shared visibility state for native controls, hosts and agents. */
+    readonly visibility: ViewVisibilityApi;
     /**
      * Returns a handle to the root layout view.
      *

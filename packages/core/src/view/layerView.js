@@ -73,11 +73,16 @@ export default class LayerView extends ContainerView {
      *
      * @param {import("../spec/view.js").LayerSpec | import("../spec/view.js").UnitSpec | import("../spec/view.js").MultiscaleSpec | import("../spec/view.js").ImportSpec} childSpec
      * @param {number} [index]
+     * @param {(view: import("./view.js").default) => void} [beforeInitialize] Runs after attachment, before guide/data initialization.
      * @returns {Promise<LayerView | import("./unitView.js").default>}
      */
-    async addChildSpec(childSpec, index) {
+    async addChildSpec(childSpec, index, beforeInitialize) {
         return /** @type {Promise<LayerView | import("./unitView.js").default>} */ (
-            this.#getMutationHelper().addChildSpec(childSpec, index)
+            this.#getMutationHelper().addChildSpec(
+                childSpec,
+                index,
+                beforeInitialize
+            )
         );
     }
 
