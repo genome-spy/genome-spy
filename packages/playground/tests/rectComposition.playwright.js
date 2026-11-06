@@ -279,7 +279,26 @@ for (const dpr of [1, 2]) {
                         );
                         const picked = await view.marks.pick({ x: 40, y: 32 });
                         const outside = await view.marks.pick({ x: 10, y: 32 });
+                        // Put repeat edges at physical pixel centers to check their half coverage.
+                        const phase = -0.5 + 0.5 / dpr;
+                        api.datasets.set("rows", [
+                            { ...row, x: 8 + phase, x2: 56 + phase },
+                        ]);
+                        const repeating = await paint({
+                            radius: 0,
+                            width: 4,
+                            alpha: 1,
+                            viewFade: 1,
+                            minimum: 0,
+                            floor: 0,
+                            shadow: 0,
+                            hatch: "vertical",
+                        });
+                        const hatchRepeats = [
+                            16, 18, 24, 32, 34, 40, 48, 50,
+                        ].map((x) => pixel(repeating, x, 32));
                         return {
+                            hatchRepeats,
                             transparentErrors,
                             subpixel,
                             viewFade,
@@ -327,6 +346,12 @@ for (const dpr of [1, 2]) {
             // PNG stores straight colors; fading blue changes alpha, not its RGB value.
             for (const { fade, color } of result.pngColors)
                 close(color, [0, 0, 255, Math.round(255 * fade)]);
+            const edge = [128, 0, 128, 255],
+                stripe = [0, 0, 255, 255],
+                gap = [255, 0, 0, 255];
+            [edge, stripe, gap, edge, stripe, gap, edge, stripe].forEach(
+                (expected, i) => close(result.hatchRepeats[i], expected)
+            );
             close(result.hatch, [255, 0, 0, 255]);
             for (const fade of result.fades) close(fade, [0, 0, 128, 128]);
             close(result.floor, [0, 0, 191, 191]);
