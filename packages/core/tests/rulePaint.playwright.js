@@ -1,8 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "playwright/test";
 
-const core =
-    "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
+const core = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 
 for (const dpr of [1, 2]) {
     test(`WebGL reactive null rule paints at DPR ${dpr}`, async ({

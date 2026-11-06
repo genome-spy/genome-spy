@@ -1,9 +1,8 @@
 import { fileURLToPath, URL } from "node:url";
 import { platform } from "node:os";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "playwright/test";
 
-const core =
-    "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
+const core = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 for (const renderer of ["canvas", "webgl", "webgpu"]) {
     for (const dpr of [1, 2]) {
         test(`${renderer} rectangle alignment at DPR ${dpr}`, async ({
@@ -225,7 +224,7 @@ function installRectangleHelpers() {
     };
 }
 
-/** @param {import("@playwright/test").Page} page @param {number} dpr @param {number[][]} [points] */
+/** @param {import("playwright/test").Page} page @param {number} dpr @param {number[][]} [points] */
 async function readLiveColors(
     page,
     dpr,
@@ -250,7 +249,7 @@ async function readLiveColors(
     );
 }
 
-/** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} mode @param {number[][]} points */
+/** @param {import("playwright/test").Page} page @param {number} dpr @param {string} mode @param {number[][]} points */
 async function readExportColors(page, dpr, mode, points) {
     return page.evaluate(
         async ({ mode, dpr, points }) => {
@@ -295,7 +294,7 @@ async function readExportColors(page, dpr, mode, points) {
     );
 }
 
-/** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} renderer */
+/** @param {import("playwright/test").Page} page @param {number} dpr @param {string} renderer */
 async function checkIntegration(page, dpr, renderer) {
     const red = [255, 0, 0, 255],
         blue = [0, 0, 255, 255],
@@ -448,7 +447,7 @@ async function checkIntegration(page, dpr, renderer) {
     }
 }
 
-/** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} renderer */
+/** @param {import("playwright/test").Page} page @param {number} dpr @param {string} renderer */
 async function checkZeroSizes(page, dpr, renderer) {
     const points = [
         [32, 32],
