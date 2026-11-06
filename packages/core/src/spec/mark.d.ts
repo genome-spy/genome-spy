@@ -41,8 +41,8 @@ export interface MarkPropsBase {
     color?: string | ExprRef;
 
     /**
-     * Opacity of the mark. Rules and rectangles fade their combined paints once;
-     * rectangle shadows fade with them. Points and arrows use this as a default
+     * Opacity of the mark. Rules, rectangles and arrows fade their combined paints once;
+     * rectangle shadows fade with them. Points use this as a default
      * for `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
      */
     opacity?: number | ExprRef;

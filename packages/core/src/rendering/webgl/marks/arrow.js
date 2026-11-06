@@ -39,6 +39,7 @@ export default class WebGLArrowMark extends WebGLMark {
             ),
             "fill",
             "stroke",
+            "opacity",
             "fillOpacity",
             "strokeOpacity",
             "strokeWidth",

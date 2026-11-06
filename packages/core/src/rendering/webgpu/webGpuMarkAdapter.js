@@ -1079,18 +1079,9 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
-                mark,
-                "fillOpacity",
-                data,
-                viewOpacity
-            ),
-            strokeOpacity: createOpacityChannel(
-                mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
-            ),
+            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             size: createNumericChannel(mark, "size", data),
             direction: createEnumChannel(

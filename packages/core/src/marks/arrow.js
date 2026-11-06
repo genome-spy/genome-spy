@@ -38,11 +38,12 @@ export default class ArrowMark extends Mark {
             );
         }
 
+        encoding.strokeOpacity ??= { value: 1 };
+        if (this.properties.filled) encoding.fillOpacity ??= { value: 1 };
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);
 
         delete encoding.color;
-        delete encoding.opacity;
 
         return encoding;
     }

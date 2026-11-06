@@ -1,6 +1,7 @@
 in vec2 vPosInPixels;
 
 flat in lowp vec4 vFillColor;
+flat in float vOpacity;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
 flat in float vArrowHalfLengthInPixels;
@@ -202,7 +203,7 @@ void main(void) {
     } else {
         fragColor = cf * vFillColor;
     }
-    fragColor *= uViewOpacity;
+    fragColor *= vOpacity * uViewOpacity;
 
     if (uPickingEnabled) {
         if (d >= vHalfStrokeWidth) discard;

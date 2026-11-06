@@ -3,7 +3,7 @@ import {
     visitArrowInstances,
 } from "../../immediate/marks/arrow.js";
 import { createSvgElement } from "../svgElement.js";
-import { toPaintString } from "../../immediate/markEncoding.js";
+import { encodeNumber, toPaintString } from "../../immediate/markEncoding.js";
 import { createSvgAttributeEncoder } from "../svgAttributes.js";
 import { formatSvgNumber } from "../svgNumber.js";
 
@@ -24,12 +24,12 @@ export function renderArrowSvg(baseMark, options) {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
             encoder: encoders.fillOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         stroke: { encoder: encoders.stroke, transform: toPaintString },
         "stroke-opacity": {
             encoder: encoders.strokeOpacity,
-            transform: (value) => +value * viewOpacity,
+            transform: (value) => +value,
         },
         "stroke-width": {
             encoder: encoders.strokeWidth,
@@ -58,10 +58,13 @@ export function renderArrowSvg(baseMark, options) {
                     `SVG export rendered unsupported arrow headShape "${properties.headShape}" as a triangle.`
                 );
             }
+            const opacity =
+                encodeNumber(encoders.opacity, instance.datum) * viewOpacity;
             group.appendChild(
                 createSvgElement("path", {
                     d: instance.boundaryLoops.map(polygon).join(" "),
                     ...encodeStyles(instance.datum),
+                    ...(opacity === 1 ? {} : { opacity }),
                 })
             );
         }

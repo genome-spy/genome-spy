@@ -4,6 +4,30 @@ import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
 import { create } from "../view/testUtils.js";
 
+test.each([true, false])(
+    "keeps common opacity independent of arrow paints (filled=%s)",
+    async (filled) => {
+        /** @type {import("../spec/channel.js").NumericMarkPropDef} */
+        const opacity = {
+            field: "alpha",
+            type: "quantitative",
+            scale: { domain: [0, 10], range: [0, 1] },
+        };
+        const view = await create(
+            {
+                data: { values: [{ alpha: 4 }] },
+                mark: { type: "arrow", filled, stroke: "blue" },
+                encoding: { x: { value: 0 }, x2: { value: 1 }, opacity },
+            },
+            UnitView
+        );
+        const encoding = /** @type {UnitView} */ (view).mark.encoding;
+        expect(encoding.opacity).toEqual(opacity);
+        expect(encoding.fillOpacity).toEqual({ value: filled ? 1 : 0 });
+        expect(encoding.strokeOpacity).toEqual({ value: 1 });
+    }
+);
+
 describe("arrow mark size encoding", () => {
     test("lowers band-relative mark size to a bandwidth expression", async () => {
         const view = await create(
