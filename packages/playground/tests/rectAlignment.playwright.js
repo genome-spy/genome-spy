@@ -32,7 +32,7 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     })
                 );
                 await page.goto(new URL("/rect-alignment", baseURL).href);
-                await page.evaluate(installPixelReader);
+                await page.evaluate(installRectangleHelpers);
                 const result = await page.evaluate(checkAlignment, {
                     core,
                     dpr,
@@ -64,43 +64,28 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     expect(reuse).toEqual({ live: true, png: true });
                 }
                 {
-                    await page.evaluate(async () => {
+                    await page.evaluate(() => {
                         globalThis.document.body.style.margin = "0";
-                        const api = globalThis.liveRectApi;
-                        for (const [name, value] of Object.entries({
-                            width: 6,
-                            fa: 1,
-                            sa: 1,
-                            tl: 0,
-                            tr: 0,
-                            bl: 0,
-                            br: 0,
-                            minimum: 0,
-                        }))
-                            api.params.get(name).setValue(value);
-                        api.datasets.set("rows", [
-                            { x: 0.25, x2: 0.75, y: 0.25, y2: 0.75 },
-                        ]);
-                        await new Promise((resolve) =>
-                            globalThis.requestAnimationFrame(() =>
-                                globalThis.requestAnimationFrame(resolve)
-                            )
+                        return globalThis.paintRectangle(
+                            {
+                                width: 6,
+                                fa: 1,
+                                sa: 1,
+                                tl: 0,
+                                tr: 0,
+                                bl: 0,
+                                br: 0,
+                                minimum: 0,
+                            },
+                            [{ x: 0.25, x2: 0.75, y: 0.25, y2: 0.75 }]
                         );
                     });
                     try {
                         for (const align of ["inside", "center", "outside"]) {
-                            await page.evaluate(async (align) => {
-                                globalThis.liveRectApi.params
-                                    .get("align")
-                                    .setValue(align);
-                                await new Promise((resolve) =>
-                                    globalThis.requestAnimationFrame(() =>
-                                        globalThis.requestAnimationFrame(
-                                            resolve
-                                        )
-                                    )
-                                );
-                            }, align);
+                            await page.evaluate(
+                                (align) => globalThis.paintRectangle({ align }),
+                                align
+                            );
                             const colors = await readLiveColors(page, dpr);
                             const red = [255, 0, 0, 255],
                                 blue = [0, 0, 255, 255],
@@ -159,12 +144,9 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                         }
                         if (renderer !== "canvas") {
                             await page.evaluate(
-                                async ({ dpr }) => {
-                                    globalThis.liveRectApi.params
-                                        .get("width")
-                                        .setValue(0.25 / dpr);
-                                    globalThis.liveRectApi.datasets.set(
-                                        "rows",
+                                ({ dpr }) =>
+                                    globalThis.paintRectangle(
+                                        { width: 0.25 / dpr },
                                         [
                                             {
                                                 x: (15.5 + 0.5 / dpr) / 64,
@@ -173,15 +155,7 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                                                 y2: 0.75,
                                             },
                                         ]
-                                    );
-                                    await new Promise((resolve) =>
-                                        globalThis.requestAnimationFrame(() =>
-                                            globalThis.requestAnimationFrame(
-                                                resolve
-                                            )
-                                        )
-                                    );
-                                },
+                                    ),
                                 { dpr }
                             );
                             // Cf=.5, Co=.75: the thin outside band contributes .25 blue coverage.
@@ -194,6 +168,7 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                                 ).toBeLessThanOrEqual(2);
                         }
                         await checkZeroSizes(page, dpr, renderer);
+                        await checkIntegration(page, dpr, renderer);
                     } finally {
                         await page.evaluate(() =>
                             globalThis.liveRectApi.finalize()
@@ -209,7 +184,19 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
 }
 
 /** Installs the file-local decoder shared by the browser observation paths. */
-function installPixelReader() {
+function installRectangleHelpers() {
+    /** @param {Record<string, unknown>} values @param {object[]} [rows] */
+    globalThis.paintRectangle = async (values, rows) => {
+        const api = globalThis.liveRectApi;
+        for (const [name, value] of Object.entries(values))
+            api.params.get(name).setValue(value);
+        if (rows) api.datasets.set("rows", rows);
+        await new Promise((resolve) =>
+            globalThis.requestAnimationFrame(() =>
+                globalThis.requestAnimationFrame(resolve)
+            )
+        );
+    };
     /** @param {Blob} blob @param {number} [width] @param {number} [height] */
     globalThis.readRectanglePixels = async (blob, width, height) => {
         const url = globalThis.URL.createObjectURL(blob);
@@ -255,6 +242,183 @@ async function readLiveColors(
     );
 }
 
+/** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} mode @param {number[][]} points */
+async function readExportColors(page, dpr, mode, points) {
+    return page.evaluate(
+        async ({ mode, dpr, points }) => {
+            const result =
+                mode === "raster"
+                    ? await globalThis.liveRectApi.imageExport.raster({
+                          background: null,
+                          pixelRatio: dpr,
+                      })
+                    : await globalThis.liveRectApi.imageExport.svg({
+                          background: null,
+                          ...(mode === "hybrid"
+                              ? {
+                                    rasterization: {
+                                        maxVectorInstances: 0,
+                                        pixelRatio: dpr,
+                                    },
+                                }
+                              : {}),
+                      });
+            if (mode !== "raster") {
+                const image = (await result.blob.text()).includes("<image");
+                if (
+                    (mode === "hybrid") !== image ||
+                    (mode === "hybrid") !== result.rasterized.length > 0
+                )
+                    throw new Error(
+                        "Unexpected SVG rasterization path: " + mode
+                    );
+            }
+            const pixels = await globalThis.readRectanglePixels(
+                result.blob,
+                64 * dpr,
+                64 * dpr
+            );
+            return points.map(([x, y]) => {
+                const offset = (y * dpr * pixels.width + x * dpr) * 4;
+                return Array.from(pixels.data.slice(offset, offset + 4));
+            });
+        },
+        { mode, dpr, points }
+    );
+}
+
+/** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} renderer */
+async function checkIntegration(page, dpr, renderer) {
+    const red = [255, 0, 0, 255],
+        blue = [0, 0, 255, 255],
+        empty = [0, 0, 0, 0];
+    const modes = ["raster", "svg", "hybrid"];
+    const paint = (values, rows) =>
+        page.evaluate(
+            ({ values, rows }) => globalThis.paintRectangle(values, rows),
+            { values, rows }
+        );
+    const close = (actual, expected) =>
+        actual.forEach((color, i) =>
+            color.forEach((value, c) =>
+                expect(
+                    Math.abs(value - expected[i][c]),
+                    JSON.stringify({
+                        i,
+                        c,
+                        actual: color,
+                        expected: expected[i],
+                    })
+                ).toBeLessThanOrEqual(2)
+            )
+        );
+
+    // Expansion happens before deciding whether a zero input has an interior.
+    for (const align of ["inside", "center", "outside"]) {
+        await paint({ align, width: 6, minimum: 8, floor: 1 }, [
+            { x: 0.5, x2: 0.5, y: 0.25, y2: 0.75 },
+        ]);
+        const points = [
+            [32, 32],
+            [24, 32],
+            [20, 32],
+        ];
+        const expected = [
+            align === "inside" ? blue : red,
+            align === "outside" ? blue : empty,
+            empty,
+        ];
+        close(await readLiveColors(page, dpr, points), expected);
+        for (const mode of modes)
+            close(await readExportColors(page, dpr, mode, points), expected);
+    }
+
+    await paint({ align: "outside", width: 6, minimum: 0, floor: 0 }, [
+        { x: -0.125, x2: -0.03125, y: 0.25, y2: 0.75 },
+    ]);
+    const clipped = [
+        [2, 32],
+        [63, 32],
+    ];
+    close(await readLiveColors(page, dpr, clipped), [blue, empty]);
+    for (const mode of modes)
+        close(await readExportColors(page, dpr, mode, clipped), [blue, empty]);
+    const edgePick = await page.evaluate(async () => {
+        const view = globalThis.liveRectApi.views.get({
+            scope: [],
+            view: "live-rect",
+        });
+        return (await view.marks.pick({ x: 2, y: 32 })).status;
+    });
+    expect(edgePick).toBe("hit");
+
+    // Transparent nominal fill must not reveal the blurred source inside the shape.
+    await paint(
+        { width: 4, fa: 0, sa: 0.5, tl: 0, tr: 6, br: 3, bl: 0, shadow: 0.6 },
+        [{ x: 0.25, x2: 0.75, y: 0.25, y2: 0.75 }]
+    );
+    const shadowPoints = [
+        [32, 32],
+        [14, 32],
+        [60, 32],
+    ];
+    const checkShadow = (colors) => {
+        close(colors.slice(0, 2), [empty, [0, 0, 255, 128]]);
+        expect(colors[2][1]).toBeGreaterThan(0);
+        expect(colors[2][3]).toBeGreaterThan(0);
+        expect(colors[2][0] + colors[2][2]).toBe(0);
+    };
+    checkShadow(await readLiveColors(page, dpr, shadowPoints));
+    for (const mode of modes)
+        checkShadow(await readExportColors(page, dpr, mode, shadowPoints));
+    const shadowPick = await page.evaluate(async () => {
+        const view = globalThis.liveRectApi.views.get({
+            scope: [],
+            view: "live-rect",
+        });
+        return (await view.marks.pick({ x: 60, y: 32 })).status;
+    });
+    expect(shadowPick).toBe("empty");
+
+    await paint({
+        align: "center",
+        shadow: 0,
+        fa: 0.6,
+        sa: 0.5,
+        tl: 0,
+        tr: 0,
+        br: 0,
+        bl: 0,
+        hatch: "vertical",
+    });
+    const interior = Array.from({ length: 144 }, (_, i) => [
+        26 + (i % 12),
+        26 + Math.floor(i / 12),
+    ]);
+    // Canvas keeps its existing unsupported-hatch warning; SVG is still vector.
+    for (const mode of renderer === "canvas" ? ["svg"] : ["raster", "hybrid"]) {
+        const baseline = await readExportColors(page, dpr, mode, interior);
+        expect(baseline.some((color) => color[2] > 0)).toBe(true);
+        expect(baseline.some((color) => color[2] === 0 && color[0] > 0)).toBe(
+            true
+        );
+        for (const [r, g, b, a] of baseline) {
+            const pmRed = (r * a) / 255,
+                pmBlue = (b * a) / 255;
+            expect(g).toBe(0);
+            expect(Math.abs(pmRed - (153 - 0.6 * pmBlue))).toBeLessThanOrEqual(
+                2
+            );
+            expect(Math.abs(a - (153 + 0.4 * pmBlue))).toBeLessThanOrEqual(2);
+        }
+        for (const align of ["inside", "outside"]) {
+            await paint({ align });
+            close(await readExportColors(page, dpr, mode, interior), baseline);
+        }
+        await paint({ align: "center" });
+    }
+}
+
 /** @param {import("@playwright/test").Page} page @param {number} dpr @param {string} renderer */
 async function checkZeroSizes(page, dpr, renderer) {
     const points = [
@@ -294,17 +458,8 @@ async function checkZeroSizes(page, dpr, renderer) {
     for (const align of ["inside", "center", "outside"]) {
         for (const shape of shapes) {
             await page.evaluate(
-                async ({ align, row }) => {
-                    const api = globalThis.liveRectApi;
-                    api.params.get("align").setValue(align);
-                    api.params.get("width").setValue(6);
-                    api.datasets.set("rows", [row]);
-                    await new Promise((resolve) =>
-                        globalThis.requestAnimationFrame(() =>
-                            globalThis.requestAnimationFrame(resolve)
-                        )
-                    );
-                },
+                ({ align, row }) =>
+                    globalThis.paintRectangle({ align, width: 6 }, [row]),
                 { align, row: shape.row }
             );
             const painted =
@@ -327,31 +482,7 @@ async function checkZeroSizes(page, dpr, renderer) {
             for (const kind of renderer === "canvas"
                 ? ["raster", "svg"]
                 : ["raster"]) {
-                const colors = await page.evaluate(
-                    async ({ kind, dpr, points }) => {
-                        const { blob } =
-                            await globalThis.liveRectApi.imageExport[kind]({
-                                background: null,
-                                ...(kind === "raster"
-                                    ? { pixelRatio: dpr }
-                                    : {}),
-                            });
-                        const pixels = await globalThis.readRectanglePixels(
-                            blob,
-                            64 * dpr,
-                            64 * dpr
-                        );
-                        return points.map(([x, y]) =>
-                            Array.from(
-                                pixels.data.slice(
-                                    (y * dpr * pixels.width + x * dpr) * 4,
-                                    (y * dpr * pixels.width + x * dpr) * 4 + 4
-                                )
-                            )
-                        );
-                    },
-                    { kind, dpr, points }
-                );
+                const colors = await readExportColors(page, dpr, kind, points);
                 expect(colors, `${kind} ${align} ${shape.name}`).toEqual(
                     kind === "svg" && align === "center"
                         ? points.map(() => empty)
@@ -532,6 +663,9 @@ async function checkAlignment({ core, dpr, renderer }) {
                 { name: "bl", value: 0 },
                 { name: "br", value: 0 },
                 { name: "minimum", value: 0 },
+                { name: "floor", value: 0 },
+                { name: "shadow", value: 0 },
+                { name: "hatch", value: "none" },
             ],
             mark: {
                 type: "rect",
@@ -548,7 +682,12 @@ async function checkAlignment({ core, dpr, renderer }) {
                 cornerRadiusBottomRight: { expr: "br" },
                 minWidth: { expr: "minimum" },
                 minHeight: 0,
-                minOpacity: 0,
+                minOpacity: { expr: "floor" },
+                shadowOpacity: { expr: "shadow" },
+                shadowColor: "lime",
+                shadowOffsetX: 8,
+                shadowBlur: 2,
+                hatch: { expr: "hatch" },
             },
             encoding: {
                 x: {
@@ -594,10 +733,8 @@ async function checkAlignment({ core, dpr, renderer }) {
             );
         /** @param {object} values @param {number[]} bounds */
         async function paint(values, bounds) {
-            for (const [name, value] of Object.entries(values))
-                api.params.get(name).setValue(value);
             const [x, y, w, h] = bounds;
-            api.datasets.set("rows", [
+            await globalThis.paintRectangle(values, [
                 {
                     x: x / 64,
                     x2: (x + w) / 64,
@@ -605,9 +742,9 @@ async function checkAlignment({ core, dpr, renderer }) {
                     y2: (64 - y) / 64,
                 },
             ]);
-            await settle();
             return readCanvas();
         }
+
         let checked = 0,
             gpuCoverageChecks = 0;
         const mismatches = [];
