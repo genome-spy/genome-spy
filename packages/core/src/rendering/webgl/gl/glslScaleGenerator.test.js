@@ -1,10 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, onTestFinished, test } from "vitest";
 import { scaleOrdinal, scaleLinear } from "d3-scale";
+import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
 import {
     generateConditionalEncoderGlsl,
     generateScaleGlsl,
     generateConstantValueGlsl,
     generateDynamicValueGlslAndUniform,
+    getRangeForGlsl,
 } from "./glslScaleGenerator.js";
 
 test("ordinal expression ranges use a texture beyond four entries", () => {
@@ -39,6 +41,59 @@ test("continuous expression ranges retain their numeric uniform", () => {
     expect(result.rangeUniform).toContain("uniform vec2 range_fillOpacity");
     expect(result.glsl).not.toContain("uRangeTexture_fillOpacity");
 });
+
+test.each(/** @type {const} */ (["band", "point"]))(
+    "positional %s shaders retain numeric range commands through the live uniform contract",
+    async (type) => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ category: "A" }, { category: "B" }] },
+            scales: {
+                y: {
+                    type,
+                    domain: ["A", "B"],
+                    reverse: true,
+                    gapPositions: ["B"],
+                    gapWidth: 8,
+                },
+            },
+            mark: "point",
+            encoding: {
+                y: { field: "category", type: "nominal", axis: null },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const resolution = view.getScaleResolution("y");
+        const scale = resolution.getScale();
+        const shader = generateScaleGlsl("y", scale, {
+            field: "category",
+            type: "nominal",
+        });
+        expect(shader.rangeUniform).toContain("uniform vec2 range_y");
+        expect(shader.glsl).not.toContain("const vec2 range_y");
+        // The whole placed height is the divisor, even for a pane taller than its owner.
+        expect(shader.glsl).toContain(
+            "geometry.x / (uViewportSize.y * getSampleFacetPos().height)"
+        );
+
+        // WebGL's existing range listener reads this payload for the uniform.
+        const payloads = [getRangeForGlsl(scale, "y")];
+        resolution.addEventListener("range", () =>
+            payloads.push(getRangeForGlsl(scale, "y"))
+        );
+        scale.range([0.9, -0.8]);
+        await view.paramRuntime.whenPropagated();
+        expect(payloads).toEqual([
+            [1, 0],
+            [0.9, -0.8],
+        ]);
+
+        const secondary = generateScaleGlsl("y2", scale, {
+            field: "category",
+        });
+        expect(secondary.rangeUniform).toBeUndefined();
+        expect(secondary.rangeUniformName).toBe(shader.rangeUniformName);
+    }
+);
 
 describe("GLSL conditional selection encoders", () => {
     test("emit union membership and group emptiness checks", () => {

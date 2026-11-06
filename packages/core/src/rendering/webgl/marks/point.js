@@ -20,7 +20,6 @@ export default class WebGLPointMark extends WebGLMark {
     getAttributes() {
         return [
             "uniqueId",
-            "facetIndex",
             "x",
             "y",
             "xOffset",

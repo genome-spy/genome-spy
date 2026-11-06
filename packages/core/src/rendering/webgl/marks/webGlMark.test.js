@@ -1,6 +1,108 @@
 import { expect, test, vi } from "vitest";
 
 import WebGLMark from "./webGlMark.js";
+import scaleBand from "../../../scales/scaleBand.js";
+
+test("rebinds samplers on every paint and publishes current gap geometry", () => {
+    const program = {};
+    let currentProgram = {};
+    /** @type {Map<string, object>} */
+    const samplers = new Map();
+    /** @param {string} slot */
+    const samplerSetter = (slot) => (/** @type {object} */ texture) => {
+        expect(currentProgram).toBe(program);
+        samplers.set(slot, texture);
+    };
+    const scale = Object.assign(
+        scaleBand().domain(["A", "B", "C"]).gapPositions([1]).gapWidth(6),
+        { type: "band", props: { gapPositions: ["B"], gapWidth: 6 } }
+    );
+    const resolution = {
+        getScale: () => scale,
+        getDomainRef: () => ({ get: () => scale.domain() }),
+    };
+    const domainTexture = {};
+    const gapTexture = {};
+    const rangeTexture = {};
+    const gapCount = vi.fn();
+    /** @type {number[][]} */
+    const gapGeometry = [];
+    const delegate = new WebGLMark(
+        /** @type {any} */ ({
+            encoders: {
+                y: {
+                    scale,
+                    channelDef: { field: "category", type: "nominal" },
+                },
+                y2: {
+                    scale,
+                    channelDef: { field: "category", type: "nominal" },
+                },
+            },
+            unitView: {
+                getScaleResolution: () => resolution,
+                getEffectiveOpacity: () => 1,
+            },
+        }),
+        /** @type {any} */ ({
+            gl: {
+                useProgram: (/** @type {object} */ value) => {
+                    currentProgram = value;
+                },
+                enable: () => {},
+            },
+            rangeTextures: new WeakMap([[scale, rangeTexture]]),
+        }),
+        /** @type {any} */ ({
+            getCategoricalTexture: () => domainTexture,
+            getGapTexture: () => gapTexture,
+        })
+    );
+    delegate.programInfo = /** @type {any} */ ({
+        program,
+        // Secondary channels share primary samplers and have no own setters.
+        uniformSetters: {
+            uDomainTexture_y: samplerSetter("domain"),
+            uGapCuts_y: samplerSetter("gaps"),
+            uRangeTexture_y: samplerSetter("range"),
+            uGapCount_y: gapCount,
+            uGapGeometry_y: (/** @type {Float32Array} */ value) =>
+                gapGeometry.push(Array.from(value)),
+        },
+    });
+    delegate.vertexArrayInfo = /** @type {any} */ ({});
+    delegate.viewUniformInfo = /** @type {any} */ ({ setters: {} });
+    const operations = delegate.prepareRender({});
+
+    for (let pass = 0; pass < 3; pass++) {
+        // Another mark or export may replace global bindings between paints.
+        currentProgram = {};
+        samplers.clear();
+        if (pass === 2) {
+            scale
+                .gapPositions([1, 2])
+                .gapWidth(12)
+                .viewport({
+                    interval: [1, 2],
+                    gapRanks: [0.25, 1.75],
+                });
+        }
+        operations.forEach((operation) => operation());
+        expect(samplers).toEqual(
+            new Map([
+                ["domain", domainTexture],
+                ["gaps", gapTexture],
+                ["range", rangeTexture],
+            ])
+        );
+    }
+    expect(gapCount.mock.calls.map(([value]) => value)).toEqual([1, 1, 2]);
+    expect(gapGeometry).toEqual([
+        [6, 0, 1, 0],
+        [6, 0, 1, 0],
+        [12, 0.25, 1.75, 1],
+    ]);
+});
 
 test("keeps explicit vertex counts for marks without attribute buffers", () => {
     const gl = { bindVertexArray: vi.fn(), bindBuffer: vi.fn() };

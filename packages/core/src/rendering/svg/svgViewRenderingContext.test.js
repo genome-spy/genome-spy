@@ -4,7 +4,6 @@ import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
-import PlacementSource from "../../view/layout/placementSource.js";
 import { markViewAsChrome } from "../../view/viewSelectors.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
@@ -463,43 +462,5 @@ describe("SvgViewRenderingContext", () => {
                     element.hasAttribute("data-rasterized") ? "raster" : "text"
             )
         ).toEqual(expectedPaintOrder);
-    });
-
-    test("projects texture-indexed sample facets using CPU positions", async () => {
-        const { view } = await createHeadlessEngine({
-            data: {
-                values: [
-                    { facet: 0, x: 0.25 },
-                    { facet: 1, x: 0.75 },
-                ],
-            },
-            mark: "point",
-            encoding: {
-                facetIndex: { field: "facet" },
-                x: { field: "x", type: "quantitative", scale: null },
-                y: { value: 0.5 },
-                size: { value: 100 },
-                fill: { value: "#123456" },
-            },
-        });
-        const source = new PlacementSource();
-        source.replaceTopology(
-            [[0], [1]],
-            new Float32Array([0, 0, 1, 0.4, 0, 0.6, 1, 0.4])
-        );
-        const context = new SvgViewRenderingContext(
-            { picking: false },
-            { width: 100, height: 100 }
-        );
-
-        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
-            placement: { source },
-        });
-
-        expect(
-            Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>
-                circle.getAttribute("cy")
-            )
-        ).toEqual(["20", "80"]);
     });
 });

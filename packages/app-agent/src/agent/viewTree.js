@@ -824,13 +824,7 @@ function isDataDrivenEncoding(def) {
  * @returns {boolean}
  */
 function isInternalChannel(channel) {
-    return [
-        "sample",
-        "uniqueId",
-        "search",
-        "facetIndex",
-        "semanticScore",
-    ].includes(channel);
+    return ["sample", "uniqueId", "search", "semanticScore"].includes(channel);
 }
 
 /**

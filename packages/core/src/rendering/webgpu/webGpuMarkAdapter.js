@@ -165,9 +165,6 @@ const TEXT_EDGE_FADE_DISTANCE_PROPERTIES = [
  */
 const SERIES_CACHE = new WeakMap();
 
-/** @type {WeakMap<import("../../marks/mark.js").default, {data: object[], encoder: object, values: Uint32Array}>} */
-const PLACEMENT_INDEX_CACHE = new WeakMap();
-
 /**
  * Converts one Core mark occurrence into the low-level configuration used by
  * the WebGPU renderer. Unsupported Core features fail here with a contextual
@@ -192,13 +189,6 @@ export function createWebGpuMarkConfig(
     if (data.length == 0) {
         return undefined;
     }
-
-    const resolvedPlacementIndex = mark.encoders.facetIndex
-        ? {
-              data: toPlacementIndexArray(mark, data),
-              type: "u32",
-          }
-        : placementIndex;
 
     const markType = mark.getType();
     /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */
@@ -249,7 +239,7 @@ export function createWebGpuMarkConfig(
 
     return createTranslation(
         definition,
-        addOccurrenceConfig(config, resolvedPlacementIndex, mark, coords),
+        addOccurrenceConfig(config, placementIndex, mark, coords),
         mark
     );
 }
@@ -324,28 +314,6 @@ function addOccurrenceConfig(config, placementIndex, mark, coords) {
         }
     }
     return config;
-}
-
-/** @param {import("../../marks/mark.js").default} mark @param {object[]} data */
-function toPlacementIndexArray(mark, data) {
-    const encoder = mark.encoders.facetIndex;
-    const cached = PLACEMENT_INDEX_CACHE.get(mark);
-    if (cached?.data === data && cached.encoder === encoder) {
-        return cached.values;
-    }
-    const result = new Uint32Array(data.length);
-    for (let index = 0; index < data.length; index++) {
-        const value = Number(encoder(data[index]));
-        if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) {
-            throw unsupported(
-                mark,
-                "Facet indices must be non-negative integers."
-            );
-        }
-        result[index] = value;
-    }
-    PLACEMENT_INDEX_CACHE.set(mark, { data, encoder, values: result });
-    return result;
 }
 
 /**

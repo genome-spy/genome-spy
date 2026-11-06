@@ -6,6 +6,7 @@ import {
     createClipOptions,
     normalizeClipOptions,
 } from "@genome-spy/core/view/renderingContext/clipOptions.js";
+import { getClosestSampleLocationAt } from "./locationManager.js";
 
 const DEFAULT_MIN_SAMPLE_HEIGHT = 60;
 const DEFAULT_MODE = "all";
@@ -31,17 +32,22 @@ export default class SampleChromeLayout {
     /** @type {() => number} */
     #getPeekState;
 
+    /** @type {(() => number) | undefined} */
+    #getOverviewSampleHeight;
+
     /**
      * @param {object} [options]
      * @param {import("@genome-spy/app/spec/sampleView.js").SampleYAxisDef | null} [options.sampleYAxis]
      * @param {(orient: "left" | "right") => AxisCandidate | undefined} [options.getActiveAxisCandidate]
      * @param {() => number} [options.getPeekState]
+     * @param {() => number} [options.getOverviewSampleHeight]
      */
     constructor(options = {}) {
         this.#sampleYAxis = options.sampleYAxis;
         this.#getActiveAxisCandidate =
             options.getActiveAxisCandidate ?? (() => undefined);
         this.#getPeekState = options.getPeekState ?? (() => 0);
+        this.#getOverviewSampleHeight = options.getOverviewSampleHeight;
     }
 
     /**
@@ -70,20 +76,6 @@ export default class SampleChromeLayout {
             this.getRightReserve(locations),
             0,
             this.getLeftReserve(locations)
-        );
-    }
-
-    /**
-     * @param {Locations} [previousLocations]
-     * @param {Locations} [nextLocations]
-     * @returns {boolean}
-     */
-    hasHorizontalReserveChanged(previousLocations, nextLocations) {
-        return (
-            this.getLeftReserve(previousLocations) !==
-                this.getLeftReserve(nextLocations) ||
-            this.getRightReserve(previousLocations) !==
-                this.getRightReserve(nextLocations)
         );
     }
 
@@ -190,10 +182,11 @@ export default class SampleChromeLayout {
         const minSampleHeight =
             this.#sampleYAxis?.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
 
+        const first = locations?.samples[0];
         return (
-            locations?.samples.some(
-                (sample) => sample.locSize.size >= minSampleHeight
-            ) ?? false
+            first !== undefined &&
+            (this.#getOverviewSampleHeight?.() ?? first.locSize.size) >=
+                minSampleHeight
         );
     }
 
@@ -202,51 +195,34 @@ export default class SampleChromeLayout {
      * @returns {import("./sampleViewTypes.js").SampleLocation[]}
      */
     #selectTargets(locations) {
-        const minSampleHeight =
-            this.#sampleYAxis?.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
-        const eligible = locations.samples.filter(
-            (sample) => sample.locSize.size >= minSampleHeight
-        );
+        const samples = locations.samples;
 
         switch (this.#sampleYAxis?.mode ?? DEFAULT_MODE) {
             case "all":
-                return eligible;
+                return samples;
             case "top":
-                return eligible.slice(0, 1);
+                return samples.slice(0, 1);
             case "middle": {
-                if (!eligible.length) {
-                    return [];
-                }
-
-                const first = locations.samples[0];
-                const last = locations.samples.at(-1);
+                const first = samples[0];
+                const last = samples.at(-1);
                 const midpoint =
-                    first && last
-                        ? (first.locSize.location +
-                              last.locSize.location +
-                              last.locSize.size) /
-                          2
-                        : 0;
+                    (first.locSize.location +
+                        last.locSize.location +
+                        last.locSize.size) /
+                    2;
 
-                let closest = eligible[0];
-                let closestDistance = Infinity;
-                for (const sample of eligible) {
-                    const center =
-                        sample.locSize.location + sample.locSize.size / 2;
-                    const distance = Math.abs(center - midpoint);
-                    if (
-                        distance <
-                        closestDistance - MIDDLE_SAMPLE_TIE_EPSILON
-                    ) {
-                        closest = sample;
-                        closestDistance = distance;
-                    }
-                }
-
-                return [closest];
+                return [
+                    /** @type {import("./sampleViewTypes.js").SampleLocation} */ (
+                        getClosestSampleLocationAt(
+                            midpoint,
+                            samples,
+                            MIDDLE_SAMPLE_TIE_EPSILON
+                        )
+                    ),
+                ];
             }
             case "bottom":
-                return eligible.slice(-1);
+                return samples.slice(-1);
             default:
                 throw new Error(
                     `Invalid sampleYAxis mode: ${this.#sampleYAxis?.mode}`

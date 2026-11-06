@@ -69,8 +69,6 @@ import {
 import { getWebGlTextFont } from "../textFont.js";
 import { gapRank, hasGroupingGaps } from "../../../genome/indexGapMapping.js";
 
-const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
-const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 const ORDER_PASS_VALUES = {
     all: 0,
@@ -203,14 +201,6 @@ export default class WebGLMark {
         this.#assertActive();
     }
 
-    getSampleFacetMode() {
-        if (this.encoders.facetIndex) {
-            return SAMPLE_FACET_TEXTURE;
-        } else if (this.unitView.usesSampleFacetRendering()) {
-            return SAMPLE_FACET_UNIFORM;
-        }
-    }
-
     /**
      *
      * @param {string} vertexShader
@@ -230,12 +220,12 @@ export default class WebGLMark {
         const shaderChannels = this.getEncodingAttributes();
         const encoders = this.encoders;
         const order = this.mark.getOrder();
-        const sampleFacetMode = this.getSampleFacetMode();
+        const sampleFacetRendering = this.unitView.usesSampleFacetRendering();
         const useVisibleRangeCulling = Boolean(
             this.properties.cullByVisibleRange
         );
-        if (sampleFacetMode) {
-            extraHeaders.push(`#define ${sampleFacetMode}`);
+        if (sampleFacetRendering) {
+            extraHeaders.push("#define SAMPLE_FACET_UNIFORM");
         }
         if (useVisibleRangeCulling) {
             extraHeaders.push("#define VISIBLE_RANGE_CULLING");
@@ -861,7 +851,7 @@ export default class WebGLMark {
         const hidden = [];
         // Preserve legacy rect/rule culling and cull every explicitly clamped mark.
         if (
-            sampleFacetMode &&
+            sampleFacetRendering &&
             (this.properties.clamp ||
                 ["rect", "rule", "tick"].includes(this.mark.getType()))
         ) {
@@ -1241,6 +1231,7 @@ export default class WebGLMark {
     prepareRender(options) {
         const glHelper = this.glHelper;
         const gl = this.gl;
+        const uniformSetters = this.programInfo.uniformSetters;
 
         /** @type {(() => void)[]} */
         const ops = [];
@@ -1268,14 +1259,17 @@ export default class WebGLMark {
                     );
                 const resolution =
                     this.unitView.getScaleResolution(resolutionChannel);
-                ops.push(() =>
-                    setUniforms(this.programInfo, {
-                        [DOMAIN_TEXTURE_PREFIX + channel]:
+                const setTexture =
+                    uniformSetters[DOMAIN_TEXTURE_PREFIX + channel];
+                if (setTexture) {
+                    ops.push(() =>
+                        setTexture(
                             this.rendererResources.getCategoricalTexture(
                                 resolution
-                            ),
-                    })
-                );
+                            )
+                        )
+                    );
+                }
             }
             if (
                 (channel === "x" || channel === "y") &&
@@ -1283,6 +1277,10 @@ export default class WebGLMark {
                 hasGroupingGaps(/** @type {any} */ (encoder.scale).props)
             ) {
                 const resolution = this.unitView.getScaleResolution(channel);
+                const setCuts = uniformSetters["uGapCuts_" + channel];
+                const setCount = uniformSetters["uGapCount_" + channel];
+                const setGeometry = uniformSetters["uGapGeometry_" + channel];
+                const geometry = new Float32Array(4);
                 ops.push(() => {
                     const scale =
                         /** @type {(import("../../../genome/scaleIndex.js").ScaleIndex | import("../../../scales/scaleBand.js").CategoricalGapScale) & {type: string}} */ (
@@ -1293,54 +1291,35 @@ export default class WebGLMark {
                     const viewport =
                         "viewport" in scale ? scale.viewport() : null;
                     const domain = categorical
-                        ? (viewport?.interval ?? [
-                              0,
-                              resolution.getDomainRef().get().length,
-                          ])
-                        : scale.domain().map(Number);
+                        ? viewport?.interval
+                        : scale.domain();
+                    const domainStart = domain ? Number(domain[0]) : 0;
+                    const domainEnd = domain
+                        ? Number(domain[1])
+                        : resolution.getDomainRef().get().length;
                     const cuts = scale.gapPositions();
                     const ranks =
                         "gapDomain" in scale
                             ? scale.gapDomain()
                             : viewport?.gapRanks;
-                    setUniforms(this.programInfo, {
-                        ["uGapCuts_" + channel]:
-                            this.rendererResources.getGapTexture(resolution),
-                        ["uGapCount_" + channel]: cuts.length,
-                        ["uGapGeometry_" + channel]: [
-                            scale.gapWidth(),
-                            ranks?.[0] ?? gapRank(cuts, domain[0]),
-                            ranks?.[1] ?? gapRank(cuts, domain[1], true),
-                            ranks ? 1 : 0,
-                        ],
-                    });
+                    geometry[0] = scale.gapWidth();
+                    geometry[1] = ranks?.[0] ?? gapRank(cuts, domainStart);
+                    geometry[2] = ranks?.[1] ?? gapRank(cuts, domainEnd, true);
+                    geometry[3] = ranks ? 1 : 0;
+                    setCuts?.(this.rendererResources.getGapTexture(resolution));
+                    setCount?.(cuts.length);
+                    setGeometry?.(geometry);
                 });
             }
             const texture = glHelper.rangeTextures.get(encoder.scale);
-            if (texture) {
-                ops.push(() =>
-                    setUniforms(this.programInfo, {
-                        [RANGE_TEXTURE_PREFIX + channel]: texture,
-                    })
-                );
+            const setRangeTexture =
+                uniformSetters[RANGE_TEXTURE_PREFIX + channel];
+            if (texture && setRangeTexture) {
+                ops.push(() => setRangeTexture(texture));
             }
         }
 
         ops.push(...this.selectionTextureOps);
-
-        if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
-            ops.push(() => {
-                const source = options.placement?.source;
-                if (!source) {
-                    throw new Error("No placement source available.");
-                }
-
-                setUniforms(this.programInfo, {
-                    uSampleFacetTexture:
-                        this.glHelper.getPlacementTexture(source),
-                });
-            });
-        }
 
         // TODO: Rendering of the mark should be completely skipped if it doesn't
         // participate picking

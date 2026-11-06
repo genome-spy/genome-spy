@@ -33,6 +33,7 @@ import {
     validateSharedViewportDomain,
 } from "./viewportDomain.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
+import { copyViewport } from "./scaleBand.js";
 import {
     isCategoricalPositionScale,
     supportsScaleNavigation,
@@ -222,7 +223,13 @@ export default class ScaleResolution {
                 void this.#commitDomainUpdate({ type: "set", domain });
             },
             onViewportChange: (viewport) => {
-                void this.#interactionController.zoomToViewport(viewport);
+                // Imperative setters publish exact state; navigation commands
+                // apply gesture limits separately.
+                void this.#commitDomainUpdate({
+                    type: "navigate",
+                    target: { viewport: copyViewport(viewport) },
+                    duration: 0,
+                });
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
             getAxisLength: () => this.getAxisLength(),

@@ -1,4 +1,5 @@
-/* global console, process */
+/* global console, document, fetch, innerHeight, innerWidth, navigator,
+    PerformanceObserver, process, requestAnimationFrame, screen, setTimeout, URL, window */
 
 import fs from "node:fs";
 import path from "node:path";
@@ -47,6 +48,8 @@ Options:
   --sensitivity-dpr N     Add a second matrix at DPR N (default: 2).
   --viewport WxH          Browser viewport (default: 1200x700).
   --server-url URL        Use an already running App dev server.
+  --browser-channel NAME  Use an installed Playwright browser channel, such as chrome.
+  --group-by ATTRIBUTE    Group samples by a metadata attribute before timing.
   --output-dir DIR        Ignored directory for JSON, traces, and report.
   --filter-selector CSS   Optional correctness-control filter target.
   --sort-selector CSS     Optional correctness-control sort target.
@@ -73,6 +76,8 @@ retained for diagnostics and explicitly marked.`;
  * @property {number[]} dprs
  * @property {{width: number, height: number}} viewport
  * @property {string | undefined} serverUrl
+ * @property {string | undefined} browserChannel
+ * @property {string | undefined} groupBy
  * @property {string} outputDir
  * @property {string | undefined} filterSelector
  * @property {string | undefined} sortSelector
@@ -98,6 +103,7 @@ export async function main(args = process.argv.slice(2)) {
     try {
         await waitForServer(serverOrigin, server);
         const browser = await playwright.chromium.launch({
+            channel: options.browserChannel,
             headless: !options.headed,
             args: getBrowserArgs(),
         });
@@ -223,6 +229,11 @@ async function runSample({
         page.on("pageerror", (error) => result.errors.push(error.message));
         page.on("console", (message) => {
             if (message.type() === "error") {
+                if (
+                    message.location().url.endsWith("/favicon.ico") &&
+                    message.text().includes("404")
+                )
+                    return;
                 result.errors.push(message.text());
             }
         });
@@ -240,8 +251,13 @@ async function runSample({
         if (state?.status !== "ready") {
             throw new Error(state?.error || state?.detail || "Harness failed.");
         }
+        if (options.groupBy) await groupSamples(page, options.groupBy);
 
         await page.evaluate(() => {
+            const root = window.__genomeSpyAppHarness.api.debug.getViewRoot();
+            root._addBroadcastHandler("layout", () =>
+                window.__genomeSpyPerformance?.addCount("layoutComputations")
+            );
             const state = { active: true, timestamps: [] };
             window.__genomeSpyBenchmarkCadence = state;
             const longTasks = [];
@@ -326,6 +342,7 @@ async function runSample({
             result.status = "failed";
             result.errors.push(...result.correctness.errors);
         }
+        if (result.errors.length) result.status = "failed";
     } catch (error) {
         result.status = "failed";
         result.errors.push(
@@ -430,6 +447,8 @@ async function performCase(page, caseName, options) {
  * @property {number | undefined} scrollOffset
  * @property {boolean} sampleView
  * @property {boolean} closeupSupported
+ * @property {number} [sampleCount]
+ * @property {number} [groupCount]
  */
 
 /**
@@ -458,7 +477,7 @@ export function getCaseApplicability(caseName, state) {
  * @param {InteractionState[]} input.observations
  * @param {{focused: boolean, hovered: boolean} | undefined} input.inputActivation
  * @param {{type: string, code: string}[]} input.keyboardEvents
- * @param {{frames?: {kind?: string}[], phaseTotals?: Record<string, number>} | undefined} input.profile
+ * @param {{frames?: {kind?: string}[], phaseTotals?: Record<string, number>, countTotals?: Record<string, number>} | undefined} input.profile
  */
 export function validateInteractionResult({
     caseName,
@@ -540,12 +559,19 @@ export function validateInteractionResult({
             caseName === "wasd-zoom" ||
             caseName === "open-closeup" ||
             caseName === "closeup-wheel") &&
-        (profile?.phaseTotals?.layout ?? 0) > 0
+        ((profile?.countTotals?.layoutComputations ?? 0) > 0 ||
+            (profile?.phaseTotals?.layout ?? 0) > 0)
     ) {
-        errors.push(
-            `${caseName} invoked layout computation; keyboard and closeup ` +
-                "interactions must remain layout-free."
-        );
+        const computations = profile?.countTotals?.layoutComputations ?? 0;
+        const membershipChanges =
+            caseName === "open-closeup" || caseName === "closeup-wheel"
+                ? (profile?.countTotals?.sampleArrangementMembershipChanges ??
+                  0)
+                : 0;
+        if (!computations || computations > membershipChanges)
+            errors.push(
+                `${caseName} invoked layout without an active sample membership change.`
+            );
     }
 
     return { passed: errors.length === 0, errors };
@@ -591,8 +617,25 @@ async function captureInteractionState(page) {
             }
         });
 
+        let sampleCount;
+        let groupCount;
+        if (sampleView) {
+            sampleCount = 0;
+            groupCount = 0;
+            const groups = [sampleView.sampleHierarchy.rootGroup];
+            while (groups.length) {
+                const group = groups.pop();
+                if (group.groups) groups.push(...group.groups);
+                else if (group.samples.length) {
+                    sampleCount += group.samples.length;
+                    groupCount++;
+                }
+            }
+        }
         return {
             domains,
+            sampleCount,
+            groupCount,
             peekState: sampleView?.locationManager.getPeekState(),
             scrollOffset: sampleView?.locationManager.getScrollOffset(),
             sampleView: Boolean(sampleView),
@@ -605,6 +648,31 @@ async function captureInteractionState(page) {
                     sampleView.childCoords.height,
         };
     });
+}
+
+/** Metadata setup uses the same augmented action as the App menu, outside timing.
+ * @param {import("playwright").Page} page
+ * @param {string} attribute
+ */
+async function groupSamples(page, attribute) {
+    await page.evaluate(async (specifier) => {
+        let sampleView;
+        window.__genomeSpyAppHarness.api.debug.getViewRoot().visit((view) => {
+            if (view.locationManager) sampleView = view;
+        });
+        if (!sampleView) throw new Error("--group-by requires a SampleView.");
+        await sampleView.awaitMetadataReady();
+        sampleView.dispatchAttributeAction(
+            sampleView.actions.groupByNominal({
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier },
+            })
+        );
+        await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+        );
+        if (!sampleView.sampleHierarchy.groupMetadata.length)
+            throw new Error("Benchmark grouping did not update the hierarchy.");
+    }, attribute);
 }
 
 /** @param {import("playwright").Page} page @param {string} caseName */
@@ -931,6 +999,8 @@ export function createReport({ options, samples }) {
             runsPerCell: options.runs,
             cases: options.cases,
             viewport: options.viewport,
+            browserChannel: options.browserChannel,
+            groupBy: options.groupBy,
             dprs: options.dprs,
             counterbalancedRendererOrder: true,
             freshBrowserContextPerSample: true,
@@ -1165,6 +1235,8 @@ export function parseArgs(args) {
         dprs: [1],
         viewport: defaultViewport,
         serverUrl: undefined,
+        browserChannel: undefined,
+        groupBy: undefined,
         outputDir: defaultOutputDir,
         filterSelector: undefined,
         sortSelector: undefined,
@@ -1210,6 +1282,10 @@ export function parseArgs(args) {
             options.viewport = parseViewport(requireValue(args, ++index, arg));
         else if (arg === "--server-url")
             options.serverUrl = requireValue(args, ++index, arg);
+        else if (arg === "--browser-channel")
+            options.browserChannel = requireValue(args, ++index, arg);
+        else if (arg === "--group-by")
+            options.groupBy = requireValue(args, ++index, arg);
         else if (arg === "--output-dir")
             options.outputDir = path.resolve(requireValue(args, ++index, arg));
         else if (arg === "--filter-selector")

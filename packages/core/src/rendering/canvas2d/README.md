@@ -28,8 +28,7 @@ rectangle batches. Normal rendering and software picking share the same cache
 and one-viewport query guard, then pass source-array start/end bounds to the
 immediate visitors. Scale-domain changes only update the query; collector data
 or encoder changes rebuild the affected index. Detached export keeps complete
-traversal, and transient `facetIndex` groups deliberately fall back instead of
-building an index during every paint.
+traversal.
 
 Mark projection, geometry, and culling live in `../immediate/` and are
 shared with SVG export. Files under `renderers/` only translate the normalized

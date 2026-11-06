@@ -87,6 +87,64 @@ test("point uses the same viewport commands even without gesture zooming", async
     expect(x.getViewport()).toBeNull();
 });
 
+test("imperative categorical viewports preserve exact bounds while public navigation stays constrained", async () => {
+    const { view } = await createHeadlessEngine(
+        spec({ gapPositions: ["B", "D"], gapWidth: 8 })
+    );
+    onTestFinished(() => view.disposeSubtree());
+    const x = getRequiredScaleResolution(view, "x");
+    const scale = /** @type {import("./scaleBand.js").CategoricalGapScale} */ (
+        x.getScale()
+    );
+    scale.axisLength(100);
+    const domainChanged = vi.fn();
+    const viewportChanged = vi.fn();
+    const mappingChanged = vi.fn(() => {
+        expect(x.getMappingRef().get().viewport).toEqual(scale.viewport());
+        expect(x.getViewport()).toEqual(scale.viewport().interval);
+    });
+    x.addEventListener("domain", domainChanged);
+    x.addEventListener("viewport", viewportChanged);
+    onTestFinished(x.observeMapping(mappingChanged));
+    const range = scale.range();
+
+    // Layout-owned cameras can reserve space outside the category domain.
+    const exact = {
+        interval: /** @type {[number, number]} */ ([-0.5, 4.5]),
+        gapRanks: /** @type {[number, number]} */ ([0, 2]),
+    };
+    scale.viewport(exact);
+    exact.interval[0] = -20;
+    exact.gapRanks[0] = -20;
+    expect(scale.viewport()).toEqual({
+        interval: [-0.5, 4.5],
+        gapRanks: [0, 2],
+    });
+    expect(viewportChanged).toHaveBeenCalledOnce();
+    expect(mappingChanged).toHaveBeenCalledOnce();
+    for (const descendant of view.getDescendants()) {
+        expect(getRequiredScaleResolution(descendant, "x")).toBe(x);
+    }
+
+    // Exact gap edges also permit a camera narrower than a complete band.
+    scale.viewport({ interval: [1, 1.2], gapRanks: [0.5, 1] });
+    expect(x.getMappingRef().get().viewport).toEqual({
+        interval: [1, 1.2],
+        gapRanks: [0.5, 1],
+    });
+    expect(viewportChanged).toHaveBeenCalledTimes(2);
+    expect(mappingChanged).toHaveBeenCalledTimes(2);
+    expect(x.getDomain()).toEqual(["A", "B", "C", "D"]);
+    expect(scale.range()).toEqual(range);
+    expect(domainChanged).not.toHaveBeenCalled();
+
+    await x.zoomToViewport([-0.5, 4.5]);
+    expect(x.getViewport()).toEqual([0, 4]);
+    await x.zoomToViewport([-0.25, 0.25]);
+    expect(x.getViewport()).toEqual([0, 1]);
+    expect(scale.viewport().gapRanks).toBeUndefined();
+});
+
 test("animated interval navigation cancels stale targets when gaps or categories change", async () => {
     const animator = new Animator(() => undefined);
     vi.spyOn(animator, "requestRender").mockImplementation(() => undefined);

@@ -37,6 +37,7 @@ import {
     stopPanInertia,
 } from "@genome-spy/core/view/zoom.js";
 import { normalizeWheelScrollDelta } from "@genome-spy/core/utils/interactionEvent.js";
+import { countPerformance } from "@genome-spy/core/debug/performanceProfiler.js";
 import {
     propagateInteraction,
     propagateInteractionSurface,
@@ -141,6 +142,11 @@ export default class SampleView extends ContainerView {
     /** @type {ConcatView} */
     #sidebarView;
 
+    /** @type {import("@genome-spy/core/scales/scaleResolution.js").default | undefined} */
+    #rowScaleResolution;
+
+    #rowScaleRevision = -1;
+
     /** @type {number} Recorded so that peek can be offset correctly */
     #lastMouseY = -1;
 
@@ -171,6 +177,12 @@ export default class SampleView extends ContainerView {
 
     /** @type {import("./sampleViewTypes.js").SampleLocation[] | undefined} */
     #sampleRenderLocationSource;
+
+    #sampleRenderHeight = 0;
+
+    #sampleRenderTopologyRevision = -1;
+
+    #hasActiveSamples = false;
 
     #selectionExpansionMultiParamWarningShown = false;
 
@@ -560,7 +572,6 @@ export default class SampleView extends ContainerView {
             { notify: false, syncSmoother: true }
         );
 
-        this.sampleGroupView.updateRange();
         this.context.animator.requestRender();
     }
 
@@ -577,8 +588,9 @@ export default class SampleView extends ContainerView {
             getSummaryHeight: () =>
                 this.#gridChild?.summaryViews.getSize().height.px,
             onLocationUpdate: ({ sampleHeight }) => {
-                this.sampleGroupView.updateRange();
                 this.#sampleHeightParam?.(sampleHeight);
+                this.#syncRowScale();
+                this.#updateActiveSamples(true);
             },
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,
@@ -699,8 +711,6 @@ export default class SampleView extends ContainerView {
         };
         this.#updateVisibleSamplesParam();
 
-        // TODO: Hack the sample height to sidebar as well.
-
         /**
          * Container for group markers and metadata.
          * @type {ConcatView}
@@ -711,13 +721,32 @@ export default class SampleView extends ContainerView {
                     name: "sample-sidebar",
                     title: "Sidebar",
                     configurableVisibility: true,
+                    params: [
+                        { name: "_sampleRowIds", value: [] },
+                        { name: "_sampleRowCuts", value: [] },
+                        { name: "_sampleRowGap", value: 0 },
+                        { name: "_sampleRowInset", value: 0 },
+                        { name: "_sampleRowStep", value: 0 },
+                        { name: "_sampleRowSummaryHeight", value: 0 },
+                        { name: "_sampleRowAnchor", value: 1 },
+                    ],
+                    scales: {
+                        y: {
+                            type: "band",
+                            domain: { expr: "_sampleRowIds" },
+                            gapPositions: { expr: "_sampleRowCuts" },
+                            gapWidth: { expr: "_sampleRowGap" },
+                            paddingInner: 0,
+                            paddingOuter: 0,
+                            reverse: true,
+                        },
+                    },
                     resolve: {
-                        scale: { default: "independent" },
+                        scale: { default: "independent", y: "shared" },
                         axis: { default: "independent" },
                     },
                     encoding: {
                         y: null,
-                        facetIndex: null,
                     },
                     hconcat: [],
                     spacing: 8,
@@ -767,7 +796,6 @@ export default class SampleView extends ContainerView {
             {
                 onViewportOffsetChange: (offset) => {
                     this.locationManager.setScrollOffset(offset);
-                    this.sampleGroupView.updateRange();
                     this.context.animator.requestRender();
                 },
             }
@@ -828,15 +856,16 @@ export default class SampleView extends ContainerView {
      */
     prepareLayoutSize(width, height) {
         const previousLocations = this.locationManager.getLocations();
+        const chrome = this.#gridChild.sampleChromeLayout;
+        const previousLeft = chrome.getLeftReserve(previousLocations);
+        const previousRight = chrome.getRightReserve(previousLocations);
 
         this.#preparedLayoutHeight = height;
 
         const nextLocations = this.locationManager.getLocations();
         const chromeChanged =
-            this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
-                previousLocations,
-                nextLocations
-            );
+            previousLeft !== chrome.getLeftReserve(nextLocations) ||
+            previousRight !== chrome.getRightReserve(nextLocations);
         const legendLayoutChanged = this.#gridChild.prepareLegendLayoutSize(
             width,
             height
@@ -1059,39 +1088,103 @@ export default class SampleView extends ContainerView {
         }
     }
 
+    /** Publish one row camera through Core's categorical viewport. */
+    #syncRowScale() {
+        if (!this.#rowScaleResolution) return;
+        const frame = this.locationManager.getBandLayout();
+        if (!frame || frame.revision === this.#rowScaleRevision) return;
+        this.#rowScaleRevision = frame.revision;
+
+        const height = this.#preparedLayoutHeight || this.childCoords.height;
+        const runtime = this.#sidebarView.paramRuntime;
+        runtime.runInTransaction(() => {
+            runtime.setValue("_sampleRowIds", frame.sampleIds);
+            runtime.setValue("_sampleRowCuts", frame.cuts);
+            runtime.setValue("_sampleRowGap", frame.gap);
+            runtime.setValue("_sampleRowInset", frame.inset);
+            runtime.setValue("_sampleRowStep", frame.step);
+            runtime.setValue("_sampleRowSummaryHeight", frame.summaryHeight);
+            runtime.setValue("_sampleRowAnchor", 1 - frame.origin / height);
+        });
+        runtime.flushNow({ afterTransaction: true });
+
+        if (frame.step > 0) {
+            const scale =
+                /** @type {import("@genome-spy/core/scales/scaleBand.js").CategoricalGapScale} */ (
+                    this.#rowScaleResolution.getScale()
+                );
+            const mapping = scale.navigationMapping(height);
+            const slope = -frame.step / height;
+            const origin =
+                1 -
+                (frame.origin +
+                    mapping.domainStart * frame.step +
+                    mapping.firstRank * frame.gap) /
+                    height;
+            // Reuse Core's inverse, including fractional progress through gaps.
+            const gapWidth = frame.gap / height;
+            const first = mapping.invertPoint(1, slope, origin, gapWidth);
+            const last = mapping.invertPoint(0, slope, origin, gapWidth);
+            scale.viewport({
+                interval: [first.value, last.value],
+                gapRanks: [first.rank, last.rank],
+            });
+        }
+    }
+
+    /** Invalidate retained occurrence membership before the renderer starts.
+     * @param {boolean} requestLayout
+     */
+    #updateActiveSamples(requestLayout) {
+        if (!this.#rowScaleResolution) return;
+        const [start, end] = this.locationManager.getVisibleSampleRange();
+        const hasActiveSamples = start !== end;
+        if (hasActiveSamples === this.#hasActiveSamples) return;
+        this.#hasActiveSamples = hasActiveSamples;
+        if (requestLayout) {
+            countPerformance("sampleArrangementMembershipChanges");
+            this.context.requestLayoutReflow();
+        }
+    }
+
     /**
      * @param {import("./sampleViewTypes.js").SampleLocation[]} sampleLocations
      * @param {number} viewHeight
      * @returns {import("@genome-spy/core/types/rendering.js").RenderingOptions[]}
      */
     #getSampleRenderOptions(sampleLocations, viewHeight) {
-        if (this.#sampleRenderLocationSource === sampleLocations) {
-            return this.#sampleRenderOptions;
-        }
-
-        const pixelToUnit = 1 / viewHeight;
         const placementSource = this.locationManager.getPlacementSource();
         const placementTopologyRevision =
             placementSource.getSnapshot().topology.revision;
+        if (!this.#hasActiveSamples) return [];
+        if (
+            this.#sampleRenderLocationSource === sampleLocations &&
+            this.#sampleRenderHeight === viewHeight &&
+            this.#sampleRenderTopologyRevision === placementTopologyRevision
+        ) {
+            return this.#sampleRenderOptions;
+        }
 
-        this.#sampleRenderOptions = sampleLocations.map(
-            (sampleLocation, index) => ({
-                sampleFacetRenderingOptions: {
-                    locSize: sampleLocation.locSize,
-                    pixelToUnit,
-                },
-                placement: {
-                    source: placementSource,
-                    index: this.locationManager.getPlacementIndex(
-                        sampleLocation.key
-                    ),
-                    topologyRevision: placementTopologyRevision,
-                },
-                facetId: [sampleLocation.key],
-                firstFacet: index === 0,
-            })
-        );
+        // Keep all occurrences retained while any row is visible. Rebuilding
+        // layout as the visible interval moves costs more than renderer culling.
+        const pixelToUnit = 1 / viewHeight;
+        this.#sampleRenderOptions = sampleLocations.map((sampleLocation) => ({
+            sampleFacetRenderingOptions: {
+                locSize: sampleLocation.locSize,
+                pixelToUnit,
+            },
+            placement: {
+                source: placementSource,
+                index: this.locationManager.getPlacementIndex(
+                    sampleLocation.key
+                ),
+                topologyRevision: placementTopologyRevision,
+            },
+            facetId: [sampleLocation.key],
+        }));
         this.#sampleRenderLocationSource = sampleLocations;
+        this.#sampleRenderHeight = viewHeight;
+        this.#sampleRenderTopologyRevision = placementTopologyRevision;
 
         return this.#sampleRenderOptions;
     }
@@ -1148,6 +1241,14 @@ export default class SampleView extends ContainerView {
             locations.samples,
             coords.height
         );
+        if (!sampleOptions.length) {
+            gridChild.view.visit((view) => {
+                view.facetCoords.clear();
+            });
+            gridChild.background?.facetCoords.clear();
+            gridChild.backgroundStroke?.facetCoords.clear();
+        }
+        countPerformance("sampleArrangementRows", sampleOptions.length);
 
         const passThroughOptions = { ...options };
         delete passThroughOptions.facetId;
@@ -1163,8 +1264,8 @@ export default class SampleView extends ContainerView {
         context.beginSampleFacetBatch();
         try {
             // Render the view for each sample, pass location and facet id as options
-            // TODO: Support facet texture as an alternative to multiple draw calls
-            for (const opt of sampleOptions) {
+            for (const [index, opt] of sampleOptions.entries()) {
+                opt.firstFacet = index === 0;
                 if (hasPassThroughOptions) {
                     Object.assign(opt, passThroughOptions);
                 }
@@ -1293,19 +1394,13 @@ export default class SampleView extends ContainerView {
             locations
         );
 
-        const placementSource = this.locationManager.getPlacementSource();
-        const sidebarOptions = {
-            ...options,
-            placement: {
-                source: placementSource,
-                topologyRevision:
-                    placementSource.getSnapshot().topology.revision,
-            },
-        };
+        this.#rowScaleResolution = this.#sidebarView.getScaleResolution("y");
+        this.#syncRowScale();
+        this.#updateActiveSamples(false);
         this.#sidebarView.arrange(
             context,
             this.sidebarCoords.expand(alignedOverhangs.sidebarVerticalOverhang),
-            sidebarOptions
+            options
         );
 
         this.#arrangeChild(context, this.childCoords, options);
@@ -2128,6 +2223,8 @@ class SampleGridChild extends GridChild {
             getActiveAxisCandidate: (orient) =>
                 this.getActiveAxisCandidate(orient),
             getPeekState: () => layoutParent.locationManager.getPeekState(),
+            getOverviewSampleHeight: () =>
+                layoutParent.locationManager.getOverviewSampleHeight(),
         });
 
         const backgroundSpec = createBackground(viewBackgroundSpec);

@@ -29,7 +29,7 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
 
 
 };
@@ -434,7 +434,7 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
 
 
 };
@@ -948,7 +948,6 @@ uint accessor_y_0() {
 //////////////////////////////////////////////////////////////////////
 // Channel: y
 
-const vec2 range_y = vec2(1.0, 0.0);
 uniform highp usampler2D uDomainTexture_y;
 
 float scale_y(uint value) {
@@ -1056,13 +1055,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -1074,22 +1073,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -1481,7 +1464,7 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
 
 
 };
@@ -1890,7 +1873,7 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
 
 
 };
@@ -2387,7 +2370,6 @@ uint accessor_y_0() {
 //////////////////////////////////////////////////////////////////////
 // Channel: y
 
-const vec2 range_y = vec2(1.0, 0.0);
 uniform highp usampler2D uDomainTexture_y;
 
 float scale_y(uint value) {
@@ -2495,13 +2477,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -2513,22 +2495,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -3797,13 +3763,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -3815,22 +3781,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -4906,13 +4856,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -4924,22 +4874,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -6299,13 +6233,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -6317,22 +6251,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -7458,13 +7376,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -7476,22 +7394,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -7736,7 +7638,7 @@ layout(std140) uniform Mark {
     // Selection parameter
     uniform highp uint uParam_highlight;
     mediump float uDomain_x[2];
-
+    uniform vec2 range_x;
     mediump float uDomain_y[2];
 
 
@@ -8154,7 +8056,7 @@ layout(std140) uniform Mark {
     // Selection parameter
     uniform highp uint uParam_highlight;
     mediump float uDomain_x[2];
-
+    uniform vec2 range_x;
     mediump float uDomain_y[2];
 
 
@@ -8610,7 +8512,6 @@ uint accessor_x_0() {
 //////////////////////////////////////////////////////////////////////
 // Channel: x
 
-const vec2 range_x = vec2(0.0, 1.0);
 uniform highp usampler2D uDomainTexture_x;
 
 float scale_x(uint value) {
@@ -8778,13 +8679,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -8796,22 +8697,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 

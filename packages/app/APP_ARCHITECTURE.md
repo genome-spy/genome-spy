@@ -35,7 +35,7 @@ explore a stable "scene" while undoing or redoing edits to the sample set.
 ### What "intents" mean here
 
 In GenomeSpy App, an "intent" is a user-driven action expressed as a plain
-Redux action that describes *what* should happen (e.g., "sort by this
+Redux action that describes _what_ should happen (e.g., "sort by this
 attribute" or "filter by this interval"), without embedding transient runtime
 data. Intents can be enriched at dispatch time (augmentation) and then replayed
 later (bookmarks), which is why they remain serializable and are processed
@@ -78,7 +78,13 @@ coordinates:
 - Metadata sources and attribute info aggregation (`metadata/*`,
   `compositeAttributeInfoSource.js`).
 - Grouping, labels, and layout helpers (`SampleGroupView`, `SampleLabelView`,
-  `locationManager.js`, `mergeFacets.js`).
+  `locationManager.js`, `mergeFacets.js`). LocationManager retains sample/group
+  display intervals and derives geometry from a common row step, gap, inset, and
+  origin. Metadata and labels use a shared band scale with a fixed range and a
+  native categorical viewport. Group chrome uses the same requested row camera
+  as plots and summaries, including intervals spanning an otherwise empty group
+  gap. Each sample plot keeps its independent y-scale. Complete placement
+  snapshots remain available to repeated plots.
 
 ## Ensuring domains and data readiness
 

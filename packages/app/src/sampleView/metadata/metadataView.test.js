@@ -384,6 +384,68 @@ describe("MetadataView", () => {
         expect(attributeViews.foo.spec.overhang).toEqual({ bottom: false });
     });
 
+    it("shares sample placement without overwriting colliding metadata fields", async () => {
+        const { metadataView } = await createMetadataViewTestHarness({
+            sampleMetadata: {
+                attributeNames: ["sample", "_sampleId", "clinical/score"],
+                attributeDefs: {
+                    sample: { type: "nominal" },
+                    _sampleId: { type: "nominal" },
+                    "clinical/score": { type: "quantitative", barScale: {} },
+                },
+                entities: {
+                    s1: {
+                        sample: "Control",
+                        _sampleId: "A",
+                        "clinical/score": 2,
+                    },
+                    s2: {
+                        sample: "Treatment",
+                        _sampleId: "B",
+                        "clinical/score": 8,
+                    },
+                },
+            },
+            sampleDataEntities: {
+                s1: { indexNumber: 7 },
+                s2: { indexNumber: 3 },
+            },
+        });
+        const values = /** @type {UnitView[]} */ (
+            metadataView.getDescendants().filter(isMetadataValueUnitView)
+        );
+        const y = values[0].getScaleResolution("y");
+        const scale =
+            /** @type {import("@genome-spy/core/scales/scaleBand.js").CategoricalGapScale} */ (
+                y.getScale()
+            );
+        const collectors = values.map((view) => view.getCollector());
+        const revisions = collectors.map((collector) => collector.dataRevision);
+        const positions = [scale("s1"), scale("s2")];
+
+        expect(values).toHaveLength(3);
+        expect(values.every((view) => view.getScaleResolution("y") === y)).toBe(
+            true
+        );
+        expect(y.getDomain()).toEqual(["s1", "s2"]);
+        expect(metadataView.getAttributeInfo("sample").scale.domain()).toEqual([
+            "Control",
+            "Treatment",
+        ]);
+        expect(
+            metadataView.getAttributeInfo("_sampleId").scale.domain()
+        ).toEqual(["A", "B"]);
+
+        // Reordering sample identities updates placement without replaying metadata.
+        scale.domain(["s2", "s1"]);
+        expect([scale("s2"), scale("s1")]).toEqual(positions);
+        expect(collectors.map((collector) => collector.dataRevision)).toEqual(
+            revisions
+        );
+
+        metadataView.dispose();
+    });
+
     it("publishes metadata color domains before an async rebuild becomes ready", async () => {
         const sampleMetadata = {
             attributeNames: ["group", "score"],
@@ -934,9 +996,6 @@ describe("MetadataView", () => {
 
         expect(backgroundLayer?.encoding.fill).toEqual({ value: "#dddddd" });
         expect(backgroundLayer?.encoding.fillOpacity).toEqual({ value: 1 });
-        expect(backgroundLayer?.encoding.facetIndex).toEqual({
-            field: "indexNumber",
-        });
         expect(backgroundLayer?.encoding.stroke).toEqual({ value: null });
 
         metadataView.dispose();

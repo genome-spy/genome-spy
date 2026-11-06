@@ -13,7 +13,6 @@ import {
     SampleFacetCoordsResolver,
     visitMarkOccurrences,
 } from "../../immediate/markData.js";
-import { warnOnce } from "../../../utils/warning.js";
 import {
     isSoftwarePickingMarkSupported,
     renderMarkSoftwarePicking,
@@ -101,7 +100,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
         }
 
         const sampleFacet = options.sampleFacetRenderingOptions;
-        if (sampleFacet && !mark.encoders.facetIndex) {
+        if (sampleFacet) {
             this.#profiler?.addCount("canvasSampleFacetOccurrences");
             if (!isSampleFacetVisible(sampleFacet)) {
                 this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
@@ -174,11 +173,7 @@ export default class SoftwarePickingViewRenderingContext extends ViewRenderingCo
                     viewOpacity,
                     textMetrics: this.textMetrics,
                 });
-            },
-            (facetIndex) =>
-                warnOnce(
-                    `Canvas2D picking could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
-                )
+            }
         );
     }
 

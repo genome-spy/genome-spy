@@ -515,11 +515,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             options,
             this.currentCoords,
             this.#sampleFacetCoords,
-            render,
-            (facetIndex) =>
-                this.#warnings.add(
-                    `SVG export could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
-                )
+            render
         );
         if (
             !this.#countingInstances &&
