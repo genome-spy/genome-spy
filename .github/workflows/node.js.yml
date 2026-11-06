@@ -44,4 +44,5 @@ jobs:
             - run: npm ci
             - run: npm -w @genome-spy/core run build:schema
             - run: npx playwright install --with-deps --only-shell chromium
+            - run: npm -w @genome-spy/core run test:browser
             - run: npm -w @genome-spy/playground run test:e2e

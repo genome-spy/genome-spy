@@ -81,6 +81,9 @@ export interface GlobalRenderingOptions {
      * Views that haven't enabled picking can be skipped.
      */
     picking?: boolean;
+
+    /** @internal SVG groups apply view opacity after selective rasterization. */
+    applyViewOpacity?: boolean;
 }
 
 /**
