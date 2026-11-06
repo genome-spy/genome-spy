@@ -385,7 +385,34 @@ for (const dpr of [1, 2]) {
                         )
                     );
                 }
-                set({ strokeAlign: 0, strokeWidth: 40, fill: [1, 0, 0, 1] });
+                const consumedInteriors = [];
+                for (const [strokeAlign, strokeWidth] of [
+                    [0, 16],
+                    [1, 32],
+                ]) {
+                    set({
+                        strokeAlign,
+                        strokeWidth,
+                        fill: [1, 0, 0, 1],
+                        hatchPattern: 0,
+                    });
+                    const plain = await capture();
+                    set({ hatchPattern: 4 });
+                    const hatched = await capture();
+                    consumedInteriors.push({
+                        center: pixel(plain, 32 * dpr, 32 * dpr),
+                        hatchError: hatched.reduce(
+                            (m, v, i) => Math.max(m, Math.abs(v - plain[i])),
+                            0
+                        ),
+                    });
+                }
+                set({
+                    strokeAlign: 0,
+                    strokeWidth: 40,
+                    fill: [1, 0, 0, 1],
+                    hatchPattern: 0,
+                });
                 const oversizedInside = pixel(
                     await capture(),
                     32 * dpr,
@@ -401,6 +428,7 @@ for (const dpr of [1, 2]) {
                     cornerPicks,
                     aligned,
                     oversizedInside,
+                    consumedInteriors,
                     hatchAlignmentErrors,
                     envelopeErrors,
                     clippedBorder,
@@ -500,6 +528,11 @@ for (const dpr of [1, 2]) {
         expect(result.aligned.every((a) => a.transparentError <= 1)).toBe(true);
         expect(result.aligned.every((a) => a.opacityError <= 1)).toBe(true);
         close(result.oversizedInside, [0, 0, 255, 255]);
+        // A consumed inner contour must not leave a partially covered fill line.
+        for (const item of result.consumedInteriors) {
+            close(item.center, [0, 0, 255, 255]);
+            expect(item.hatchError).toBeLessThanOrEqual(1);
+        }
         expect(result.clippedBorder).toBeNull();
         close(result.overlap, [128, 128, 0, 255]);
         close(result.updated, [64, 64, 128, 255]);

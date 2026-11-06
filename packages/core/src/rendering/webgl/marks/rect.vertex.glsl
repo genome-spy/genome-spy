@@ -115,8 +115,8 @@ void main(void) {
     }
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
-    // Add an extra pixel to the stroke width to accommodate edge antialiasing
-    float aaPadding = 1.0 / uDevicePixelRatio;
+    // Keep the SDF fringe inside fully covered geometry, including MSAA samples.
+    float aaPadding = 2.0 / uDevicePixelRatio;
 
     // TODO: Only expand to the offset direction. Now high offsets result in
     // a large expansion in all directions.

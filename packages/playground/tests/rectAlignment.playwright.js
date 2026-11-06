@@ -32,6 +32,7 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     })
                 );
                 await page.goto(new URL("/rect-alignment", baseURL).href);
+                await page.evaluate(installPixelReader);
                 const result = await page.evaluate(checkAlignment, {
                     core,
                     dpr,
@@ -52,6 +53,8 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     JSON.stringify(result.mismatches.slice(0, 2))
                 ).toBe(0);
                 expect(result.checked).toBeGreaterThan(10000);
+                if (renderer !== "canvas")
+                    expect(result.gpuCoverageChecks).toBeGreaterThan(10000);
                 expect(result.overlapError).toBeLessThanOrEqual(2);
                 if (renderer === "canvas") {
                     const reuse = await page.evaluate(checkScratchReuse, {
@@ -61,9 +64,28 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     expect(reuse).toEqual({ live: true, png: true });
                 }
                 {
-                    await page.evaluate(prepareLiveRectangle, {
-                        core,
-                        renderer,
+                    await page.evaluate(async () => {
+                        globalThis.document.body.style.margin = "0";
+                        const api = globalThis.liveRectApi;
+                        for (const [name, value] of Object.entries({
+                            width: 6,
+                            fa: 1,
+                            sa: 1,
+                            tl: 0,
+                            tr: 0,
+                            bl: 0,
+                            br: 0,
+                            minimum: 0,
+                        }))
+                            api.params.get(name).setValue(value);
+                        api.datasets.set("rows", [
+                            { x: 0.25, x2: 0.75, y: 0.25, y2: 0.75 },
+                        ]);
+                        await new Promise((resolve) =>
+                            globalThis.requestAnimationFrame(() =>
+                                globalThis.requestAnimationFrame(resolve)
+                            )
+                        );
                     });
                     try {
                         for (const align of ["inside", "center", "outside"]) {
@@ -141,9 +163,17 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                                     globalThis.liveRectApi.params
                                         .get("width")
                                         .setValue(0.25 / dpr);
-                                    globalThis.liveRectApi.params
-                                        .get("left")
-                                        .setValue((15.5 + 0.5 / dpr) / 64);
+                                    globalThis.liveRectApi.datasets.set(
+                                        "rows",
+                                        [
+                                            {
+                                                x: (15.5 + 0.5 / dpr) / 64,
+                                                x2: 0.75,
+                                                y: 0.25,
+                                                y2: 0.75,
+                                            },
+                                        ]
+                                    );
                                     await new Promise((resolve) =>
                                         globalThis.requestAnimationFrame(() =>
                                             globalThis.requestAnimationFrame(
@@ -177,6 +207,28 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
     }
 }
 
+/** Installs the file-local decoder shared by the browser observation paths. */
+function installPixelReader() {
+    /** @param {Blob} blob @param {number} [width] @param {number} [height] */
+    globalThis.readRectanglePixels = async (blob, width, height) => {
+        const url = globalThis.URL.createObjectURL(blob);
+        try {
+            const image = new globalThis.Image();
+            image.src = url;
+            await image.decode();
+            const canvas = new globalThis.OffscreenCanvas(
+                width ?? image.naturalWidth,
+                height ?? image.naturalHeight
+            );
+            const context = canvas.getContext("2d");
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            return context.getImageData(0, 0, canvas.width, canvas.height);
+        } finally {
+            globalThis.URL.revokeObjectURL(url);
+        }
+    };
+}
+
 /** @param {import("@playwright/test").Page} page @param {number} dpr */
 async function readLiveColors(page, dpr) {
     // Observe the compositor; a Canvas2D copy of a presented WebGPU texture can be empty.
@@ -188,72 +240,13 @@ async function readLiveColors(page, dpr) {
             const blob = await (
                 await globalThis.fetch("data:image/png;base64," + encoded)
             ).blob();
-            const image = await globalThis.createImageBitmap(blob);
-            const canvas = new globalThis.OffscreenCanvas(
-                image.width,
-                image.height
-            );
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(image, 0, 0);
-            image.close();
-            return [12, 15, 18, 32, 50, 53, 57, 16].map((x) =>
-                Array.from(ctx.getImageData(x * dpr, 32 * dpr, 1, 1).data)
-            );
+            const pixels = await globalThis.readRectanglePixels(blob);
+            return [12, 15, 18, 32, 50, 53, 57, 16].map((x) => {
+                const offset = (32 * dpr * pixels.width + x * dpr) * 4;
+                return Array.from(pixels.data.slice(offset, offset + 4));
+            });
         },
         { encoded: screenshot.toString("base64"), dpr }
-    );
-}
-
-/** @param {{core: string, renderer: string}} options */
-async function prepareLiveRectangle({ core, renderer }) {
-    const { embed } = await import(core + "minimal.js");
-    globalThis.document.body.style.margin = "0";
-    const host = globalThis.document.createElement("div");
-    host.id = "live-rect";
-    host.style.cssText = "width:64px;height:64px";
-    globalThis.document.body.append(host);
-    globalThis.liveRectApi = await embed(
-        host,
-        {
-            name: "live-rect",
-            width: 64,
-            height: 64,
-            padding: 0,
-            config: {
-                background: null,
-                view: { stroke: null, strokeWidth: 0 },
-            },
-            data: { values: [{}] },
-            params: [
-                { name: "align", value: "inside" },
-                { name: "width", value: 6 },
-                { name: "left", value: 0.25 },
-            ],
-            mark: {
-                type: "rect",
-                fill: "red",
-                stroke: "blue",
-                strokeWidth: { expr: "width" },
-                strokeAlign: { expr: "align" },
-                minWidth: 0,
-                minHeight: 0,
-            },
-            encoding: {
-                x: { value: { expr: "left" } },
-                x2: { value: 0.75 },
-                y: { value: 0.25 },
-                y2: { value: 0.75 },
-            },
-        },
-        {
-            renderer,
-            onError: (error) => {
-                throw error;
-            },
-        }
-    );
-    await globalThis.liveRectApi.awaitVisibleLazyData(
-        globalThis.AbortSignal.timeout(10000)
     );
 }
 
@@ -339,16 +332,9 @@ async function checkScratchReuse({ core, dpr }) {
                 pixelRatio: dpr,
                 background: null,
             });
-            const image = await globalThis.createImageBitmap(blob);
-            const scratch = globalThis.document.createElement("canvas");
-            scratch.width = image.width;
-            scratch.height = image.height;
-            const ctx = scratch.getContext("2d");
-            ctx.drawImage(image, 0, 0);
-            image.close();
             return {
                 live,
-                png: ctx.getImageData(0, 0, scratch.width, scratch.height).data,
+                png: (await globalThis.readRectanglePixels(blob)).data,
             };
         } finally {
             api.finalize();
@@ -395,11 +381,13 @@ async function checkAlignment({ core, dpr, renderer }) {
         };
     }
     const host = globalThis.document.createElement("div");
+    host.id = "live-rect";
     host.style.cssText = "width:64px;height:64px";
     globalThis.document.body.append(host);
     const api = await embed(
         host,
         {
+            name: "live-rect",
             width: 64,
             height: 64,
             padding: 0,
@@ -461,6 +449,7 @@ async function checkAlignment({ core, dpr, renderer }) {
             },
         }
     );
+    globalThis.liveRectApi = api;
     try {
         await api.awaitVisibleLazyData(globalThis.AbortSignal.timeout(10000));
         const canvas = host.querySelector("canvas");
@@ -494,75 +483,74 @@ async function checkAlignment({ core, dpr, renderer }) {
             await settle();
             return readCanvas();
         }
-        let checked = 0;
+        let checked = 0,
+            gpuCoverageChecks = 0;
         const mismatches = [];
         for (const align of ["inside", "center", "outside"]) {
-            for (const shape of [
+            for (const candidate of [
+                { name: "sharp" },
                 {
+                    name: "rounded paints",
+                    radii: [5, 5, 5, 5],
+                    width: 6,
+                    fa: 0.6,
+                    sa: 0.5,
+                },
+                {
+                    name: "mixed paints",
+                    radii: [0, 3, 7, 2],
+                    width: 6,
+                    fa: 0.6,
+                    sa: 0.5,
+                },
+                {
+                    name: "mixed opaque boundaries",
+                    radii: [0, 3, 7, 2],
+                    width: 6,
+                },
+                {
+                    name: "consumed interior",
+                    bounds: [28.25, 28.25, 8, 6],
+                    radii: [2, 2, 2, 2],
+                    width: 10,
+                },
+                {
+                    name: "clamped radii",
+                    bounds: [16.25, 20.25, 32, 20],
+                    radii: [100, 4, 6, 8],
+                    width: 2,
+                    fa: 0.25,
+                    sa: 0.75,
+                },
+                {
+                    name: "minimum-size fade",
+                    bounds: [28.25, 24.25, 4, 16],
+                    radii: [0, 3, 3, 0],
+                    minimum: 8,
+                },
+                {
+                    name: "transparent stroke",
+                    radii: [0, 3, 7, 2],
+                    width: 12,
+                    sa: 0,
+                },
+                {
+                    name: "transparent fill",
+                    radii: [4, 4, 4, 4],
+                    width: 6,
+                    fa: 0,
+                    sa: 0.5,
+                },
+            ]) {
+                const shape = {
                     bounds: [16.25, 20.25, 32, 24],
                     radii: [0, 0, 0, 0],
                     width: 4,
                     fa: 1,
                     sa: 1,
                     minimum: 0,
-                },
-                {
-                    bounds: [16.25, 20.25, 32, 24],
-                    radii: [5, 5, 5, 5],
-                    width: 6,
-                    fa: 0.6,
-                    sa: 0.5,
-                    minimum: 0,
-                },
-                {
-                    bounds: [16.25, 20.25, 32, 24],
-                    radii: [0, 3, 7, 2],
-                    width: 6,
-                    fa: 0.6,
-                    sa: 0.5,
-                    minimum: 0,
-                },
-                {
-                    bounds: [28.25, 28.25, 8, 6],
-                    radii: [2, 2, 2, 2],
-                    width: 10,
-                    fa: 1,
-                    sa: 1,
-                    minimum: 0,
-                },
-                {
-                    bounds: [16.25, 20.25, 32, 20],
-                    radii: [100, 4, 6, 8],
-                    width: 2,
-                    fa: 0.25,
-                    sa: 0.75,
-                    minimum: 0,
-                },
-                {
-                    bounds: [28.25, 24.25, 4, 16],
-                    radii: [0, 3, 3, 0],
-                    width: 4,
-                    fa: 1,
-                    sa: 1,
-                    minimum: 8,
-                },
-                {
-                    bounds: [16.25, 20.25, 32, 24],
-                    radii: [0, 3, 7, 2],
-                    width: 12,
-                    fa: 1,
-                    sa: 0,
-                    minimum: 0,
-                },
-                {
-                    bounds: [16.25, 20.25, 32, 24],
-                    radii: [4, 4, 4, 4],
-                    width: 6,
-                    fa: 0,
-                    sa: 0.5,
-                    minimum: 0,
-                },
-            ]) {
+                    ...candidate,
+                };
                 const [tl, tr, br, bl] = shape.radii;
                 const bytes = await paint(
                     {
@@ -582,14 +570,7 @@ async function checkAlignment({ core, dpr, renderer }) {
                     pixelRatio: dpr,
                     background: null,
                 });
-                const image = await globalThis.createImageBitmap(blob),
-                    scratch = globalThis.document.createElement("canvas");
-                scratch.width = 64 * dpr;
-                scratch.height = 64 * dpr;
-                const ctx = scratch.getContext("2d");
-                ctx.drawImage(image, 0, 0);
-                image.close();
-                const png = ctx.getImageData(0, 0, 64 * dpr, 64 * dpr).data;
+                const png = (await globalThis.readRectanglePixels(blob)).data;
                 const targets = [
                     ...(renderer === "webgpu" ? [] : [["live", bytes]]),
                     ["png", png],
@@ -598,17 +579,15 @@ async function checkAlignment({ core, dpr, renderer }) {
                     const vector = await api.imageExport.svg({
                         background: null,
                     });
-                    const url = globalThis.URL.createObjectURL(vector.blob);
-                    const image = new globalThis.Image();
-                    image.src = url;
-                    await image.decode();
-                    ctx.clearRect(0, 0, scratch.width, scratch.height);
-                    ctx.drawImage(image, 0, 0, scratch.width, scratch.height);
-                    globalThis.URL.revokeObjectURL(url);
                     targets.push([
                         "svg",
-                        ctx.getImageData(0, 0, scratch.width, scratch.height)
-                            .data,
+                        (
+                            await globalThis.readRectanglePixels(
+                                vector.blob,
+                                64 * dpr,
+                                64 * dpr
+                            )
+                        ).data,
                     ]);
                 }
                 const bounds = shape.bounds.slice();
@@ -663,6 +642,38 @@ async function checkAlignment({ core, dpr, renderer }) {
                                 ? distance(x, y, inner, innerR)
                                 : Infinity;
                         const outerD = distance(x, y, outer, outerR);
+                        if (
+                            renderer !== "canvas" &&
+                            shape.fa === 1 &&
+                            shape.sa === 1
+                        ) {
+                            // Check GPU continuity at every internal paint boundary. Rounded
+                            // outer edges also use independent finite-boundary distance coverage.
+                            const coverage = r.some(Boolean)
+                                ? Math.max(0, Math.min(1, 0.5 - outerD * dpr))
+                                : outerD < -0.5 / dpr
+                                  ? 1
+                                  : undefined;
+                            if (coverage !== undefined) {
+                                const expectedAlpha = coverage * factor * 255;
+                                const i = (py * 64 * dpr + px) * 4;
+                                for (const [target, data] of targets) {
+                                    const error = Math.abs(
+                                        data[i + 3] - expectedAlpha
+                                    );
+                                    if (error > caseErrors[target]) {
+                                        caseErrors[target] = error;
+                                        worst[target] = {
+                                            x,
+                                            y,
+                                            actualAlpha: data[i + 3],
+                                            expectedAlpha,
+                                        };
+                                    }
+                                }
+                                gpuCoverageChecks++;
+                            }
+                        }
                         // The accepted Canvas allowance applies only within one physical pixel
                         // of an independently constructed nominal/inner/outer boundary.
                         if (
@@ -757,20 +768,7 @@ async function checkAlignment({ core, dpr, renderer }) {
                 pixelRatio: dpr,
                 background: null,
             });
-            const image = await globalThis.createImageBitmap(blob);
-            const scratch = new globalThis.OffscreenCanvas(
-                image.width,
-                image.height
-            );
-            const context = scratch.getContext("2d");
-            context.drawImage(image, 0, 0);
-            image.close();
-            overlapBytes = context.getImageData(
-                0,
-                0,
-                scratch.width,
-                scratch.height
-            ).data;
+            overlapBytes = (await globalThis.readRectanglePixels(blob)).data;
         }
         const overlap = overlapBytes.slice(overlapOffset, overlapOffset + 4);
         const overlapError = Math.max(
@@ -779,11 +777,9 @@ async function checkAlignment({ core, dpr, renderer }) {
             Math.abs((overlap[2] * overlap[3]) / 255 - 223),
             Math.abs(overlap[3] - 223)
         );
-        return { checked, mismatches, overlapError };
+        return { checked, mismatches, overlapError, gpuCoverageChecks };
     } finally {
-        api.finalize();
         globalThis.HTMLCanvasElement.prototype.getContext = original;
-        host.remove();
     }
 
     /** @param {number} x @param {number} y @param {number[]} b @param {number[]} radii */
