@@ -5,7 +5,7 @@ in lowp vec2 textureCoord;
 in float width;
 
 out vec2 vTexCoord;
-out float vEdgeFadeOpacity;
+out vec2 vUnitPos;
 flat out vec4 vColor;
 flat out float vSlope;
 flat out float vGamma;
@@ -14,14 +14,6 @@ struct RangeResult {
     float pos;
     float scale;
 };
-
-float minValue(vec4 v) {
-    return min(min(v.x, v.y), min(v.z, v.w));
-}
-
-float maxValue(vec4 v) {
-    return max(max(v.x, v.y), max(v.z, v.w));
-}
 
 /**
  * All measures are in [0, 1]
@@ -245,16 +237,7 @@ void main(void) {
 
     vTexCoord = textureCoord;
 
-    // Edge fading. The implementation is simplistic and fails with primitives that
-    // span the whole viewport. However, it works just fine with reasonable font sizes.
-    // x: top, y: right, z: bottom, w: left
-    if (maxValue(uViewportEdgeFadeDistance) > -pow(10.0, 10.0)) { // -Infinity would be nice
-        vEdgeFadeOpacity = minValue(
-            ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * unitPos.yxyx) *
-                uViewportSize.yxyx - uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);
-    } else {
-        vEdgeFadeOpacity = 1.0;
-    }
+    vUnitPos = unitPos;
 
     setupPicking();
 }
