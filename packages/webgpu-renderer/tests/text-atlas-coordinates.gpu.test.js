@@ -3,12 +3,15 @@
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
-for (const dpr of [1, 2]) {
-    test(`text preserves original glyph and fitted logo bounds at DPR ${dpr}`, async ({
+for (const [dpr, shift] of [1, 2].flatMap((dpr) =>
+    [0, 0.25, 0.5].map((shift) => [dpr, shift])
+)) {
+    test(`text preserves original glyph and fitted logo bounds at DPR ${dpr}, shift ${shift}`, async ({
         page,
     }) => {
         await ensureWebGPU(page);
-        const result = await page.evaluate(async (dpr) => {
+        const placement = [dpr, shift];
+        const result = await page.evaluate(async ([dpr, shift]) => {
             const [
                 { createRenderer },
                 { textMark },
@@ -52,10 +55,14 @@ for (const dpr of [1, 2]) {
             const rows = [];
 
             try {
-                for (const logo of [false, true]) {
+                for (const { logo, shadow } of [
+                    { logo: false, shadow: false },
+                    { logo: true, shadow: false },
+                    { logo: false, shadow: true },
+                ]) {
                     const labels = logo ? ["|"] : ["|", "_"];
-                    const x = logo ? [32.25] : [64.25, 192.25];
-                    const y = logo ? 112.25 : 64.25;
+                    const x = logo ? [32 + shift] : [64 + shift, 192 + shift];
+                    const y = logo ? 112 + shift : 64 + shift;
                     const mark = renderer.createMark(textMark, {
                         count: labels.length,
                         font,
@@ -72,11 +79,11 @@ for (const dpr of [1, 2]) {
                             ...(logo
                                 ? {
                                       x2: {
-                                          value: 96.25,
+                                          value: 96 + shift,
                                           scale: identityScale(),
                                       },
                                       y2: {
-                                          value: 16.25,
+                                          value: 16 + shift,
                                           scale: identityScale(),
                                       },
                                   }
@@ -85,6 +92,16 @@ for (const dpr of [1, 2]) {
                             // Gray gives gamma 1; size 32 has no stem darkening.
                             fill: { value: [0.5, 0.5, 0.5, 1] },
                             strokeWidth: { value: 0 },
+                            // Isolate the true-distance shadow shader with the same straight-edge geometry.
+                            ...(shadow
+                                ? {
+                                      fillOpacity: { value: 0 },
+                                      shadowOpacity: { value: 1 },
+                                      shadowColor: {
+                                          value: [0.5, 0.5, 0.5, 1],
+                                      },
+                                  }
+                                : {}),
                         },
                     });
                     let bytes;
@@ -95,7 +112,9 @@ for (const dpr of [1, 2]) {
                         });
                         const encoder = renderer.device.createCommandEncoder();
                         encoder.copyTextureToBuffer(
-                            { texture: renderer.context.getCurrentTexture() },
+                            {
+                                texture: renderer.context.getCurrentTexture(),
+                            },
                             { buffer, bytesPerRow: canvas.width * 4 },
                             { width: canvas.width, height: canvas.height }
                         );
@@ -113,25 +132,25 @@ for (const dpr of [1, 2]) {
                         // These bars are rectangles in the original font, independent of atlas metrics.
                         const left =
                             (logo
-                                ? 32.25
+                                ? 32 + shift
                                 : x[index] -
                                   (glyph.advanceWidth * fontScale) / 2 +
                                   bounds.xMin * fontScale) * dpr;
                         const right =
                             (logo
-                                ? 96.25
+                                ? 96 + shift
                                 : x[index] -
                                   (glyph.advanceWidth * fontScale) / 2 +
                                   bounds.xMax * fontScale) * dpr;
                         const top =
                             (logo
-                                ? 16.25
+                                ? 16 + shift
                                 : y +
                                   (font.capHeight * fontScale) / 2 -
                                   bounds.yMax * fontScale) * dpr;
                         const bottom =
                             (logo
-                                ? 112.25
+                                ? 112 + shift
                                 : y +
                                   (font.capHeight * fontScale) / 2 -
                                   bounds.yMin * fontScale) * dpr;
@@ -177,11 +196,11 @@ for (const dpr of [1, 2]) {
                                         continue;
                                 }
                                 let coverage = 0;
-                                // The renderer uses four quarter-pixel samples; Y increases upward in UV space.
+                                // Sample the current physical pixel at its four quarter-pixel positions.
                                 for (const dx of [0.25, 0.75]) {
                                     for (const dy of [0.25, 0.75]) {
-                                        const xx = px + 0.5 + dx;
-                                        const yy = py + 0.5 - dy;
+                                        const xx = px + dx;
+                                        const yy = py + dy;
                                         const distance = Math.min(
                                             (xx - left) * gradientX,
                                             (right - xx) * gradientX,
@@ -208,7 +227,14 @@ for (const dpr of [1, 2]) {
                                 edges += coverage > 0 && coverage < 1;
                             }
                         }
-                        rows.push({ logo, label, maximum, tested, edges });
+                        rows.push({
+                            logo,
+                            shadow,
+                            label,
+                            maximum,
+                            tested,
+                            edges,
+                        });
                     }
                 }
                 const error = await renderer.device.popErrorScope();
@@ -218,10 +244,10 @@ for (const dpr of [1, 2]) {
                 renderer.destroy();
                 canvas.remove();
             }
-        }, dpr);
+        }, placement);
 
         expect(result.validationError).toBeNull();
-        expect(result.rows).toHaveLength(3);
+        expect(result.rows).toHaveLength(5);
         for (const row of result.rows) {
             expect(row.tested, JSON.stringify(row)).toBeGreaterThan(20);
             expect(row.edges, JSON.stringify(row)).toBeGreaterThan(10);

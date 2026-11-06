@@ -739,32 +739,32 @@ fn sampleSuperOutline(
 ) -> vec2<f32> {
     return (
         sampleOutlineCoverage(
+            in.uv - 0.25 * uvDx - 0.25 * uvDy,
+            in.tilePosition - 0.25 * tileDx - 0.25 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        ) +
+        sampleOutlineCoverage(
+            in.uv + 0.25 * uvDx - 0.25 * uvDy,
+            in.tilePosition + 0.25 * tileDx - 0.25 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        ) +
+        sampleOutlineCoverage(
+            in.uv - 0.25 * uvDx + 0.25 * uvDy,
+            in.tilePosition - 0.25 * tileDx + 0.25 * tileDy,
+            in.shapeBounds,
+            in.devicePixelsPerAtlas,
+            in.halfStrokeWidth,
+            in.stemDarkening
+        ) +
+        sampleOutlineCoverage(
             in.uv + 0.25 * uvDx + 0.25 * uvDy,
             in.tilePosition + 0.25 * tileDx + 0.25 * tileDy,
-            in.shapeBounds,
-            in.devicePixelsPerAtlas,
-            in.halfStrokeWidth,
-            in.stemDarkening
-        ) +
-        sampleOutlineCoverage(
-            in.uv + 0.75 * uvDx + 0.25 * uvDy,
-            in.tilePosition + 0.75 * tileDx + 0.25 * tileDy,
-            in.shapeBounds,
-            in.devicePixelsPerAtlas,
-            in.halfStrokeWidth,
-            in.stemDarkening
-        ) +
-        sampleOutlineCoverage(
-            in.uv + 0.25 * uvDx + 0.75 * uvDy,
-            in.tilePosition + 0.25 * tileDx + 0.75 * tileDy,
-            in.shapeBounds,
-            in.devicePixelsPerAtlas,
-            in.halfStrokeWidth,
-            in.stemDarkening
-        ) +
-        sampleOutlineCoverage(
-            in.uv + 0.75 * uvDx + 0.75 * uvDy,
-            in.tilePosition + 0.75 * tileDx + 0.75 * tileDy,
             in.shapeBounds,
             in.devicePixelsPerAtlas,
             in.halfStrokeWidth,
@@ -793,10 +793,10 @@ fn sampleSuperShadow(
     uvDy: vec2<f32>
 ) -> f32 {
     return (
-        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.25 * uvDy) +
-        shadowCoverageAt(in, in.uv + 0.75 * uvDx + 0.25 * uvDy) +
-        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.75 * uvDy) +
-        shadowCoverageAt(in, in.uv + 0.75 * uvDx + 0.75 * uvDy)
+        shadowCoverageAt(in, in.uv - 0.25 * uvDx - 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.25 * uvDx - 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv - 0.25 * uvDx + 0.25 * uvDy) +
+        shadowCoverageAt(in, in.uv + 0.25 * uvDx + 0.25 * uvDy)
     ) * 0.25;
 }
 
