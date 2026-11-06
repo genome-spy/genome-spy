@@ -7987,7 +7987,8 @@ float diagonalPattern(vec2 uv, float spacing) {
 
 float verticalPattern(float x, float spacing) {
     float divisor = spacing * vHalfStrokeWidth * 2.0;
-    return abs(mod(x, divisor)) / 2.0;
+    // Match WebGPU: the stripe is centered at half width, with continuous repeat edges.
+    return abs(mod(x - vHalfStrokeWidth + 0.5 * divisor, divisor) - 0.5 * divisor);
 }
 
 float circle(vec2 p, float r) {
