@@ -173,7 +173,13 @@ for (const dpr of [1, 2]) {
                     [40, 32],
                 ],
                 { placementIndex: { source: "draw" } },
-                { placement: { set: narrowPlacement, index: 0 } }
+                {
+                    placement: {
+                        set: narrowPlacement,
+                        index: 0,
+                        clipToPlacement: "xy",
+                    },
+                }
             );
             const point = {
                 x: { value: 32 },

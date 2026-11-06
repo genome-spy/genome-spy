@@ -50,17 +50,19 @@ export function resolveTextProperties(mark) {
  *
  * @param {import("../../../marks/text.js").default} mark
  * @param {ReturnType<typeof resolveTextProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, anchorCullBounds: import("../bounds.js").RenderBounds, fontMeasurement: import("../../../fonts/textMetrics.js").FontMeasurement, measureLogoInkBounds: (text: string) => import("../../nativeTextMetrics.js").NativeInkBounds | null}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, anchorCullBounds: import("../bounds.js").RenderBounds, fontMeasurement: import("../../../fonts/textMetrics.js").FontMeasurement, measureLogoInkBounds: (text: string) => import("../../nativeTextMetrics.js").NativeInkBounds | null, start?: number, end?: number}} options
  * @param {(instance: TextInstance) => void} visitor
  */
 export function visitTextInstances(mark, properties, options, visitor) {
     const { coords, data, visibleBounds, anchorCullBounds } = options;
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
     const { align, baseline } = properties;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    if (start === end) {
         return 0;
     }
     const constantSize = encoders.size.constant
@@ -118,7 +120,8 @@ export function visitTextInstances(mark, properties, options, visitor) {
     const clampYRange = hasY2 && isMarkClamped(mark, "y");
     let instanceCount = 0;
 
-    for (const datum of data) {
+    for (let index = start; index < end; index++) {
+        const datum = data[index];
         const value = numberFormat(encoders.text(datum));
         const text = isString(value) ? value : value === null ? "" : "" + value;
         if (!text) {

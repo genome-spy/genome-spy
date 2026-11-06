@@ -415,7 +415,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(placeClampedGeometry(clip, i), 0.0, 1.0);
+    out.pos = vec4<f32>(clip, 0.0, 1.0);
     let color = getScaled_color(i);
     out.color = premultiplyAlpha(vec4<f32>(color.rgb, color.a * opacity));
     out.normalDistance = normalDistance;
@@ -510,7 +510,7 @@ export default class LinkProgram extends BaseProgram {
 
     /**
      * @param {string} name
-     * @param {number | number[]} value
+     * @param {import("../../index.d.ts").NumericValue} value
      * @internal
      */
     _setExtraUniformValue(name, value) {

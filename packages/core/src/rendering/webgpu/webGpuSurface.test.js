@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
     const handle = {
@@ -60,7 +60,8 @@ vi.mock("@genome-spy/webgpu-renderer", () => ({
     createRenderer: mocks.createRenderer,
 }));
 
-vi.mock("./webGpuMarkAdapter.js", () => ({
+vi.mock("./webGpuMarkAdapter.js", async (importOriginal) => ({
+    ...(await importOriginal()),
     /** @param {unknown} _mark @param {string} name */
     getWebGpuCategorySelectionBinding: (_mark, name) =>
         name === "categorySet" ? { param: "chosen", input: "fill" } : undefined,
@@ -83,6 +84,11 @@ vi.mock("../canvasSizeHelper.js", () => ({
 }));
 
 import WebGpuSurface from "./webGpuSurface.js";
+import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
+import { createWebGpuMarkConfig } from "./webGpuMarkAdapter.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import Rectangle from "../../view/layout/rectangle.js";
+import UnitView from "../../view/unitView.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -137,6 +143,9 @@ function configureMockMark(mark, definition) {
     mark.unitView ??= {};
     mark.unitView.getPathString ??= () => "root/test-view";
     mark.getType ??= () => definition.type;
+    mark.getRenderingRevision ??= /** @type {() => undefined} */ (
+        () => undefined
+    );
 }
 
 describe("WebGpuSurface", () => {
@@ -351,23 +360,119 @@ describe("WebGpuSurface", () => {
         );
         await surface.initialize();
         const mark = /** @type {any} */ ({});
+        const getProgramKey = vi.fn(
+            (/** @type {any} */ config) => config.shape
+        );
         const definition = /** @type {any} */ ({
             type: "point",
-            getProgramKey: (/** @type {any} */ config) => config.shape,
+            getProgramKey,
         });
         configureMockMark(mark, definition);
 
-        surface.updateMark(mark, definition, {
+        const config = {
             ...createConfig(0),
             shape: "circle",
-        });
+        };
+        surface.updateMark(mark, definition, config);
+        surface.updateMark(mark, definition, config);
+        expect(getProgramKey).toHaveBeenCalledOnce();
         surface.updateMark(mark, definition, {
             ...createConfig(0),
             shape: "square",
         });
 
         expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
+        expect(getProgramKey).toHaveBeenCalledTimes(2);
         expect(mocks.renderer.destroyMark).toHaveBeenCalledWith(7);
+    });
+
+    test("recreates placement programs when one occurrence becomes many and back", async () => {
+        const { view } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{ x: 1 }, { x: 2 }] },
+            mark: "point",
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        const unit = /** @type {UnitView} */ (view);
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => {
+            view.disposeSubtree();
+            surface.finalize();
+        });
+        const coords = Rectangle.create(0, 0, 100, 50);
+        const render = (/** @type {number} */ occurrences) => {
+            const context = new WebGpuViewRenderingContext({ surface });
+            for (let i = 0; i < occurrences; i++) {
+                context.pushView(unit, coords);
+                context.renderMark(unit.mark, {});
+                context.popView(unit);
+            }
+            context.finish();
+            surface.render(context.render());
+        };
+
+        render(1);
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        render(2);
+        render(2);
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
+        render(1);
+        render(1);
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(3);
+        expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(2);
+        expect(
+            mocks.renderer.createMark.mock.calls.map(
+                (call) => /** @type {any} */ (call)[1].placementIndex
+            )
+        ).toEqual([undefined, { source: "draw" }, undefined]);
+    });
+
+    test("retains placement series updates but recreates different compile modes", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        const mark = /** @type {any} */ ({});
+        const definition =
+            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
+                /** @type {unknown} */ ({ type: "point" })
+            );
+        configureMockMark(mark, definition);
+        const config = createConfig(0);
+        const instance = {
+            ...config,
+            placementIndex: { data: new Uint32Array([0, 1]), type: "u32" },
+        };
+        surface.updateMark(mark, definition, instance);
+        const indices = new Uint32Array([1, 0]);
+        surface.updateMark(mark, definition, {
+            ...instance,
+            placementIndex: { data: indices, type: "u32" },
+        });
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).toHaveBeenCalledWith(
+            { x: config.channels.x.data, __placementIndex: indices },
+            config.count
+        );
+
+        surface.updateMark(mark, definition, {
+            ...config,
+            placementIndex: { source: "draw" },
+        });
+        surface.updateMark(mark, definition, instance);
+        surface.updateMark(mark, definition, config);
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(4);
+        expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(3);
     });
 
     test("replaces logical text and position series on retained text marks", async () => {
@@ -432,61 +537,83 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
     });
 
-    test("reads live channel leaves from a retained config object", async () => {
-        const container = document.createElement("div");
+    test("reuses owned domains while computed color ranges stay live", async () => {
         const surface = new WebGpuSurface(
             /** @type {any} */ ({
-                container,
-                sizeSource: {},
+                container: document.body,
                 onCanvasResize: vi.fn(),
-                onRenderInvalidated: vi.fn(),
             })
         );
         await surface.initialize();
-        const mark = /** @type {import("../../marks/mark.js").default} */ (
-            /** @type {unknown} */ ({})
-        );
-        const definition =
-            /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
-                /** @type {unknown} */ ({ type: "point" })
-            );
-        const domain = [0, 10];
-        let size = 5;
+        const mark = /** @type {any} */ ({});
+        const definition = /** @type {any} */ ({ type: "point" });
+        const readDomainEntry = vi.fn();
+        const createDomain = () =>
+            new Proxy(Object.freeze([200, 5, 900]), {
+                get(target, property, receiver) {
+                    if (typeof property === "string" && /^\d+$/.test(property))
+                        readDomainEntry();
+                    return Reflect.get(target, property, receiver);
+                },
+            });
+        let domain = createDomain();
+        const range = [
+            [0, 0, 0, 1],
+            [1, 1, 1, 1],
+        ];
         const config = {
-            count: 2,
+            count: 3,
             channels: {
                 x: {
-                    data: new Float32Array([1, 2]),
-                    type: "f32",
+                    data: new Uint32Array([200, 5, 900]),
+                    type: "u32",
                     scale: {
                         get domain() {
                             return domain;
                         },
-                        range: [0, 100],
-                    },
-                },
-                size: {
-                    get value() {
-                        return size;
+                        get range() {
+                            return range.map((color) => color.slice());
+                        },
                     },
                 },
             },
         };
-
         useMark(surface, mark, definition, config);
-        domain[0] = 1;
-        domain[1] = 11;
-        size = 6;
-        useMark(surface, mark, definition, config);
+        domain = createDomain();
+        const replacementConfig = {
+            ...config,
+            channels: {
+                x: {
+                    ...config.channels.x,
+                    scale: {
+                        get domain() {
+                            return domain;
+                        },
+                        get range() {
+                            return range.map((color) => color.slice());
+                        },
+                    },
+                },
+            },
+        };
+        useMark(surface, mark, definition, replacementConfig);
+        readDomainEntry.mockClear();
 
-        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
-        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledOnce();
-        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
-            1, 11,
-        ]);
-        expect(mocks.handle.values.size.default.set).toHaveBeenCalledOnce();
-        expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+        range[0][0] = 0.25;
+        useMark(surface, mark, definition, replacementConfig);
+
+        expect(readDomainEntry).not.toHaveBeenCalled();
+        expect(mocks.handle.scales.x.default.setDomain).not.toHaveBeenCalled();
+        expect(
+            mocks.handle.scales.x.default.setRange
+        ).toHaveBeenCalledExactlyOnceWith(range);
+        domain = Object.freeze([900, 200]);
+        useMark(surface, mark, definition, replacementConfig);
+        expect(
+            mocks.handle.scales.x.default.setDomain
+        ).toHaveBeenCalledExactlyOnceWith([900, 200]);
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+        surface.finalize();
     });
 
     test("updates categorical gaps without treating category IDs as index camera ranks", async () => {
@@ -503,7 +630,10 @@ describe("WebGpuSurface", () => {
             type: "band",
             viewport:
                 /** @type {import("../../scales/scaleBand.js").CategoricalViewport | null} */ (
-                    null
+                    Object.freeze({
+                        interval: Object.freeze([0, 3]),
+                        gapRanks: Object.freeze([0, 1]),
+                    })
                 ),
             domain: [200, 5, 900],
             range: [0, 100],
@@ -528,22 +658,10 @@ describe("WebGpuSurface", () => {
         expect(
             mocks.handle.scales.x.default.setViewport
         ).toHaveBeenCalledOnce();
-        // Equal snapshots are quiet; mutations must compare with detached state.
-        scale.viewport = structuredClone(scale.viewport);
+        scale.viewport = { interval: [1.25, 3], gapRanks: [0.75, 1] };
         useMark(surface, mark, definition, config);
-        expect(
-            mocks.handle.scales.x.default.setViewport
-        ).toHaveBeenCalledOnce();
-        scale.viewport.interval[0] = 1.25;
+        scale.viewport = { interval: [1.25, 3] };
         useMark(surface, mark, definition, config);
-        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            2
-        );
-        scale.viewport.gapRanks[0] = 0.75;
-        useMark(surface, mark, definition, config);
-        expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
-            3
-        );
         scale.viewport = null;
         useMark(surface, mark, definition, config);
         expect(mocks.handle.scales.x.default.setViewport).toHaveBeenCalledTimes(
@@ -563,6 +681,282 @@ describe("WebGpuSurface", () => {
         expect(slot.setGapWidth).toHaveBeenCalledExactlyOnceWith(0);
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
         surface.finalize();
+    });
+
+    test("copies native packed datums and mutable link vectors into renderer storage", async () => {
+        const start = 2 ** 32;
+        const { view } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{}] },
+            params: [
+                { name: "position", value: start + 4 },
+                { name: "distance", value: [10, 20] },
+                { name: "revision", value: 0 },
+            ],
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            datum: { expr: "position" },
+                            type: "index",
+                            scale: { domain: [start, start + 20] },
+                            axis: null,
+                        },
+                        y: { value: 0.5 },
+                    },
+                },
+                {
+                    mark: {
+                        type: "link",
+                        arcFadingDistance: {
+                            expr: "revision >= 0 ? distance : null",
+                        },
+                    },
+                    encoding: {
+                        x: { value: 0 },
+                        x2: { value: 1 },
+                        y: { value: 0 },
+                        y2: { value: 1 },
+                    },
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const encodedPosition = new Uint32Array(2);
+        const encodedDistance = new Float32Array(2);
+        mocks.renderer.createMark
+            .mockReturnValueOnce({
+                ...mocks.handle,
+                values: Object.assign(
+                    {
+                        x: {
+                            default: {
+                                set: (/** @type {ArrayLike<number>} */ value) =>
+                                    encodedPosition.set(value),
+                            },
+                        },
+                    },
+                    mocks.handle.values
+                ),
+            })
+            .mockReturnValueOnce({
+                ...mocks.handle,
+                markId: 8,
+                properties: {
+                    arcFadingDistance: {
+                        set: (/** @type {ArrayLike<number>} */ value) =>
+                            encodedDistance.set(value),
+                    },
+                },
+            });
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        const translations = view
+            .getDescendants()
+            .filter((child) => child instanceof UnitView)
+            .map((unit) => ({
+                mark: unit.mark,
+                ...createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO),
+            }));
+        const synchronize = () => {
+            for (const { mark, definition, config, properties } of translations)
+                surface.updateMark(mark, definition, config, properties);
+        };
+        synchronize();
+        expect(encodedPosition).toEqual(new Uint32Array([1048576, 4]));
+        expect(encodedDistance).toEqual(new Float32Array([10, 20]));
+
+        // Another dependency can notify while the expression returns the same array.
+        const distance = view.paramRuntime.getValue("distance");
+        distance[0] = 15;
+        distance[1] = 25;
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("position", start + 9);
+            view.paramRuntime.setValue("revision", 1);
+        });
+        await view.paramRuntime.whenPropagated();
+
+        synchronize();
+        expect(encodedPosition).toEqual(new Uint32Array([1048576, 9]));
+        expect(encodedDistance).toEqual(new Float32Array([15, 25]));
+    });
+
+    test("scale-only updates retain unrelated values while style transactions and replacements stay live", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "dotSize", value: 4 }],
+            data: {
+                values: [
+                    { x: 0, score: 0.25 },
+                    { x: 4, score: 0.75 },
+                ],
+            },
+            mark: { type: "point", semanticZoomFraction: 0.25 },
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { domain: [0, 4], zoom: true },
+                    axis: null,
+                },
+                y: { value: 0.5 },
+                fill: { value: "black" },
+                stroke: { value: null },
+                size: { value: { expr: "dotSize" } },
+                semanticScore: {
+                    field: "score",
+                    type: "quantitative",
+                },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const point = /** @type {import("../../view/unitView.js").default} */ (
+            view
+        );
+        point.mark.initializeData();
+        const coords = Rectangle.create(0, 0, 100, 50);
+        const translated = createWebGpuMarkConfig(point.mark, {}, coords);
+        const config = /** @type {any} */ (translated.config);
+        const thresholdSet = vi.fn();
+        const ySet = vi.fn();
+        Object.assign(mocks.handle.values, { y: { default: { set: ySet } } });
+        mocks.handle.scalarSlots = { semanticThreshold: { set: thresholdSet } };
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        thresholdSet.mockClear();
+        ySet.mockClear();
+        const readSize = vi.spyOn(config.channels.size, "value", "get");
+        const resolution = point.getScaleResolution("x");
+
+        // Exercise native Mark revisions and adapter getters together, rather
+        // than synthesizing a scale-only revision in the surface mock.
+        await resolution.zoomTo([0, 2]);
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        expect(readSize).not.toHaveBeenCalled();
+        expect(ySet).not.toHaveBeenCalled();
+        expect(mocks.handle.scales.x.default.setDomain).toHaveBeenCalledWith([
+            0, 2,
+        ]);
+        expect(thresholdSet).toHaveBeenCalledExactlyOnceWith(0.5);
+
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("dotSize", 8);
+            resolution.getScale().domain([0, 1]);
+        });
+        await view.paramRuntime.whenPropagated();
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        expect(readSize).toHaveBeenCalled();
+        expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(8);
+
+        const replacement = createWebGpuMarkConfig(point.mark, {}, coords);
+        const readReplacementSize = vi.spyOn(
+            /** @type {any} */ (replacement.config).channels.size,
+            "value",
+            "get"
+        );
+        surface.updateMark(
+            point.mark,
+            replacement.definition,
+            replacement.config,
+            translated.properties
+        );
+        expect(readReplacementSize).toHaveBeenCalled();
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+    });
+
+    test("scale-only synchronization re-evaluates conditional constant branches", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "picked", select: "point" }],
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                fill: { value: "black" },
+                stroke: { value: null },
+                size: {
+                    condition: {
+                        param: "picked",
+                        datum: 0.5,
+                        type: "quantitative",
+                        scale: { domain: [0, 1], range: [0, 100] },
+                    },
+                    value: 7,
+                },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const point = /** @type {import("../../view/unitView.js").default} */ (
+            view
+        );
+        const translated = createWebGpuMarkConfig(
+            point.mark,
+            {},
+            Rectangle.create(0, 0, 100, 50)
+        );
+        const config = /** @type {any} */ (translated.config);
+        const conditionalSet = vi.fn();
+        /** @type {any} */ (mocks.handle.values.size).conditions = [
+            { set: conditionalSet },
+        ];
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+
+        // Constant appearance branches can depend on a scale without exposing
+        // a renderer scale object; their live value getter must still run.
+        const branch = config.channels.size.conditions[0].channel;
+        expect(branch.scale).toBeUndefined();
+        const readBranch = vi.spyOn(branch, "value", "get");
+        const readFallback = vi.spyOn(config.channels.size, "value", "get");
+        point.getScaleResolution("size").getScale().domain([0, 2]);
+        surface.updateMark(
+            point.mark,
+            translated.definition,
+            config,
+            translated.properties
+        );
+        expect(readBranch).toHaveBeenCalledOnce();
+        expect(readFallback).not.toHaveBeenCalled();
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });
 
     test("does not inspect config structure again when identity is stable", async () => {
@@ -747,6 +1141,10 @@ describe("WebGpuSurface", () => {
 
     test("updates all interval targets atomically and preserves inactive targets", async () => {
         const selectionSet = vi.fn();
+        let selection = {
+            type: "interval",
+            intervals: { x: [1, 2], y: [3, 4] },
+        };
         mocks.handle.selections = {
             brush: {
                 type: "interval",
@@ -768,10 +1166,7 @@ describe("WebGpuSurface", () => {
             /** @type {unknown} */ ({
                 unitView: {
                     paramRuntime: {
-                        findValue: () => ({
-                            type: "interval",
-                            intervals: { x: [1, 2], y: [3, 4] },
-                        }),
+                        findValue: () => selection,
                     },
                 },
             })
@@ -790,8 +1185,11 @@ describe("WebGpuSurface", () => {
 
         useMark(surface, mark, definition, createConfig(0));
         expect(selectionSet).not.toHaveBeenCalled();
+        selection = { type: "interval", intervals: { x: [1, 2], y: [3, 4] } };
+        useMark(surface, mark, definition, createConfig(0));
+        expect(selectionSet).not.toHaveBeenCalled();
 
-        mark.unitView.paramRuntime.findValue = () => ({
+        selection = /** @type {any} */ ({
             type: "interval",
             intervals: { x: [5, 6] },
         });
@@ -801,7 +1199,7 @@ describe("WebGpuSurface", () => {
         expect(selectionSet).toHaveBeenCalledWith({ x: [5, 6], y: null });
         selectionSet.mockClear();
 
-        mark.unitView.paramRuntime.findValue = () => ({
+        selection = /** @type {any} */ ({
             type: "interval",
             intervals: { x: null, y: null },
         });
@@ -813,6 +1211,10 @@ describe("WebGpuSurface", () => {
 
     test("retains literal conditional channels without creating a series", async () => {
         const selectionSet = vi.fn();
+        const selection = {
+            type: "interval",
+            intervals: { x: [1, 2], y: [3, 4] },
+        };
         mocks.handle.selections = {
             brush: {
                 type: "interval",
@@ -834,10 +1236,7 @@ describe("WebGpuSurface", () => {
             /** @type {unknown} */ ({
                 unitView: {
                     paramRuntime: {
-                        findValue: () => ({
-                            type: "interval",
-                            intervals: { x: [1, 2], y: [3, 4] },
-                        }),
+                        findValue: () => selection,
                     },
                 },
             })
@@ -920,6 +1319,7 @@ describe("WebGpuSurface", () => {
         };
 
         useMark(surface, mark, definition, config);
+        conditionalSet.mockClear();
         value = 0.75;
         useMark(surface, mark, definition, config);
 
@@ -934,7 +1334,9 @@ describe("WebGpuSurface", () => {
     });
 
     test("updates semantic properties without recreating a mark", async () => {
-        const headWidthSet = vi.fn();
+        const headWidthSet = vi.fn((/** @type {unknown} */ value) => {
+            if (value === undefined) throw new Error("Missing head width");
+        });
         mocks.handle.properties = {
             headWidth: { set: headWidthSet },
         };
@@ -948,8 +1350,11 @@ describe("WebGpuSurface", () => {
             })
         );
         await surface.initialize();
+        let expressionRevision = 0;
         const mark = /** @type {import("../../marks/mark.js").default} */ (
-            /** @type {unknown} */ ({})
+            /** @type {unknown} */ ({
+                getRenderingRevision: () => expressionRevision,
+            })
         );
         const definition =
             /** @type {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} */ (
@@ -960,15 +1365,47 @@ describe("WebGpuSurface", () => {
             channels: {},
         };
 
-        useMark(surface, mark, definition, config, undefined, {
-            headWidth: { value: 3 },
-        });
-        useMark(surface, mark, definition, config, undefined, {
-            headWidth: { value: 5 },
-        });
+        /** @type {number | undefined} */
+        let headWidth = 3;
+        const readHeadWidth = vi.fn(() => headWidth);
+        const properties = {
+            headWidth: {
+                get value() {
+                    return readHeadWidth();
+                },
+            },
+        };
+        useMark(surface, mark, definition, config, undefined, properties);
+        readHeadWidth.mockClear();
+        useMark(surface, mark, definition, config, undefined, properties);
+        expect(readHeadWidth).not.toHaveBeenCalled();
 
+        headWidth = 5;
+        expressionRevision++;
+        useMark(surface, mark, definition, config, undefined, properties);
+
+        expect(readHeadWidth).toHaveBeenCalledOnce();
         expect(headWidthSet).toHaveBeenCalledWith(5);
+        useMark(surface, mark, definition, config, undefined, {
+            headWidth: { value: 7 },
+        });
+        expect(headWidthSet).toHaveBeenLastCalledWith(7);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+
+        headWidth = undefined;
+        expressionRevision++;
+        // A failed setter must not publish comparison state or mask validation.
+        for (let attempt = 0; attempt < 2; attempt++)
+            expect(() =>
+                useMark(
+                    surface,
+                    mark,
+                    definition,
+                    config,
+                    undefined,
+                    properties
+                )
+            ).toThrow("Missing head width");
     });
 
     test("updates retained semantic arrays when their values change", async () => {
@@ -1045,8 +1482,7 @@ describe("WebGpuSurface", () => {
         useMark(surface, mark, definition, config(0.5));
         useMark(surface, mark, definition, config(0.75));
 
-        expect(thresholdSet).toHaveBeenCalledOnce();
-        expect(thresholdSet).toHaveBeenCalledWith(0.75);
+        expect(thresholdSet).toHaveBeenLastCalledWith(0.75);
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
     });

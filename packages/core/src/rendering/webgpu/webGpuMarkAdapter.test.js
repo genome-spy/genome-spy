@@ -1,5 +1,7 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 import Rectangle from "../../view/layout/rectangle.js";
+import UnitView from "../../view/unitView.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
 import { indexScaleDefinition } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
@@ -50,6 +52,224 @@ function expectedSamplingMatch(selection, type) {
 }
 
 describe("WebGPU mark adapter", () => {
+    test("reuses subscribed property expressions for live scalar and vector resources", async () => {
+        const { view, context } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{ offset: 5 }] },
+            params: [
+                { name: "style", value: 2 },
+                { name: "fade", value: 3 },
+            ],
+            encoding: {
+                x: { value: 0 },
+                x2: { value: 1 },
+                y: { value: 0 },
+                y2: { value: 1 },
+            },
+            layer: [
+                { mark: { type: "rect", cornerRadius: { expr: "style" } } },
+                { mark: { type: "arrow", headWidth: { expr: "style" } } },
+                {
+                    mark: {
+                        type: "text",
+                        paddingX: { expr: "style" },
+                        viewportEdgeFadeWidthTop: { expr: "fade" },
+                        dx: 4,
+                        dy: 5,
+                    },
+                    encoding: { text: { value: "A" } },
+                },
+                {
+                    mark: {
+                        type: "point",
+                        inwardStroke: { expr: "style > 3" },
+                    },
+                    encoding: {
+                        dx: {
+                            field: "offset",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                        dy: { value: { expr: "style" } },
+                    },
+                },
+                {
+                    mark: {
+                        type: "rule",
+                        strokeAlign: {
+                            expr: "style > 3 ? 'inside' : 'outside'",
+                        },
+                        strokeCap: { expr: "style > 3 ? 'round' : 'butt'" },
+                    },
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        // Property translation needs a prepared font handle, not GPU resources.
+        Object.assign(context.textMetrics, {
+            getPreparedFont: () => ({ getGlyph() {} }),
+        });
+        const units = Array.from(
+            view.getDescendants().filter((child) => child instanceof UnitView)
+        );
+        const [rect, arrow, text, point, rule] = units.map(
+            (unit) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
+                )
+        );
+        const compilers = units.map((unit) =>
+            vi.spyOn(unit.paramRuntime, "createExpression")
+        );
+
+        for (const [style, fade] of [
+            [2, 3],
+            [7, 11],
+        ]) {
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.setValue("style", style);
+                view.paramRuntime.setValue("fade", fade);
+            });
+            await view.paramRuntime.whenPropagated();
+            for (const compiler of compilers) compiler.mockClear();
+
+            expect(rect.config.channels.cornerRadiusTopRight.value).toBe(style);
+            expect(arrow.properties.headWidth.value).toBe(style);
+            expect(text.properties.paddingX.value).toBe(style);
+            expect(text.properties.viewportEdgeFadeWidth.value).toEqual([
+                fade,
+                0,
+                0,
+                0,
+            ]);
+            expect(text.config.channels.dx).toEqual({ value: 4 });
+            expect(text.config.channels.dy).toEqual({ value: 5 });
+            expect(point.config.channels.dx.data).toEqual(
+                new Float32Array([5])
+            );
+            expect(point.config.channels.dy.value).toBe(style);
+            expect(point.config.channels.strokeAlign).toEqual(
+                dynamicValue(style > 3 ? 0 : 1, "u32")
+            );
+            expect(rule.config.channels.strokeAlign).toEqual(
+                dynamicValue(style > 3 ? 0 : 2, "u32")
+            );
+            expect(rule.config.channels.strokeCap).toEqual(
+                dynamicValue(style > 3 ? 2 : 0, "u32")
+            );
+            for (const compiler of compilers)
+                expect(compiler).not.toHaveBeenCalled();
+        }
+    });
+
+    test("retains live categorical ranges and gaps for ordinary and text occurrences", async () => {
+        const { view, context } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            params: [{ name: "gap", value: 10 }],
+            data: { values: [{ category: "A" }, { category: "B" }] },
+            scales: {
+                y: {
+                    type: "band",
+                    domain: ["A", "B"],
+                    gapPositions: ["B"],
+                    gapWidth: { expr: "gap" },
+                    reverse: true,
+                    align: 0.2,
+                },
+            },
+            encoding: {
+                y: { field: "category", type: "nominal", axis: null },
+            },
+            layer: [
+                { mark: "rect" },
+                {
+                    mark: { type: "text", fitToBand: true },
+                    encoding: { text: { field: "category" } },
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        // Translation only needs a prepared font handle, not GPU font resources.
+        Object.assign(context.textMetrics, {
+            getPreparedFont: () => ({ getGlyph() {} }),
+        });
+        const coords = Rectangle.create(10, 20, 100, 200);
+        const units = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof UnitView);
+        const channels = units.map(
+            (unit) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(unit.mark, {}, coords)
+                ).config.channels
+        );
+        const [rect, text] = channels;
+        const categoryData = rect.y.data;
+        const categoryDomain = rect.y.scale.domain;
+        const resolution = view.getScaleResolution("y");
+        const scale =
+            /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
+                resolution.getScale()
+            );
+        expect(Object.isFrozen(categoryDomain)).toBe(true);
+
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("gap", 20);
+            scale.range([0.9, -0.8]);
+        });
+        await view.paramRuntime.whenPropagated();
+
+        expect(rect.y.scale.range).toEqual([40, 380]);
+        expect(text.y.scale.range).toEqual([20, 360]);
+        expect(rect.y.scale.gapWidth).toBe(20);
+        expect(text.y.scale.gapWidth).toBe(20);
+        expect(rect.y.scale.band).toBe(1);
+        expect(rect.y2.scale.band).toBe(0);
+        expect(rect.y.scale.align).toBe(0.8);
+        expect(rect.y.data).toBe(categoryData);
+        expect(rect.y.scale.domain).toBe(categoryDomain);
+        expect(scale.range()).toEqual([0.9, -0.8]);
+
+        scale.range([0.1, 0.9]);
+        expect(rect.y.scale.range).toEqual([200, 40]);
+        expect(text.y.scale.range).toEqual([180, 20]);
+        expect(rect.y.scale.domain).toEqual([0, 1]);
+        expect(rect.y.data).toBe(categoryData);
+
+        scale.domain(["B", "A"]);
+        expect(rect.y.scale.domain).toEqual([1, 0]);
+        expect(rect.y.scale.domain).not.toBe(categoryDomain);
+        expect(Object.isFrozen(rect.y.scale.domain)).toBe(true);
+        expect(categoryDomain).toEqual([0, 1]);
+
+        const resources = getWebGpuMarkResourceRevision(units[0].mark);
+        scale.viewport({ interval: [0.25, 1.75] });
+        await view.paramRuntime.whenPropagated();
+        const viewport = resolution.getMappingRef().get().viewport;
+        expect(viewport).toEqual({ interval: [0.25, 1.75] });
+        expect(rect.y.scale.viewport).toBe(viewport);
+        expect(text.y.scale.viewport).toBe(viewport);
+        expect(getWebGpuMarkResourceRevision(units[0].mark)).toBeGreaterThan(
+            resources
+        );
+
+        // Physical replacement must retain the resolution-owned viewport source.
+        resolution.attachViewLevelScaleProps(view, {
+            ...resolution.getViewLevelScaleProps().props,
+            type: "point",
+        });
+        await view.paramRuntime.whenPropagated();
+        expect(resolution.scale).not.toBe(scale);
+        /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
+            resolution.scale
+        ).viewport({ interval: [0.5, 1.5] });
+        await view.paramRuntime.whenPropagated();
+        expect(rect.y.scale.viewport).toEqual({ interval: [0.5, 1.5] });
+        expect(rect.y.scale.viewport).toBe(
+            resolution.getMappingRef().get().viewport
+        );
+    });
+
     test("translates conditional order into declarative renderer config", () => {
         const mark = createMark("point", [{ id: 17 }], {
             uniqueId: createConstantEncoder(17),
@@ -125,8 +345,7 @@ describe("WebGPU mark adapter", () => {
         const translated = createWebGpuMarkConfig(
             mark,
             /** @type {any} */ ({}),
-            Rectangle.create(10, 20, 100, 200),
-            0.5
+            Rectangle.create(10, 20, 100, 200)
         );
         if (!translated) {
             throw new Error("Expected a translated point mark.");
@@ -157,18 +376,9 @@ describe("WebGPU mark adapter", () => {
             },
         });
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
-        expect(channels.fillOpacity).toEqual(dynamicValue(0.375));
-        expect(channels.minPickingSize).toEqual(dynamicValue(12));
-        expect(channels.strokeAlign).toEqual({
-            ...dynamicValue(1),
-            type: "u32",
-        });
-        pointProperties.inwardStroke = true;
-        expect(channels.strokeAlign.value).toBe(0);
-        pointProperties.inwardStroke = false;
-        expect(channels.strokeAlign.value).toBe(1);
-        pointProperties.minPickingSize = 20;
-        expect(channels.minPickingSize.value).toBe(20);
+        expect(channels.fillOpacity).toEqual({ value: 0.75 });
+        expect(channels.minPickingSize).toEqual({ value: 12 });
+        expect(channels.strokeAlign).toEqual({ value: 1, type: "u32" });
     });
 
     test("keeps categorical point offset scales in the renderer", () => {
@@ -205,35 +415,134 @@ describe("WebGPU mark adapter", () => {
         });
     });
 
-    test("keeps navigation and opacity leaves live in one config", () => {
-        const domain = /** @type {[number, number]} */ ([0, 2]);
-        let opacity = 0.75;
-        let viewOpacity = 0.5;
-        const opacityEncoder = createConstantEncoder(opacity);
-        /** @type {any} */ (opacityEncoder).branches[0].accessor = () =>
-            opacity;
-        const mark = createMark("point", [{ x: 1 }], {
-            x: createEncoder((datum) => datum.x, {
-                scale: createLinearScale(domain),
-            }),
-            fillOpacity: opacityEncoder,
+    test("retains native opacity encodings and raw color palettes", async () => {
+        const { view } = await createHeadlessEngine({
+            config: { mark: { color: "black" } },
+            data: { values: [{ opacity: 0.25 }] },
+            resolve: { scale: { fillOpacity: "independent" } },
+            params: [
+                { name: "alpha", value: 0.75 },
+                { name: "chosen", select: "point" },
+            ],
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        fillOpacity: {
+                            condition: {
+                                param: "chosen",
+                                value: { expr: "alpha" },
+                            },
+                            field: "opacity",
+                            type: "quantitative",
+                            scale: { domain: [0, 1], range: [0, 0.5] },
+                        },
+                        fill: {
+                            field: "opacity",
+                            type: "quantitative",
+                            scale: {
+                                type: "threshold",
+                                domain: [0.5],
+                                range: ["transparent", "rgba(255, 0, 0, 0.5)"],
+                            },
+                        },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        fillOpacity: {
+                            field: "opacity",
+                            type: "quantitative",
+                            scale: null,
+                        },
+                    },
+                },
+            ],
         });
-
-        const translated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.create(0, 0, 100, 100),
-            () => viewOpacity
+        onTestFinished(() => view.disposeSubtree());
+        const units = Array.from(
+            view.getDescendants().filter((child) => child instanceof UnitView)
         );
-        const channels = /** @type {any} */ (translated).config.channels;
+        const [scaled, unscaled] = units.map(
+            (unit) =>
+                /** @type {any} */ (
+                    createWebGpuMarkConfig(unit.mark, {}, Rectangle.ZERO)
+                ).config.channels
+        );
+        const branch = scaled.fillOpacity.conditions[0].channel;
+        expect(scaled.fillOpacity.data).toEqual(new Float32Array([0.25]));
+        expect(scaled.fillOpacity.scale.range).toEqual([0, 0.5]);
+        expect(branch.value).toBe(0.75);
+        expect(branch.dynamic).toBe(true);
+        expect(unscaled.fillOpacity).toEqual({
+            data: new Float32Array([0.25]),
+            type: "f32",
+        });
+        expect(scaled.fill.scale.range).toEqual([
+            "transparent",
+            "rgba(255, 0, 0, 0.5)",
+        ]);
 
-        domain[0] = 1;
-        domain[1] = 3;
-        opacity = 0.5;
-        viewOpacity = 0.25;
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("alpha", 0.5);
+            units[0]
+                .getScaleResolution("fillOpacity")
+                .getScale()
+                .range([0.25, 0.75]);
+            units[0]
+                .getScaleResolution("fill")
+                .getScale()
+                .range(["rgba(0, 255, 0, 0.25)", "transparent"]);
+        });
+        await view.paramRuntime.whenPropagated();
 
-        expect(channels.x.scale.domain).toEqual([1, 3]);
-        expect(channels.fillOpacity.value).toBe(0.125);
+        expect(branch.value).toBe(0.5);
+        expect(scaled.fillOpacity.scale.range).toEqual([0.25, 0.75]);
+        expect(scaled.fill.scale.range).toEqual([
+            "rgba(0, 255, 0, 0.25)",
+            "transparent",
+        ]);
+    });
+
+    test("keeps literal numeric and color channels static while expressions stay live", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            params: [
+                { name: "angle", value: 30 },
+                { name: "strokeColor", value: "black" },
+            ],
+            mark: { type: "point", inwardStroke: true },
+            encoding: {
+                size: { value: 64 },
+                fill: { value: "#336699" },
+                angle: { value: { expr: "angle" } },
+                stroke: { value: { expr: "strokeColor" } },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const channels = /** @type {any} */ (
+            createWebGpuMarkConfig(
+                /** @type {UnitView} */ (view).mark,
+                {},
+                Rectangle.ZERO
+            )
+        ).config.channels;
+
+        expect(channels.size).toEqual({ value: 64 });
+        expect(channels.fill).toEqual({ value: [0.2, 0.4, 0.6, 1] });
+        expect(channels.angle).toEqual(dynamicValue(30));
+        expect(channels.stroke).toEqual(dynamicValue([0, 0, 0, 1]));
+        expect(channels.strokeAlign).toEqual({ value: 0, type: "u32" });
+
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("angle", 60);
+            view.paramRuntime.setValue("strokeColor", "red");
+        });
+        await view.paramRuntime.whenPropagated();
+
+        expect(channels.angle.value).toBe(60);
+        expect(channels.stroke.value).toEqual([1, 0, 0, 1]);
     });
 
     test("revisions retained resources from existing scale notifications", () => {
@@ -249,26 +558,6 @@ describe("WebGPU mark adapter", () => {
         /** @type {any} */ (mark).advanceRenderingRevision("resources");
         /** @type {any} */ (mark).advanceRenderingRevision("resources");
         expect(getWebGpuMarkResourceRevision(mark)).toBe(2);
-    });
-
-    test("applies live view opacity to an unscaled retained series", () => {
-        let viewOpacity = 0.5;
-        const mark = createMark("point", [{ opacity: 0.25 }], {
-            fillOpacity: createEncoder((datum) => datum.opacity),
-        });
-        const translated = createWebGpuMarkConfig(
-            mark,
-            {},
-            Rectangle.ZERO,
-            () => viewOpacity
-        );
-        const opacity = /** @type {any} */ (translated).config.channels
-            .fillOpacity;
-
-        expect(opacity.data).toEqual(new Float32Array([0.25]));
-        expect(opacity.scale.range).toEqual([0, 0.5]);
-        viewOpacity = 0.25;
-        expect(opacity.scale.range).toEqual([0, 0.25]);
     });
 
     test.each(["text", "rect"])(
@@ -418,14 +707,14 @@ describe("WebGPU mark adapter", () => {
             createWebGpuMarkConfig(mark, {}, Rectangle.create(10, 20, 100, 200))
         ).config.channels.x;
 
-        expect(x.value).toEqual(start ? [1048576, 4] : 4);
+        expect(x.value).toEqual(start ? new Uint32Array([1048576, 4]) : 4);
         expect(x.inputComponents ?? 1).toBe(start ? 2 : 1);
         expect(x.type).toBe("u32");
         expect(x.dynamic).toBe(true);
         expect(x.data).toBeUndefined();
         expect(x.scale.band).toBe(0.25);
         position = start + 9;
-        expect(x.value).toEqual(start ? [1048576, 9] : 9);
+        expect(x.value).toEqual(start ? new Uint32Array([1048576, 9]) : 9);
     });
 
     test("keeps text anchor and glyph offsets separate", () => {
@@ -482,9 +771,9 @@ describe("WebGPU mark adapter", () => {
             data: new Float32Array([2, -3]),
             type: "f32",
         });
-        expect(config.channels.yOffset).toEqual(dynamicValue(9));
-        expect(config.channels.dx).toEqual(dynamicValue(4));
-        expect(config.channels.dy).toEqual(dynamicValue(5));
+        expect(config.channels.yOffset.value).toBe(9);
+        expect(config.channels.dx).toEqual({ value: 4 });
+        expect(config.channels.dy).toEqual({ value: 5 });
         expect(config.font.getGlyph).toBeTypeOf("function");
         expect(config.viewport).toEqual([10, 20, 110, 220]);
         expect(translated.properties.viewport).toEqual({
@@ -884,9 +1173,11 @@ describe("WebGPU mark adapter", () => {
         });
         expect(config.channels.fill.value).toEqual([0, 0, 0, 1]);
         expect(config.channels).not.toHaveProperty("color");
-        expect(config.channels.strokeWidth).toEqual(dynamicValue(0));
+        expect(config.channels.strokeWidth).toEqual({ value: 0 });
         expect(config.dashPatterns).toEqual([[3, 2]]);
-        expect(config.channels.strokeDashOffset).toEqual(dynamicValue(1));
+        expect(config.channels.strokeDashOffset).toEqual({ value: 1 });
+        expect(config.channels.strokeAlign).toEqual({ value: 2, type: "u32" });
+        expect(config.channels.strokeCap).toEqual({ value: 2, type: "u32" });
     });
 
     test("translates link geometry and rendering properties", () => {
@@ -923,8 +1214,8 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("link");
-        expect(config.channels.xOffset).toEqual(dynamicValue(2));
-        expect(config.channels.y2Offset).toEqual(dynamicValue(5));
+        expect(config.channels.xOffset.value).toBe(2);
+        expect(config.channels.y2Offset.value).toBe(5);
         expect(config.linkShape).toBe("dome");
         expect(config.orient).toBe("horizontal");
         expect(config.arcFadingDistance).toEqual([10, 20]);
@@ -973,8 +1264,8 @@ describe("WebGPU mark adapter", () => {
         const config = /** @type {any} */ (translated).config;
 
         expect(translated.definition.type).toBe("arrow");
-        expect(config.channels.xOffset).toEqual(dynamicValue(2));
-        expect(config.channels.y2Offset).toEqual(dynamicValue(5));
+        expect(config.channels.xOffset.value).toBe(2);
+        expect(config.channels.y2Offset.value).toBe(5);
         expect(config.channels.direction).toEqual({
             data: new Uint32Array([0, 1, 2]),
             type: "u32",
@@ -1020,9 +1311,7 @@ describe("WebGPU mark adapter", () => {
         };
 
         const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
-        expect(translated.properties).toEqual({
-            headWidth: { value: 7 },
-        });
+        expect(translated.properties.headWidth.value).toBe(7);
         expect(mark.initializeRenderingRevisions).toHaveBeenCalledWith(
             expect.arrayContaining(["headWidth"])
         );
@@ -1323,7 +1612,7 @@ describe("WebGPU mark adapter", () => {
             /** @param {object[]} rows */
             const translate = (rows) =>
                 /** @type {any} */ (
-                    createWebGpuMarkConfig(mark, {}, Rectangle.ZERO, 1, rows)
+                    createWebGpuMarkConfig(mark, {}, Rectangle.ZERO, rows)
                         .config
                 ).channels.x.data;
 
@@ -1441,7 +1730,7 @@ describe("WebGPU mark adapter", () => {
             data: new Float32Array([0.25, 0.75]),
             type: "f32",
         });
-        expect(config.scalarSlots.semanticThreshold).toEqual({
+        expect(config.scalarSlots.semanticThreshold).toMatchObject({
             value: 0.5,
             type: "f32",
         });
@@ -1640,10 +1929,7 @@ describe("WebGPU mark adapter", () => {
                 type: "threshold",
                 definition: thresholdScaleDefinition,
                 domain: [0],
-                range: [
-                    [1, 1, 1, 1],
-                    [0, 0, 0, 1],
-                ],
+                range: ["white", "black"],
             },
         });
     });
@@ -2472,6 +2758,11 @@ function createMark(type, data, encoders, properties = {}) {
             nonvisualInputs: new Set(),
             encoders: { ...defaultEncoders, ...encoders },
             properties: {
+                minWidth: 0,
+                minHeight: 0,
+                minOpacity: 0,
+                minLength: 0,
+                strokeDashOffset: 0,
                 cornerRadius: 0,
                 dx: 0,
                 dy: 0,
@@ -2481,6 +2772,14 @@ function createMark(type, data, encoders, properties = {}) {
             },
             getType: () => type,
             initializeRenderingRevisions: vi.fn(),
+            /**
+             * @this {import("../../marks/mark.js").default}
+             * @param {import("../../spec/parameter.js").ExprRef} expression
+             */
+            getRenderingExpression(expression) {
+                return () =>
+                    this.unitView.paramRuntime.evaluateAndGet(expression);
+            },
             getRenderingRevision: (
                 /** @type {"configuration" | "resources"} */ kind
             ) => revisions[kind],
@@ -2501,6 +2800,14 @@ function createMark(type, data, encoders, properties = {}) {
                               getScale: () => scale,
                               getDomainRef: () => ({
                                   get: () => scale.domain().slice(),
+                              }),
+                              getMappingRef: () => ({
+                                  get: () => ({
+                                      viewport:
+                                          "viewport" in scale
+                                              ? scale.viewport()
+                                              : null,
+                                  }),
                               }),
                           }
                         : undefined;
@@ -2555,7 +2862,7 @@ function createConstantEncoder(value) {
 }
 
 /**
- * @param {number} value
+ * @param {number | number[]} value
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
  */
 function dynamicValue(value, type) {
@@ -2603,6 +2910,7 @@ function createBandScale(domain, reverse = false) {
         type: "band",
         viewport: /** @returns {null} */ () => null,
         domain: () => domain,
+        range: () => (reverse ? [1, 0] : [0, 1]),
         props: {
             reverse,
             domainIndexer: createCategoryIndexer(domain),

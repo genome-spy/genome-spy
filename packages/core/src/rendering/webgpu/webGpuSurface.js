@@ -1,14 +1,29 @@
-import deepEqual, { isPlainObject } from "../../utils/deepEqual.js";
+import deepEqual from "../../utils/deepEqual.js";
 import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
-import { getWebGpuCategorySelectionBinding } from "./webGpuMarkAdapter.js";
+import {
+    getWebGpuCategorySelectionBinding,
+    isWebGpuScaleDependentValue,
+} from "./webGpuMarkAdapter.js";
 
 import CanvasSizeHelper from "../canvasSizeHelper.js";
 import PlacementSource from "../../view/layout/placementSource.js";
 import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
-/** @type {Readonly<Record<string, {value: any}>>} */
+/** @type {Readonly<Record<string, {value: any, dynamic?: boolean}>>} */
 const EMPTY_PROPERTIES = Object.freeze({});
+
+/**
+ * Only primitives can suppress a write: uniform vectors may reuse mutable storage.
+ * @param {any} previous
+ * @param {any} value
+ */
+function equalUniformValues(previous, value) {
+    return (
+        (value === null || typeof value !== "object") &&
+        Object.is(previous, value)
+    );
+}
 
 /**
  * @param {import("../../marks/mark.js").default} mark
@@ -281,7 +296,7 @@ export default class WebGpuSurface {
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
-     * @param {Record<string, {value: any}>} [properties]
+     * @param {Record<string, {value: any, dynamic?: boolean}>} [properties]
      * @returns {number} Number of retained resource writes.
      */
     updateMark(mark, definition, config, properties = EMPTY_PROPERTIES) {
@@ -291,13 +306,22 @@ export default class WebGpuSurface {
 
         this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
-        const programKey = definition.getProgramKey?.(config);
+        const resourceExpressionsRevision = mark.getRenderingRevision(
+            "resourceExpressions"
+        );
+        const programKey =
+            retained?.definition === definition && retained.config === config
+                ? retained.programKey
+                : definition.getProgramKey?.(config);
         const gapKey = groupingGapKey(mark.encoders);
         if (
             !retained ||
             retained.definition !== definition ||
             !Object.is(retained.programKey, programKey) ||
-            retained.gapKey !== gapKey
+            retained.gapKey !== gapKey ||
+            !!retained.config.placementIndex !== !!config.placementIndex ||
+            retained.config.placementIndex?.source !==
+                config.placementIndex?.source
         ) {
             if (retained) {
                 this.#renderer.destroyMark(retained.handle.markId);
@@ -316,12 +340,20 @@ export default class WebGpuSurface {
                 series: collectSeries(config),
                 count: config.count,
                 selections: new Map(),
+                resourceExpressionsRevision: undefined,
             };
             this.#marks.set(mark, retained);
         }
         let writes = 0;
         retained.handle.batchUpdates(() => {
             const configChanged = retained.config !== config;
+            // Scale changes leave unrelated resource expressions unchanged.
+            const scalesOnly =
+                !configChanged &&
+                retained.properties === properties &&
+                resourceExpressionsRevision !== undefined &&
+                retained.resourceExpressionsRevision ===
+                    resourceExpressionsRevision;
             if (configChanged && hasSeriesChanges(retained, config)) {
                 retained.series = collectSeries(config);
                 retained.count = config.count;
@@ -340,8 +372,11 @@ export default class WebGpuSurface {
                 retained.config = config;
                 retained.properties = properties;
             }
-            writes += updateResourceBindings(retained.bindings);
+            writes += updateResourceBindings(
+                scalesOnly ? retained.bindings.scales : retained.bindings.all
+            );
             writes += updateRetainedSelections(retained, mark);
+            retained.resourceExpressionsRevision = resourceExpressionsRevision;
         });
         return writes;
     }
@@ -472,44 +507,61 @@ function equalFloat32Arrays(first, second) {
 }
 
 /**
- * Compiles Core's live leaves into direct renderer-slot updates. Reusing the
- * previous values preserves change detection when a translated config is
- * replaced while keeping dirty-frame work flat and reflection-free.
+ * Compiles Core's owned or computed leaves into direct renderer-slot updates.
+ * Retaining the results also filters unchanged leaves across config replacement.
+ * Scale-only publications use the subset that depends on mappings.
  *
  * @param {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @param {any} config
- * @param {Record<string, {value: any}>} properties
- * @param {ResourceBinding[]} [previousBindings]
- * @returns {ResourceBinding[]}
+ * @param {Record<string, {value: any, dynamic?: boolean}>} properties
+ * @param {ResourceBindings} [previousBindings]
+ * @returns {ResourceBindings}
  */
 function compileResourceBindings(
     handle,
     config,
     properties,
-    previousBindings = []
+    previousBindings = { all: [], scales: [] }
 ) {
     const previousValues = new Map(
-        previousBindings.map((binding) => [binding.key, binding.value])
+        previousBindings.all.map((binding) => [binding.key, binding.value])
     );
-    /** @type {ResourceBinding[]} */
-    const bindings = [];
+    /** @type {ResourceBindings} */
+    const bindings = { all: [], scales: [] };
 
     /**
      * @param {string} key
      * @param {() => any} read
      * @param {(value: any) => void} write
      * @param {boolean} [skipUndefined]
+     * @param {boolean} [scaleDependent]
      */
-    const add = (key, read, write, skipUndefined = false) => {
-        bindings.push({
+    const add = (
+        key,
+        read,
+        write,
+        skipUndefined = false,
+        scaleDependent = false
+    ) => {
+        const current = read();
+        const previous = previousValues.get(key);
+        const value =
+            previousValues.has(key) && !deepEqual(previous, current)
+                ? previous
+                : current;
+
+        /** @type {ResourceBinding} */
+        const binding = {
             key,
             read,
             write,
-            value: previousValues.has(key)
-                ? previousValues.get(key)
-                : snapshotValue(read()),
+            value,
             skipUndefined,
-        });
+            equals: deepEqual,
+        };
+        bindings.all.push(binding);
+        if (scaleDependent) bindings.scales.push(binding);
+        return binding;
     };
 
     for (const [name, channel] of Object.entries(config.channels)) {
@@ -542,28 +594,28 @@ function compileResourceBindings(
         if (!slot) {
             throw new Error(`Renderer mark has no property slot "${name}".`);
         }
-        add(
-            `property:${name}`,
-            () => property.value,
-            (value) => slot.set(value)
-        );
+        const binding = add(`property:${name}`, () => property.value, slot.set);
+        if (property.dynamic) binding.equals = equalUniformValues;
     }
 
     for (const [name, scalar] of Object.entries(config.scalarSlots ?? {})) {
         const slot = handle.scalarSlots?.[name];
         if (slot) {
+            // Point semantic thresholds depend on zoom, outside channel scales.
             add(
                 `scalar:${name}`,
                 () => scalar.value,
-                (value) => slot.set(value)
-            );
+                (value) => slot.set(value),
+                false,
+                true
+            ).equals = equalUniformValues;
         }
     }
     return bindings;
 }
 
 /**
- * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean) => void} add
+ * @param {(key: string, read: () => any, write: (value: any) => void, skipUndefined?: boolean, scaleDependent?: boolean) => ResourceBinding} add
  * @param {string} key
  * @param {import("@genome-spy/webgpu-renderer").ScaleSlotHandle | undefined} scaleSlot
  * @param {import("@genome-spy/webgpu-renderer").ValueSlotHandle | undefined} valueSlot
@@ -571,14 +623,22 @@ function compileResourceBindings(
  */
 function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
     if (scaleSlot && channel.scale) {
+        /**
+         * @param {string} name
+         * @param {() => any} read
+         * @param {(value: any) => void} write
+         * @param {boolean} [skipUndefined]
+         */
+        const addScale = (name, read, write, skipUndefined = false) =>
+            add(name, read, write, skipUndefined, true);
         if (channel.scale.gapEnabled && channel.scale.type === "index") {
-            add(
+            addScale(
                 key + ":domain",
                 () => [channel.scale.domain, channel.scale.gapDomain],
                 ([domain, ranks]) => scaleSlot.setDomain(domain, ranks)
             );
         } else if ("domain" in channel.scale) {
-            add(
+            addScale(
                 key + ":domain",
                 () => channel.scale.domain,
                 (value) => scaleSlot.setDomain(value),
@@ -586,14 +646,15 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             );
         }
         if ("viewport" in channel.scale) {
-            add(
+            const binding = addScale(
                 key + ":viewport",
                 () => channel.scale.viewport,
                 (viewport) => scaleSlot.setViewport(viewport)
             );
+            binding.equals = Object.is;
         }
         if ("range" in channel.scale) {
-            add(
+            addScale(
                 key + ":range",
                 () => channel.scale.range,
                 (value) => scaleSlot.setRange(value),
@@ -601,12 +662,12 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             );
         }
         if (channel.scale.gapEnabled) {
-            add(
+            addScale(
                 key + ":gapPositions",
                 () => channel.scale.gapPositions,
                 (value) => scaleSlot.setGapPositions(value)
             );
-            add(
+            addScale(
                 key + ":gapWidth",
                 () => channel.scale.gapWidth,
                 (value) => scaleSlot.setGapWidth(value)
@@ -619,8 +680,9 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
             key + ":value",
             () => channel.value,
             (value) => valueSlot.set(value),
-            true
-        );
+            true,
+            isWebGpuScaleDependentValue(channel)
+        ).equals = equalUniformValues;
     }
 }
 
@@ -633,33 +695,15 @@ function updateResourceBindings(bindings) {
     for (const binding of bindings) {
         const value = binding.read();
         if (
-            (binding.skipUndefined && value === undefined) ||
-            deepEqual(binding.value, value)
+            !(binding.skipUndefined && value === undefined) &&
+            !binding.equals(binding.value, value)
         ) {
-            continue;
+            binding.write(value);
+            binding.value = value;
+            writes++;
         }
-        binding.write(value);
-        writes++;
-        binding.value = snapshotValue(value);
     }
     return writes;
-}
-
-/**
- * @param {any} value
- * @returns {any}
- */
-function snapshotValue(value) {
-    // Typed series and non-plain objects retain their separate identity paths.
-    if (Array.isArray(value)) return value.map(snapshotValue);
-    if (isPlainObject(value))
-        return Object.fromEntries(
-            Object.entries(value).map(([key, entry]) => [
-                key,
-                snapshotValue(entry),
-            ])
-        );
-    return value;
 }
 
 /**
@@ -723,43 +767,30 @@ function updateRetainedSelections(retained, mark) {
             }
             retained.selections.set(name, { value: selection, indexer, ids });
         } else if (slot.type == "interval") {
-            let snapshot = /** @type {SelectionSnapshot | undefined} */ (
-                retained.selections.get(name)
+            const previous =
+                /** @type {{intervals: Record<string, number[] | null>} | undefined} */ (
+                    retained.selections.get(name)
+                );
+            if (previous === selection) continue;
+            retained.selections.set(name, selection);
+            if (
+                slot.components.every((component) =>
+                    deepEqual(
+                        previous?.intervals[component] ?? null,
+                        selection.intervals?.[component] ?? null
+                    )
+                )
+            )
+                continue;
+            slot.set(
+                Object.fromEntries(
+                    slot.components.map((component) => [
+                        component,
+                        selection.intervals?.[component] ?? null,
+                    ])
+                )
             );
-            if (!snapshot || snapshot.type != "interval") {
-                /** @type {Record<string, [number, number] | null>} */
-                const intervals = {};
-                for (const component of slot.components) {
-                    intervals[component] = null;
-                }
-                snapshot = {
-                    type: "interval",
-                    intervals,
-                };
-                retained.selections.set(name, snapshot);
-            }
-
-            let changed = false;
-            for (const component of slot.components) {
-                const interval = selection.intervals?.[component] ?? null;
-                const previous = snapshot.intervals[component];
-                if (
-                    interval == null
-                        ? previous != null
-                        : previous == null ||
-                          previous[0] != interval[0] ||
-                          previous[1] != interval[1]
-                ) {
-                    snapshot.intervals[component] = interval
-                        ? [interval[0], interval[1]]
-                        : null;
-                    changed = true;
-                }
-            }
-            if (changed) {
-                slot.set(snapshot.intervals);
-                writes++;
-            }
+            writes++;
         }
     }
     return writes;
@@ -874,11 +905,16 @@ function getLogicalChannelSeries(channel) {
  * @prop {number} gapKey
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
- * @prop {Record<string, {value: any}>} properties
- * @prop {ResourceBinding[]} bindings
+ * @prop {Record<string, {value: any, dynamic?: boolean}>} properties
+ * @prop {ResourceBindings} bindings
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
- * @prop {Map<string, number | SelectionSnapshot | IntegerSetSnapshot>} selections
+ * @prop {Map<string, number | import("../../types/selectionTypes.js").IntervalSelection | IntegerSetSnapshot>} selections
+ * @prop {number | undefined} resourceExpressionsRevision
+ */
+
+/**
+ * @typedef {{all: ResourceBinding[], scales: ResourceBinding[]}} ResourceBindings
  */
 
 /**
@@ -888,12 +924,7 @@ function getLogicalChannelSeries(channel) {
  * @property {(value: any) => void} write
  * @property {any} value
  * @property {boolean} skipUndefined
- */
-
-/**
- * @typedef {object} SelectionSnapshot
- * @property {"interval"} type
- * @property {Record<string, [number, number] | null>} intervals
+ * @property {(first: any, second: any) => boolean} equals
  */
 
 /**

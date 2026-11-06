@@ -49,7 +49,7 @@ test("multisampled group applies opacity once after overlap", async ({
             clearColor: { r: 0, g: 0, b: 0, a: 0 },
             items: [
                 {
-                    bounds: { x: 0, y: 0, width: 64, height: 64 },
+                    bounds: { x: 8, y: 8, width: 48, height: 48 },
                     opacity: 0.5,
                     items: [{ mark: red }, { mark: blue }],
                 },

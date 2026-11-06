@@ -70,6 +70,14 @@ describe("text render items", () => {
                 shadowColor: { value: [0, 0, 0, 0] },
             })
         ).toEqual({ shadow: false, outline: false, enabled: false });
+        expect(
+            resolveTextEffectLayers({
+                strokeWidth: { value: 2 },
+                stroke: { value: new Float32Array([1, 0, 0, 0]) },
+                shadowOpacity: { value: 0.5 },
+                shadowColor: { value: new Float32Array([0, 0, 0, 0]) },
+            })
+        ).toEqual({ shadow: false, outline: false, enabled: false });
     });
 
     it("encodes effect variants without allocating a layer object", () => {

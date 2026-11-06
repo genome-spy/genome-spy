@@ -4,7 +4,7 @@ import {
     RANGE_COUNT_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { hashLookupFunctionName } from "../../../wgsl/hashTable.wgsl.js";
-import { isValueChannelConfig } from "../../../types.js";
+import { isNumericArray, isValueChannelConfig } from "../../../types.js";
 import { makeFnHeader, toU32Expr } from "../scaleEmitUtils.js";
 import { normalizeOrdinalDomain } from "../ordinalDomain.js";
 
@@ -112,7 +112,7 @@ function validateOrdinalScale({
         return `Ordinal scale on "${name}" requires scalar input values.`;
     }
     if (isValueChannelConfig(channel)) {
-        if (Array.isArray(channel.value)) {
+        if (isNumericArray(channel.value)) {
             return `Ordinal scale on "${name}" requires scalar integer values.`;
         }
         if (

@@ -1,6 +1,10 @@
 import { getMarkData } from "../immediate/markData.js";
 import { countPerformance } from "../../debug/performanceProfiler.js";
-import { buildMarkXIndex, createMarkXIndexSpec } from "../xIndex/markXIndex.js";
+import {
+    buildMarkXIndex,
+    createMarkXIndexSpec,
+    getMarkXIndexScaleResolution,
+} from "../xIndex/markXIndex.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, PackedMarkData>} */
 const PACKED_DATA_CACHE = new WeakMap();
@@ -24,9 +28,7 @@ export function getPackedMarkData(mark, placementSource) {
     const topology = placementSource?.getSnapshot().topology;
     const xEncoder = mark.encoders?.x;
     const x2Encoder = mark.encoders?.x2;
-    const xScaleResolution = xEncoder
-        ? mark.unitView.getScaleResolution("x")
-        : undefined;
+    const xScaleResolution = getMarkXIndexScaleResolution(mark);
     const xIndexDomain = xScaleResolution?.zoomExtent;
     const cached = PACKED_DATA_CACHE.get(mark);
     if (

@@ -31,7 +31,6 @@ import { symlogScale } from "@genome-spy/webgpu-renderer/scales/symlog";
 import { thresholdScale } from "@genome-spy/webgpu-renderer/scales/threshold";
 
 import { getMarkData } from "../immediate/markData.js";
-import { resolveMarkProperty } from "../immediate/markEncoding.js";
 import { isLargeIndexDomain } from "../../scales/indexLikeDomainUtils.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import {
@@ -45,6 +44,16 @@ import forEachInBatch from "../../utils/forEachInBatch.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
+
+/** Values evaluated by Core can depend on scales without a renderer scale slot.
+ * @type {WeakSet<object>}
+ */
+const SCALE_DEPENDENT_VALUES = new WeakSet();
+
+/** @param {object} channel */
+export function isWebGpuScaleDependentValue(channel) {
+    return SCALE_DEPENDENT_VALUES.has(channel);
+}
 
 /** @param {import("../../marks/mark.js").default} mark @param {string} slot */
 export function getWebGpuCategorySelectionBinding(mark, slot) {
@@ -167,23 +176,18 @@ const PLACEMENT_INDEX_CACHE = new WeakMap();
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/rendering.js").RenderingOptions} options
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {number | (() => number)} [viewOpacity]
  * @param {object[]} [dataOverride]
  * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} [placementIndex]
- * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object, properties: Record<string, {value: any}>} | undefined}
+ * @returns {{definition: import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>, config: object, properties: Record<string, {value: any, dynamic?: boolean}>} | undefined}
  */
 export function createWebGpuMarkConfig(
     mark,
     options,
     coords,
-    viewOpacity = 1,
     dataOverride,
     placementIndex
 ) {
     initializeWebGpuMarkRevisions(mark);
-    const readViewOpacity =
-        typeof viewOpacity == "function" ? viewOpacity : () => viewOpacity;
-
     const data = dataOverride ?? getMarkData(mark, options);
     if (data.length == 0) {
         return undefined;
@@ -205,28 +209,22 @@ export function createWebGpuMarkConfig(
 
     if (markType == "point") {
         definition = pointMark;
-        config = createPointConfig(mark, data, coords, readViewOpacity);
+        config = createPointConfig(mark, data, coords);
     } else if (markType == "rect") {
         definition = rectMark;
-        config = createRectConfig(
-            mark,
-            data,
-            coords,
-            readViewOpacity,
-            typeof viewOpacity != "function"
-        );
+        config = createRectConfig(mark, data, coords);
     } else if (markType == "rule" || markType == "tick") {
         definition = ruleMark;
-        config = createRuleConfig(mark, data, coords, readViewOpacity);
+        config = createRuleConfig(mark, data, coords);
     } else if (markType == "text") {
         definition = textMark;
-        config = createTextConfig(mark, data, coords, readViewOpacity);
+        config = createTextConfig(mark, data, coords);
     } else if (markType == "link") {
         definition = linkMark;
-        config = createLinkConfig(mark, data, coords, readViewOpacity);
+        config = createLinkConfig(mark, data, coords);
     } else if (markType == "arrow") {
         definition = arrowMark;
-        config = createArrowConfig(mark, data, coords, readViewOpacity);
+        config = createArrowConfig(mark, data, coords);
     } else {
         throw unsupported(mark, `Mark type "${markType}" is not supported.`);
     }
@@ -283,7 +281,6 @@ function createTranslation(definition, config, mark) {
  * @param {import("../../marks/mark.js").default} mark
  */
 export function getWebGpuMarkConfigRevision(mark) {
-    initializeWebGpuMarkRevisions(mark);
     return mark.getRenderingRevision("configuration");
 }
 
@@ -295,7 +292,6 @@ export function getWebGpuMarkConfigRevision(mark) {
  * @returns {number | undefined}
  */
 export function getWebGpuMarkResourceRevision(mark) {
-    initializeWebGpuMarkRevisions(mark);
     return mark.getRenderingRevision("resources");
 }
 
@@ -370,15 +366,21 @@ function createConditionalChannel(mark, channel, data, build) {
         throw unsupported(mark, `Channel "${channel}" has no fallback branch.`);
     }
 
-    const fallbackEncoder = createBranchEncoder(mark, encoder, fallback);
-    const result = build(fallbackEncoder, fallback);
+    /** @param {import("../../types/encoder.js").EncodingBranch} branch */
+    const buildBranch = (branch) => {
+        const branchEncoder = createBranchEncoder(mark, encoder, branch);
+        const config = build(branchEncoder, branch);
+        if (branchEncoder.scale && !isValueDef(branchEncoder.channelDef))
+            SCALE_DEPENDENT_VALUES.add(config);
+        return config;
+    };
+    const result = buildBranch(fallback);
     if (branches.length == 1) {
         return result;
     }
 
     const conditions = branches.slice(0, -1).map((branch) => {
-        const branchEncoder = createBranchEncoder(mark, encoder, branch);
-        const branchConfig = build(branchEncoder, branch);
+        const branchConfig = buildBranch(branch);
         const when = createSelectionCondition(mark, branch.predicate.selection);
         return { when, channel: branchConfig };
     });
@@ -520,11 +522,9 @@ function createSelectionCondition(mark, predicate) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
- * @param {boolean} staticViewOpacity
  * @returns {object}
  */
-function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
+function createRectConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
         "cornerRadius",
         "cornerRadiusTopRight",
@@ -555,63 +555,30 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
+            strokeWidth: createNumericChannel(mark, "strokeWidth", data),
+            cornerRadiusTopRight: cornerRadiusValue(
                 mark,
-                "fillOpacity",
-                data,
-                viewOpacity
+                "cornerRadiusTopRight"
             ),
-            strokeOpacity: createOpacityChannel(
+            cornerRadiusBottomRight: cornerRadiusValue(
                 mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
+                "cornerRadiusBottomRight"
             ),
-            strokeWidth: createNumericChannel(mark, "strokeWidth", data, true),
-            cornerRadiusTopRight: staticOrLivePropertyValue(
+            cornerRadiusTopLeft: cornerRadiusValue(mark, "cornerRadiusTopLeft"),
+            cornerRadiusBottomLeft: cornerRadiusValue(
                 mark,
-                ["cornerRadius", "cornerRadiusTopRight"],
-                () => readCornerRadii(mark).topRight
+                "cornerRadiusBottomLeft"
             ),
-            cornerRadiusBottomRight: staticOrLivePropertyValue(
-                mark,
-                ["cornerRadius", "cornerRadiusBottomRight"],
-                () => readCornerRadii(mark).bottomRight
-            ),
-            cornerRadiusTopLeft: staticOrLivePropertyValue(
-                mark,
-                ["cornerRadius", "cornerRadiusTopLeft"],
-                () => readCornerRadii(mark).topLeft
-            ),
-            cornerRadiusBottomLeft: staticOrLivePropertyValue(
-                mark,
-                ["cornerRadius", "cornerRadiusBottomLeft"],
-                () => readCornerRadii(mark).bottomLeft
-            ),
-            minWidth: liveValue(() => readNumericProperty(mark, "minWidth")),
-            minHeight: liveValue(() => readNumericProperty(mark, "minHeight")),
-            minOpacity: liveValue(() =>
-                readNumericProperty(mark, "minOpacity")
-            ),
-            shadowOffsetX: liveValue(() =>
-                readOptionalNumericProperty(mark, "shadowOffsetX", 0)
-            ),
-            shadowOffsetY: liveValue(() =>
-                readOptionalNumericProperty(mark, "shadowOffsetY", 0)
-            ),
-            shadowBlur: liveValue(() =>
-                readOptionalNumericProperty(mark, "shadowBlur", 0)
-            ),
-            shadowOpacity: staticOrLivePropertyValue(
-                mark,
-                ["shadowOpacity"],
-                () =>
-                    readOptionalNumericProperty(mark, "shadowOpacity", 0) *
-                    viewOpacity(),
-                undefined,
-                !staticViewOpacity
-            ),
-            shadowColor: liveValue(() =>
+            minWidth: numericPropertyValue(mark, "minWidth"),
+            minHeight: numericPropertyValue(mark, "minHeight"),
+            minOpacity: numericPropertyValue(mark, "minOpacity"),
+            shadowOffsetX: numericPropertyValue(mark, "shadowOffsetX", 0),
+            shadowOffsetY: numericPropertyValue(mark, "shadowOffsetY", 0),
+            shadowBlur: numericPropertyValue(mark, "shadowBlur", 0),
+            shadowOpacity: numericPropertyValue(mark, "shadowOpacity", 0),
+            shadowColor: staticOrLivePropertyValue(mark, ["shadowColor"], () =>
                 toRgba(mark, readProperty(mark, "shadowColor") ?? "black")
             ),
             hatchPattern: staticOrLivePropertyValue(
@@ -628,10 +595,9 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createPointConfig(mark, data, coords, viewOpacity) {
+function createPointConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
         "fillGradientStrength",
         "inwardStroke",
@@ -656,29 +622,20 @@ function createPointConfig(mark, data, coords, viewOpacity) {
             dy: createGlyphOffsetChannel(mark, "y", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
-                mark,
-                "fillOpacity",
-                data,
-                viewOpacity
-            ),
-            strokeOpacity: createOpacityChannel(
-                mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
-            ),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             angle: createNumericChannel(mark, "angle", data),
-            gradientStrength: liveValue(() =>
-                readNumericProperty(mark, "fillGradientStrength")
+            gradientStrength: numericPropertyValue(
+                mark,
+                "fillGradientStrength"
             ),
-            strokeAlign: liveValue(
+            strokeAlign: staticOrLivePropertyValue(
+                mark,
+                ["inwardStroke"],
                 () => (readProperty(mark, "inwardStroke") ? 0 : 1),
                 "u32"
             ),
-            minPickingSize: liveValue(() =>
-                readOptionalNumericProperty(mark, "minPickingSize", 2)
-            ),
+            minPickingSize: numericPropertyValue(mark, "minPickingSize", 2),
         },
         ...visibility,
     };
@@ -769,7 +726,7 @@ function createPointVisibilityConfig(mark, data) {
             },
         },
         scalarSlots: {
-            semanticThreshold: retainedValue(
+            semanticThreshold: liveValue(
                 () =>
                     /** @type {import("../../marks/point.js").default} */ (
                         mark
@@ -795,10 +752,9 @@ function createPointVisibilitySelections(mark) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createRuleConfig(mark, data, coords, viewOpacity) {
+function createRuleConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
         "strokeAlign",
         "minLength",
@@ -823,7 +779,9 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
             fill: createColorChannel(mark, "fill", data),
             ...(mark.getType() === "rule"
                 ? {
-                      strokeAlign: liveValue(
+                      strokeAlign: staticOrLivePropertyValue(
+                          mark,
+                          ["strokeAlign"],
                           () =>
                               STROKE_ALIGN_CODES.get(
                                   readProperty(mark, "strokeAlign")
@@ -848,15 +806,15 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
                       ),
                   }
                 : {}),
-            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
-            minLength: liveValue(() => readNumericProperty(mark, "minLength")),
-            strokeCap: liveValue(
+            opacity: createNumericChannel(mark, "opacity", data),
+            minLength: numericPropertyValue(mark, "minLength"),
+            strokeCap: staticOrLivePropertyValue(
+                mark,
+                ["strokeCap"],
                 () => mapProperty(mark, "strokeCap", STROKE_CAP_CODES),
                 "u32"
             ),
-            strokeDashOffset: liveValue(() =>
-                readNumericProperty(mark, "strokeDashOffset")
-            ),
+            strokeDashOffset: numericPropertyValue(mark, "strokeDashOffset"),
             strokeDash: { value: 0, type: "u32" },
         },
         dashPatterns: strokeDash == null ? null : [strokeDash],
@@ -867,10 +825,33 @@ function createRuleConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createTextConfig(mark, data, coords, viewOpacity) {
+function createTextConfig(mark, data, coords) {
+    const viewport = [coords.x, coords.y, coords.x2, coords.y2];
+    const retainedProperties = {
+        viewport: { value: viewport },
+        ...createDynamicNumericVectorProperty(
+            mark,
+            "viewportEdgeFadeWidth",
+            TEXT_EDGE_FADE_WIDTH_PROPERTIES,
+            [0, 0, 0, 0]
+        ),
+        ...createDynamicNumericVectorProperty(
+            mark,
+            "viewportEdgeFadeDistance",
+            TEXT_EDGE_FADE_DISTANCE_PROPERTIES,
+            [-Infinity, -Infinity, -Infinity, -Infinity]
+        ),
+        ...createDynamicProperties(mark, {
+            paddingX: (value) => value,
+            paddingY: (value) => value,
+            flushX: (value) => !!value,
+            flushY: (value) => !!value,
+            squeeze: (value) => !!value,
+            logoLetters: (value) => !!value,
+        }),
+    };
     const size = readNumericEncoder(mark, "size", data[0]);
     const encoders = /** @type {Record<string, any>} */ (mark.encoders);
     const textMetrics =
@@ -933,13 +914,13 @@ function createTextConfig(mark, data, coords, viewOpacity) {
                 type: "u32",
             },
             fill: createColorChannel(mark, "fill", data),
-            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            opacity: createNumericChannel(mark, "opacity", data),
         },
         font: outlineFont,
         fontStyle: readProperty(mark, "fontStyle"),
         fontWeight: readProperty(mark, "fontWeight"),
         fontSize: size,
-        viewport: [coords.x, coords.y, coords.x2, coords.y2],
+        viewport,
         viewportEdgeFadeWidth: readNumericPropertyVector(
             mark,
             TEXT_EDGE_FADE_WIDTH_PROPERTIES,
@@ -956,35 +937,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
         flushY: !!readProperty(mark, "flushY"),
         squeeze: !!readProperty(mark, "squeeze"),
         logoLetters: !!readProperty(mark, "logoLetters"),
-        // The view rectangle can change while a retained mark is reused.
-        retainedProperties: {
-            viewport: retainedPropertyValue(() => [
-                coords.x,
-                coords.y,
-                coords.x2,
-                coords.y2,
-            ]),
-            ...createDynamicNumericVectorProperty(
-                mark,
-                "viewportEdgeFadeWidth",
-                TEXT_EDGE_FADE_WIDTH_PROPERTIES,
-                [0, 0, 0, 0]
-            ),
-            ...createDynamicNumericVectorProperty(
-                mark,
-                "viewportEdgeFadeDistance",
-                TEXT_EDGE_FADE_DISTANCE_PROPERTIES,
-                [-Infinity, -Infinity, -Infinity, -Infinity]
-            ),
-            ...createDynamicProperties(mark, {
-                paddingX: (value) => value,
-                paddingY: (value) => value,
-                flushX: (value) => !!value,
-                flushY: (value) => !!value,
-                squeeze: (value) => !!value,
-                logoLetters: (value) => !!value,
-            }),
-        },
+        retainedProperties,
     };
 }
 
@@ -992,10 +945,21 @@ function createTextConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createLinkConfig(mark, data, coords, viewOpacity) {
+function createLinkConfig(mark, data, coords) {
+    const retainedProperties = createDynamicProperties(mark, {
+        arcFadingDistance: (value) => value || [0, 0],
+        noFadingOnSecondPass: (value) => !!value,
+        arcHeightFactor: (value) => value,
+        minArcHeight: (value) => value,
+        linkShape: (value) => value ?? "arc",
+        orient: (value) => value ?? "vertical",
+        clampApex: (value) => !!value,
+        maxChordLength: (value) => value,
+        segments: (value) => value,
+        minPickingSize: (value) => value,
+    });
     return {
         count: data.length,
         channels: {
@@ -1010,38 +974,19 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             size: createNumericChannel(mark, "size", data),
             color: createColorChannel(mark, "color", data),
-            opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
+            opacity: createNumericChannel(mark, "opacity", data),
         },
-        minPickingSize: readOptionalNumericProperty(mark, "minPickingSize", 3),
+        minPickingSize: readNumericProperty(mark, "minPickingSize", 3),
         linkShape: readProperty(mark, "linkShape") ?? "arc",
         orient: readProperty(mark, "orient") ?? "vertical",
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
         noFadingOnSecondPass: !!readProperty(mark, "noFadingOnSecondPass"),
-        arcHeightFactor: readOptionalNumericProperty(
-            mark,
-            "arcHeightFactor",
-            1
-        ),
-        minArcHeight: readOptionalNumericProperty(mark, "minArcHeight", 1.5),
+        arcHeightFactor: readNumericProperty(mark, "arcHeightFactor", 1),
+        minArcHeight: readNumericProperty(mark, "minArcHeight", 1.5),
         clampApex: !!readProperty(mark, "clampApex"),
-        maxChordLength: readOptionalNumericProperty(
-            mark,
-            "maxChordLength",
-            50000
-        ),
-        segments: readOptionalNumericProperty(mark, "segments", 101),
-        retainedProperties: createDynamicProperties(mark, {
-            arcFadingDistance: (value) => value || [0, 0],
-            noFadingOnSecondPass: (value) => !!value,
-            arcHeightFactor: (value) => value,
-            minArcHeight: (value) => value,
-            linkShape: (value) => value ?? "arc",
-            orient: (value) => value ?? "vertical",
-            clampApex: (value) => !!value,
-            maxChordLength: (value) => value,
-            segments: (value) => value,
-            minPickingSize: (value) => value,
-        }),
+        maxChordLength: readNumericProperty(mark, "maxChordLength", 50000),
+        segments: readNumericProperty(mark, "segments", 101),
+        retainedProperties,
     };
 }
 
@@ -1049,16 +994,23 @@ function createLinkConfig(mark, data, coords, viewOpacity) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {() => number} viewOpacity
  * @returns {object}
  */
-function createArrowConfig(mark, data, coords, viewOpacity) {
-    const headAngle = readOptionalNumericProperty(mark, "headAngle", 45);
-    const headNotchAngle = readOptionalNumericProperty(
-        mark,
-        "headNotchAngle",
-        90
-    );
+function createArrowConfig(mark, data, coords) {
+    const retainedProperties = createDynamicProperties(mark, {
+        headAngle: (value) => value,
+        headNotchAngle: (value) => value,
+        minSize: (value) => value,
+        headWidth: (value) => value,
+        startNotch: (value) => !!value,
+        minStemLength: (value) => value,
+        headSpacing: (value) => value,
+        stem: (value) => value !== false,
+        headShape: (value) => value ?? "triangle",
+        headPlacement: (value) => value ?? "inside",
+    });
+    const headAngle = readNumericProperty(mark, "headAngle", 45);
+    const headNotchAngle = readNumericProperty(mark, "headNotchAngle", 90);
     return {
         count: data.length,
         channels: {
@@ -1073,18 +1025,8 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
-            fillOpacity: createOpacityChannel(
-                mark,
-                "fillOpacity",
-                data,
-                viewOpacity
-            ),
-            strokeOpacity: createOpacityChannel(
-                mark,
-                "strokeOpacity",
-                data,
-                viewOpacity
-            ),
+            fillOpacity: createNumericChannel(mark, "fillOpacity", data),
+            strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),
             size: createNumericChannel(mark, "size", data),
             direction: createEnumChannel(
@@ -1096,26 +1038,15 @@ function createArrowConfig(mark, data, coords, viewOpacity) {
         },
         headAngle,
         headNotchAngle,
-        minSize: readOptionalNumericProperty(mark, "minSize", 1),
-        headWidth: readOptionalNumericProperty(mark, "headWidth", 3),
+        minSize: readNumericProperty(mark, "minSize", 1),
+        headWidth: readNumericProperty(mark, "headWidth", 3),
         startNotch: !!readProperty(mark, "startNotch"),
-        minStemLength: readOptionalNumericProperty(mark, "minStemLength", 0),
+        minStemLength: readNumericProperty(mark, "minStemLength", 0),
         headSpacing: readNullableNumericProperty(mark, "headSpacing"),
         stem: readProperty(mark, "stem") !== false,
         headShape: readProperty(mark, "headShape") ?? "triangle",
         headPlacement: readProperty(mark, "headPlacement") ?? "inside",
-        retainedProperties: createDynamicProperties(mark, {
-            headAngle: (value) => value,
-            headNotchAngle: (value) => value,
-            minSize: (value) => value,
-            headWidth: (value) => value,
-            startNotch: (value) => !!value,
-            minStemLength: (value) => value,
-            headSpacing: (value) => value,
-            stem: (value) => value !== false,
-            headShape: (value) => value ?? "triangle",
-            headPlacement: (value) => value ?? "inside",
-        }),
+        retainedProperties,
     };
 }
 
@@ -1166,7 +1097,7 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
         scale?.type == "point" ||
         scale?.type == "ordinal"
     ) {
-        const { intern, readDomain } = getCategoricalMapping(
+        const { intern, readDomain, readViewport } = getCategoricalMapping(
             mark,
             channel,
             scale
@@ -1190,8 +1121,9 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                       )
                     : createBandPositionScale(
                           scale,
-                          range,
+                          getRange(channel, coords, undefined),
                           readDomain,
+                          readViewport,
                           band,
                           channel
                       ),
@@ -1240,29 +1172,44 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {[number, number]} range
  * @param {() => number[]} readDomain
+ * @param {() => import("../../scales/scaleBand.js").CategoricalViewport | null} readViewport
  * @param {number} band
  * @param {string} channel
  */
-function createBandPositionScale(scale, range, readDomain, band, channel) {
+function createBandPositionScale(
+    scale,
+    range,
+    readDomain,
+    readViewport,
+    band,
+    channel
+) {
     const configurableScale = /** @type {any} */ (scale);
+    const reverse = range[1] < range[0];
+    // Core's effective range already includes reversal and can extend beyond
+    // the viewport when an App layout translates or expands complete bands.
+    const readRange = () =>
+        scale
+            .range()
+            .map((value) => range[0] + Number(value) * (range[1] - range[0]));
     const result = retainScaleLeaves(
         bandScale({
             domain: readDomain(),
-            range,
+            range: readRange(),
             paddingInner:
                 scale.type == "point" ? 1 : configurableScale.paddingInner(),
             paddingOuter: configurableScale.paddingOuter(),
-            align: configurableScale.align(),
-            band,
+            align: reverse
+                ? 1 - configurableScale.align()
+                : configurableScale.align(),
+            band: reverse ? 1 - band : band,
         }),
-        readDomain
+        readDomain,
+        readRange
     );
     Object.defineProperty(result, "viewport", {
         enumerable: true,
-        get: () =>
-            /** @type {import("../../scales/scaleBand.js").CategoricalGapScale} */ (
-                scale
-            ).viewport(),
+        get: readViewport,
     });
     return retainGroupingGaps(result, scale, channel);
 }
@@ -1343,12 +1290,11 @@ function retainGroupingGaps(target, scale, channel, peer) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
- * @param {boolean} [keepLiteralStatic]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createNumericChannel(mark, channel, data, keepLiteralStatic = false) {
+function createNumericChannel(mark, channel, data) {
     return createConditionalChannel(mark, channel, data, (encoder) =>
-        keepLiteralStatic && isStaticConstantEncoder(encoder)
+        isStaticConstantEncoder(encoder)
             ? { value: Number(encoder(data[0])) }
             : createNumericBranch(mark, channel, data, encoder)
     );
@@ -1383,7 +1329,7 @@ function createNumericBranch(mark, channel, data, encoder) {
         encoder.scale?.type == "band" ||
         encoder.scale?.type == "point"
     ) {
-        const { values, readDomain } = toCategoricalArray(
+        const { values, readDomain, readViewport } = toCategoricalArray(
             mark,
             channel,
             data,
@@ -1399,15 +1345,13 @@ function createNumericBranch(mark, channel, data, encoder) {
                           mark,
                           channel,
                           encoder.scale,
-                          1,
                           readDomain
                       )
                     : createBandPositionScale(
                           encoder.scale,
-                          /** @type {[number, number]} */ (
-                              encoder.scale.range()
-                          ),
+                          [0, 1],
                           readDomain,
+                          readViewport,
                           /** @type {import("../../spec/channel.js").BandMixins} */ (
                               encoder.channelDef
                           ).band ?? 0.5,
@@ -1421,84 +1365,6 @@ function createNumericBranch(mark, channel, data, encoder) {
     };
     const scale = createNonPositionalScale(mark, channel, encoder.scale);
     return scale ? { ...config, scale } : config;
-}
-
-/**
- * Applies view opacity after channel scaling by multiplying numeric scale
- * ranges. Unscaled series are multiplied while materializing the column.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- * @param {() => number} viewOpacity
- * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
- */
-function createOpacityChannel(mark, channel, data, viewOpacity) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
-        createOpacityBranch(mark, channel, data, viewOpacity, encoder)
-    );
-}
-
-/**
- * @param {import("../../marks/mark.js").default} mark
- * @param {string} channel
- * @param {object[]} data
- * @param {() => number} viewOpacity
- * @param {import("../../types/encoder.js").Encoder} encoder
- * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
- */
-function createOpacityBranch(mark, channel, data, viewOpacity, encoder) {
-    if (encoder.constant) {
-        return liveValue(() => Number(encoder(data[0])) * viewOpacity());
-    }
-
-    const accessor = encoder.branches[0].accessor;
-    if (encoder.scale?.type == "ordinal") {
-        const { values, readDomain } = toCategoricalArray(
-            mark,
-            channel,
-            data,
-            accessor,
-            encoder.scale
-        );
-        return {
-            data: values,
-            type: "u32",
-            scale: createNonPositionalScale(
-                mark,
-                channel,
-                encoder.scale,
-                viewOpacity,
-                readDomain
-            ),
-        };
-    }
-    const scale =
-        encoder.scale?.type == "identity"
-            ? undefined
-            : createNonPositionalScale(
-                  mark,
-                  channel,
-                  encoder.scale,
-                  viewOpacity
-              );
-    if (scale) {
-        return {
-            data: toFloat32Array(mark, channel, data, accessor),
-            type: "f32",
-            scale,
-        };
-    }
-
-    return {
-        data: toFloat32Array(mark, channel, data, accessor),
-        type: "f32",
-        scale: retainScaleLeaves(
-            linearScale({ domain: [0, 1], range: [0, viewOpacity()] }),
-            undefined,
-            () => [0, viewOpacity()]
-        ),
-    };
 }
 
 /**
@@ -1618,6 +1484,9 @@ function createColorChannel(mark, channel, data) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createColorBranch(mark, channel, data, encoder) {
+    if (isStaticConstantEncoder(encoder)) {
+        return { value: toRgba(mark, encoder(data[0])) };
+    }
     if (encoder.constant) {
         return liveValue(() => toRgba(mark, encoder(data[0])));
     }
@@ -1718,39 +1587,25 @@ function createColorScale(mark, channel, scale, readOrdinalDomain) {
         return retainScaleLeaves(
             thresholdScale({
                 domain: scale.domain().map(Number),
-                range: normalizeColorRange(mark, scale.range()),
+                range: scale.range(),
             }),
             () => scale.domain().map(Number),
-            () => normalizeColorRange(mark, scale.range())
+            () => scale.range()
         );
     } else if (scale.type == "quantize") {
         return retainScaleLeaves(
             quantizeScale({
                 domain: scale.domain().map(Number),
-                range: normalizeColorRange(mark, scale.range()),
+                range: scale.range(),
             }),
             () => scale.domain().map(Number),
-            () => normalizeColorRange(mark, scale.range())
+            () => scale.range()
         );
     }
 
     throw unsupported(
         mark,
         `Scale type "${scale.type}" on channel "${channel}" is not supported.`
-    );
-}
-
-/**
- * Materialize Core's CSS colors for discrete renderer scales. The renderer
- * also accepts CSS strings, but passing normalized vectors keeps the scale
- * output contract explicit for four-component mark channels.
- *
- * @param {import("../../marks/mark.js").default} mark
- * @param {Array<number | number[] | string>} range
- */
-function normalizeColorRange(mark, range) {
-    return range.map((value) =>
-        typeof value == "string" ? toRgba(mark, value) : value
     );
 }
 
@@ -1806,7 +1661,7 @@ function createGlyphOffsetChannel(mark, axis, data) {
     const channel = axis == "x" ? "dx" : "dy";
     const encoder = mark.encoders[channel];
     if (!encoder) {
-        return liveValue(() => readNumericProperty(mark, channel));
+        return numericPropertyValue(mark, channel);
     }
 
     assertUnconditional(mark, channel, encoder);
@@ -1902,33 +1757,21 @@ function createPositionScale(mark, channel, scale, range) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {import("../../types/encoder.js").VegaScale | undefined} scale
- * @param {number | (() => number)} [rangeMultiplier]
  * @param {number[] | (() => number[])} [domain]
  * @returns {import("@genome-spy/webgpu-renderer").ConfiguredScale<"identity" | "linear"> | undefined}
  */
-function createNonPositionalScale(
-    mark,
-    channel,
-    scale,
-    rangeMultiplier = 1,
-    domain
-) {
+function createNonPositionalScale(mark, channel, scale, domain) {
     if (!scale || scale.type == "null") {
         return undefined;
     }
     if (scale.type == "identity") {
         return identityScale();
     }
-    const readRangeMultiplier =
-        typeof rangeMultiplier == "function"
-            ? rangeMultiplier
-            : () => rangeMultiplier;
     return createNumericScale(
         mark,
         channel,
         scale,
-        () =>
-            scale.range().map((value) => Number(value) * readRangeMultiplier()),
+        () => scale.range().map(Number),
         domain
     );
 }
@@ -2014,24 +1857,16 @@ function createNumericScale(mark, channel, scale, range, domain) {
  * @param {(() => any)} [readRange]
  */
 function retainScaleLeaves(scale, readDomain, readRange) {
-    Object.defineProperties(scale, {
-        ...(readDomain
-            ? {
-                  domain: {
-                      enumerable: true,
-                      get: readDomain,
-                  },
-              }
-            : {}),
-        ...(readRange
-            ? {
-                  range: {
-                      enumerable: true,
-                      get: readRange,
-                  },
-              }
-            : {}),
-    });
+    if (readDomain)
+        Object.defineProperty(scale, "domain", {
+            enumerable: true,
+            get: readDomain,
+        });
+    if (readRange)
+        Object.defineProperty(scale, "range", {
+            enumerable: true,
+            get: readRange,
+        });
     return scale;
 }
 
@@ -2254,13 +2089,10 @@ function createIndexValue(mark, channel, read, large) {
     // Reuse the packing buffers when a parameter-backed datum changes.
     const source = [0];
     const packed = new Uint32Array(2);
-    const value = [0, 0];
     return liveValue(() => {
         source[0] = readIndexValue(mark, channel, read());
         packHighPrecisionU32ArrayInto(source, packed);
-        value[0] = packed[0];
-        value[1] = packed[1];
-        return value;
+        return packed;
     }, "u32");
 }
 
@@ -2272,11 +2104,15 @@ function createIndexValue(mark, channel, read, large) {
  * @param {import("../../types/encoder.js").VegaScale} scale
  */
 function toCategoricalArray(mark, channel, data, accessor, scale) {
-    const { intern, readDomain } = getCategoricalMapping(mark, channel, scale);
+    const { intern, readDomain, readViewport } = getCategoricalMapping(
+        mark,
+        channel,
+        scale
+    );
     const values = getCachedSeries(mark, channel, data, accessor, () =>
         toUint32Array(data, (datum) => intern(accessor(datum)))
     );
-    return { values, readDomain };
+    return { values, readDomain, readViewport };
 }
 
 /**
@@ -2299,9 +2135,9 @@ function getCategoricalMapping(mark, channel, scale) {
             ?.accessor.scaleChannel ?? getPrimaryChannel(key);
     if (!isChannelWithScale(scaleChannel))
         throw unsupported(mark, "Missing categorical scale channel.");
-    const domainRef = mark.unitView
-        .getScaleResolution(scaleChannel)
-        .getDomainRef();
+    const resolution = mark.unitView.getScaleResolution(scaleChannel);
+    const domainRef = resolution.getDomainRef();
+    const mappingRef = resolution.getMappingRef();
     /** @type {readonly any[] | undefined} */
     let previous;
     /** @type {number[]} */
@@ -2311,10 +2147,15 @@ function getCategoricalMapping(mark, channel, scale) {
         if (domain !== previous) {
             previous = domain;
             mapped = domain.map(intern);
+            // Membership changes replace this private array; navigation can reuse it.
+            Object.freeze(mapped);
         }
         return mapped;
     };
-    return { intern, readDomain };
+    // Completed mappings retain owned viewport snapshots; the public scale
+    // getter validates and copies the same value on every read.
+    const readViewport = () => mappingRef.get()?.viewport ?? null;
+    return { intern, readDomain, readViewport };
 }
 
 /**
@@ -2349,38 +2190,37 @@ function getCachedSeries(mark, channel, data, accessor, create) {
 
 /**
  * @param {import("../../marks/mark.js").default} mark
- * @param {string} property
- */
-function readNumericProperty(mark, property) {
-    const value = readProperty(mark, property);
-    if (typeof value != "number") {
-        throw unsupported(
-            mark,
-            `Property "${property}" must be a number for the WebGPU renderer.`
-        );
-    }
-    return value;
-}
-
-/**
- * @param {import("../../marks/mark.js").default} mark
  * @param {string[]} properties
  * @param {number[]} fallbacks
+ * @param {number[]} [target]
+ * @param {(() => any)[]} [readers]
  * @returns {number[]}
  */
-function readNumericPropertyVector(mark, properties, fallbacks) {
-    return properties.map((property, index) =>
-        readOptionalNumericProperty(mark, property, fallbacks[index])
-    );
+function readNumericPropertyVector(
+    mark,
+    properties,
+    fallbacks,
+    target = fallbacks.slice(),
+    readers
+) {
+    for (let i = 0; i < properties.length; i++)
+        target[i] = readNumericProperty(
+            mark,
+            properties[i],
+            fallbacks[i],
+            readers?.[i]
+        );
+    return target;
 }
 
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} property
- * @param {number} fallback
+ * @param {number} [fallback]
+ * @param {() => any} [read]
  */
-function readOptionalNumericProperty(mark, property, fallback) {
-    const value = readProperty(mark, property) ?? fallback;
+function readNumericProperty(mark, property, fallback, read) {
+    const value = (read ? read() : readProperty(mark, property)) ?? fallback;
     if (typeof value != "number") {
         throw unsupported(
             mark,
@@ -2429,31 +2269,23 @@ function readDistancePair(mark, property) {
     return /** @type {[number, number]} */ (value);
 }
 
-/** @param {import("../../marks/mark.js").default} mark */
-function readCornerRadii(mark) {
-    const radius = readNumericProperty(mark, "cornerRadius");
-    return {
-        topRight: readOptionalNumericProperty(
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ */
+function cornerRadiusValue(mark, property) {
+    if (/** @type {Record<string, any>} */ (mark.properties)[property] == null)
+        return numericPropertyValue(mark, "cornerRadius");
+    const readRadius = createPropertyReader(mark, "cornerRadius");
+    const readCorner = createPropertyReader(mark, property);
+    return staticOrLivePropertyValue(mark, ["cornerRadius", property], () =>
+        readNumericProperty(
             mark,
-            "cornerRadiusTopRight",
-            radius
-        ),
-        bottomRight: readOptionalNumericProperty(
-            mark,
-            "cornerRadiusBottomRight",
-            radius
-        ),
-        topLeft: readOptionalNumericProperty(
-            mark,
-            "cornerRadiusTopLeft",
-            radius
-        ),
-        bottomLeft: readOptionalNumericProperty(
-            mark,
-            "cornerRadiusBottomLeft",
-            radius
-        ),
-    };
+            property,
+            readNumericProperty(mark, "cornerRadius", undefined, readRadius),
+            readCorner
+        )
+    );
 }
 
 /**
@@ -2479,17 +2311,35 @@ function readProperty(mark, property) {
     const value = /** @type {Record<string, any>} */ (mark.properties)[
         property
     ];
-    return resolveMarkProperty(mark, value);
+    return isExprRef(value) ? mark.getRenderingExpression(value)() : value;
 }
 
 /**
- * Exposes a retained numeric leaf without rebuilding its surrounding config.
- *
- * @param {() => number | number[]} read
- * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
+ * Captures the existing expression owner once, without another subscription.
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @returns {() => any}
  */
-function liveValue(read, type) {
-    return Object.assign(retainedValue(read, type), { dynamic: true });
+function createPropertyReader(mark, property) {
+    const value = /** @type {Record<string, any>} */ (mark.properties)[
+        property
+    ];
+    return isExprRef(value) ? mark.getRenderingExpression(value) : () => value;
+}
+
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} property
+ * @param {number} [fallback]
+ */
+function numericPropertyValue(mark, property, fallback) {
+    const value = /** @type {Record<string, any>} */ (mark.properties)[
+        property
+    ];
+    if (!isExprRef(value))
+        return { value: readNumericProperty(mark, property, fallback) };
+    const read = mark.getRenderingExpression(value);
+    return liveValue(() => readNumericProperty(mark, property, fallback, read));
 }
 
 /**
@@ -2500,20 +2350,10 @@ function liveValue(read, type) {
  * @param {string[]} properties
  * @param {() => number | number[]} read
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
- * @param {boolean} [forceDynamic]
  */
-function staticOrLivePropertyValue(
-    mark,
-    properties,
-    read,
-    type,
-    forceDynamic = false
-) {
+function staticOrLivePropertyValue(mark, properties, read, type) {
     const rawProperties = /** @type {Record<string, any>} */ (mark.properties);
-    if (
-        forceDynamic ||
-        properties.some((property) => isExprRef(rawProperties[property]))
-    ) {
+    if (properties.some((property) => isExprRef(rawProperties[property]))) {
         return liveValue(read, type);
     }
     return {
@@ -2523,26 +2363,19 @@ function staticOrLivePropertyValue(
 }
 
 /**
- * Exposes a retained numeric leaf that already has an explicit slot contract.
+ * Exposes a retained leaf that already has an explicit slot contract.
  *
- * @param {() => number | number[]} read
+ * @template T
+ * @param {() => T} read
  * @param {import("@genome-spy/webgpu-renderer").ScalarType} [type]
  */
-function retainedValue(read, type) {
+function liveValue(read, type) {
     return {
         get value() {
             return read();
         },
+        dynamic: true,
         ...(type ? { type } : {}),
-    };
-}
-
-/** @param {() => any} read */
-function retainedPropertyValue(read) {
-    return {
-        get value() {
-            return read();
-        },
     };
 }
 
@@ -2552,11 +2385,11 @@ function retainedPropertyValue(read) {
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {Record<string, (value: any) => any>} definitions
- * @returns {Record<string, {value: any}>}
+ * @returns {Record<string, {value: any, dynamic?: boolean}>}
  */
 function createDynamicProperties(mark, definitions) {
     mark.initializeRenderingRevisions(Object.keys(definitions));
-    /** @type {Record<string, {value: any}>} */
+    /** @type {Record<string, {value: any, dynamic?: boolean}>} */
     const properties = {};
     for (const [property, adjust] of Object.entries(definitions)) {
         const value = /** @type {Record<string, any>} */ (mark.properties)[
@@ -2565,9 +2398,8 @@ function createDynamicProperties(mark, definitions) {
         if (!isExprRef(value)) {
             continue;
         }
-        properties[property] = retainedPropertyValue(() =>
-            adjust(readProperty(mark, property))
-        );
+        const read = mark.getRenderingExpression(value);
+        properties[property] = liveValue(() => adjust(read()));
     }
     return properties;
 }
@@ -2591,9 +2423,19 @@ function createDynamicNumericVectorProperty(mark, name, properties, fallbacks) {
     if (expressionProperties.length == 0) {
         return {};
     }
+    const vector = fallbacks.slice();
+    const readers = properties.map((property) =>
+        createPropertyReader(mark, property)
+    );
     return {
-        [name]: retainedPropertyValue(() =>
-            readNumericPropertyVector(mark, properties, fallbacks)
+        [name]: liveValue(() =>
+            readNumericPropertyVector(
+                mark,
+                properties,
+                fallbacks,
+                vector,
+                readers
+            )
         ),
     };
 }
