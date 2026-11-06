@@ -114,7 +114,8 @@ export function createVertexRangeIndexer(
         lastStart = runX;
 
         const startBin = getBin(runX, false);
-        const endBin = pointIndex ? startBin : getBin(runX2, true);
+        const endBin =
+            pointIndex || runX === runX2 ? startBin : getBin(runX2, true);
 
         for (let bin = startBin; bin <= endBin; bin++) {
             if (startIndices[bin] > runStart) {
