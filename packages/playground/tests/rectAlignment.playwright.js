@@ -18,6 +18,14 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     "--enable-unsafe-swiftshader",
                     "--enable-unsafe-webgpu",
                     "--ignore-gpu-blocklist",
+                    ...(renderer === "webgpu" && platform() === "linux"
+                        ? [
+                              "--enable-features=Vulkan",
+                              "--use-vulkan=swiftshader",
+                              "--use-webgpu-adapter=swiftshader",
+                              "--disable-vulkan-surface",
+                          ]
+                        : []),
                     `--force-device-scale-factor=${dpr}`,
                 ],
             });
@@ -292,7 +300,10 @@ async function checkIntegration(page, dpr, renderer) {
     const red = [255, 0, 0, 255],
         blue = [0, 0, 255, 255],
         empty = [0, 0, 0, 0];
-    const modes = ["raster", "svg", "hybrid"];
+    const modes =
+        renderer === "canvas"
+            ? ["raster", "svg", "hybrid"]
+            : ["raster", "hybrid"];
     const paint = (values, rows) =>
         page.evaluate(
             ({ values, rows }) => globalThis.paintRectangle(values, rows),
@@ -351,6 +362,24 @@ async function checkIntegration(page, dpr, renderer) {
         return (await view.marks.pick({ x: 2, y: 32 })).status;
     });
     expect(edgePick).toBe("hit");
+
+    // Retain an indexed border after zoom moves its nominal interval offscreen.
+    await paint({}, [{ x: 0.2, x2: 0.24, y: 0.25, y2: 0.75 }]);
+    await page.evaluate(async () => {
+        await globalThis.liveRectApi
+            .getScaleResolutionByName("alignmentX")
+            .zoomTo([0.25, 0.75], { duration: 0 });
+        await globalThis.paintRectangle({});
+    });
+    close(await readLiveColors(page, dpr, clipped), [blue, empty]);
+    for (const mode of modes)
+        close(await readExportColors(page, dpr, mode, clipped), [blue, empty]);
+    await page.evaluate(async () => {
+        await globalThis.liveRectApi
+            .getScaleResolutionByName("alignmentX")
+            .zoomTo([0, 1], { duration: 0 });
+        await globalThis.paintRectangle({});
+    });
 
     // Transparent nominal fill must not reveal the blurred source inside the shape.
     await paint(
@@ -693,7 +722,14 @@ async function checkAlignment({ core, dpr, renderer }) {
                 x: {
                     field: "x",
                     type: "quantitative",
-                    scale: null,
+                    buildIndex: true,
+                    scale: {
+                        name: "alignmentX",
+                        domain: [0, 1],
+                        nice: false,
+                        zero: false,
+                        zoom: { extent: [-1, 2] },
+                    },
                     axis: null,
                 },
                 x2: { field: "x2" },
@@ -904,6 +940,59 @@ async function checkAlignment({ core, dpr, renderer }) {
                                 ? distance(x, y, inner, innerR)
                                 : Infinity;
                         const outerD = distance(x, y, outer, outerR);
+                        // Pixel-area intersections across straight border sections check
+                        // fractional paint order without borrowing the shader's SDF formula.
+                        if (
+                            renderer !== "canvas" &&
+                            inner[2] > 0 &&
+                            y > inner[1] + Math.max(...innerR) + 1 / dpr &&
+                            y <
+                                inner[1] +
+                                    inner[3] -
+                                    Math.max(...innerR) -
+                                    1 / dpr
+                        ) {
+                            const coverage = (boundary) =>
+                                Math.max(
+                                    0,
+                                    Math.min(
+                                        x + 0.5 / dpr,
+                                        boundary[0] + boundary[2]
+                                    ) - Math.max(x - 0.5 / dpr, boundary[0])
+                                ) * dpr;
+                            const fillArea = coverage(bounds);
+                            const innerArea = coverage(inner);
+                            const bandArea = coverage(outer) - innerArea;
+                            const overlapArea = fillArea - innerArea;
+                            const expected = [
+                                shape.fa * (fillArea - shape.sa * overlapArea),
+                                0,
+                                shape.sa * bandArea,
+                                shape.fa * fillArea +
+                                    shape.sa * bandArea -
+                                    shape.fa * shape.sa * overlapArea,
+                            ].map((value) => value * factor * 255);
+                            const i = (py * 64 * dpr + px) * 4;
+                            for (const [target, data] of targets) {
+                                const alpha = data[i + 3];
+                                const actual = [
+                                    (data[i] * alpha) / 255,
+                                    0,
+                                    (data[i + 2] * alpha) / 255,
+                                    alpha,
+                                ];
+                                const error = Math.max(
+                                    ...actual.map((value, c) =>
+                                        Math.abs(value - expected[c])
+                                    )
+                                );
+                                if (error > caseErrors[target]) {
+                                    caseErrors[target] = error;
+                                    worst[target] = { x, y, actual, expected };
+                                }
+                            }
+                            gpuCoverageChecks++;
+                        }
                         if (
                             renderer !== "canvas" &&
                             shape.fa === 1 &&

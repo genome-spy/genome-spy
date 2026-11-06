@@ -169,6 +169,7 @@ function renderRect(baseMark, options) {
                 instance.width,
                 instance.height
             );
+            if (instance.strokeOutset === 0) return;
         }
         options.rasterizer.fillRect(
             id,
