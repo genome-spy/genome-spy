@@ -286,6 +286,11 @@ export interface RectProps
 
     /**
      * Position of the full-width stroke relative to the rectangle boundary.
+     * The fill keeps its original bounds.
+     *
+     * Minimum sizes apply first. Zero-area rectangles have empty inside borders
+     * and expanded outside borders; centered behavior remains renderer-specific.
+     * Canvas/SVG may show a faint seam within one output pixel of a border edge.
      *
      * __Default value:__ `"center"`
      */
