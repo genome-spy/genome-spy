@@ -90,6 +90,10 @@ BMFont measurement. Canonical msdfgen is maintained in a separate repository
 and downloaded only by explicit oracle tests, comparison scripts, and the
 Storybook comparison control.
 
+Atlas generation retains nearest-distance and endpoint alignment before corner
+continuation. Temporary scratch rises from 32 to 44 bytes/pixel; the 64 MiB
+budget remains unchanged. Logo sampling and text placement stay separate.
+
 The glyph-based text-effects PoC adds one outline and one scalar-SDF
 shadow/glow in label-major order without per-label textures. Text program keys
 are constant time and never serialize label contents during zoom or pan.
