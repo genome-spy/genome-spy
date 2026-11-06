@@ -55,7 +55,11 @@ for (const [dpr, shift] of [1, 2].flatMap((dpr) =>
             const rows = [];
 
             try {
-                for (const logo of [false, true]) {
+                for (const { logo, shadow } of [
+                    { logo: false, shadow: false },
+                    { logo: true, shadow: false },
+                    { logo: false, shadow: true },
+                ]) {
                     const labels = logo ? ["|"] : ["|", "_"];
                     const x = logo ? [32 + shift] : [64 + shift, 192 + shift];
                     const y = logo ? 112 + shift : 64 + shift;
@@ -88,6 +92,16 @@ for (const [dpr, shift] of [1, 2].flatMap((dpr) =>
                             // Gray gives gamma 1; size 32 has no stem darkening.
                             fill: { value: [0.5, 0.5, 0.5, 1] },
                             strokeWidth: { value: 0 },
+                            // Isolate the true-distance shadow shader with the same straight-edge geometry.
+                            ...(shadow
+                                ? {
+                                      fillOpacity: { value: 0 },
+                                      shadowOpacity: { value: 1 },
+                                      shadowColor: {
+                                          value: [0.5, 0.5, 0.5, 1],
+                                      },
+                                  }
+                                : {}),
                         },
                     });
                     let bytes;
@@ -213,7 +227,14 @@ for (const [dpr, shift] of [1, 2].flatMap((dpr) =>
                                 edges += coverage > 0 && coverage < 1;
                             }
                         }
-                        rows.push({ logo, label, maximum, tested, edges });
+                        rows.push({
+                            logo,
+                            shadow,
+                            label,
+                            maximum,
+                            tested,
+                            edges,
+                        });
                     }
                 }
                 const error = await renderer.device.popErrorScope();
@@ -226,7 +247,7 @@ for (const [dpr, shift] of [1, 2].flatMap((dpr) =>
         }, placement);
 
         expect(result.validationError).toBeNull();
-        expect(result.rows).toHaveLength(3);
+        expect(result.rows).toHaveLength(5);
         for (const row of result.rows) {
             expect(row.tested, JSON.stringify(row)).toBeGreaterThan(20);
             expect(row.edges, JSON.stringify(row)).toBeGreaterThan(10);
