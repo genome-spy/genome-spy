@@ -1,9 +1,9 @@
 import { fileURLToPath, URL } from "node:url";
 import process from "node:process";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "playwright/test";
 
 const core =
-    "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
+    "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 for (const renderer of ["canvas", "webgl", "webgpu"])
     for (const dpr of [1, 2]) {
         test(`${renderer} SVG view opacity at DPR ${dpr}`, async ({
