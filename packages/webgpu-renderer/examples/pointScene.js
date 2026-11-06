@@ -5,8 +5,8 @@ import { ordinalScale } from "../src/scales/ordinal.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{ strokeAlign?: number, strokeOpacity?: number }} [options]
- * @returns {Promise<{cleanup: () => void, update: (options: {strokeAlign?: number, strokeOpacity?: number}) => void}>}
+ * @param {{ opacity?: number, strokeAlign?: number, strokeOpacity?: number }} [options]
+ * @returns {Promise<{cleanup: () => void, update: (options: {opacity?: number, strokeAlign?: number, strokeOpacity?: number}) => void}>}
  */
 export default async function runPointScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
@@ -52,6 +52,7 @@ export default async function runPointScene(canvas, options = {}) {
     const mark = renderer.createMark(pointMark, {
         count,
         channels: {
+            opacity: { value: options.opacity ?? 1, dynamic: true },
             x: {
                 data: x,
                 type: "u32",
@@ -114,9 +115,10 @@ export default async function runPointScene(canvas, options = {}) {
         count
     );
 
-    /** @param {{strokeAlign?: number, strokeOpacity?: number}} next */
+    /** @param {{opacity?: number, strokeAlign?: number, strokeOpacity?: number}} next */
     const update = (next) => {
         mark.batchUpdates(() => {
+            values.opacity.set(next.opacity ?? 1);
             values.strokeAlign.set(next.strokeAlign ?? 1);
             values.strokeOpacity.set(next.strokeOpacity ?? 1);
         });

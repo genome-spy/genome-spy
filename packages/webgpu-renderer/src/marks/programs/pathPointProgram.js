@@ -52,6 +52,7 @@ struct VSOut {
     @location(8) @interpolate(flat) strokeAlign: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
+    @location(13) opacity: f32,
     @location(14) @interpolate(flat) atlasBounds: vec4<f32>,
 };
 
@@ -65,6 +66,7 @@ fn culledPoint() -> VSOut {
     out.atlasBounds = vec4<f32>(0.0);
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
+    out.opacity = 0.0;
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
@@ -194,6 +196,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.atlasBounds = entry.uvBounds;
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
+    out.opacity = getScaled_opacity(i);
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = halfStrokeWidth;
@@ -268,7 +271,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shade(in) * select(in.opacity, 1.0, pickingEnabled);
 }
 `;
 

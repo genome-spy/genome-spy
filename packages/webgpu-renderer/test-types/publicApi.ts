@@ -83,6 +83,7 @@ export async function createPointExample(
             y: { value: 50 },
             y2: { value: 50 },
             fill: { value: [1, 0, 0, 1] },
+            opacity: { value: 0.6 },
             fillOpacity: { value: 0.5 },
             stroke: { value: [0, 0, 0, 1] },
             strokeOpacity: { value: 0.8 },
