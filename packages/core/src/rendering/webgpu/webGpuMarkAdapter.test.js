@@ -815,14 +815,14 @@ describe("WebGPU mark adapter", () => {
         }
     );
 
-    test("keeps reversed discrete Y scales top-to-bottom", () => {
+    test("reflects a reversed categorical y band in pixel space", () => {
         const data = [{ category: "A" }, { category: "B" }];
         const yOptions = {
             scale: createBandScale(["A", "B"], true),
             channelDef: {
                 field: "category",
                 type: "nominal",
-                band: 0.5,
+                band: 0.25,
             },
         };
         const mark = createMark("point", data, {
@@ -847,7 +847,8 @@ describe("WebGPU mark adapter", () => {
         );
         const y = /** @type {any} */ (translated).config.channels.y;
 
-        expect(y.scale.range).toEqual([20, 220]);
+        // Pixel y measures the within-band position from the opposite edge.
+        expect(y.scale).toMatchObject({ range: [20, 220], band: 0.75 });
     });
 
     test("translates a rule dash pattern to the renderer atlas config", () => {

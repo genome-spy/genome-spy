@@ -1192,7 +1192,8 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                           scale,
                           range,
                           readDomain,
-                          band,
+                          // Pixel y runs in the opposite direction from Core's unit range.
+                          channel[0] === "y" ? 1 - band : band,
                           channel
                       ),
         });
