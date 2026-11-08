@@ -17,6 +17,14 @@ completed.
 
 ## Properties
 
+### visibility
+
+> `readonly` **visibility**: [`ViewVisibilityApi`](ViewVisibilityApi.md)
+
+Shared visibility state for native controls, hosts and agents.
+
+***
+
 ### root
 
 > **root**: () => [`ViewHandle`](ViewHandle.md)

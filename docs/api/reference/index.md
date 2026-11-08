@@ -30,6 +30,8 @@ Public TypeScript API for `@genome-spy/core`.
 - [DatasetApi](interfaces/DatasetApi.md)
 - [ViewDataApi](interfaces/ViewDataApi.md)
 - [ViewHandle](interfaces/ViewHandle.md)
+- [ViewVisibilityNode](interfaces/ViewVisibilityNode.md)
+- [ViewVisibilityApi](interfaces/ViewVisibilityApi.md)
 - [ViewApi](interfaces/ViewApi.md)
 - [EmbedDebugApi](interfaces/EmbedDebugApi.md)
 - [ImageExportOptions](interfaces/ImageExportOptions.md)

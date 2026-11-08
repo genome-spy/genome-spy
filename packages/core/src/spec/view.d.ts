@@ -185,7 +185,22 @@ export interface SeparatorProps extends Omit<RuleProps, "type">, ZIndexProps {
     includePlotMargin?: boolean;
 }
 
+/** A group of views where only one member is shown at a time. */
+export interface VisibilityGroupSpec {
+    /** Group name, scoped to the containing import instance. */
+    group: string;
+}
+
 export interface ViewSpecBase extends ResolveSpec {
+    /**
+     * Include a named view in the hierarchical View settings menu.
+     * An object with `group` creates mutually exclusive radio choices within
+     * the same import scope. Names must be unique in their scope.
+     *
+     * __Default value:__ `false` for layer children, `true` for other views
+     */
+    configurableVisibility?: boolean | VisibilityGroupSpec;
+
     /**
      * An explicit name used to address the view. It is recommended to keep
      * names unique among siblings. In the App (where view state is

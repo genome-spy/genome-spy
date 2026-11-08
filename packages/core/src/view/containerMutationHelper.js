@@ -53,9 +53,10 @@ export default class ContainerMutationHelper {
      *
      * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} childSpec
      * @param {number} [index]
+     * @param {(view: import("./view.js").default) => void} [beforeInitialize] Runs after attachment, before guide/data initialization.
      * @returns {Promise<View>}
      */
-    async addChildSpec(childSpec, index) {
+    async addChildSpec(childSpec, index, beforeInitialize) {
         const { specs } = this.options;
         const insertIndex = index ?? specs.length;
         const name = this.container.getNextAutoName(this.options.namePrefix);
@@ -86,6 +87,7 @@ export default class ContainerMutationHelper {
                 insertIndex
             );
             viewInserted = true;
+            beforeInitialize?.(childView);
 
             attachViewLevelScaleProps(this.container);
             attachViewLevelAxisProps(this.container);

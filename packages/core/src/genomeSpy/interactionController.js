@@ -227,6 +227,19 @@ export default class InteractionController {
         return () => this.#nativeEventListeners.remove(type, listener);
     }
 
+    /** Whether a native document drag currently owns pointer tracking. */
+    isHoverTrackingSuspended() {
+        return this.#hoverTrackingSuspensionCount > 0;
+    }
+
+    /** Clear stale hover and picking state after visibility changes. */
+    clearHover() {
+        this.invalidatePendingPicks();
+        this.#clearHover();
+        this.#clearTooltip();
+        this.#cursorManager.clear();
+    }
+
     suspendHoverTracking() {
         this.#hoverTrackingSuspensionCount++;
         if (this.#longPressPending) {
