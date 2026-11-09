@@ -16,6 +16,19 @@ function transform(params, data) {
 }
 
 describe("Window transform", () => {
+    test("validates sort fields during peer comparisons for row-only operations", () => {
+        expect(() =>
+            transform(
+                {
+                    type: "window",
+                    sort: { field: ["s", "k"] },
+                    ops: ["row_number"],
+                },
+                [{ s: "x", k: 0 }, { s: 1, k: 0 }, { s: 2 }]
+            )
+        ).toThrow(/k/);
+    });
+
     test("calculates every window-only operation using sorted peers", () => {
         const rows = transform(
             {
@@ -328,6 +341,25 @@ describe("Window transform", () => {
             { value: 1, sum_value: 4, rank: 1 },
             { value: 1, sum_value: 4, rank: 1 },
         ]);
+    });
+
+    test("orders coerced NaNs last and reverses signed-zero ties", () => {
+        const rows = transform(
+            {
+                type: "window",
+                frame: [null, null],
+                ops: ["min", "max", "median"],
+                fields: ["value", "value", "value"],
+            },
+            [{ value: 0 }, { value: -0 }, { value: 2 }, { value: "text" }]
+        );
+
+        expect(rows[0]).toEqual({
+            value: 0,
+            min_value: -0,
+            max_value: NaN,
+            median_value: 1,
+        });
     });
 
     test("ignores missing and NaN values in field aggregates", () => {
