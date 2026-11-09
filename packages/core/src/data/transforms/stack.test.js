@@ -83,6 +83,42 @@ describe("Stack transform", () => {
         ]);
     });
 
+    test("Compound groups use comma-joined values in first-seen order", () => {
+        /** @type {{ a: string | null | undefined, b: string | number }[]} */
+        const data = [
+            { a: "x,y", b: "z" },
+            { a: null, b: 1 },
+            { a: "x", b: "y,z" },
+            { a: undefined, b: "1" },
+        ];
+
+        expect(transform({ type: "stack", groupby: ["a", "b"] }, data)).toEqual(
+            [
+                { a: "x,y", b: "z", y0: 0, y1: 1 },
+                { a: "x", b: "y,z", y0: 1, y1: 2 },
+                { a: null, b: 1, y0: 0, y1: 1 },
+                { a: undefined, b: "1", y0: 1, y1: 2 },
+            ]
+        );
+    });
+
+    test("Single-field groups keep string coercion and empty nullish keys", () => {
+        /** @type {{ group: string | number | null | undefined }[]} */
+        const data = [
+            { group: null },
+            { group: 1 },
+            { group: undefined },
+            { group: "1" },
+        ];
+
+        expect(transform({ type: "stack", groupby: ["group"] }, data)).toEqual([
+            { group: null, y0: 0, y1: 1 },
+            { group: undefined, y0: 1, y1: 2 },
+            { group: 1, y0: 0, y1: 1 },
+            { group: "1", y0: 1, y1: 2 },
+        ]);
+    });
+
     test("Normalize offset", () => {
         const conf = Object.assign({}, baseParams, {
             offset: "normalize",
