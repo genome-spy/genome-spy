@@ -20,8 +20,10 @@ pipeline can read it through `from.name`. Descendant views can also read it
 through `data.name` or a lookup. The table follows the usual
 [named data scope rules](../data/eager.md#named-data).
 
-The branch below publishes the maximum score for each group. The lookup adds
-that maximum to each original row.
+This example illustrates local publication by computing the maximum score for
+each group and adding it to each original row with a lookup. The
+[`window`](window.md) transform is a better fit for this calculation. Use
+`groupby: ["group"]` and `frame: [null, null]` with the `max` operation.
 
 ```json
 {
