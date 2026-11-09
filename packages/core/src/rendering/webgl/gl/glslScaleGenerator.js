@@ -292,7 +292,19 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
 
-    const { hp, attributeType } = getAttributeAndArrayTypes(scale, channel);
+    const { hp, attributeType, packedColor } = getAttributeAndArrayTypes(
+        scale,
+        channel
+    );
+    if (packedColor) {
+        return {
+            glsl: `
+vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
+    uvec4 bytes = (uvec4(value) >> uvec4(0u, 8u, 16u, 24u)) & 255u;
+    return vec4(bytes) / 255.0;
+}`,
+        };
+    }
 
     const domainLength = scale.domain
         ? isDiscretizing(scale.type)
@@ -767,6 +779,7 @@ function makeFunctionCall(name, ...args) {
  * @param {import("../../../spec/channel.js").Channel} channel
  */
 export function getAttributeAndArrayTypes(scale, channel) {
+    const packedColor = scale?.type === "null" && isColorChannel(channel);
     const discrete = scale && isDiscrete(scale.type);
     const hp = scale && isIndexLikeDomainType(scale.type);
     const largeHp = hp && isLargeIndexDomain(scale.domain());
@@ -776,7 +789,7 @@ export function getAttributeAndArrayTypes(scale, channel) {
      */
     const props = largeHp
         ? { attributeType: "uvec2", arrayConstructor: Uint32Array }
-        : hp || discrete || channel == "uniqueId"
+        : hp || discrete || packedColor || channel == "uniqueId"
           ? { attributeType: "uint", arrayConstructor: Uint32Array }
           : { attributeType: "float", arrayConstructor: Float32Array };
 
@@ -787,6 +800,7 @@ export function getAttributeAndArrayTypes(scale, channel) {
         discrete,
         hp,
         largeHp,
+        packedColor,
     });
 }
 

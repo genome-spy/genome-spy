@@ -68,6 +68,7 @@ import {
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
 import { gapRank, hasGroupingGaps } from "../../../genome/indexGapMapping.js";
+import { packCssColor } from "../../color.js";
 
 const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -651,10 +652,8 @@ export default class WebGLMark {
                 dynamicMarkUniforms.push(uniformGlsl);
                 scaleCode.push(accessorGlsl);
 
-                const { largeHp, discrete } = getAttributeAndArrayTypes(
-                    scale,
-                    channel
-                );
+                const { largeHp, discrete, packedColor } =
+                    getAttributeAndArrayTypes(scale, channel);
 
                 /**
                  * Discrete variables both numeric and strings must be "indexed",
@@ -667,7 +666,9 @@ export default class WebGLMark {
                     ? /** @type {any} */ (scale.props).domainIndexer
                     : largeHp
                       ? splitLargeHighPrecision
-                      : (d) => +d;
+                      : packedColor
+                        ? packCssColor
+                        : (d) => +d;
 
                 this.#callAfterShaderCompilation.push(() => {
                     this.registerMarkUniformValue(
