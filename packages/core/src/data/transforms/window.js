@@ -31,6 +31,15 @@ import {
 /** @typedef {import("../flowNode.js").Datum} Datum */
 /** @typedef {import("../../spec/transform.js").WindowParams | import("../../spec/transform.js").JoinAggregateParams} Params */
 
+const PEER_OPS = new Set([
+    "rank",
+    "dense_rank",
+    "percent_rank",
+    "cume_dist",
+    "ntile",
+]);
+const FRAME_VALUE_OPS = new Set(["first_value", "last_value", "nth_value"]);
+
 /**
  * Calculates window functions over sorted partitions while preserving input
  * propagation order. The transform buffers one FlowNode batch at a time.
@@ -57,6 +66,8 @@ export default class WindowTransform extends Transform {
         const normalized = normalizeParams(params, this);
         this.frame = normalized.frame;
         this.sharedFrame = normalized.sharedFrame;
+        this.needsFrame = normalized.needsFrame;
+        this.needsPeers = normalized.needsPeers;
         this.ignorePeers = normalized.ignorePeers;
         this.comparator = normalized.comparator;
         this.groupAccessors = normalized.groupAccessors;
@@ -132,11 +143,12 @@ export default class WindowTransform extends Transform {
             : createPartitionBounds(
                   rows,
                   this.comparator,
-                  this.frame,
-                  this.ignorePeers
+                  this.needsFrame ? this.frame : undefined,
+                  this.ignorePeers,
+                  this.needsPeers
               );
         const results = this.outputFields.map(
-            () => new Array(bounds.starts.length)
+            () => new Array(this.sharedFrame ? 1 : rows.length)
         );
 
         for (const evaluate of this.partitionEvaluators) {
@@ -266,6 +278,10 @@ function normalizeParams(params, transform) {
     return {
         frame,
         sharedFrame,
+        needsFrame: params.ops.some(
+            (op) => WINDOW_AGGREGATE_OPS.has(op) || FRAME_VALUE_OPS.has(op)
+        ),
+        needsPeers: params.ops.some((op) => PEER_OPS.has(op)),
         ignorePeers: windowParams?.ignorePeers ?? false,
         comparator,
         groupAccessors,
@@ -413,61 +429,82 @@ function sortedRows(rows, comparator) {
 /**
  * @param {Datum[]} rows
  * @param {((a: Datum, b: Datum) => number) | undefined} comparator
- * @param {[number | null, number | null]} frame
+ * @param {[number | null, number | null] | undefined} frame
  * @param {boolean} ignorePeers
+ * @param {boolean} needsPeers
  * @returns {PartitionBounds}
  */
-function createPartitionBounds(rows, comparator, frame, ignorePeers) {
+function createPartitionBounds(
+    rows,
+    comparator,
+    frame,
+    ignorePeers,
+    needsPeers
+) {
     const length = rows.length;
-    const peerStarts = new Array(length);
-    const peerStops = new Array(length);
-    const starts = new Array(length);
-    const stops = new Array(length);
+    const expandPeers =
+        comparator &&
+        !ignorePeers &&
+        frame &&
+        (frame[0] != null || frame[1] != null);
+    const peerStarts = new Array(needsPeers || expandPeers ? length : 0);
+    const peerStops = new Array(peerStarts.length);
+    const starts = new Array(frame ? length : 0);
+    const stops = new Array(starts.length);
 
     if (comparator) {
+        // Keep comparator validation even when no operation reads peer bounds.
         let peerStart = 0;
         for (let index = 1; index <= length; index++) {
             if (
                 index == length ||
                 comparator(rows[peerStart], rows[index]) != 0
             ) {
-                for (
-                    let peerIndex = peerStart;
-                    peerIndex < index;
-                    peerIndex++
-                ) {
-                    peerStarts[peerIndex] = peerStart;
-                    peerStops[peerIndex] = index;
+                if (peerStarts.length) {
+                    for (
+                        let peerIndex = peerStart;
+                        peerIndex < index;
+                        peerIndex++
+                    ) {
+                        peerStarts[peerIndex] = peerStart;
+                        peerStops[peerIndex] = index;
+                    }
                 }
                 peerStart = index;
             }
         }
-    } else {
+    } else if (needsPeers) {
         for (let index = 0; index < length; index++) {
             peerStarts[index] = index;
             peerStops[index] = index + 1;
         }
     }
 
-    for (let index = 0; index < length; index++) {
-        let start = frame[0] == null ? 0 : clamp(index + frame[0], 0, length);
-        let stop =
-            frame[1] == null ? length : clamp(index + frame[1] + 1, 0, length);
+    if (frame) {
+        const [startOffset, stopOffset] = frame;
+        for (let index = 0; index < length; index++) {
+            let start =
+                startOffset == null ? 0 : clamp(index + startOffset, 0, length);
+            let stop =
+                stopOffset == null
+                    ? length
+                    : clamp(index + stopOffset + 1, 0, length);
 
-        if (comparator && !ignorePeers) {
-            if (start > 0 && start < length && peerStarts[start] != start) {
-                start = peerStarts[start];
+            if (expandPeers) {
+                if (start > 0 && start < length) {
+                    start = peerStarts[start];
+                }
+                if (stop > 0 && stop < length) {
+                    stop = peerStops[stop - 1];
+                }
             }
-            if (stop > 0 && stop < length) {
-                stop = peerStops[stop - 1];
+            if (start > stop) {
+                stop = start;
             }
-        }
-        if (start > stop) {
-            stop = start;
-        }
 
-        starts[index] = start;
-        stops[index] = stop;
+            starts[index] = start;
+            stops[index] = stop;
+        }
     }
 
     return { starts, stops, peerStarts, peerStops };
@@ -496,11 +533,13 @@ function partitionRows(rows, accessors) {
     const root = new Map();
     /** @type {Datum[][]} */
     const partitions = [];
+    const lastIndex = accessors.length - 1;
+    const lastAccessor = accessors[lastIndex];
 
     for (const datum of rows) {
         /** @type {Map<any, any>} */
         let level = root;
-        for (let i = 0; i < accessors.length - 1; i++) {
+        for (let i = 0; i < lastIndex; i++) {
             const key = accessors[i](datum);
             let next = level.get(key);
             if (!next) {
@@ -510,7 +549,7 @@ function partitionRows(rows, accessors) {
             level = next;
         }
 
-        const key = accessors.at(-1)(datum);
+        const key = lastAccessor(datum);
         let partition = level.get(key);
         if (!partition) {
             partition = [];

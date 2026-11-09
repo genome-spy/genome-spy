@@ -1,4 +1,4 @@
-import { bisectLeft, quantileSorted } from "d3-array";
+import { bisectLeft, bisectRight, quantileSorted } from "d3-array";
 
 /**
  * Compatibility note: this module follows the aggregate portion of Vega's
@@ -61,10 +61,32 @@ export function createAggregatePartitionEvaluator(accessor, results) {
 
     return /** @type {AggregatePartitionEvaluator} */ (
         (rows, bounds, output) => {
-            const state = new WindowAggregateState(accessor, ops);
             const resultArrays = resultIndices.map((index) => output[index]);
             const starts = bounds.starts;
             const stops = bounds.stops;
+            // Frame boundaries are monotonic, so these endpoints imply that
+            // every requested frame covers the same whole partition.
+            const wholePartition =
+                starts[starts.length - 1] == 0 && stops[0] == rows.length;
+            const state = new WindowAggregateState(
+                accessor,
+                ops,
+                wholePartition
+            );
+
+            if (wholePartition) {
+                for (const row of rows) {
+                    state.add(row);
+                }
+                if (state.needsOrderedValues) {
+                    state.sortValues();
+                }
+                for (let i = 0; i < readers.length; i++) {
+                    resultArrays[i].fill(readers[i](state));
+                }
+                return;
+            }
+
             let start = 0;
             let stop = 0;
 
@@ -161,13 +183,33 @@ export class WindowAggregateState {
     /**
      * @param {(datum: Datum) => any} accessor
      * @param {string[]} ops
+     * @param {boolean} [deferSorting]
      */
-    constructor(accessor, ops) {
+    constructor(accessor, ops, deferSorting = false) {
         this.accessor = accessor;
         this.needsSum = ops.includes("sum");
         this.needsMoments = ops.some((op) => MOMENT_OPS.has(op));
         this.needsOrderedValues = ops.some((op) => ORDERED_OPS.has(op));
+        this.deferSorting = deferSorting;
         this.reset();
+    }
+
+    sortValues() {
+        const values = this.values;
+        values.sort(compareNumbers);
+
+        // Left insertion reverses ties. Only signed zeros can compare equal
+        // while remaining observably different.
+        for (
+            let left = bisectLeft(values, 0),
+                right = bisectRight(values, 0) - 1;
+            left < right;
+            left++, right--
+        ) {
+            const value = values[left];
+            values[left] = values[right];
+            values[right] = value;
+        }
     }
 
     reset() {
@@ -200,11 +242,15 @@ export class WindowAggregateState {
             this.m2 += delta * (numericValue - this.mean);
         }
         if (this.needsOrderedValues) {
-            this.values.splice(
-                bisectLeft(this.values, numericValue),
-                0,
-                numericValue
-            );
+            if (this.deferSorting) {
+                this.values.push(numericValue);
+            } else {
+                this.values.splice(
+                    bisectLeft(this.values, numericValue),
+                    0,
+                    numericValue
+                );
+            }
         }
     }
 
@@ -256,4 +302,13 @@ export class WindowAggregateState {
     q3() {
         return quantileSorted(this.values, 0.75);
     }
+}
+
+/**
+ * Matches bisectLeft's order, which places numeric NaNs after other values.
+ * @param {number} a
+ * @param {number} b
+ */
+function compareNumbers(a, b) {
+    return a < b ? -1 : a > b ? 1 : Number(a !== a) - Number(b !== b);
 }
