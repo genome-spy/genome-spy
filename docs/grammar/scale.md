@@ -57,12 +57,6 @@ field directly. GenomeSpy accepts colors supported by
 [`d3-color`](https://d3js.org/d3-color), including named colors, hex codes, and
 `rgba()` values. A null color is transparent.
 
-```json title="Using colors from a data field"
-{
-  "fill": { "field": "groupColor", "type": "nominal", "scale": null }
-}
-```
-
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 `"quantile"`, `"bin-linear"`, `"bin-ordinal"`.
 
