@@ -99,26 +99,12 @@ while `extraValues` supplement them on continuous scales. When labels overlap,
 explicit labels are culled among themselves first, and the survivors take
 precedence over generated labels.
 
-Set `tickEndpoints: true` to include the exact ends of the current continuous
-scale domain alongside generated ticks. The limits update with the scale without
-changing its domain. Endpoint labels share the priority of `extraValues`;
-explicit `values` still replace automatic ticks. With `tickEndpoints: "only"`,
-only the endpoints are shown; generated ticks and `extraValues` are omitted.
-
-The built-in `"igv-axis"` style provides a compact genome-browser axis with
-only endpoint ticks, inward-flushed labels with a small gap from both the domain
-line and endpoint ticks. It is opt-in and does not change the default axis style:
-
-```json
-{ "axis": { "style": "igv-axis" } }
-```
-
-Styles are resolved from `config.style`, like view title styles, and explicit
-axis properties override them. `scale.nice` can round the scale limits before
-tick generation; endpoint ticks display the resulting limits without rounding
-or changing them.
-
 EXAMPLE examples/docs/grammar/axis/protein-domain-ticks.json height=90 spechidden
+
+Set `tickEndpoints` to `true` to add the current continuous domain limits, or
+`"only"` to show just those limits without generated ticks or `extraValues`.
+Explicit `values` take precedence. Unlike `scale.nice`, this does not change
+the domain.
 
 By default, continuous axes cull overlapping labels. Non-zoomable x axes also
 align endpoint labels flush with the plot edges. On zoomable x axes, only ticks
@@ -220,8 +206,6 @@ such as `config.axisX`, `config.axisY`, `config.axisTop`, `config.axisBottom`,
 `config.axisIndex`, and `config.axisLocus` refine those defaults. A
 channel-level axis object overrides the configured defaults for that axis.
 
-Named styles from `config.style` can also be referenced with `axis.style`.
-
 ```json
 {
   "config": {
@@ -237,6 +221,14 @@ Named styles from `config.style` can also be referenced with `axis.style`.
     }
   }
 }
+```
+
+Named styles from `config.style` can be referenced with `axis.style`.
+The opt-in `"igv-axis"` style uses endpoint-only ticks and inward-flushed labels
+with a small gap from the tick marks and domain line:
+
+```json
+{ "axis": { "style": "igv-axis" } }
 ```
 
 ### Config Properties
