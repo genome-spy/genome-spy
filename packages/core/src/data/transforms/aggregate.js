@@ -1,10 +1,15 @@
-import { group as d3group } from "d3-array";
+import { InternMap } from "internmap";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import iterateNestedMaps from "../../utils/iterateNestedMaps.js";
 import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
 
 export default class AggregateTransform extends Transform {
+    /** @type {boolean} */
+    #streamCount;
+
+    #count = 0;
+
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -19,7 +24,7 @@ export default class AggregateTransform extends Transform {
         super(params, paramRuntimeProvider);
         this.params = params;
 
-        /** @type {any[]} */
+        /** @type {Datum[]} */
         this.buffer = [];
 
         /**
@@ -31,6 +36,7 @@ export default class AggregateTransform extends Transform {
          */
         this.as = [];
 
+        let countOnly = true;
         if (params.fields) {
             if (params.fields.length != params.ops.length) {
                 throw new Error("Fields and ops must have the same length!");
@@ -46,23 +52,26 @@ export default class AggregateTransform extends Transform {
                 const accessor = this.createFieldAccessor(params, "fields", {
                     index: i,
                 });
-                const op = AGGREGATE_OPS[params.ops[i]];
+                const name = params.ops[i];
+                const op = AGGREGATE_OPS[name];
+                countOnly &&= name === "count";
                 this.ops.push((arr) => op(arr, accessor));
                 this.as.push(
-                    params.as
-                        ? params.as[i]
-                        : `${params.ops[i]}_${params.fields[i]}`
+                    params.as ? params.as[i] : `${name}_${params.fields[i]}`
                 );
             });
         } else {
             this.ops.push((arr) => AGGREGATE_OPS.count(arr));
             this.as.push("count");
         }
+
+        this.#streamCount = countOnly && !params.groupby?.length;
     }
 
     reset() {
         super.reset();
         this.buffer = [];
+        this.#count = 0;
     }
 
     /**
@@ -70,7 +79,17 @@ export default class AggregateTransform extends Transform {
      */
     #flushBuffer() {
         const params = this.params;
-        const groupby = params?.groupby;
+        const groupby = params.groupby;
+
+        if (this.#streamCount) {
+            /** @type {Datum} */
+            const datum = {};
+            for (const name of this.as) {
+                datum[name] = this.#count;
+            }
+            this._propagate(datum);
+            return;
+        }
 
         if (groupby?.length > 0) {
             const groupFieldAccessors = this.createFieldAccessors(
@@ -78,34 +97,45 @@ export default class AggregateTransform extends Transform {
                 "groupby"
             );
 
-            // There's something strange in d3-array's typings
-            const groups = /** @type {Map<any, any>} */ /** @type {any} */ (
-                d3group(this.buffer, ...groupFieldAccessors)
-            );
+            const groups = groupRows(this.buffer, groupFieldAccessors);
+
+            if (groupby.length === 1) {
+                const field = groupby[0];
+                for (const [key, data] of groups) {
+                    // Assign like the multi-key path, including special names.
+                    /** @type {Datum} */
+                    const datum = {};
+                    datum[field] = key;
+                    this.#propagateAggregate(datum, data);
+                }
+                return;
+            }
 
             for (const [group, data] of iterateNestedMaps(groups)) {
-                /** @type {any} */
+                /** @type {Datum} */
                 const datum = {};
 
                 for (let i = 0; i < groupby.length; i++) {
                     datum[groupby[i]] = group[i];
                 }
 
-                this.ops.forEach((op, i) => {
-                    datum[this.as[i]] = op(data);
-                });
-
-                this._propagate(datum);
+                this.#propagateAggregate(datum, data);
             }
         } else {
-            /** @type {Datum} */
-            const datum = {};
-            this.ops.forEach((op, i) => {
-                datum[this.as[i]] = op(this.buffer);
-            });
-
-            this._propagate(datum);
+            this.#propagateAggregate({}, this.buffer);
         }
+    }
+
+    /**
+     * @param {Datum} datum
+     * @param {Datum[]} data
+     */
+    #propagateAggregate(datum, data) {
+        for (let i = 0; i < this.ops.length; i++) {
+            datum[this.as[i]] = this.ops[i](data);
+        }
+
+        this._propagate(datum);
     }
 
     /**
@@ -113,7 +143,11 @@ export default class AggregateTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        this.buffer.push(datum);
+        if (this.#streamCount) {
+            this.#count++;
+        } else {
+            this.buffer.push(datum);
+        }
     }
 
     /**
@@ -127,9 +161,10 @@ export default class AggregateTransform extends Transform {
         if (flowBatch.type == "file") {
             return;
         }
-        if (this.buffer.length > 0 || this.inFacet) {
+        if (this.#count > 0 || this.buffer.length > 0 || this.inFacet) {
             this.#flushBuffer();
             this.buffer = [];
+            this.#count = 0;
         }
 
         super.beginBatch(flowBatch);
@@ -140,4 +175,47 @@ export default class AggregateTransform extends Transform {
 
         super.complete();
     }
+}
+
+/**
+ * Group one level at a time to preserve the first-seen order of nested keys.
+ * @param {Datum[]} rows
+ * @param {((datum: Datum) => any)[]} accessors
+ * @param {number} [depth]
+ * @returns {Map<any, any>}
+ */
+function groupRows(rows, accessors, depth = 0) {
+    let groups = new Map();
+    const accessor = accessors[depth];
+    for (const row of rows) {
+        const key = accessor(row);
+        // Primitive keys can use Map directly. Object keys still use d3's
+        // valueOf interning, including collisions with earlier primitive keys.
+        if (
+            key !== null &&
+            typeof key === "object" &&
+            !(groups instanceof InternMap)
+        ) {
+            groups = new InternMap(Array.from(groups));
+        }
+        const group = groups.get(key);
+        if (group) {
+            group.push(row);
+        } else {
+            groups.set(key, [row]);
+        }
+    }
+
+    const nextDepth = depth + 1;
+    if (nextDepth < accessors.length) {
+        for (const [key, group] of groups) {
+            groups.set(key, groupRows(group, accessors, nextDepth));
+        }
+    } else if (groups instanceof InternMap) {
+        // Match d3.group's final write, which may re-intern object keys.
+        for (const [key, group] of groups) {
+            groups.set(key, group);
+        }
+    }
+    return groups;
 }

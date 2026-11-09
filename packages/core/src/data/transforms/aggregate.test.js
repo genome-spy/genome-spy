@@ -64,6 +64,28 @@ describe("Aggregate transform", () => {
         ]);
     });
 
+    test("compound groups retain first-seen order and intern object keys", () => {
+        const date = new Date(2);
+        const output = transform(
+            { type: "aggregate", groupby: ["sample", "key"] },
+            [
+                { sample: "x", key: 1 },
+                { sample: "y", key: date },
+                { sample: "x", key: new Date(1) },
+                { sample: "x", key: NaN },
+                { sample: "y", key: 2 },
+                { sample: "x", key: NaN },
+            ]
+        );
+
+        expect(output).toEqual([
+            { sample: "x", key: 1, count: 2 },
+            { sample: "x", key: NaN, count: 2 },
+            { sample: "y", key: date, count: 2 },
+        ]);
+        expect(output[2].key).toBe(date);
+    });
+
     test("Compute count, sum, min, max, and mean for groups. Use default output field names.", () => {
         const input = [
             { name: "alpha", data: 123 },
@@ -158,6 +180,21 @@ describe("Aggregate transform", () => {
             { name: "alpha", q1: 2, median: 3, q3: 4 },
             { name: "beta", q1: 20, median: 30, q3: 40 },
         ]);
+    });
+
+    test("quartiles preserve numeric coercion and non-finite interpolation", () => {
+        expect(
+            transform(
+                {
+                    type: "aggregate",
+                    fields: ["value", "value", "value"],
+                    ops: ["q1", "median", "q3"],
+                },
+                [null, undefined, false, "4", NaN, Infinity].map((value) => ({
+                    value,
+                }))
+            )
+        ).toEqual([{ q1_value: 2, median_value: NaN, q3_value: Infinity }]);
     });
 
     test("Throw if the length of fields and ops does not match", () => {
