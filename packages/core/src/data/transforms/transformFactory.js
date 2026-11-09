@@ -56,6 +56,7 @@ export const transforms = {
     flattenSequence: FlattenSequenceTransform,
     formula: FormulaTransform,
     identifier: IdentifierTransform,
+    joinaggregate: WindowTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
     packLegendLabels: PackLegendLabelsTransform,

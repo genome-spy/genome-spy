@@ -453,6 +453,10 @@ SCHEMA InteractionEventType
 
 SCHEMA IntervalSelectionParameter
 
+## JoinAggregateParams
+
+See the [JoinAggregateParams documentation](transform/joinaggregate.md#parameters).
+
 ## JsonDataFormat
 
 SCHEMA JsonDataFormat

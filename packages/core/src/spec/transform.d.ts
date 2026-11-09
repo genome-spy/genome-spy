@@ -547,7 +547,7 @@ export interface WindowParams extends TransformParamsBase {
 
     /**
      * Input fields for operations that use a field. Use `null` for operations
-     * such as `rank` and `count` that do not use one.
+     * such as `count` that do not use one.
      */
     fields?: (Field | null)[];
 
@@ -560,7 +560,7 @@ export interface WindowParams extends TransformParamsBase {
     /**
      * Output field names. A missing or `null` entry uses the operation and
      * field name joined with an underscore, such as `sum_score`. Operations
-     * without a field use only the operation name, such as `rank`.
+     * without a field use only the operation name, such as `count`.
      */
     as?: (string | null)[];
 
@@ -579,6 +579,20 @@ export interface WindowParams extends TransformParamsBase {
      * __Default value:__ `false`
      */
     ignorePeers?: boolean;
+}
+
+/** Adds full-group aggregate values to every input row. */
+export interface JoinAggregateParams
+    extends
+        TransformParamsBase,
+        Pick<WindowParams, "groupby" | "fields" | "as"> {
+    type: "joinaggregate";
+
+    /**
+     * Aggregate operations to calculate. Entries align with `fields` and `as`.
+     * @minItems 1
+     */
+    ops: AggregateOp[];
 }
 
 export interface FlattenParams extends TransformParamsBase {
@@ -1380,6 +1394,7 @@ export type TransformParams =
     | FlattenCigarParams
     | FlattenSequenceParams
     | IdentifierParams
+    | JoinAggregateParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
     | TruncateTextParams
