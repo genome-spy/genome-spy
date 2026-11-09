@@ -31,7 +31,7 @@ export default class ContainerMutationHelper {
      * @typedef {{
      *   specs: (ViewSpec | ImportSpec)[],
      *   insertView: (view: View, index: number) => import("./gridView/gridChild.js").default | void,
-     *   removeView: (index: number) => void,
+     *   removeView: (index: number, options: { checkDependencies?: boolean }) => void,
      *   syncMutationGuideViews?: (gridChild?: import("./gridView/gridChild.js").default | void) => Promise<Iterable<View>>,
      *   namePrefix: string,
      *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
@@ -120,7 +120,7 @@ export default class ContainerMutationHelper {
             } else {
                 if (specInserted) specs.splice(insertIndex, 1);
                 const sources = this.container.context.dataFlow.dataSources;
-                childView.disposeSubtree();
+                childView.disposeSubtree({ checkDependencies: false });
                 await awaitDisposedSources(sources);
             }
 
@@ -139,7 +139,10 @@ export default class ContainerMutationHelper {
      */
     async #rollbackInsertedChild(index, originalError) {
         try {
-            await this.removeChildAt(index, { requestLayout: false });
+            await this.removeChildAt(index, {
+                requestLayout: false,
+                checkDependencies: false,
+            });
         } catch (rollbackError) {
             /** @type {any} */ (originalError).rollbackError = rollbackError;
         }
@@ -149,18 +152,19 @@ export default class ContainerMutationHelper {
      * Removes a child by index and updates the backing spec list.
      *
      * @param {number} index
-     * @param {{ requestLayout?: boolean }} [options]
+     * @param {{ requestLayout?: boolean, checkDependencies?: boolean }} [options]
      */
     async removeChildAt(index, options = {}) {
         const child = this.container.children[index];
         if (!child) throw new Error("Child index out of range!");
-        child.assertCanDisposeSubtree();
+        if (options.checkDependencies !== false)
+            child.assertCanDisposeSubtree();
         const sources = this.container.context.dataFlow.dataSources;
 
         try {
             clearViewLevelScaleProps(this.container);
             clearViewLevelGuideProps(this.container);
-            this.options.removeView(index);
+            this.options.removeView(index, options);
             this.options.specs.splice(index, 1);
             attachViewLevelScaleProps(this.container);
             attachViewLevelAxisProps(this.container);

@@ -118,12 +118,12 @@ export default class LayerView extends ContainerView {
                     )
                 );
             },
-            removeView: (index) => {
+            removeView: (index, options) => {
                 const view = this.#children[index];
                 if (!view) {
                     throw new Error("Child index out of range!");
                 }
-                view.disposeSubtree();
+                view.disposeSubtree(options);
                 this.#children.splice(index, 1);
             },
             namePrefix: "layer",

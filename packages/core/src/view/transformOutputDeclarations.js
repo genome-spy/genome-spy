@@ -30,5 +30,8 @@ export function* getOutputDeclarations(transforms) {
 
 /** @param {import("./view.js").default} root */
 export function finalizeOutputDeclarations(root) {
-    root.visit((view) => view.paramRuntime.finalizeOutputDeclarations());
+    root.visit((view) => {
+        view.paramRuntime.finalizeOutputDeclarations();
+        view.namedDataScope.finalizeOutputDeclarations();
+    });
 }

@@ -12,14 +12,21 @@ export default class DerivedCollector extends Collector {
      */
     constructor(params, view) {
         super({ type: "collect" }, view);
+        const target = params.dataset;
         this.producerView = view;
-        this.name = params.dataset;
+        this.pushed = typeof target !== "string";
+        this.name = typeof target === "string" ? target : target.name;
         this.specLocation = view.paramRuntime.getSpecLocation(params, [
             "dataset",
         ]);
         this.registerDisposer(() =>
             this.paramRuntime.cancelUpdate(this.#publish)
         );
+    }
+
+    // Readers may be built before the producer's upstream identifiers exist.
+    get createsNewIdentity() {
+        return this.pushed;
     }
 
     /** @param {import("../types/flowBatch.js").FlowBatch} batch */
