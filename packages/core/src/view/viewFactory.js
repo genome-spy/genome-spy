@@ -20,6 +20,7 @@ import {
     registerImportInstance,
 } from "./viewSelectors.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
+import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import {
     isConcatSpec,
     isFacetSpec,
@@ -313,6 +314,14 @@ export class ViewFactory {
         );
 
         try {
+            // Reserve local dataset names before constructing descendants.
+            for (const { transform } of getOutputDeclarations(
+                view.spec.transform ?? []
+            )) {
+                if (transform.type === "publish") {
+                    view.namedDataScope.declareDerived(transform);
+                }
+            }
             if (importScopeName !== undefined) {
                 registerImportInstance(view, importScopeName);
             }

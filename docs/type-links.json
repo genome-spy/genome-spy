@@ -68,6 +68,7 @@
   "PointConfig": "/grammar/mark/point/#properties",
   "PointProps": "/grammar/mark/point/#properties",
   "ProjectParams": "/grammar/transform/project/#parameters",
+  "PublishParams": "/grammar/transform/publish/#parameters",
   "RangeConfig": "/grammar/config/#scale-defaults",
   "RectConfig": "/grammar/mark/rect/#properties",
   "RectProps": "/grammar/mark/rect/#properties",
