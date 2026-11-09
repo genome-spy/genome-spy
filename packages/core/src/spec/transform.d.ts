@@ -863,6 +863,18 @@ export interface BranchParams extends TransformParamsBase {
     transform: TransformParams[];
 }
 
+/** Publishes the current table while passing its rows onward. */
+export interface PublishParams extends TransformParamsBase {
+    type: "publish";
+
+    /**
+     * Names the current rows as a read-only dataset in this view. Later lookups
+     * and descendant views can read the table by name.
+     * The input must be an eager, unpartitioned table.
+     */
+    dataset: string;
+}
+
 export interface CollectParams extends TransformParamsBase {
     type: "collect";
 
@@ -1351,6 +1363,7 @@ export type TransformParams =
     | CollectParams
     | ValuesParams
     | BranchParams
+    | PublishParams
     | CoverageParams
     | CoordinateLookupParams
     | CrossParams

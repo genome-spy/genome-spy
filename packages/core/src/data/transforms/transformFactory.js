@@ -74,7 +74,7 @@ export const transforms = {
 /**
  * @param {import("../../spec/transform.js").TransformParamsBase} params
  * @param {import("../../view/view.js").default} [view]
- * @param {{ collector: import("../collector.js").default, source: import("../sources/dataSource.js").default}} [auxiliaryInput]
+ * @param {{ collector: import("../collector.js").default, source?: import("../sources/dataSource.js").default}} [auxiliaryInput]
  */
 export default function createTransform(params, view, auxiliaryInput) {
     try {
@@ -95,7 +95,7 @@ export default function createTransform(params, view, auxiliaryInput) {
                 view
             );
         } else if (params.type == "coordinateLookup") {
-            if (!auxiliaryInput || !view) {
+            if (!auxiliaryInput?.source || !view) {
                 throw new Error(
                     "Coordinate lookup requires a view and a foreign data source."
                 );

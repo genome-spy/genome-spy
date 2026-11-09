@@ -3,8 +3,8 @@
 ## Named data
 
 Named data sources allow data to be provided at runtime instead of loading it
-from a URL. Declare every named dataset in the `datasets` property of the view
-that owns it, and reference it with `data.name`:
+from a URL. Declare an input dataset as an array in the owning view's `datasets`
+property and reference it with `data.name`.
 
 ```json
 {
@@ -26,8 +26,10 @@ establishes the owner used for scoped runtime updates.
 
 ### Updating named data
 
-Use the embed-level `datasets` API for a dataset declared by the top-level input
-specification:
+Use the embed-level `datasets` API for an input dataset declared by the
+top-level specification.
+[Derived datasets](../grammar/transform/publish.md) receive their rows from a
+transform pipeline and are read-only.
 
 ```js
 const api = await embed("#container", spec);
@@ -72,8 +74,7 @@ spec.datasets.myResults = initialRows;
 const api = await embed("#container", spec);
 ```
 
-Named data can be updated dynamically, but it does not automatically react to
-user interactions. For practical examples, see the
+For practical examples of host-driven updates, see the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 

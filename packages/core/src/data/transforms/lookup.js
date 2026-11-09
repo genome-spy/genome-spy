@@ -1,6 +1,8 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import createCloner from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
+import DerivedCollector from "../derivedCollector.js";
+import { isDataReady } from "../dataReadiness.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
@@ -108,8 +110,11 @@ export default class LookupTransform extends Transform {
         let writeValues;
 
         const firstAccessor = primaryAccessors[0];
-        const isForeignDataReady = options.isForeignDataReady ?? (() => true);
-        if (options.isForeignDataReady)
+        const derived = foreignCollector instanceof DerivedCollector;
+        const isForeignDataReady = derived
+            ? () => isDataReady(foreignCollector)
+            : (options.isForeignDataReady ?? (() => true));
+        if (derived || options.isForeignDataReady)
             this.areDataDependenciesAvailable = () =>
                 foreignCollector.completed &&
                 !foreignCollector.disposed &&
@@ -351,6 +356,13 @@ export default class LookupTransform extends Transform {
 
         const complete = this.complete.bind(this);
         this.complete = () => {
+            if (derived && (pendingInput || !isForeignDataReady())) {
+                // The side binding can replay this lookup once its table arrives.
+                // Downstream transforms must not see the skipped batch as empty input.
+                this.completed = true;
+                if (isForeignDataReady()) this.requestRepropagate();
+                return;
+            }
             // No later boundary exists to flush the final group.
             if (selfInput && (hasBufferedBatch || bufferedData.length > 0)) {
                 flushBufferedBatch();

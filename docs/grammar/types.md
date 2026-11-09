@@ -717,6 +717,10 @@ SCHEMA PrimaryPositionalChannel
 
 See the [ProjectParams documentation](transform/project.md#parameters).
 
+## PublishParams
+
+See the [PublishParams documentation](transform/publish.md#parameters).
+
 ## RangeConfig
 
 See the [RangeConfig documentation](config.md#scale-defaults).

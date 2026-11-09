@@ -42,6 +42,7 @@ nav = [
             { "MeasureText" = "grammar/transform/measure-text.md" },
             "grammar/transform/pileup.md",
             "grammar/transform/project.md",
+            "grammar/transform/publish.md",
             { "RegexExtract" = "grammar/transform/regex-extract.md" },
             { "RegexFold" = "grammar/transform/regex-fold.md" },
             "grammar/transform/sample.md",

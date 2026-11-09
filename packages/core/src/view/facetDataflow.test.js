@@ -3,6 +3,7 @@ import { createAndInitialize, renderToLayout } from "./testUtils.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import FacetView from "./facetView.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { createTopLevelDatasetApi } from "./viewMutationApi.js";
 
 const data = [
     { g: "A", v: 1 },
@@ -188,7 +189,7 @@ test("replay retains empty cells, unique identifiers and a static graph; disposa
 });
 
 test("shared foreign relation updates replay every facet", async () => {
-    const { view, context } = await createHeadlessEngine({
+    const { view } = await createHeadlessEngine({
         datasets: { table: [{ key: 1, value: 7 }] },
         data: {
             values: [
@@ -213,10 +214,9 @@ test("shared foreign relation updates replay every facet", async () => {
     onTestFinished(() => view.disposeSubtree());
     const result = output(view);
     expect(Array.from(result.getData(), (d) => d.value)).toEqual([7, 7]);
-    context.dataFlow.updateNamedDataBinding(
-        view.namedDataScope.resolve("table"),
-        [{ key: 1, value: 9 }]
-    );
+    createTopLevelDatasetApi({ viewRoot: view }).set("table", [
+        { key: 1, value: 9 },
+    ]);
     view.paramRuntime.flushNow();
     await vi.waitFor(() =>
         expect(Array.from(result.getData(), (d) => d.value)).toEqual([9, 9])
