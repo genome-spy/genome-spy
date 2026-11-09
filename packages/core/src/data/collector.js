@@ -15,6 +15,11 @@ import {
     createFileBatchPropagator,
 } from "./fileBatchUtils.js";
 
+/** @typedef {{ start: number, stop: number, data: import("./flowNode.js").Data }} FacetIndex */
+const findFacetIndex = bisector(
+    (/** @type {FacetIndex} */ facet) => facet.start
+).right;
+
 /**
  * Collects (materializes) the data that flows through this node.
  * The collected data can be optionally grouped and sorted.
@@ -53,10 +58,14 @@ export default class Collector extends FlowNode {
 
     /**
      * Start and end indices of all facets if they are concatenated into a single array.
-     * Used together with the uniqueIdIndex for looking up data items by their unique id.
-     * @type {{start: number, stop: number, facetId: import("../spec/channel.js").Scalar[]}[]}
+     * Keep the arrays here to avoid re-interning facet keys during binary search.
+     * @type {FacetIndex[]}
      */
-    #facetIndices;
+    #facetIndices = [];
+
+    #findUniqueIdIndex = bisector((/** @type {number} */ position) =>
+        this.#uniqueIdAccessor(this.#getDatumAtPosition(position))
+    ).left;
 
     /**
      * @type {(a: Datum, b: Datum) => number}
@@ -115,6 +124,7 @@ export default class Collector extends FlowNode {
         this.#getFileBatch = () => undefined;
         this.#rowCount = 0;
         this.#uniqueIdIndex = new Uint32Array(0);
+        this.#facetIndices.length = 0;
         this.#keyIndex.invalidate();
         this.#viewportDomains.reset();
 
@@ -428,7 +438,7 @@ export default class Collector extends FlowNode {
      * Using a sorted index and binary search for O(log n) complexity.
      */
     #buildUniqueIdIndex() {
-        this.#facetIndices = [];
+        this.#facetIndices.length = 0;
 
         /** @type {Datum} */
         const obj = this.facetBatches.values().find((data) => data.length)?.[0];
@@ -439,20 +449,18 @@ export default class Collector extends FlowNode {
         let cumulativePos = 0;
 
         /** @type {number[]} */
-        const ids = [];
+        const ids = new Array(this.getItemCount());
 
         const a = this.#uniqueIdAccessor;
 
-        for (const [facetId, data] of this.facetBatches) {
+        for (const data of this.facetBatches.values()) {
             this.#facetIndices.push({
                 start: cumulativePos,
                 stop: cumulativePos + data.length,
-                facetId,
+                data,
             });
-            cumulativePos += data.length;
-
             for (let i = 0, n = data.length; i < n; i++) {
-                ids.push(a(data[i]));
+                ids[cumulativePos++] = a(data[i]);
             }
         }
 
@@ -469,26 +477,24 @@ export default class Collector extends FlowNode {
             return;
         }
 
-        const facetBisector = bisector((f) => f.start).right;
-        const a = this.#uniqueIdAccessor;
-        const indexBisector = bisector((i) => a(getDatum(i))).left;
-
-        const getDatum = (/** @type {number} */ i) => {
-            const fi = facetBisector(this.#facetIndices, i);
-            const facet = this.#facetIndices[fi - 1];
-            if (!facet || i >= facet.stop) {
-                return;
-            }
-            const data = this.facetBatches.get(facet.facetId);
-            return data[i - facet.start];
-        };
-
-        const index = indexBisector(this.#uniqueIdIndex, uniqueId);
-        if (index >= 0) {
-            const datum = getDatum(this.#uniqueIdIndex[index]);
-            if (datum && a(datum) === uniqueId) {
+        const index = this.#findUniqueIdIndex(this.#uniqueIdIndex, uniqueId);
+        if (index < this.#uniqueIdIndex.length) {
+            const datum = this.#getDatumAtPosition(this.#uniqueIdIndex[index]);
+            if (datum && this.#uniqueIdAccessor(datum) === uniqueId) {
                 return datum;
             }
+        }
+    }
+
+    /** @param {number} position */
+    #getDatumAtPosition(position) {
+        const facets = this.#facetIndices;
+        if (facets.length === 1) {
+            return facets[0].data[position];
+        }
+        const facet = facets[findFacetIndex(facets, position) - 1];
+        if (facet && position < facet.stop) {
+            return facet.data[position - facet.start];
         }
     }
 
@@ -610,13 +616,13 @@ function groupData(data, accessors) {
     const root = new Map();
     /** @type {[import("../spec/channel.js").Scalar[], Data][]} */
     const groups = [];
-    const parentAccessors = accessors.slice(0, -1);
-    const lastAccessor = accessors.at(-1);
+    const lastIndex = accessors.length - 1;
+    const lastAccessor = accessors[lastIndex];
 
     for (const datum of data) {
         let node = root;
-        for (const accessor of parentAccessors) {
-            const key = accessor(datum);
+        for (let i = 0; i < lastIndex; i++) {
+            const key = accessors[i](datum);
             let next = node.get(key);
             if (!next) {
                 next = new Map();
