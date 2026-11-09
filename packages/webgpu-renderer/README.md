@@ -180,9 +180,10 @@ evaluate a host application's expression or parameter language.
 
 ### Package entry points
 
-The package root exports `createRenderer` and `RendererError`. Built-in marks
-and scales use explicit, side-effect-free subpaths so bundlers can exclude
-unused features.
+The package root exports `createRenderer`, `RendererError`, and `rgba8Unorm`.
+Use `rgba8Unorm` as the scale for a `u32` series of packed colors. Built-in
+marks and scale factories use explicit, side-effect-free subpaths so bundlers
+can exclude unused features.
 
 Available mark subpaths are `marks/point`, `marks/rect`, `marks/rule`,
 `marks/link`, `marks/arrow`, and `marks/text`. Scale subpaths are

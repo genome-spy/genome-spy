@@ -349,6 +349,9 @@ export type DefinedChannelScale = ChannelScale & {
     definition: ScaleDef;
 };
 
+/** Decode a u32 color series into normalized RGBA, with red in the least significant byte. */
+export const rgba8Unorm: Readonly<DefinedChannelScale>;
+
 export type ConfiguredScale<T extends string> = DefinedChannelScale & {
     type: T;
 };

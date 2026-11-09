@@ -49,8 +49,19 @@ generally applies to GenomeSpy as well.
 The supported scales are: `"identity"`, `"linear"`, `"pow"`, `"sqrt"`,
 `"symlog"`, `"log"`, `"ordinal"`, `"band"`, `"point"`, `"quantize"`,
 `"threshold"`, and `"sequential"`. The `"sequential"` type is retained for
-backwards compatibility. Disabled scale is supported on quantitative channels
-such as `x` and `opacity`.
+backwards compatibility. Set `scale` to `null` to use data values directly on
+channels such as `x` and `opacity`.
+
+On `color`, `fill`, and `stroke`, a disabled scale uses the color strings in the
+field directly. GenomeSpy accepts colors supported by
+[`d3-color`](https://d3js.org/d3-color), including named colors, hex codes, and
+`rgba()` values. A null color is transparent.
+
+```json title="Using colors from a data field"
+{
+  "fill": { "field": "groupColor", "type": "nominal", "scale": null }
+}
+```
 
 Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 `"quantile"`, `"bin-linear"`, `"bin-ordinal"`.

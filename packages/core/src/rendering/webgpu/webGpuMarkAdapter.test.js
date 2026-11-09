@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
+import { rgba8Unorm } from "@genome-spy/webgpu-renderer";
 import Rectangle from "../../view/layout/rectangle.js";
+import scaleNull from "../../utils/scaleNull.js";
 import { bandScaleDefinition } from "@genome-spy/webgpu-renderer/scales/band";
 import { indexScaleDefinition } from "@genome-spy/webgpu-renderer/scales/index";
 import { linearScaleDefinition } from "@genome-spy/webgpu-renderer/scales/linear";
@@ -1987,43 +1989,17 @@ describe("WebGPU mark adapter", () => {
         ).toEqual({ value: code, type: "u32" });
     });
 
-    test("translates data-driven colors without a scale", () => {
-        const mark = createMark(
-            "point",
-            [
-                { color: "red" },
-                { color: "transparent" },
-                { color: "#00ff0080" },
-            ],
-            {
-                fill: createEncoder((datum) => datum.color),
-            }
-        );
-
-        const translated = createWebGpuMarkConfig(
-            mark,
-            /** @type {any} */ ({}),
-            Rectangle.ZERO
-        );
-
-        expect(/** @type {any} */ (translated).config.channels.fill).toEqual({
-            data: new Float32Array([
-                1,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                128 / 255,
-            ]),
-            type: "f32",
-            inputComponents: 4,
+    test("reports invalid direct colors with view context", () => {
+        const mark = createMark("point", [{ color: "invalid" }], {
+            fill: createEncoder((datum) => datum.color, {
+                scale: scaleNull(),
+                channelDef: { field: "color", type: "nominal", scale: null },
+            }),
         });
+
+        expect(() => createWebGpuMarkConfig(mark, {}, Rectangle.ZERO)).toThrow(
+            "Invalid color: invalid Mark: point. View: root/plot"
+        );
     });
 
     test("reuses field-backed columns across scale-only updates", () => {
@@ -2098,15 +2074,15 @@ describe("WebGPU mark adapter", () => {
         expect(getWebGpuMarkConfigRevision(mark)).toBe(1);
     });
 
-    test("translates a selection-driven color branch", () => {
-        const data = [{ color: "red" }, { color: "blue" }];
+    test("packs a selection-driven color field with a disabled scale", () => {
+        const data = [{ color: "#12345680" }, { color: "blue" }, {}];
         const mark = createMark("point", data, {
             fill: createConditionalEncoder([
                 {
                     accessor: createAccessor(
                         /** @param {{color: string}} datum */
                         (datum) => datum.color,
-                        { field: "color" }
+                        { field: "color", type: "nominal", scale: null }
                     ),
                     predicate: {
                         selection: mockSelection("chosen", false),
@@ -2122,6 +2098,7 @@ describe("WebGPU mark adapter", () => {
                 },
             ]),
         });
+        mark.encoders.fill.scale = /** @type {any} */ (scaleNull());
         /** @type {any} */ (mark.unitView).paramRuntime = {
             findValue: () => ({ type: "single", uniqueId: 1 }),
         };
@@ -2142,9 +2119,9 @@ describe("WebGPU mark adapter", () => {
                     empty: false,
                 },
                 channel: {
-                    data: new Float32Array([1, 0, 0, 1, 0, 0, 1, 1]),
-                    type: "f32",
-                    inputComponents: 4,
+                    data: new Uint32Array([0x80563412, 0xffff0000, 0]),
+                    type: "u32",
+                    scale: rgba8Unorm,
                 },
             },
         ]);
