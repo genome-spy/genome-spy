@@ -1,6 +1,9 @@
 // Run from the repository root with:
 // node --expose-gc packages/core/scripts/benchmarkTransforms.mjs [window|aggregate|stack|collect]
 import assert from "node:assert/strict";
+import console from "node:console";
+import { performance } from "node:perf_hooks";
+import process from "node:process";
 import Collector from "../src/data/collector.js";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../src/data/flowNode.js";
 import AggregateTransform from "../src/data/transforms/aggregate.js";
@@ -12,6 +15,7 @@ const size = 100_000;
 const categories = 64;
 const warmups = 4;
 const samples = 9;
+const target = process.argv[2];
 
 // A deterministic permutation produces unsorted values and predictable ties.
 const rows = Array.from({ length: size }, (_, i) => ({
@@ -39,12 +43,32 @@ class CountRows extends FlowNode {
 
 /**
  * @param {string} name
+ * @param {number} rowCount
+ * @param {() => number} run
+ */
+function measure(name, rowCount, run) {
+    const durations = [];
+    for (let i = -warmups; i < samples; i++) {
+        const elapsed = run();
+        if (i >= 0) {
+            durations.push(elapsed);
+        }
+    }
+
+    durations.sort((a, b) => a - b);
+    console.log(
+        `${name.padEnd(29)} ${String(rowCount).padStart(7)} rows  ${durations[Math.floor(samples / 2)].toFixed(2).padStart(8)} ms`
+    );
+}
+
+/**
+ * @param {string} name
  * @param {FlowNode} node
  * @param {number} expectedCount
  * @param {Datum[]} [input]
  */
 function benchmark(name, node, expectedCount, input = rows) {
-    if (process.argv[2] && name.split("/")[0] !== process.argv[2]) {
+    if (target && !name.startsWith(target + "/")) {
         return;
     }
 
@@ -55,8 +79,7 @@ function benchmark(name, node, expectedCount, input = rows) {
     node.initializeOnce();
     output.initializeOnce();
 
-    const durations = [];
-    for (let i = -warmups; i < samples; i++) {
+    measure(name, input.length, () => {
         const data =
             node.behavior & BEHAVIOR_MODIFIES
                 ? input.map((row) => ({ ...row }))
@@ -76,18 +99,10 @@ function benchmark(name, node, expectedCount, input = rows) {
             output instanceof Collector ? output.getItemCount() : output.count,
             expectedCount
         );
-        if (i >= 0) {
-            durations.push(elapsed);
-        }
-    }
-
-    durations.sort((a, b) => a - b);
-    console.log(
-        `${name.padEnd(29)} ${String(input.length).padStart(7)} rows  ${durations[Math.floor(samples / 2)].toFixed(2).padStart(8)} ms`
-    );
+        return elapsed;
+    });
 }
 
-const target = process.argv[2];
 if (target && !["window", "aggregate", "stack", "collect"].includes(target)) {
     throw new Error("Expected window, aggregate, stack, or collect");
 }
@@ -113,6 +128,25 @@ benchmark(
         frame: [-511, 0],
         fields: ["value"],
         ops: ["sum"],
+    }),
+    size
+);
+benchmark(
+    "window/moving median",
+    new WindowTransform({
+        type: "window",
+        frame: [-24_999, 0],
+        fields: ["value"],
+        ops: ["median"],
+    }),
+    size
+);
+benchmark(
+    "window/ordered running median",
+    new WindowTransform({
+        type: "window",
+        fields: ["position"],
+        ops: ["median"],
     }),
     size
 );
@@ -206,3 +240,27 @@ benchmark(
         [UNIQUE_ID_KEY]: row[UNIQUE_ID_KEY] * 131_071,
     }))
 );
+
+if (!target || target === "collect") {
+    const collector = new Collector({ type: "collect", groupby: ["group"] });
+    for (const row of rows) {
+        collector.handle(row);
+    }
+    collector.complete();
+
+    const ids = rows.map(
+        (_, i) => rows[(i * 21701) % rows.length][UNIQUE_ID_KEY]
+    );
+    const expected = ids.reduce((sum, id) => sum + id, 0);
+    measure("collect/faceted id lookups", rows.length, () => {
+        globalThis.gc?.();
+        let sum = 0;
+        const start = performance.now();
+        for (const id of ids) {
+            sum += collector.findDatumByUniqueId(id)[UNIQUE_ID_KEY];
+        }
+        const elapsed = performance.now() - start;
+        assert.equal(sum, expected);
+        return elapsed;
+    });
+}
