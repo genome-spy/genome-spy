@@ -89,14 +89,12 @@ function getDigit(value, shift, divisor) {
 export function radixSortIntoLookupArray(arr) {
     const n = arr.length;
     let indexes = new Uint32Array(n);
-    let min = Infinity;
     let max = 0;
     let sorted = true;
 
     for (let i = 0; i < n; i++) {
         const value = arr[i];
         indexes[i] = i;
-        min = Math.min(min, value);
         max = Math.max(max, value);
         if (i && value < arr[i - 1]) {
             sorted = false;
@@ -107,13 +105,14 @@ export function radixSortIntoLookupArray(arr) {
         return indexes;
     }
 
-    // Identifiers often span a contiguous range before a collector reorders
-    // them. The key's offset gives its sorted position in a single pass.
+    // If the keys are contiguous, the largest key fixes their first position.
+    // Check the ends before initializing the dense path for obviously sparse IDs.
+    const min = max - (n - 1);
     if (
-        max - min === n - 1 &&
         min >= 0 &&
-        Number.isSafeInteger(min) &&
-        Number.isSafeInteger(max)
+        Number.isSafeInteger(max) &&
+        arr[0] >= min &&
+        arr[n - 1] >= min
     ) {
         const empty = 0xffffffff;
         indexes.fill(empty);
