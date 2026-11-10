@@ -1,8 +1,12 @@
 import { getSpecErrorLocation } from "../../../utils/specError.js";
 import { logError } from "../../../utils/errorPresentation.js";
-import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../paramRuntime/paramUtils.js";
 import { debounce } from "../../../utils/debounce.js";
 import {
+    getUrlDescriptorExpressions,
     loadUrlDescriptorOrSkip,
     normalizeUrlDescriptors,
     UrlLimitExceededError,
@@ -99,6 +103,40 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         );
         const failure = results.find((result) => result.status === "rejected");
         if (failure) throw failure.reason;
+    }
+
+    /**
+     * Descriptor changes replace the backing data. Window changes can reuse
+     * the existing handles and request coverage again.
+     *
+     * @template {{ url: unknown, windowSize?: unknown }} P
+     * @param {P} params
+     * @param {{ descriptorKeys?: (keyof P)[], windowKeys?: (keyof P)[], invalidateWindow?: boolean }} [options]
+     * @protected
+     */
+    activateUrlParams(params, options = {}) {
+        const { descriptorKeys, windowKeys, invalidateWindow } = options;
+        return activateExprRefProps(
+            this.paramRuntime,
+            params,
+            (props) => {
+                if (
+                    props.has("url") ||
+                    descriptorKeys?.some((key) => props.has(key))
+                ) {
+                    this.reloadUrlDescriptors();
+                } else if (
+                    windowKeys
+                        ? windowKeys.some((key) => props.has(key))
+                        : props.has("windowSize")
+                ) {
+                    if (invalidateWindow) this.invalidateData();
+                    this.reloadLastDomain();
+                }
+            },
+            (disposer) => this.registerDisposer(disposer),
+            getUrlDescriptorExpressions(params.url)
+        );
     }
 
     /**
