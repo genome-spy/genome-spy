@@ -233,10 +233,12 @@ export default class Displace2DTransform extends Transform {
     }
 
     /**
-     * @param {import("../flowNode.js").Datum[]} data
+     * @param {number} start
+     * @param {number} end
      * @param {PlacementStateMap} nextStates
      */
-    #place(data, nextStates) {
+    #place(start, end, nextStates) {
+        const data = this.#data;
         const keyAccessor = this.#keyAccessor;
         const xScale = this.#xScaleResolution.getScale();
         const yScale = this.#yScaleResolution.getScale();
@@ -255,7 +257,7 @@ export default class Displace2DTransform extends Transform {
         let initialized = false;
         let retained = false;
 
-        for (let dataIndex = 0; dataIndex < data.length; dataIndex++) {
+        for (let dataIndex = start; dataIndex < end; dataIndex++) {
             const datum = data[dataIndex];
             const key = keyAccessor ? keyAccessor(datum) : datum;
             if (keyAccessor) {
@@ -352,34 +354,25 @@ export default class Displace2DTransform extends Transform {
     }
 
     #placeFacets() {
-        // TODO: Whole-batch transforms could share facet iteration while keeping
-        // their computation and publication lifecycles transform-specific.
-        // File boundaries preserve source metadata, not collision groups.
         this.#relaxations = [];
         const nextStates = this.#keyAccessor ? new Map() : this.#states;
-        let facetStart = 0;
-        for (const { index, flowBatch } of this.#batchStarts) {
-            if (flowBatch.type == "facet") {
-                if (index > facetStart) {
-                    const relaxation = this.#place(
-                        this.#data.slice(facetStart, index),
-                        nextStates
-                    );
-                    if (relaxation) {
-                        this.#relaxations.push(relaxation);
-                    }
+        const boundaries = this.#batchStarts;
+        let start = 0;
+        // Only facets split collision groups. The final iteration closes the
+        // last group at the end of the buffer.
+        for (let i = 0; i <= boundaries.length; i++) {
+            const boundary = boundaries[i];
+            if (boundary && boundary.flowBatch.type !== "facet") {
+                continue;
+            }
+            const end = boundary?.index ?? this.#data.length;
+            if (start < end) {
+                const relaxation = this.#place(start, end, nextStates);
+                if (relaxation) {
+                    this.#relaxations.push(relaxation);
                 }
-                facetStart = index;
             }
-        }
-        if (facetStart < this.#data.length) {
-            const relaxation = this.#place(
-                facetStart == 0 ? this.#data : this.#data.slice(facetStart),
-                nextStates
-            );
-            if (relaxation) {
-                this.#relaxations.push(relaxation);
-            }
+            start = end;
         }
         this.#states = nextStates;
     }
@@ -404,9 +397,12 @@ export default class Displace2DTransform extends Transform {
     #publishBufferedData() {
         this.#propagateData(this.#data, this.#batchStarts);
         super.complete();
-        this.#liveData = this.#data.slice();
-        this.#liveBatchStarts = this.#batchStarts.slice();
-        this.#clearBufferedData();
+        // Completion can synchronously notify downstream observers. Transfer
+        // the staging buffers only after those callbacks return.
+        this.#liveData = this.#data;
+        this.#liveBatchStarts = this.#batchStarts;
+        this.#data = [];
+        this.#batchStarts = [];
     }
 
     #requestAnimation() {
@@ -540,11 +536,6 @@ export default class Displace2DTransform extends Transform {
         }
     }
 
-    #clearBufferedData() {
-        this.#data.length = 0;
-        this.#batchStarts.length = 0;
-    }
-
     /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
     beginBatch(flowBatch) {
         this.#batchStarts.push({ index: this.#data.length, flowBatch });
@@ -591,7 +582,8 @@ export default class Displace2DTransform extends Transform {
         // Preserve frame timing across replays while labels are still moving.
         this.#cancelAnimation();
         super.reset();
-        this.#clearBufferedData();
+        this.#data.length = 0;
+        this.#batchStarts.length = 0;
     }
 
     /**
