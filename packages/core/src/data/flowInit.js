@@ -1,7 +1,7 @@
 import { getEncoderAccessors } from "../encoder/encoder.js";
 import { isScaleAccessor } from "../encoder/accessor.js";
 import UnitView from "../view/unitView.js";
-import { buildDataFlow } from "../view/flowBuilder.js";
+import { buildDataFlow, collectSubtreeViews } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import DataSource from "./sources/dataSource.js";
 import { VISIT_SKIP } from "../view/view.js";
@@ -277,11 +277,13 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
  * @returns {Set<import("./sources/dataSource.js").default>}
  */
 export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
+    const views = collectSubtreeViews(subtreeRoot, viewFilter);
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
-    addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter);
-    for (const view of collectSubtreeViews(subtreeRoot, viewFilter))
+    addSubtreeAuxiliaryDataSources(views, dataSources);
+    for (const view of views) {
         addTerminalDataSources(view, dataSources);
+    }
     subtreeRoot.visit((view) => {
         if (viewFilter && !viewFilter(view)) {
             return VISIT_SKIP;
@@ -295,12 +297,11 @@ export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
 }
 
 /**
- * @param {import("../view/view.js").default} subtreeRoot
+ * @param {import("../view/view.js").default[]} views
  * @param {Set<DataSource>} dataSources
- * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  */
-function addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter) {
-    for (const view of collectSubtreeViews(subtreeRoot, viewFilter)) {
+function addSubtreeAuxiliaryDataSources(views, dataSources) {
+    for (const view of views) {
         addAuxiliaryDataSources(view, dataSources);
     }
 }
@@ -350,16 +351,20 @@ export function loadViewSubtreeData(
     }
     const auxiliaryDataSources = new Set();
     addSubtreeAuxiliaryDataSources(
-        subtreeRoot,
-        auxiliaryDataSources,
-        viewFilter
+        collectSubtreeViews(subtreeRoot, viewFilter),
+        auxiliaryDataSources
     );
-    const auxiliaryDataSourcesToLoad = Array.from(dataSources).filter(
-        (dataSource) => auxiliaryDataSources.has(dataSource)
-    );
-    const primaryDataSources = Array.from(dataSources).filter(
-        (dataSource) => !auxiliaryDataSources.has(dataSource)
-    );
+    /** @type {DataSource[]} */
+    const auxiliaryDataSourcesToLoad = [];
+    /** @type {DataSource[]} */
+    const primaryDataSources = [];
+    for (const dataSource of dataSources) {
+        if (auxiliaryDataSources.has(dataSource)) {
+            auxiliaryDataSourcesToLoad.push(dataSource);
+        } else {
+            primaryDataSources.push(dataSource);
+        }
+    }
 
     return Promise.all(
         auxiliaryDataSourcesToLoad.map((dataSource) =>
@@ -377,26 +382,6 @@ export function loadViewSubtreeData(
             broadcastSubtreeDataReady(subtreeRoot);
             return results;
         });
-}
-
-/**
- * @param {import("../view/view.js").default} subtreeRoot
- * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
- * @returns {import("../view/view.js").default[]}
- */
-function collectSubtreeViews(subtreeRoot, viewFilter) {
-    /** @type {import("../view/view.js").default[]} */
-    const views = [];
-    if (!viewFilter) {
-        return subtreeRoot.getDescendants();
-    }
-    subtreeRoot.visit((view) => {
-        if (!viewFilter(view)) {
-            return VISIT_SKIP;
-        }
-        views.push(view);
-    });
-    return views;
 }
 
 /**

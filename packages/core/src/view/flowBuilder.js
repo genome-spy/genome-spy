@@ -541,7 +541,7 @@ function inheritsFacetData(view) {
  * @param {(view: import("./view.js").default) => boolean} [viewFilter]
  * @returns {import("./view.js").default[]}
  */
-function collectSubtreeViews(root, viewFilter) {
+export function collectSubtreeViews(root, viewFilter) {
     if (!viewFilter) {
         return root.getDescendants();
     }
