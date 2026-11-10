@@ -3,6 +3,9 @@
 /** @typedef {{ index: number, batch: FileBatch }} FileBatchStart */
 /** @typedef {(datum: Datum) => FileBatch | undefined} FileBatchAccessor */
 
+/** @type {FileBatchAccessor} */
+const noFileBatch = () => undefined;
+
 /**
  * Retains physical shape boundaries when buffering, grouping, or sorting rows.
  * The common single-file case needs no per-row metadata.
@@ -13,7 +16,7 @@
  */
 export function createFileBatchAccessor(data, starts) {
     if (starts.length == 0) {
-        return () => undefined;
+        return noFileBatch;
     }
     if (starts.length == 1 && starts[0].index == 0) {
         return () => starts[0].batch;
@@ -47,6 +50,10 @@ export function createFileBatchAccessor(data, starts) {
  * @returns {(datum: Datum) => void}
  */
 export function createFileBatchPropagator(getBatch, beginBatch, propagate) {
+    if (getBatch === noFileBatch) {
+        return propagate;
+    }
+
     /** @type {FileBatch | undefined} */
     let previous;
     return (datum) => {

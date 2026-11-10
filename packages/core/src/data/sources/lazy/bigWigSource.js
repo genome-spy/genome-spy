@@ -1,13 +1,7 @@
-import {
-    activateExprRefProps,
-    withoutExprRef,
-} from "../../../paramRuntime/paramUtils.js";
+import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import IntervalUrlSource from "./intervalUrlSource.js";
-import {
-    createDescriptorFieldAttacher,
-    getUrlDescriptorExpressions,
-} from "../urlDescriptor.js";
+import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
 
 /**
  *
@@ -39,19 +33,9 @@ export default class BigWigSource extends IntervalUrlSource {
         const channel = withoutExprRef(paramsWithDefaults.channel);
         super(view, channel);
 
-        this.params = activateExprRefProps(
-            view.paramRuntime,
-            paramsWithDefaults,
-            (props) => {
-                if (props.has("url")) {
-                    this.reloadUrlDescriptors();
-                } else if (props.has("pixelsPerBin")) {
-                    this.reloadLastDomain();
-                }
-            },
-            (disposer) => this.registerDisposer(disposer),
-            getUrlDescriptorExpressions(paramsWithDefaults.url)
-        );
+        this.params = this.activateUrlParams(paramsWithDefaults, {
+            windowKeys: ["pixelsPerBin"],
+        });
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigWigSource");

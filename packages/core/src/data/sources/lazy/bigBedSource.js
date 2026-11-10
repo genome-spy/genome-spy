@@ -1,11 +1,5 @@
-import {
-    activateExprRefProps,
-    withoutExprRef,
-} from "../../../paramRuntime/paramUtils.js";
-import {
-    createDescriptorFieldAttacher,
-    getUrlDescriptorExpressions,
-} from "../urlDescriptor.js";
+import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
+import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import IntervalUrlSource from "./intervalUrlSource.js";
 
@@ -36,19 +30,7 @@ export default class BigBedSource extends IntervalUrlSource {
         const channel = withoutExprRef(paramsWithDefaults.channel);
         super(view, channel);
 
-        this.params = activateExprRefProps(
-            view.paramRuntime,
-            paramsWithDefaults,
-            (props) => {
-                if (props.has("url")) {
-                    this.reloadUrlDescriptors();
-                } else if (props.has("windowSize")) {
-                    this.reloadLastDomain();
-                }
-            },
-            (disposer) => this.registerDisposer(disposer),
-            getUrlDescriptorExpressions(paramsWithDefaults.url)
-        );
+        this.params = this.activateUrlParams(paramsWithDefaults);
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigBedSource");

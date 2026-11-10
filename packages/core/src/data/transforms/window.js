@@ -162,7 +162,7 @@ export default class WindowTransform extends Transform {
 /**
  * @typedef {object} AggregateGroup
  * @prop {(datum: Datum) => any} accessor
- * @prop {{ op: string, resultIndex: number }[]} results
+ * @prop {import("./windowAggregateOps.js").AggregateResult[]} results
  */
 
 /**
@@ -209,57 +209,56 @@ function normalizeParams(params, transform) {
 
     /** @type {PartitionEvaluator[]} */
     const partitionEvaluators = [];
-    /** @type {AggregateGroup[]} */
-    const aggregateGroups = [];
     /** @type {Map<string, AggregateGroup>} */
-    const aggregateGroupsByField = new Map();
-    /** @type {{ resultIndex: number }[]} */
-    const countResults = [];
+    const aggregateGroups = new Map();
+    /** @type {number[]} */
+    const countResultIndices = [];
     const outputFields = [];
 
     for (let resultIndex = 0; resultIndex < params.ops.length; resultIndex++) {
-        const operation = compileOperation(params, resultIndex, transform);
-        outputFields.push(operation.as);
+        const { as, kind, op, field, accessor, parameter } = compileOperation(
+            params,
+            resultIndex,
+            transform
+        );
+        outputFields.push(as);
 
-        if (operation.kind == "window") {
+        if (kind == "window") {
             const evaluate = createWindowOperation(
                 /** @type {import("../../spec/transform.js").WindowOnlyOp} */ (
-                    operation.op
+                    op
                 ),
-                operation.accessor,
-                operation.parameter
+                accessor,
+                parameter
             );
             partitionEvaluators.push((rows, bounds, results) =>
                 evaluate(rows, bounds, results[resultIndex])
             );
-        } else if (operation.op == "count") {
-            countResults.push({ resultIndex });
+        } else if (op == "count") {
+            countResultIndices.push(resultIndex);
         } else {
-            /** @type {string} */
-            const fieldName = operation.field;
-            let group = aggregateGroupsByField.get(fieldName);
+            let group = aggregateGroups.get(field);
             if (!group) {
-                group = {
-                    accessor: /** @type {(datum: Datum) => any} */ (
-                        operation.accessor
-                    ),
-                    results: [],
-                };
-                aggregateGroupsByField.set(fieldName, group);
-                aggregateGroups.push(group);
+                group = { accessor, results: [] };
+                aggregateGroups.set(field, group);
             }
-            group.results.push({ op: operation.op, resultIndex });
+            group.results.push({
+                op: /** @type {import("./windowAggregateOps.js").FieldAggregateOp} */ (
+                    op
+                ),
+                resultIndex,
+            });
         }
     }
 
     const sharedFrame =
         frame[0] == null && frame[1] == null && partitionEvaluators.length == 0;
-    if (countResults.length) {
-        partitionEvaluators.push(createCountEvaluator(countResults));
+    if (countResultIndices.length) {
+        partitionEvaluators.push(createCountEvaluator(countResultIndices));
     }
-    for (const group of aggregateGroups) {
+    for (const { accessor, results } of aggregateGroups.values()) {
         partitionEvaluators.push(
-            createAggregatePartitionEvaluator(group.accessor, group.results)
+            createAggregatePartitionEvaluator(accessor, results)
         );
     }
 
@@ -341,12 +340,10 @@ function compileOperation(params, index, transform) {
 }
 
 /**
- * @param {{ resultIndex: number }[]} countResults
+ * @param {number[]} resultIndices
  * @returns {PartitionEvaluator}
  */
-function createCountEvaluator(countResults) {
-    const resultIndices = countResults.map(({ resultIndex }) => resultIndex);
-
+function createCountEvaluator(resultIndices) {
     return (_rows, bounds, results) => {
         const resultArrays = resultIndices.map((index) => results[index]);
         const starts = bounds.starts;

@@ -1,11 +1,5 @@
-import {
-    activateExprRefProps,
-    withoutExprRef,
-} from "../../../paramRuntime/paramUtils.js";
-import {
-    createDescriptorFieldAttacher,
-    getUrlDescriptorExpressions,
-} from "../urlDescriptor.js";
+import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
+import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
 import IntervalUrlSource from "./intervalUrlSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
@@ -39,25 +33,10 @@ export default class FigWigSource extends IntervalUrlSource {
         };
         super(view, paramsWithDefaults.channel);
 
-        this.params = activateExprRefProps(
-            view.paramRuntime,
-            paramsWithDefaults,
-            (props) => {
-                if (props.has("url")) {
-                    this.reloadUrlDescriptors();
-                } else if (
-                    props.has("tracks") ||
-                    props.has("pixelsPerBin") ||
-                    props.has("maxSummaryPixels") ||
-                    props.has("mode")
-                ) {
-                    this.invalidateData();
-                    this.reloadLastDomain();
-                }
-            },
-            (disposer) => this.registerDisposer(disposer),
-            getUrlDescriptorExpressions(paramsWithDefaults.url)
-        );
+        this.params = this.activateUrlParams(paramsWithDefaults, {
+            windowKeys: ["tracks", "pixelsPerBin", "maxSummaryPixels", "mode"],
+            invalidateWindow: true,
+        });
 
         if (!this.params.url) {
             throw new Error("No URL provided for FigWigSource");

@@ -36,8 +36,15 @@ export default class FlattenDelimitedTransform extends Transform {
             const splitFields = accessors.map((accessor, i) =>
                 accessor(datum).split(separators[i])
             );
-            validateSplit(splitFields, datum);
             const flatLen = splitFields[0].length;
+            for (let fi = 1; fi < splitFields.length; fi++) {
+                if (splitFields[fi].length !== flatLen) {
+                    throw new Error(
+                        "Mismatching number of elements in the fields to be split: " +
+                            JSON.stringify(datum)
+                    );
+                }
+            }
 
             for (let ri = 0; ri < flatLen; ri++) {
                 /** @type {import("../flowNode.js").Datum} */
@@ -48,20 +55,5 @@ export default class FlattenDelimitedTransform extends Transform {
                 this._propagate(newRow);
             }
         };
-    }
-}
-
-/**
- *
- * @param {any[]} splitFields
- * @param {unknown} row
- */
-function validateSplit(splitFields, row) {
-    const splitLengths = splitFields.map((f) => f.length);
-    if (!splitLengths.every((x) => x == splitLengths[0])) {
-        throw new Error(
-            "Mismatching number of elements in the fields to be split: " +
-                JSON.stringify(row)
-        );
     }
 }

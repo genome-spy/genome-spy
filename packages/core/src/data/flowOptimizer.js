@@ -92,31 +92,26 @@ export function combineIdenticalDataSources(dataFlow) {
 
     /** @type {Map<unknown, import("./sources/dataSource.js").default>} */
     const sourcesByShareKeys = new Map();
-    for (const ds of dataSources) {
-        if (ds.shareKey && !sourcesByShareKeys.has(ds.shareKey)) {
-            sourcesByShareKeys.set(ds.shareKey, ds);
-        }
-    }
-
-    /** @type {Set<import("./sources/dataSource.js").default>} */
-    const mergedSources = new Set();
+    /** @type {import("./sources/dataSource.js").default[]} */
+    const mergedSources = [];
     /** @type {Map<import("./sources/dataSource.js").default, import("./sources/dataSource.js").default>} */
     const canonicalBySource = new Map();
 
     for (const dataSource of dataSources) {
-        if (dataSource.shareKey) {
-            const target = sourcesByShareKeys.get(dataSource.shareKey);
-            if (target) {
-                if (target !== dataSource) {
-                    target.adoptChildrenOf(dataSource);
-                }
-                mergedSources.add(target);
-                canonicalBySource.set(dataSource, target);
-            }
-        } else {
-            mergedSources.add(dataSource);
-            canonicalBySource.set(dataSource, dataSource);
+        const key = dataSource.shareKey;
+        const target = key
+            ? (sourcesByShareKeys.get(key) ?? dataSource)
+            : dataSource;
+        if (target === dataSource) {
+            mergedSources.push(dataSource);
+            if (key) sourcesByShareKeys.set(key, dataSource);
         }
+        canonicalBySource.set(dataSource, target);
+    }
+
+    // Resolve every key before moving any branches in case a getter throws.
+    for (const [source, target] of canonicalBySource) {
+        if (source !== target) target.adoptChildrenOf(source);
     }
 
     dataFlow.replaceDataSources(mergedSources);

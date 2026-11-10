@@ -563,7 +563,7 @@ describe("Displace2DTransform", () => {
         ).toThrow("preserve the key");
     });
 
-    test("preserves facet batches during progressive replay", () => {
+    test("preserves facet and file batches during progressive replay", () => {
         const animator = new TestAnimator();
         const transform = createDisplace2D(
             {
@@ -578,21 +578,29 @@ describe("Displace2DTransform", () => {
         const output = new Collector();
         const batches = vi.spyOn(output, "beginBatch");
         transform.addChild(output);
-        for (const facetId of ["a", "b"]) {
-            transform.beginBatch({ type: "facet", facetId: [facetId] });
-            transform.handle({ x: 0, y: 0 });
-            transform.handle({ x: 0, y: 0 });
+        /** @type {import("../../types/flowBatch.js").FlowBatch[]} */
+        const expectedBatches = [
+            { type: "facet", facetId: ["a"] },
+            { type: "file", url: "first.json" },
+            { type: "file", url: "second.json" },
+            { type: "facet", facetId: ["empty"] },
+            { type: "facet", facetId: ["b"] },
+            { type: "file", url: "first.json" },
+            { type: "file", url: "second.json" },
+        ];
+        for (const batch of expectedBatches) {
+            transform.beginBatch(batch);
+            if (batch.type === "file") transform.handle({ x: 0, y: 0 });
         }
         transform.complete();
         batches.mockClear();
 
         animator.frame(0);
 
-        expect(
-            batches.mock.calls.map(([batch]) =>
-                batch.type == "facet" ? batch.facetId[0] : undefined
-            )
-        ).toEqual(["a", "b"]);
+        expect(batches.mock.calls.map(([batch]) => batch)).toEqual(
+            expectedBatches
+        );
+        expect(Array.from(output.getData())).toHaveLength(4);
     });
 
     test.each([false, true])(
