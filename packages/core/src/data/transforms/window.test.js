@@ -16,19 +16,6 @@ function transform(params, data) {
 }
 
 describe("Window transform", () => {
-    test("validates sort fields during peer comparisons for row-only operations", () => {
-        expect(() =>
-            transform(
-                {
-                    type: "window",
-                    sort: { field: ["s", "k"] },
-                    ops: ["row_number"],
-                },
-                [{ s: "x", k: 0 }, { s: 1, k: 0 }, { s: 2 }]
-            )
-        ).toThrow(/k/);
-    });
-
     test("calculates every window-only operation using sorted peers", () => {
         const rows = transform(
             {

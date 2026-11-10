@@ -1,4 +1,4 @@
-import { bisectRight, quantileSorted } from "d3-array";
+import { bisector, bisectRight, quantileSorted } from "d3-array";
 
 /**
  * Compatibility note: this module follows the aggregate portion of Vega's
@@ -77,19 +77,6 @@ export function createAggregatePartitionEvaluator(accessor, results) {
                 wholePartition
             );
 
-            if (wholePartition) {
-                for (const row of rows) {
-                    state.add(row);
-                }
-                if (state.needsOrderedValues) {
-                    state.sortValues();
-                }
-                for (let i = 0; i < readers.length; i++) {
-                    resultArrays[i].fill(readers[i](state));
-                }
-                return;
-            }
-
             let start = 0;
             let stop = 0;
 
@@ -99,14 +86,16 @@ export function createAggregatePartitionEvaluator(accessor, results) {
                 while (start < nextStart) {
                     state.remove(rows[start++]);
                 }
-                while (start > nextStart) {
-                    state.add(rows[--start]);
-                }
                 while (stop < nextStop) {
                     state.add(rows[stop++]);
                 }
-                while (stop > nextStop) {
-                    state.remove(rows[--stop]);
+
+                if (wholePartition) {
+                    state.sortValues();
+                    for (let i = 0; i < readers.length; i++) {
+                        resultArrays[i].fill(readers[i](state));
+                    }
+                    return;
                 }
 
                 for (let i = 0; i < readers.length; i++) {
@@ -134,11 +123,11 @@ function createAggregateValueReader(op) {
         case "mean":
             return (state) => (state.valid ? state.mean : undefined);
         case "q1":
-            return (state) => (state.valid ? state.q1() : undefined);
+            return (state) => (state.valid ? state.quantile(0.25) : undefined);
         case "median":
-            return (state) => (state.valid ? state.median() : undefined);
+            return (state) => (state.valid ? state.quantile(0.5) : undefined);
         case "q3":
-            return (state) => (state.valid ? state.q3() : undefined);
+            return (state) => (state.valid ? state.quantile(0.75) : undefined);
         case "variance":
             return (state) =>
                 state.valid > 1 ? state.m2 / (state.valid - 1) : undefined;
@@ -152,7 +141,7 @@ function createAggregateValueReader(op) {
  * Rows enter and leave each state once per boundary movement, avoiding a
  * full-frame scan for every output row.
  */
-export class WindowAggregateState {
+class WindowAggregateState {
     /** @type {(datum: Datum) => any} */
     accessor;
 
@@ -165,23 +154,13 @@ export class WindowAggregateState {
     /** @type {boolean} */
     needsOrderedValues;
 
-    /** @type {number} */
-    valid;
+    valid = 0;
+    sum = 0;
+    mean = 0;
+    m2 = 0;
 
-    /** @type {number} */
-    sum;
-
-    /** @type {number} */
-    mean;
-
-    /** @type {number} */
-    m2;
-
-    /** @type {number[]} */
-    values;
-
-    /** @type {OrderedBlocks | undefined} */
-    #blocks;
+    /** @type {number[][]} */
+    #blocks = [[]];
 
     /**
      * @param {(datum: Datum) => any} accessor
@@ -194,11 +173,10 @@ export class WindowAggregateState {
         this.needsMoments = ops.some((op) => MOMENT_OPS.has(op));
         this.needsOrderedValues = ops.some((op) => ORDERED_OPS.has(op));
         this.deferSorting = deferSorting;
-        this.reset();
     }
 
     sortValues() {
-        const values = this.values;
+        const values = this.#blocks[0];
         values.sort(compareNumbers);
 
         // Left insertion reverses ties. Only signed zeros can compare equal
@@ -213,20 +191,6 @@ export class WindowAggregateState {
             values[left] = values[right];
             values[right] = value;
         }
-    }
-
-    reset() {
-        this.valid = 0;
-        this.sum = 0;
-        this.mean = 0;
-        this.m2 = 0;
-        this.values = [];
-        this.#blocks = undefined;
-    }
-
-    #promoteOrderedValues() {
-        this.#blocks = new OrderedBlocks(this.values);
-        this.values = [];
     }
 
     /** @param {Datum} datum */
@@ -251,21 +215,7 @@ export class WindowAggregateState {
             this.m2 += delta * (numericValue - this.mean);
         }
         if (this.needsOrderedValues) {
-            if (this.#blocks) {
-                this.#blocks.add(numericValue);
-            } else if (
-                this.deferSorting ||
-                numericValue > this.values[this.values.length - 1]
-            ) {
-                this.values.push(numericValue);
-            } else {
-                const index = findInsertIndex(this.values, numericValue);
-                this.values.splice(index, 0, numericValue);
-                // Long append-only frames are still cheap as a flat array.
-                if (this.values.length - index > BLOCK_SHIFT_THRESHOLD) {
-                    this.#promoteOrderedValues();
-                }
-            }
+            this.#changeOrdered(numericValue, true);
         }
     }
 
@@ -298,136 +248,79 @@ export class WindowAggregateState {
             }
         }
         if (this.needsOrderedValues) {
-            if (this.#blocks) {
-                this.#blocks.remove(numericValue);
+            this.#changeOrdered(numericValue, false);
+        }
+    }
+
+    /**
+     * @param {number} value
+     * @param {boolean} add
+     */
+    #changeOrdered(value, add) {
+        const blocks = this.#blocks;
+        const index =
+            blocks.length == 1
+                ? 0
+                : findBlock(blocks, value, 0, blocks.length - 1);
+        const block = blocks[index];
+        let offset = block.length;
+        if (add && (this.deferSorting || value > block[offset - 1])) {
+            block.push(value);
+        } else {
+            offset = findInsertIndex(block, value);
+            if (add) {
+                block.splice(offset, 0, value);
             } else {
-                const index = removeValue(this.values, numericValue);
-                if (this.values.length - index >= BLOCK_SHIFT_THRESHOLD) {
-                    this.#promoteOrderedValues();
+                if (block[offset] !== value) {
+                    throw new Error("Window aggregate state is inconsistent.");
                 }
+                block.splice(offset, 1);
+            }
+        }
+
+        if (blocks.length == 1) {
+            // A single block stays flat until a splice shifts thousands of values.
+            if (block.length - offset >= BLOCK_SHIFT_THRESHOLD) {
+                this.#blocks = [];
+                for (let i = 0; i < block.length; i += BLOCK_SIZE) {
+                    this.#blocks.push(block.slice(i, i + BLOCK_SIZE));
+                }
+            }
+        } else if (block.length > 2 * BLOCK_SIZE) {
+            blocks.splice(index + 1, 0, block.splice(BLOCK_SIZE));
+        } else if (block.length == 0) {
+            blocks.splice(index, 1);
+        } else if (!add && block.length < BLOCK_SIZE) {
+            const left = Math.min(index, blocks.length - 2);
+            if (
+                blocks[left].length + blocks[left + 1].length <=
+                BLOCK_SIZE * 1.5
+            ) {
+                blocks[left].push(...blocks[left + 1]);
+                blocks.splice(left + 1, 1);
             }
         }
     }
 
     min() {
-        return this.#blocks ? this.#blocks.first : this.values[0];
-    }
-
-    max() {
-        return this.#blocks
-            ? this.#blocks.last
-            : this.values[this.values.length - 1];
-    }
-
-    /** @param {number} p */
-    #quantile(p) {
-        return this.#blocks
-            ? this.#blocks.quantile(p, this.valid)
-            : quantileSorted(this.values, p);
-    }
-
-    q1() {
-        return this.#quantile(0.25);
-    }
-
-    median() {
-        return this.#quantile(0.5);
-    }
-
-    q3() {
-        return this.#quantile(0.75);
-    }
-}
-
-/**
- * Sorted blocks retain left-insertion order while bounding each splice.
- * Merge small neighbors to keep rank lookups short as frames shrink.
- */
-class OrderedBlocks {
-    /** @type {number[][]} */
-    #blocks = [];
-
-    /** @param {number[]} values */
-    constructor(values) {
-        for (let i = 0; i < values.length; i += BLOCK_SIZE) {
-            this.#blocks.push(values.slice(i, i + BLOCK_SIZE));
-        }
-    }
-
-    get first() {
         return this.#blocks[0][0];
     }
 
-    get last() {
+    max() {
         const block = this.#blocks[this.#blocks.length - 1];
         return block[block.length - 1];
     }
 
-    /** @param {number} value */
-    #blockIndex(value) {
+    /** @param {number} p */
+    quantile(p) {
         const blocks = this.#blocks;
-        let low = 0;
-        let high = blocks.length - 1;
-        // Match bisectLeft: NaNs append after all comparable numbers.
-        if (Number.isNaN(value)) {
-            return high;
+        if (blocks.length == 1) {
+            return quantileSorted(blocks[0], p);
         }
-        while (low < high) {
-            const middle = (low + high) >>> 1;
-            const block = blocks[middle];
-            if (block[block.length - 1] < value) {
-                low = middle + 1;
-            } else {
-                high = middle;
-            }
-        }
-        return low;
-    }
-
-    /** @param {number} value */
-    add(value) {
-        const index = this.#blockIndex(value);
-        const block = this.#blocks[index];
-        block.splice(findInsertIndex(block, value), 0, value);
-        if (block.length > 2 * BLOCK_SIZE) {
-            this.#blocks.splice(index + 1, 0, block.splice(BLOCK_SIZE));
-        }
-    }
-
-    /** @param {number} value */
-    remove(value) {
-        const blocks = this.#blocks;
-        const index = this.#blockIndex(value);
-        const block = blocks[index];
-        removeValue(block, value);
-
-        if (blocks.length > 1 && block.length < BLOCK_SIZE) {
-            const leftIndex = Math.min(index, blocks.length - 2);
-            const left = blocks[leftIndex];
-            const right = blocks[leftIndex + 1];
-            if (block.length == 0) {
-                blocks.splice(index, 1);
-            } else if (left.length + right.length <= BLOCK_SIZE * 1.5) {
-                left.push(...right);
-                blocks.splice(leftIndex + 1, 1);
-            }
-        }
-    }
-
-    /**
-     * Matches quantileSorted's interpolation across neighboring ranks.
-     * @param {number} p
-     * @param {number} length
-     */
-    quantile(p, length) {
-        if (length < 2) {
-            return this.first;
-        }
-        const position = (length - 1) * p;
+        const position = (this.valid - 1) * p;
         const rank = Math.floor(position);
         let index = rank;
         let blockIndex = 0;
-        const blocks = this.#blocks;
         while (index >= blocks[blockIndex].length) {
             index -= blocks[blockIndex++].length;
         }
@@ -440,6 +333,11 @@ class OrderedBlocks {
         return lower + (upper - lower) * (position - rank);
     }
 }
+
+// Stop at the final block even when a value sorts after its maximum.
+const findBlock = bisector(
+    /** @param {number[]} block */ (block) => block[block.length - 1]
+).left;
 
 /**
  * Match numeric bisectLeft, including NaNs at the end of the array.
@@ -461,19 +359,6 @@ function findInsertIndex(values, value) {
         }
     }
     return low;
-}
-
-/**
- * @param {number[]} values
- * @param {number} value
- */
-function removeValue(values, value) {
-    const index = findInsertIndex(values, value);
-    if (values[index] !== value) {
-        throw new Error("Window aggregate state is inconsistent.");
-    }
-    values.splice(index, 1);
-    return index;
 }
 
 /**
