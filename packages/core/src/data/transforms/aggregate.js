@@ -1,14 +1,11 @@
 import { InternMap } from "internmap";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
-import iterateNestedMaps from "../../utils/iterateNestedMaps.js";
 import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
 
 export default class AggregateTransform extends Transform {
-    /** @type {boolean} */
-    #streamCount;
-
-    #count = 0;
+    /** @type {number | undefined} Undefined when rows are buffered. */
+    #count;
 
     get behavior() {
         return BEHAVIOR_CLONES;
@@ -65,76 +62,61 @@ export default class AggregateTransform extends Transform {
             this.as.push("count");
         }
 
-        this.#streamCount = countOnly && !params.groupby?.length;
+        this.#count = countOnly && !params.groupby?.length ? 0 : undefined;
     }
 
     reset() {
         super.reset();
+        this.#clearBatch();
+    }
+
+    #clearBatch() {
         this.buffer = [];
-        this.#count = 0;
+        if (this.#count !== undefined) {
+            this.#count = 0;
+        }
     }
 
     /**
      * Propagate the current buffer as one aggregated batch.
      */
     #flushBuffer() {
-        const params = this.params;
-        const groupby = params.groupby;
-
-        if (this.#streamCount) {
-            /** @type {Datum} */
-            const datum = {};
-            for (const name of this.as) {
-                datum[name] = this.#count;
-            }
-            this._propagate(datum);
-            return;
-        }
-
-        if (groupby?.length > 0) {
-            const groupFieldAccessors = this.createFieldAccessors(
-                params,
-                "groupby"
-            );
-
-            const groups = groupRows(this.buffer, groupFieldAccessors);
-
-            if (groupby.length === 1) {
-                const field = groupby[0];
-                for (const [key, data] of groups) {
-                    // Assign like the multi-key path, including special names.
-                    /** @type {Datum} */
-                    const datum = {};
-                    datum[field] = key;
-                    this.#propagateAggregate(datum, data);
-                }
-                return;
-            }
-
-            for (const [group, data] of iterateNestedMaps(groups)) {
-                /** @type {Datum} */
-                const datum = {};
-
-                for (let i = 0; i < groupby.length; i++) {
-                    datum[groupby[i]] = group[i];
-                }
-
-                this.#propagateAggregate(datum, data);
-            }
-        } else {
-            this.#propagateAggregate({}, this.buffer);
-        }
+        const groupby =
+            this.#count === undefined ? (this.params.groupby ?? []) : [];
+        const data = groupby.length
+            ? groupRows(
+                  this.buffer,
+                  this.createFieldAccessors(this.params, "groupby")
+              )
+            : this.buffer;
+        this.#emit(data, groupby);
     }
 
     /**
-     * @param {Datum} datum
-     * @param {Datum[]} data
+     * Traverse groups in first-seen order, reusing the key path at every leaf.
+     * @param {Map<any, any> | Datum[]} data
+     * @param {string[]} groupby
+     * @param {any[]} [path]
+     * @param {number} [depth]
      */
-    #propagateAggregate(datum, data) {
-        for (let i = 0; i < this.ops.length; i++) {
-            datum[this.as[i]] = this.ops[i](data);
+    #emit(data, groupby, path = [], depth = 0) {
+        if (data instanceof Map) {
+            for (const [key, group] of data) {
+                path[depth] = key;
+                this.#emit(group, groupby, path, depth + 1);
+            }
+            return;
         }
 
+        /** @type {Datum} */
+        const datum = {};
+        for (let i = 0; i < depth; i++) {
+            datum[groupby[i]] = path[i];
+        }
+        const count = this.#count;
+        for (let i = 0; i < this.ops.length; i++) {
+            datum[this.as[i]] = count ?? this.ops[i](data);
+        }
         this._propagate(datum);
     }
 
@@ -143,7 +125,7 @@ export default class AggregateTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        if (this.#streamCount) {
+        if (this.#count !== undefined) {
             this.#count++;
         } else {
             this.buffer.push(datum);
@@ -161,10 +143,9 @@ export default class AggregateTransform extends Transform {
         if (flowBatch.type == "file") {
             return;
         }
-        if (this.#count > 0 || this.buffer.length > 0 || this.inFacet) {
+        if (this.#count || this.buffer.length || this.inFacet) {
             this.#flushBuffer();
-            this.buffer = [];
-            this.#count = 0;
+            this.#clearBatch();
         }
 
         super.beginBatch(flowBatch);
@@ -206,15 +187,14 @@ function groupRows(rows, accessors, depth = 0) {
         }
     }
 
-    const nextDepth = depth + 1;
-    if (nextDepth < accessors.length) {
+    const hasChildren = depth + 1 < accessors.length;
+    // InternMap repeats key interning on the final write, even for leaves.
+    if (hasChildren || groups instanceof InternMap) {
         for (const [key, group] of groups) {
-            groups.set(key, groupRows(group, accessors, nextDepth));
-        }
-    } else if (groups instanceof InternMap) {
-        // Match d3.group's final write, which may re-intern object keys.
-        for (const [key, group] of groups) {
-            groups.set(key, group);
+            groups.set(
+                key,
+                hasChildren ? groupRows(group, accessors, depth + 1) : group
+            );
         }
     }
     return groups;
