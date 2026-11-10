@@ -61,19 +61,17 @@ export default class UrlSource extends DataSource {
      *
      * @param {import("../../spec/data.js").UrlList} props
      */
-    async #loadUrlsFromFile(props) {
+    async #loadDescriptorsFromFile(props) {
         const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
         const format = { type: props.type ?? "tsv" };
 
         const content = await loadResponse(listUrl, responseType(format.type));
 
-        const files = /** @type {string[] | {url: string}[]} */ (
+        return /** @type {string[] | {url: string}[]} */ (
             read(content, toVegaLoaderFormat(format))
         )
             .map((u) => (typeof u === "string" ? u : u.url))
-            .map((u) => concatUrl(listUrl, u));
-
-        return files;
+            .map((url) => ({ url: concatUrl(listUrl, url) }));
     }
 
     async load() {
@@ -93,9 +91,7 @@ export default class UrlSource extends DataSource {
             /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
             const descriptors =
                 typeof url == "object" && "urlsFromFile" in url
-                    ? (await this.#loadUrlsFromFile(url)).map((url) => ({
-                          url,
-                      }))
+                    ? await this.#loadDescriptorsFromFile(url)
                     : await normalizeUrlDescriptors({
                           url: this.params.url,
                           baseUrl: this.baseUrl,
@@ -104,9 +100,9 @@ export default class UrlSource extends DataSource {
 
             if (!isCurrent()) return;
 
-            const urls = descriptors.map((descriptor) => descriptor.url);
-            if (urls.length > 0 && urls[0]) {
-                const format = getFormat(this.params, urls);
+            const firstUrl = descriptors[0]?.url;
+            if (firstUrl) {
+                const format = getFormat(this.params, firstUrl);
                 const type = responseType(format.type);
 
                 /**
