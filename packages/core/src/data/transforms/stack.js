@@ -1,11 +1,14 @@
 import { compare } from "vega-util";
-import { groups as d3groups, sum as d3sum } from "d3-array";
+import { sum as d3sum } from "d3-array";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
     createFileBatchPropagator,
 } from "../fileBatchUtils.js";
+
+/** @type {(value: number, sum: number) => number} */
+const normalize = (value, sum) => value / sum;
 
 export default class StackTransform extends Transform {
     /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
@@ -79,9 +82,9 @@ export default class StackTransform extends Transform {
 
         const groupFields = this.createFieldAccessors(params, "groupby");
 
-        const groups = d3groups(this.buffer, (row) =>
+        const groups = Map.groupBy(this.buffer, (row) =>
             groupFields.map((f) => f(row)).join()
-        ).map((a) => a[1]);
+        );
 
         /** @type {(datum: any) => boolean} */
         let inclusionPredicate = (_datum) => true;
@@ -92,19 +95,16 @@ export default class StackTransform extends Transform {
         }
 
         /** @type {(value: number, sum: number) => number} */
-        let offsetF;
+        let offsetF = normalize;
 
         /** @type {(values: number[], accessor: (datum: any) => number) => number} */
-        let sumF;
+        let sumF = d3sum;
 
         switch (params.offset) {
             case "normalize":
-                offsetF = (value, sum) => value / sum;
-                sumF = (values, accessor) => d3sum(values, accessor);
                 break;
             case "center":
                 offsetF = (value, sum) => value - sum / 2;
-                sumF = (values, accessor) => d3sum(values, accessor);
                 break;
             case "information":
                 {
@@ -112,7 +112,6 @@ export default class StackTransform extends Transform {
                     // doi://10.1093/nar/18.20.6097
 
                     const maxBits = Math.log2(params.cardinality ?? 4);
-                    offsetF = (value, sum) => value / sum;
                     sumF = (values, accessor) => {
                         const e = 0; // TODO: Correction factor for small sample sizes
 
@@ -143,7 +142,7 @@ export default class StackTransform extends Transform {
                 sumF = (_values, _accessor) => 1;
         }
 
-        for (const group of groups) {
+        for (const group of groups.values()) {
             if (comparator) {
                 group.sort(comparator);
             }
