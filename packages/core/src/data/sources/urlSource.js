@@ -259,31 +259,22 @@ function hasGzipContentEncoding(contentEncoding) {
 
 /**
  * @param {Uint8Array} bytes
- * @returns {ArrayBuffer}
  */
-function toArrayBuffer(bytes) {
-    return new Uint8Array(bytes).buffer;
-}
-
-/**
- * @param {Uint8Array} bytes
- */
-async function decompressGzip(bytes) {
+function decompressGzip(bytes) {
     if (typeof DecompressionStream != "function") {
         throw new Error(
             "Gzip-compressed URL data requires DecompressionStream support."
         );
     }
 
-    const body = new Response(toArrayBuffer(bytes)).body;
-    if (!body) {
-        throw new Error(
-            "Cannot create a readable stream for gzip decompression."
-        );
-    }
-
-    const stream = body.pipeThrough(new DecompressionStream("gzip"));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    // A byte-array Response body would copy the compressed payload.
+    const stream = new ReadableStream({
+        start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+        },
+    }).pipeThrough(new DecompressionStream("gzip"));
+    return new Response(stream).arrayBuffer();
 }
 
 /**
@@ -301,9 +292,10 @@ async function readResponseBody(response, url, type) {
         return readResponseUsingType(response, type);
     }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const bodyBytes = hasGzipMagic(bytes) ? await decompressGzip(bytes) : bytes;
-    return deserializeBytes(bodyBytes, type);
+    const raw = await response.arrayBuffer();
+    const bytes = new Uint8Array(raw);
+    const buffer = hasGzipMagic(bytes) ? await decompressGzip(bytes) : raw;
+    return type == "arrayBuffer" ? buffer : textDecoder.decode(buffer);
 }
 
 /**
@@ -316,16 +308,4 @@ function readResponseUsingType(response, type) {
         ? // @ts-ignore
           response[type]()
         : response.text();
-}
-
-/**
- * @param {Uint8Array} bytes
- * @param {string} type
- */
-function deserializeBytes(bytes, type) {
-    if (type == "arrayBuffer") {
-        return toArrayBuffer(bytes);
-    } else {
-        return textDecoder.decode(bytes);
-    }
 }
