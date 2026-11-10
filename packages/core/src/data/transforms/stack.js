@@ -175,8 +175,6 @@ export default class StackTransform extends Transform {
  * @param {((row: Datum) => any)[]} accessors
  */
 function groupRows(rows, accessors) {
-    /** @type {Map<string, Datum[]>} */
-    const groups = new Map();
     const keyParts = new Array(accessors.length);
 
     // Keep the existing string coercion and comma-joined keys.
@@ -192,15 +190,5 @@ function groupRows(rows, accessors) {
                   return keyParts.join();
               };
 
-    for (const row of rows) {
-        const key = keyOf(row);
-        const group = groups.get(key);
-        if (group) {
-            group.push(row);
-        } else {
-            groups.set(key, [row]);
-        }
-    }
-
-    return groups.values();
+    return Map.groupBy(rows, keyOf).values();
 }
