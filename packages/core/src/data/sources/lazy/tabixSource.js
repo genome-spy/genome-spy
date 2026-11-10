@@ -179,7 +179,7 @@ export default class TabixSource extends IntervalUrlSource {
             maxBlockSize,
             0
         );
-        const { unzip } = await import("@gmod/bgzf-filehandle");
+        const { unzip } = await import("./tabixRead.js");
         const bytes = await unzip(compressedPrefix);
         return new TextDecoder("utf-8").decode(bytes);
     }
@@ -226,7 +226,7 @@ export default class TabixSource extends IntervalUrlSource {
 
 async function loadTabixModules() {
     const [{ TabixIndexedFile }, { RemoteFile }] = await Promise.all([
-        import("@gmod/tabix"),
+        import("./tabixRead.js"),
         import("generic-filehandle2"),
     ]);
     return { TabixIndexedFile, RemoteFile };
