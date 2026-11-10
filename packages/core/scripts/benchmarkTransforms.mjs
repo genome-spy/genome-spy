@@ -6,9 +6,7 @@ import { performance } from "node:perf_hooks";
 import process from "node:process";
 import Collector from "../src/data/collector.js";
 import FlowNode, { BEHAVIOR_MODIFIES } from "../src/data/flowNode.js";
-import AggregateTransform from "../src/data/transforms/aggregate.js";
-import StackTransform from "../src/data/transforms/stack.js";
-import WindowTransform from "../src/data/transforms/window.js";
+import createTransform from "../src/data/transforms/transformFactory.js";
 import { UNIQUE_ID_KEY } from "../src/data/transforms/identifier.js";
 
 const size = 100_000;
@@ -27,19 +25,6 @@ const rows = Array.from({ length: size }, (_, i) => ({
 }));
 
 /** @typedef {import("../src/data/flowNode.js").Datum} Datum */
-
-class CountRows extends FlowNode {
-    count = 0;
-
-    reset() {
-        super.reset();
-        this.count = 0;
-    }
-
-    handle() {
-        this.count++;
-    }
-}
 
 /**
  * @param {string} name
@@ -63,21 +48,20 @@ function measure(name, rowCount, run) {
 
 /**
  * @param {string} name
- * @param {FlowNode} node
- * @param {number} expectedCount
+ * @param {import("../src/spec/transform.js").TransformParams} params
+ * @param {number} [expectedCount]
  * @param {Datum[]} [input]
  */
-function benchmark(name, node, expectedCount, input = rows) {
+function benchmark(name, params, expectedCount, input = rows) {
     if (target && !name.startsWith(target + "/")) {
         return;
     }
 
-    const output = node instanceof Collector ? node : new CountRows();
-    if (node !== output) {
-        node.addChild(output);
+    const node = createTransform(params);
+    if (!(node instanceof Collector)) {
+        node.addChild(new FlowNode());
     }
     node.initializeOnce();
-    output.initializeOnce();
 
     measure(name, input.length, () => {
         const data =
@@ -96,8 +80,8 @@ function benchmark(name, node, expectedCount, input = rows) {
         const elapsed = performance.now() - start;
 
         assert.equal(
-            output instanceof Collector ? output.getItemCount() : output.count,
-            expectedCount
+            node instanceof Collector ? node.getItemCount() : node.stats.count,
+            expectedCount ?? input.length
         );
         return elapsed;
     });
@@ -111,129 +95,89 @@ console.log(
     `Node ${process.version} (${process.arch}), median of ${samples} runs after ${warmups} warmups`
 );
 
-benchmark(
-    "window/grouped ranks",
-    new WindowTransform({
-        type: "window",
-        groupby: ["group"],
-        sort: { field: "value" },
-        ops: ["row_number", "rank", "cume_dist"],
-    }),
-    size
-);
-benchmark(
-    "window/moving sum",
-    new WindowTransform({
-        type: "window",
-        frame: [-511, 0],
-        fields: ["value"],
-        ops: ["sum"],
-    }),
-    size
-);
-benchmark(
-    "window/moving median",
-    new WindowTransform({
-        type: "window",
-        frame: [-24_999, 0],
-        fields: ["value"],
-        ops: ["median"],
-    }),
-    size
-);
-benchmark(
-    "window/ordered running median",
-    new WindowTransform({
-        type: "window",
-        fields: ["position"],
-        ops: ["median"],
-    }),
-    size
-);
-benchmark(
-    "window/whole quantiles",
-    new WindowTransform({
-        type: "window",
-        frame: [null, null],
-        fields: ["value", "value", "value"],
-        ops: ["q1", "median", "q3"],
-    }),
-    size
-);
+benchmark("window/grouped ranks", {
+    type: "window",
+    groupby: ["group"],
+    sort: { field: "value" },
+    ops: ["row_number", "rank", "cume_dist"],
+});
+benchmark("window/moving sum", {
+    type: "window",
+    frame: [-511, 0],
+    fields: ["value"],
+    ops: ["sum"],
+});
+benchmark("window/moving median", {
+    type: "window",
+    frame: [-24_999, 0],
+    fields: ["value"],
+    ops: ["median"],
+});
+benchmark("window/ordered running median", {
+    type: "window",
+    fields: ["position"],
+    ops: ["median"],
+});
+benchmark("window/whole quantiles", {
+    type: "window",
+    frame: [null, null],
+    fields: ["value", "value", "value"],
+    ops: ["q1", "median", "q3"],
+});
 
-benchmark("aggregate/count", new AggregateTransform({ type: "aggregate" }), 1);
+benchmark("aggregate/count", { type: "aggregate" }, 1);
 benchmark(
     "aggregate/grouped stats",
-    new AggregateTransform({
+    {
         type: "aggregate",
         groupby: ["group"],
         fields: ["value", "value", "value", "value"],
         ops: ["sum", "mean", "min", "max"],
-    }),
+    },
     categories
 );
 benchmark(
     "aggregate/compound groups",
-    new AggregateTransform({
+    {
         type: "aggregate",
         groupby: ["chromosome", "group"],
-    }),
+    },
     23 * categories
 );
 benchmark(
     "aggregate/quartiles",
-    new AggregateTransform({
+    {
         type: "aggregate",
         fields: ["value", "value", "value"],
         ops: ["q1", "median", "q3"],
-    }),
+    },
     1
 );
 
-benchmark(
-    "stack/ungrouped",
-    new StackTransform({ type: "stack", field: "value", groupby: [] }),
-    size
-);
-benchmark(
-    "stack/grouped",
-    new StackTransform({
-        type: "stack",
-        groupby: ["group", "chromosome"],
-        field: "value",
-    }),
-    size
-);
-benchmark(
-    "stack/sorted normalized",
-    new StackTransform({
-        type: "stack",
-        groupby: ["group"],
-        sort: { field: "value" },
-        field: "value",
-        offset: "normalize",
-    }),
-    size
-);
+benchmark("stack/ungrouped", { type: "stack", field: "value", groupby: [] });
+benchmark("stack/grouped", {
+    type: "stack",
+    groupby: ["group", "chromosome"],
+    field: "value",
+});
+benchmark("stack/sorted normalized", {
+    type: "stack",
+    groupby: ["group"],
+    sort: { field: "value" },
+    field: "value",
+    offset: "normalize",
+});
 
-benchmark("collect/ordered ids", new Collector(), size);
-benchmark(
-    "collect/grouped",
-    new Collector({ type: "collect", groupby: ["group"] }),
-    size
-);
-benchmark(
-    "collect/grouped and sorted",
-    new Collector({
-        type: "collect",
-        groupby: ["group", "chromosome"],
-        sort: { field: "value" },
-    }),
-    size
-);
+benchmark("collect/ordered ids", { type: "collect" });
+benchmark("collect/grouped", { type: "collect", groupby: ["group"] });
+benchmark("collect/grouped and sorted", {
+    type: "collect",
+    groupby: ["group", "chromosome"],
+    sort: { field: "value" },
+});
 benchmark(
     "collect/sparse ids",
-    new Collector({ type: "collect", sort: { field: "value" } }),
+    { type: "collect", sort: { field: "value" } },
     size,
     rows.map((row) => ({
         ...row,
