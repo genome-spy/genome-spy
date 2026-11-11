@@ -61,7 +61,6 @@ gs-playground-workspace,
     overflow: hidden;
 }
 
-#input-bindings-host,
 gs-playground-workspace[hidden],
 #inspector-pane[hidden] {
     display: none;
@@ -203,7 +202,6 @@ base-url-notice {
         outline-offset: 2px;
     }
 
-    /* Core bindings are moved outside their original scoped container. */
     .gs-input-bindings {
         font-size: var(--playground-font-size);
         padding: var(--playground-spacing);

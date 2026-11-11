@@ -42,7 +42,7 @@ const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
 const inspectorPaneRef = createRef();
-const inputBindingsHostRef = createRef();
+/** @type {import("lit/directives/ref.js").Ref<HTMLElement>} */
 const inputBindingsPaneRef = createRef();
 /** @type {import("./workspace.js").WorkspaceState} */
 const workspaceState = {
@@ -559,9 +559,7 @@ async function updateVisualization(force) {
 
         try {
             embedResult = await embed(container, parsedSpec, {
-                inputBindingContainer: /** @type {HTMLElement} */ (
-                    inputBindingsHostRef.value
-                ),
+                inputBindingContainer: inputBindingsPaneRef.value,
                 powerPreference: "high-performance",
                 renderer: selectedRenderer,
                 getSpecOrigin: (fragment) => origins.get(fragment),
@@ -589,7 +587,7 @@ async function updateVisualization(force) {
         }
         editor.observeDataLoading(embedResult, runtimeAttempt);
         hasInputBindings = Boolean(
-            document.querySelector(".gs-input-bindings")
+            inputBindingsPaneRef.value.querySelector(".gs-input-bindings")
         );
         if (inspectorHandle) {
             await inspectorHandle.session.refresh();
@@ -711,7 +709,6 @@ const workspaceTemplate = () => html`
 
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
-        <div id="input-bindings-host" ${ref(inputBindingsHostRef)}></div>
         <gs-example-picker
             ?open=${isExamplePickerOpen}
             .loading=${isExampleCatalogLoading}
@@ -750,30 +747,8 @@ const layoutTemplate = () => html`
 `;
 
 function renderLayout() {
-    moveInputBindingsToHost();
     render(layoutTemplate(), document.body);
-    placeInputBindings();
     void ensureInspectorPanel();
-}
-
-function moveInputBindingsToHost() {
-    const inputBindings = document.querySelector(".gs-input-bindings");
-    const host = inputBindingsHostRef.value;
-
-    if (inputBindings && host && inputBindings.parentElement !== host) {
-        host.append(inputBindings);
-    }
-}
-
-function placeInputBindings() {
-    const inputBindings = document.querySelector(".gs-input-bindings");
-    const destination = hasInputBindings
-        ? inputBindingsPaneRef.value
-        : inputBindingsHostRef.value;
-
-    if (inputBindings && destination) {
-        destination.append(inputBindings);
-    }
 }
 
 function syncExamplePickerFromUrl() {
