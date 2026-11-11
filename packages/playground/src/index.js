@@ -80,9 +80,14 @@ export function getCurrentEmbedResult() {
 }
 
 let previousStringifiedSpec = "";
-let suppressNextEditorChange = false;
+let applyingLoadedSpec = false;
 let autosaveUnavailable = false;
 const editorState = createEditorState();
+
+/** @type {AbortController | undefined} */
+let specRequest;
+let specLoadError = "";
+
 let renderer = getRendererFromUrl(new URL(window.location.href));
 let updateInProgress = false;
 let pendingUpdate = false;
@@ -135,20 +140,55 @@ function setExamplePickerHash(open) {
     window.history.replaceState({}, "", formatPlaygroundUrl(url));
 }
 
-async function loadSpec() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const specParam = urlParams.get("spec");
-    if (specParam) {
-        return loadSpecFromUrl(specParam);
+/**
+ * @param {string | null} specParam
+ * @param {boolean} pushHistory
+ */
+async function loadSpec(
+    specParam = new URLSearchParams(window.location.search).get("spec"),
+    pushHistory = false
+) {
+    specRequest?.abort();
+    const request = new AbortController();
+    specRequest = request;
+    clearSpecLoadError();
+
+    let state;
+    try {
+        state = specParam
+            ? await loadSpecFromUrl(specParam, request.signal)
+            : loadLocalSpec();
+    } catch (error) {
+        if (request.signal.aborted) return;
+        if (!editorState.getCurrent(editorRef.value)) {
+            setEditorSpec(loadLocalSpec());
+        }
+        specLoadError = error instanceof Error ? error.message : String(error);
+        renderLayout();
+        return;
+    } finally {
+        if (specRequest === request) specRequest = undefined;
     }
 
-    const storedState = loadStoredState();
-    inheritedBaseUrl = storedState?.inheritedBaseUrl;
-    sourceExampleId = storedState?.sourceExampleId;
+    if (request.signal.aborted) return;
+    if (pushHistory) {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("spec", specParam);
+        window.history.pushState({}, "", formatPlaygroundUrl(nextUrl));
+    }
+    setEditorSpec(state);
+}
 
-    return storedState?.specText?.length > 0
-        ? storedState.specText
-        : defaultSpec;
+function loadLocalSpec() {
+    const storedState = loadStoredState();
+    return storedState?.specText ? storedState : { specText: defaultSpec };
+}
+
+function clearSpecLoadError() {
+    if (specLoadError) {
+        specLoadError = "";
+        renderLayout();
+    }
 }
 
 async function ensureExampleCatalogLoaded() {
@@ -253,14 +293,23 @@ function closeExamplePicker() {
 }
 
 /**
- * @param {string} specText
+ * @param {StoredState} state
  */
-function setEditorSpec(specText) {
+function setEditorSpec(state) {
+    const { specText } = state;
+    inheritedBaseUrl = state.inheritedBaseUrl;
+    sourceExampleId = state.sourceExampleId;
     revealMissingFilesOnNextUpdate = true;
     editorState.set(specText);
-    if (editorRef.value) {
-        suppressNextEditorChange = true;
-        editorRef.value.value = specText;
+    const editor = editorRef.value;
+    if (editor) {
+        // The editor emits its change event synchronously during assignment.
+        applyingLoadedSpec = true;
+        try {
+            editor.value = specText;
+        } finally {
+            applyingLoadedSpec = false;
+        }
     }
     void update(true);
     if (sourceExampleId) {
@@ -308,24 +357,11 @@ function clearSpecQueryParam() {
 }
 
 /**
- * @param {string} specUrl
- */
-async function openSpec(specUrl) {
-    const specText = await loadSpecFromUrl(specUrl);
-    const nextUrl = new URL(window.location.href);
-
-    nextUrl.searchParams.set("spec", specUrl);
-    window.history.pushState({}, "", formatPlaygroundUrl(nextUrl));
-
-    setEditorSpec(specText);
-}
-
-/**
  * @param {ExampleCatalogEntry} entry
  */
 async function openCatalogEntry(entry) {
     closeExamplePicker();
-    await openSpec(entry.specUrl);
+    await loadSpec(entry.specUrl, true);
 }
 
 /**
@@ -387,10 +423,12 @@ function storeState(specText) {
 
 /**
  * @param {string} specParam
+ * @param {AbortSignal} signal
+ * @returns {Promise<StoredState>}
  */
-async function loadSpecFromUrl(specParam) {
+async function loadSpecFromUrl(specParam, signal) {
     const specUrl = new URL(specParam, window.location.href);
-    const response = await fetch(specUrl);
+    const response = await fetch(specUrl, { signal });
     if (!response.ok) {
         throw new Error(
             `Could not load specification: ${response.status} ${response.statusText}`
@@ -399,7 +437,7 @@ async function loadSpecFromUrl(specParam) {
     const specText = await response.text();
     const sourceBaseUrl = inferSpecBaseUrl(specUrl.href);
     // Keep the original example identity after editing removes the spec query.
-    sourceExampleId =
+    const sourceExampleId =
         specUrl.origin === window.location.origin
             ? specUrl.pathname.match(
                   /^\/(?:examples|docs\/example-specs)\/((?:docs|core|app)\/.+)\.json$/
@@ -407,12 +445,13 @@ async function loadSpecFromUrl(specParam) {
             : undefined;
 
     if (shouldInjectBaseUrl(specUrl)) {
-        inheritedBaseUrl = undefined;
-        return injectBaseUrl(specText, sourceBaseUrl);
+        return {
+            specText: injectBaseUrl(specText, sourceBaseUrl),
+            sourceExampleId,
+        };
     }
 
-    inheritedBaseUrl = sourceBaseUrl;
-    return specText;
+    return { specText, inheritedBaseUrl: sourceBaseUrl, sourceExampleId };
 }
 
 /**
@@ -658,18 +697,26 @@ const toolbarTemplate = () => {
 const debouncedUpdate = debounce(() => update(), 500, false);
 
 function handleEditorChange() {
-    if (suppressNextEditorChange) {
-        suppressNextEditorChange = false;
+    if (applyingLoadedSpec) {
         return;
     }
 
+    specRequest?.abort();
     editorState.syncFromEditor(editorRef.value);
     clearSpecQueryParam();
+    clearSpecLoadError();
     debouncedUpdate();
 }
 
 const editorPaneTemplate = () => html`
     <section id="editor-pane" slot="editor">
+        <p
+            class="editor-notice"
+            role="alert"
+            ?data-visible=${Boolean(specLoadError)}
+        >
+            ${specLoadError}
+        </p>
         <p
             class="editor-notice"
             role="status"
@@ -783,12 +830,12 @@ setFavicon(favIcon);
 renderLayout();
 syncExamplePickerFromUrl();
 
-loadSpec().then(setEditorSpec);
+void loadSpec();
 
 window.addEventListener("popstate", () => {
     renderer = getRendererFromUrl(new URL(window.location.href));
     syncExamplePickerFromUrl();
-    loadSpec().then(setEditorSpec);
+    void loadSpec();
 });
 
 window.addEventListener("hashchange", () => {
