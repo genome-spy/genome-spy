@@ -6,7 +6,7 @@ import {
     createEventPredicate,
     getEventFilterLocation,
 } from "../../utils/interactionConfig.js";
-import { startDocumentDrag } from "../../utils/documentDrag.js";
+import { startPointerDrag } from "../../utils/pointerDrag.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import {
@@ -531,9 +531,8 @@ export class IntervalSelectionController {
 
             const brush = { start: event.point, translatedRectangle };
             activeBrush = brush;
-            paramRuntime
-                .getIntervalSelectionState(name)
-                .begin(this, () => this.#cancelActiveDrag());
+            const state = paramRuntime.getIntervalSelectionState(name);
+            state.begin(this, () => this.#cancelActiveDrag());
             setIntervalDragActive(Boolean(translatedRectangle));
             if (!translatedRectangle) {
                 clearSelection();
@@ -543,9 +542,7 @@ export class IntervalSelectionController {
                 brush.start
             );
 
-            const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
-                // This listener is added to the document so that events are captured even if the mouse leaves the view.
-                // Thus, coordinates need to be adjusted to the view's coordinate system.
+            const onMove = (/** @type {PointerEvent} */ event) => {
                 const current =
                     Point.fromMouseEvent(event).subtract(viewOffset);
 
@@ -604,21 +601,19 @@ export class IntervalSelectionController {
                 setter({ type: "interval", intervals });
             };
 
-            const state = paramRuntime.getIntervalSelectionState(name);
-            const cancel = startDocumentDrag({
-                onMove: mouseMoveListener,
+            this.#cancelActiveDrag = startPointerDrag(event.mouseEvent, {
+                onMove,
                 hoverContext: view.context,
-                onFinish: () => {
+                onFinish: (released) => {
                     activeBrush = null;
                     setIntervalDragActive(false);
+                    if (!released) {
+                        preventNextClickPropagation = false;
+                        state.finish(this, false);
+                    }
                 },
                 onRelease: () => state.finish(this, true),
             });
-            this.#cancelActiveDrag = () => {
-                const canceled = cancel();
-                state.finish(this, false);
-                return canceled;
-            };
         });
 
         this.#viewListeners.add("mouseup", (event) => {
