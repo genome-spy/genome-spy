@@ -53,20 +53,28 @@ export default class BaseDialog extends LitElement {
                 min-width: 300px;
 
                 opacity: 1;
-                transform: translate(0, 0);
-                transition:
-                    opacity 0.2s ease-in-out,
-                    transform 0.2s ease-in-out;
+                transition: opacity 0.2s ease-in-out;
 
                 @starting-style {
                     opacity: 0;
-                    transform: translate(0, -15px);
+                }
+
+                @media (prefers-reduced-motion: no-preference) {
+                    transform: translateY(0);
+                    transition-property: opacity, transform;
+
+                    @starting-style {
+                        transform: translateY(-15px);
+                    }
                 }
             }
 
             dialog.closing {
                 opacity: 0;
-                transform: translate(0, -15px);
+
+                @media (prefers-reduced-motion: no-preference) {
+                    transform: translateY(-15px);
+                }
             }
 
             dialog::backdrop {
@@ -81,6 +89,15 @@ export default class BaseDialog extends LitElement {
 
             dialog.closing::backdrop {
                 opacity: 0;
+                transition-duration: 0.2s;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                dialog,
+                dialog::backdrop,
+                dialog.closing::backdrop {
+                    transition-duration: 0.1s;
+                }
             }
 
             header,
@@ -282,7 +299,7 @@ export default class BaseDialog extends LitElement {
     }
 
     /**
-     * Subclasses call this to close the dialog and notify listeners.
+     * Subclasses call this to report the dialog result.
      *
      * @param {DialogFinishDetail} detail
      * @protected
@@ -300,44 +317,70 @@ export default class BaseDialog extends LitElement {
     /**
      * ESC or native cancel event handler.
      *
-     * @param {Event} e
+     * @param {Event} [event]
      */
-    #onDialogCancel(e) {
-        e.preventDefault();
+    #onDialogCancel(event) {
+        event?.preventDefault();
+        if (!this.#dialog.open || this.#dialog.classList.contains("closing")) {
+            return;
+        }
+
         this.finish({ ok: false, reason: "cancel" });
         this.triggerClose();
+    }
+
+    #onDialogClose() {
+        this.dispatchEvent(
+            new CustomEvent("gs-dialog-closed", {
+                bubbles: true,
+                composed: true,
+            })
+        );
     }
 
     /**
      * @protected
      */
     triggerClose() {
-        this.#dialog.addEventListener("transitionend", () => {
-            this.#dialog.close();
-            this.dispatchEvent(
-                new CustomEvent("gs-dialog-closed", {
-                    bubbles: true,
-                    composed: true,
-                })
-            );
-        });
+        const dialog = this.#dialog;
+        if (!dialog) {
+            void this.updateComplete.then(() => this.triggerClose());
+            return;
+        }
+        if (!dialog.open || dialog.classList.contains("closing")) {
+            return;
+        }
 
-        this.#dialog.classList.add("closing");
+        dialog.classList.add("closing");
         this.renderRoot
             .querySelector(".non-modal-backdrop")
             ?.classList.add("closing");
+
+        // Keep the dialog visible during its own fade, even in browsers
+        // without CSS top-layer exit transitions.
+        const fade = dialog
+            .getAnimations()
+            .find(
+                (animation) =>
+                    animation instanceof CSSTransition &&
+                    animation.transitionProperty === "opacity"
+            );
+        if (fade) {
+            const close = () => dialog.close();
+            void fade.finished.then(close, close);
+        } else {
+            dialog.close();
+        }
     }
 
     /**
      * @protected
      */
     onCloseButtonClick() {
-        if ("requestClose" in this.#dialog) {
-            // @ts-ignore -- requestClose is not yet in the types
+        if (typeof this.#dialog.requestClose === "function") {
             this.#dialog.requestClose();
         } else {
-            this.finish({ ok: false, reason: "cancel" });
-            this.triggerClose();
+            this.#onDialogCancel();
         }
     }
 
@@ -345,7 +388,11 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     renderHeader() {
-        return html`${this.dialogTitle ? html`${this.dialogTitle}` : nothing}`;
+        return html`${
+            this.dialogTitle
+                ? html`<span id="dialog-title">${this.dialogTitle}</span>`
+                : nothing
+        }`;
     }
 
     /**
@@ -431,9 +478,14 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     makeCloseButton(label = "Close") {
-        return this.makeButton(label, () => this.onCloseButtonClick(), {
-            preventMouseDown: true,
-        });
+        return this.makeButton(
+            label,
+            () => {
+                this.onCloseButtonClick();
+                return true;
+            },
+            { preventMouseDown: true }
+        );
     }
 
     render() {
@@ -447,7 +499,10 @@ export default class BaseDialog extends LitElement {
                     : nothing
             }
             <dialog
-                @cancel=${(/** @type {UIEvent} */ e) => this.#onDialogCancel(e)}
+                aria-labelledby=${this.dialogTitle ? "dialog-title" : nothing}
+                aria-label="GenomeSpy"
+                @cancel=${this.#onDialogCancel}
+                @close=${this.#onDialogClose}
             >
                 ${header ? html`<header>${header}</header>` : nothing}
                 <section>${this.renderBody()}</section>
