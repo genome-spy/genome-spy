@@ -354,6 +354,7 @@ class PlaygroundToolbar extends LitElement {
                 <button
                     @click=${() => this.#openExamples()}
                     class="tool-button examples-button"
+                    aria-haspopup="dialog"
                 >
                     ${icon(faFolderOpen).node[0]}
                     <span>Examples</span>

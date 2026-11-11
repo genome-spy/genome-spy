@@ -842,12 +842,6 @@ window.addEventListener("hashchange", () => {
     syncExamplePickerFromUrl();
 });
 
-window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isExamplePickerOpen) {
-        closeExamplePicker();
-    }
-});
-
 /**
  * https://spemer.com/articles/set-favicon-with-javascript.html
  *

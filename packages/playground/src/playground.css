@@ -47,7 +47,6 @@ split-panel {
     > split-panel {
         flex: 1;
         min-height: 0;
-        /* Keep nested resize handles below overlays such as the example picker. */
         isolation: isolate;
     }
 }
