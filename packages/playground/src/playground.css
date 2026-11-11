@@ -77,6 +77,18 @@ code-editor {
     overflow: hidden;
 }
 
+.editor-notice {
+    margin: 0;
+    flex-shrink: 0;
+    overflow-wrap: anywhere;
+
+    &[data-visible] {
+        padding: 8px var(--playground-spacing);
+        border-bottom: 1px solid var(--playground-warning-border);
+        background: var(--playground-warning-bg);
+    }
+}
+
 .example-documentation {
     display: flex;
     flex-wrap: wrap;

@@ -81,6 +81,7 @@ export function getCurrentEmbedResult() {
 
 let previousStringifiedSpec = "";
 let suppressNextEditorChange = false;
+let autosaveUnavailable = false;
 const editorState = createEditorState();
 let renderer = getRendererFromUrl(new URL(window.location.href));
 let updateInProgress = false;
@@ -335,7 +336,13 @@ async function openCatalogEntry(entry) {
  * @returns {StoredState | undefined}
  */
 function loadStoredState() {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
+    let storedValue;
+    try {
+        storedValue = window.localStorage.getItem(STORAGE_KEY);
+    } catch {
+        return undefined;
+    }
+
     if (!storedValue) {
         return undefined;
     }
@@ -362,14 +369,20 @@ function loadStoredState() {
  * @param {string} specText
  */
 function storeState(specText) {
-    window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-            specText,
-            inheritedBaseUrl,
-            sourceExampleId,
-        })
-    );
+    let unavailable = false;
+    try {
+        window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ specText, inheritedBaseUrl, sourceExampleId })
+        );
+    } catch {
+        unavailable = true;
+    }
+
+    if (autosaveUnavailable !== unavailable) {
+        autosaveUnavailable = unavailable;
+        renderLayout();
+    }
 }
 
 /**
@@ -657,6 +670,13 @@ function handleEditorChange() {
 
 const editorPaneTemplate = () => html`
     <section id="editor-pane" slot="editor">
+        <p
+            class="editor-notice"
+            role="status"
+            ?data-visible=${autosaveUnavailable}
+        >
+            ${autosaveUnavailable ? "Local autosave is unavailable. Your changes may be lost when you leave this page." : ""}
+        </p>
         ${documentationTemplate()}
         <code-editor
             ${ref(editorRef)}
