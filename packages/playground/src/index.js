@@ -798,10 +798,11 @@ const layoutTemplate = () => html`
         >
             <div
                 id="genome-spy-container"
+                data-pane-label="Visualization"
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            <section id="workspace-pane" slot="2">
+            <section id="workspace-pane" data-pane-label="Workspace" slot="2">
                 ${workspaceTemplate()}
                 <section
                     id="inspector-pane"
