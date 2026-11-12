@@ -285,14 +285,15 @@ export default class View {
             );
         }
 
-        for (const { transform, property, param } of getOutputDeclarations(
+        for (const { transform, property, target } of getOutputDeclarations(
             spec.transform ?? []
         )) {
+            if (transform.type === "publish") continue;
             try {
-                if (typeof param === "string") {
-                    this.paramRuntime.registerOutput(param);
+                if (typeof target === "string") {
+                    this.paramRuntime.registerOutput(target);
                 }
-                const handle = this.paramRuntime.resolveOutput(param);
+                const handle = this.paramRuntime.resolveOutput(target);
                 if (handle.producerView)
                     throw new Error("Duplicate transform output producer.");
                 handle.producerView = this;
@@ -1200,7 +1201,6 @@ export default class View {
 
         if (handle?.collector) {
             this.context.dataFlow.pruneBranch(handle.collector);
-            this.context.dataFlow.removeCollector(handle.collector);
         }
 
         if (

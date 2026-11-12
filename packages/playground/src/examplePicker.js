@@ -1,6 +1,8 @@
 import { LitElement, css, html, nothing } from "lit";
 import { playgroundComponentStyles } from "./componentStyles.js";
 
+const supportsLightDismiss = "closedBy" in HTMLDialogElement.prototype;
+
 const groupDescriptions = new Map([
     ["Docs", "Examples included in the documentation."],
     ["Core", "Non-curated examples, tests, and experiments."],
@@ -33,36 +35,40 @@ export default class ExamplePicker extends LitElement {
         search: { state: true },
     };
 
+    /** @type {number | undefined} */
+    #backdropPointerId;
+
     static styles = [
         playgroundComponentStyles,
         css`
-            :host {
+            .panel {
                 position: fixed;
                 inset: 0;
-                z-index: 10;
-                display: none;
-                background: var(--playground-backdrop);
-            }
-
-            :host([open]) {
-                display: block;
-            }
-
-            .backdrop {
-                display: flex;
-                justify-content: flex-end;
-                height: 100%;
-            }
-
-            .panel {
+                inset-inline-start: auto;
                 width: min(68rem, 100%);
                 height: 100%;
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
+                max-width: none;
+                max-height: none;
+                margin: 0;
                 padding: 20px;
+                border: 0;
+                overflow: hidden;
+                overscroll-behavior: contain;
+                color: inherit;
                 background: var(--playground-panel);
                 box-shadow: var(--playground-shadow);
+
+                &[open] {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                &::backdrop {
+                    background: var(--playground-backdrop, rgb(17 24 39 / 35%));
+                    overflow: hidden;
+                    overscroll-behavior: contain;
+                }
             }
 
             .header {
@@ -196,77 +202,91 @@ export default class ExamplePicker extends LitElement {
     /**
      * @param {import("lit").PropertyValues<this>} changedProperties
      */
-    updated(changedProperties) {
+    willUpdate(changedProperties) {
         if (changedProperties.has("open") && this.open) {
             this.search = "";
-            queueMicrotask(() =>
-                /** @type {HTMLInputElement | null} */ (
-                    this.renderRoot.querySelector(".search")
-                )?.focus()
+        }
+    }
+
+    /**
+     * @param {import("lit").PropertyValues<this>} changedProperties
+     */
+    updated(changedProperties) {
+        if (changedProperties.has("open")) {
+            const dialog = /** @type {HTMLDialogElement} */ (
+                this.renderRoot.querySelector("dialog")
             );
+            if (this.open) {
+                dialog.showModal();
+            } else if (dialog.open) {
+                dialog.close();
+            }
         }
     }
 
     render() {
-        if (!this.open) {
-            return nothing;
-        }
+        return html`
+            <dialog
+                class="panel"
+                aria-labelledby="example-picker-title"
+                closedby="any"
+                @close=${this.#handleClose}
+                @pointerdown=${supportsLightDismiss ? nothing : this.#startBackdropPress}
+                @pointerup=${supportsLightDismiss ? nothing : this.#endBackdropPress}
+            >
+                ${this.open ? this.#renderContents() : nothing}
+            </dialog>
+        `;
+    }
 
+    #renderContents() {
         const groups = this.#getGroups();
         let entryIndex = 0;
 
         return html`
-            <div class="backdrop" @click=${this.#close}>
-                <aside class="panel" @click=${this.#stopPropagation}>
-                    <div class="header">
-                        <div>
-                            <h2>Examples</h2>
-                            <p>
-                                Explore examples from the documentation, Core,
-                                and App.
-                            </p>
-                        </div>
-                        <button
-                            class="button close-button"
-                            @click=${this.#close}
-                        >
-                            Close
-                        </button>
-                    </div>
-                    <input
-                        class="field search"
-                        type="search"
-                        placeholder="Search examples"
-                        .value=${this.search}
-                        @input=${this.#handleSearch}
-                    />
-                    <div class="content">
-                        ${
-                            this.loading
-                                ? html`<p class="status muted">
-                                      Loading example catalog...
-                                  </p>`
-                                : this.error
-                                  ? html`<p class="status error">
-                                        ${this.error}
-                                    </p>`
-                                  : groups.length === 0
-                                    ? html`<p class="status muted">
-                                          No examples matched the current
-                                          search.
-                                      </p>`
-                                    : groups.map(([label, entries]) => {
-                                          const startIndex = entryIndex;
-                                          entryIndex += entries.length;
-                                          return this.#renderGroup(
-                                              label,
-                                              entries,
-                                              startIndex
-                                          );
-                                      })
-                        }
-                    </div>
-                </aside>
+            <div class="header">
+                <div>
+                    <h2 id="example-picker-title">Examples</h2>
+                    <p>
+                        Explore examples from the documentation, Core, and App.
+                    </p>
+                </div>
+                <form method="dialog">
+                    <button class="button close-button">Close</button>
+                </form>
+            </div>
+            <input
+                class="field search"
+                type="search"
+                aria-label="Search examples"
+                placeholder="Search examples"
+                autofocus
+                .value=${this.search}
+                @input=${this.#handleSearch}
+                @keydown=${this.#handleSearchKeydown}
+            />
+            <div class="content">
+                ${
+                    this.loading
+                        ? html`<p class="status muted">
+                              Loading example catalog...
+                          </p>`
+                        : this.error
+                          ? html`<p class="status error">${this.error}</p>`
+                          : groups.length === 0
+                            ? html`<p class="status muted">
+                                  No examples matched the current search.
+                              </p>`
+                            : groups.map(([label, entries]) => {
+                                  const startIndex = entryIndex;
+                                  entryIndex += entries.length;
+                                  return this.#renderGroup(
+                                      label,
+                                      entries,
+                                      startIndex
+                                  );
+                              })
+                }
             </div>
         `;
     }
@@ -330,10 +350,34 @@ export default class ExamplePicker extends LitElement {
         `;
     }
 
-    #close() {
-        this.dispatchEvent(
-            new CustomEvent("close", { bubbles: true, composed: true })
-        );
+    /** @param {Event} event */
+    #handleClose(event) {
+        const dialog = /** @type {HTMLDialogElement} */ (event.currentTarget);
+        if (this.open && !dialog.open) {
+            this.dispatchEvent(
+                new CustomEvent("close", { bubbles: true, composed: true })
+            );
+        }
+    }
+
+    /** @param {PointerEvent} event */
+    #startBackdropPress(event) {
+        if (event.isPrimary) {
+            this.#backdropPointerId =
+                event.button === 0 && isOutsideDialog(event)
+                    ? event.pointerId
+                    : undefined;
+        }
+    }
+
+    /** @param {PointerEvent} event */
+    #endBackdropPress(event) {
+        if (event.pointerId === this.#backdropPointerId) {
+            this.#backdropPointerId = undefined;
+            if (isOutsideDialog(event)) {
+                /** @type {HTMLDialogElement} */ (event.currentTarget).close();
+            }
+        }
     }
 
     /**
@@ -357,6 +401,16 @@ export default class ExamplePicker extends LitElement {
         this.search = target.value;
     }
 
+    /** @param {KeyboardEvent} event */
+    #handleSearchKeydown(event) {
+        const search = /** @type {HTMLInputElement} */ (event.currentTarget);
+        if (event.key === "Escape" && !event.isComposing && search.value) {
+            // A populated search field can consume Escape to clear its value.
+            event.preventDefault();
+            search.closest("dialog").close();
+        }
+    }
+
     /**
      * @param {string} entryId
      */
@@ -367,13 +421,6 @@ export default class ExamplePicker extends LitElement {
 
         this.loadedPreviewIds.add(entryId);
         this.requestUpdate();
-    }
-
-    /**
-     * @param {Event} event
-     */
-    #stopPropagation(event) {
-        event.stopPropagation();
     }
 
     #getGroups() {
@@ -404,6 +451,18 @@ export default class ExamplePicker extends LitElement {
 
         return Array.from(groupedEntries.entries());
     }
+}
+
+/** @param {PointerEvent} event */
+function isOutsideDialog(event) {
+    const dialog = /** @type {HTMLDialogElement} */ (event.currentTarget);
+    const { left, top, right, bottom } = dialog.getBoundingClientRect();
+    return (
+        event.clientX < left ||
+        event.clientX > right ||
+        event.clientY < top ||
+        event.clientY > bottom
+    );
 }
 
 customElements.define("gs-example-picker", ExamplePicker);

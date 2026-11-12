@@ -259,14 +259,9 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
         if (viewFilter && !viewFilter(view)) {
             continue;
         }
-        // Walk up to the nearest view that owns a data source.
-        let current = view;
-        while (current && !current.flowHandle?.dataSource) {
-            current = current.dataParent;
-        }
-        if (current?.flowHandle?.dataSource) {
-            dataSources.add(current.flowHandle.dataSource);
-        }
+        // A derived primary input may attach to a different flow than its data parent.
+        const source = findAncestorDataSource(view.flowHandle?.node);
+        if (source) dataSources.add(source);
         addAuxiliaryDataSources(view, dataSources);
         addTerminalDataSources(view, dataSources);
     }

@@ -1,7 +1,7 @@
 /**
  * @typedef {object} TouchGestureEvent
  * @prop {"touchgesture"} type
- * @prop {"move" | "end"} phase
+ * @prop {"move" | "end" | "cancel"} phase
  * @prop {1 | 2} pointerCount
  * @prop {number} xDelta
  * @prop {number} yDelta
@@ -52,27 +52,32 @@ export function normalizeWheelScrollDelta(event, viewportHeight) {
 }
 
 /**
- * @param {unknown} eventLike
- * @returns {eventLike is TouchGestureEvent}
+ * @param {InteractionUiEvent} event
+ * @returns {event is TouchGestureEvent}
  */
-export function isTouchGestureEvent(eventLike) {
-    if (!eventLike || typeof eventLike !== "object") {
-        return false;
-    }
+export function isTouchGestureEvent(event) {
+    return event.type === "touchgesture";
+}
 
-    const candidate =
-        /** @type {{type?: unknown, phase?: unknown, pointerCount?: unknown, xDelta?: unknown, yDelta?: unknown, zDelta?: unknown}} */ (
-            eventLike
-        );
+const mouseEventNames = new Map([
+    ["pointerdown", "mousedown"],
+    ["pointerup", "mouseup"],
+    ["pointermove", "mousemove"],
+    ["pointerenter", "mouseenter"],
+    ["pointerleave", "mouseleave"],
+    ["pointerout", "mouseout"],
+]);
 
-    return (
-        candidate.type === "touchgesture" &&
-        (candidate.phase === "move" || candidate.phase === "end") &&
-        (candidate.pointerCount === 1 || candidate.pointerCount === 2) &&
-        Number.isFinite(candidate.xDelta) &&
-        Number.isFinite(candidate.yDelta) &&
-        Number.isFinite(candidate.zDelta)
-    );
+export const aliasedPointerEventTypes = Object.freeze([
+    ...mouseEventNames.keys(),
+]);
+
+/**
+ * Canvas pointer events keep the event names used by specs and subscriptions.
+ * @param {string} type
+ */
+export function getInteractionEventType(type) {
+    return mouseEventNames.get(type) ?? type;
 }
 
 /**
@@ -149,7 +154,9 @@ export function createPrimitiveEventProxy(target) {
                     `Access to non-primitive property "${String(prop)}" is not allowed.`
                 );
             }
-            return value;
+            return prop === "type" && typeof value === "string"
+                ? getInteractionEventType(value)
+                : value;
         },
 
         getPrototypeOf() {

@@ -11,6 +11,7 @@ import {
 } from "./defaults/markDefaults.js";
 import {
     AXIS_DEFAULTS,
+    AXIS_STYLE_DEFAULTS,
     AXIS_X_DEFAULTS,
     AXIS_Y_DEFAULTS,
     LOCUS_AXIS_DEFAULTS,
@@ -53,6 +54,7 @@ export const INTERNAL_DEFAULT_CONFIG = {
     title: TITLE_DEFAULTS,
     style: {
         ...TITLE_STYLE_DEFAULTS,
+        ...AXIS_STYLE_DEFAULTS,
         ...LEGEND_STYLE_DEFAULTS,
         ...ARROW_STYLE_DEFAULTS,
         "selection-brush": {

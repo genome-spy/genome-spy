@@ -59,6 +59,16 @@ const DEFAULT_GRADIENT_SAMPLE_COUNT = 256;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
 const MIN_GRADIENT_LEGEND_LENGTH = 40;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
+const TITLE_ALIGN_BY_ANCHOR = /** @type {const} */ ({
+    start: "left",
+    middle: "center",
+    end: "right",
+});
+const TITLE_BASELINE_BY_ANCHOR = /** @type {const} */ ({
+    start: "top",
+    middle: "middle",
+    end: "bottom",
+});
 /** @type {import("../spec/view.js").ViewBackground} */
 const LEGEND_VIEW_BACKGROUND = {
     fillOpacity: 0,
@@ -112,6 +122,8 @@ function createLegendTitleSpec(legend, context) {
     const sideTitle = isSideTitle(legend);
     const titleWidth = Math.ceil(getTitleWidth(legend, context));
     const sideTitleWidth = titleWidth + titlePadding;
+    const anchor = legend.titleAnchor ?? (sideTitle ? "middle" : "start");
+    const anchorFactor = getLegendAnchorFactor(anchor);
 
     return {
         name: "title",
@@ -135,13 +147,16 @@ function createLegendTitleSpec(legend, context) {
         mark: {
             type: "text",
             clip: false,
-            x:
-                getTitleOrient(legend) == "right" && sideTitleWidth > 0
+            x: sideTitle
+                ? getTitleOrient(legend) == "right" && sideTitleWidth > 0
                     ? titlePadding / sideTitleWidth
-                    : 0,
-            y: 0.5,
-            align: "left",
-            baseline: "middle",
+                    : 0
+                : anchorFactor,
+            y: sideTitle ? 1 - anchorFactor : 0.5,
+            align:
+                legend.titleAlign ??
+                (sideTitle ? "left" : TITLE_ALIGN_BY_ANCHOR[anchor]),
+            baseline: sideTitle ? TITLE_BASELINE_BY_ANCHOR[anchor] : "middle",
             color: legend.titleColor,
             font: legend.titleFont,
             fontStyle: legend.titleFontStyle,

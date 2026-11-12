@@ -319,10 +319,7 @@ export default class GenomeSpy {
             };
         };
         updatePixelRatio();
-
-        if (remove) {
-            this.#destructionCallbacks.push(remove);
-        }
+        this.#destructionCallbacks.push(() => remove());
     }
 
     async #prepareContainer() {

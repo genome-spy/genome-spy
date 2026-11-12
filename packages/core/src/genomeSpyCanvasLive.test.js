@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import {
+    createPointerEvent,
+    installPointerCapture,
+} from "../testFixtures/pointerCanvas.js";
 
 vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
 // Real scoped CSS resolution is covered by testDefaultThemeStyles.mjs.
@@ -510,6 +514,9 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     if (!canvas) {
         throw new Error("Canvas surface was not created.");
     }
+    installPointerCapture(canvas);
+    vi.spyOn(canvas, "clientWidth", "get").mockReturnValue(200);
+    vi.spyOn(canvas, "clientHeight", "get").mockReturnValue(100);
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
         /** @type {DOMRect} */ (
             /** @type {unknown} */ ({
@@ -545,7 +552,7 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     const wheelDomain = xScale.getDomain().slice();
     const wheelPaints = contexts[0].fillRect.mock.calls.length;
     canvas.dispatchEvent(
-        new MouseEvent("mousedown", {
+        createPointerEvent("pointerdown", {
             button: 0,
             buttons: 1,
             clientX: 100,
@@ -553,17 +560,19 @@ test("launches, updates expressions, and repaints interactions without a GPU con
             bubbles: true,
         })
     );
-    document.dispatchEvent(
-        new MouseEvent("mousemove", {
+    canvas.dispatchEvent(
+        createPointerEvent("pointermove", {
+            button: -1,
             buttons: 1,
             clientX: 120,
             clientY: 50,
             bubbles: true,
         })
     );
-    document.dispatchEvent(
-        new MouseEvent("mouseup", {
+    canvas.dispatchEvent(
+        createPointerEvent("pointerup", {
             button: 0,
+            buttons: 0,
             clientX: 120,
             clientY: 50,
             bubbles: true,
@@ -637,6 +646,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
     if (!canvas) {
         throw new Error("Canvas surface was not created.");
     }
+    installPointerCapture(canvas);
+    vi.spyOn(canvas, "clientWidth", "get").mockReturnValue(80);
+    vi.spyOn(canvas, "clientHeight", "get").mockReturnValue(40);
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
         /** @type {DOMRect} */ (
             /** @type {unknown} */ ({
@@ -651,7 +663,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
     genomeSpy.addEventListener("click", click);
 
     canvas.dispatchEvent(
-        new MouseEvent("mousemove", {
+        createPointerEvent("pointermove", {
+            button: -1,
+            buttons: 0,
             clientX: 20,
             clientY: 30,
             bubbles: true,
@@ -660,7 +674,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
     flushAnimationFrames(2);
     expect(() => {
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", {
+            createPointerEvent("pointerdown", {
                 button: 0,
                 buttons: 1,
                 clientX: 20,
@@ -669,8 +683,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
             })
         );
         canvas.dispatchEvent(
-            new MouseEvent("mouseup", {
+            createPointerEvent("pointerup", {
                 button: 0,
+                buttons: 0,
                 clientX: 20,
                 clientY: 30,
                 bubbles: true,

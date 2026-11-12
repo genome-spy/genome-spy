@@ -1,4 +1,5 @@
 import { describe, expect, onTestFinished, test, vi } from "vitest";
+import PointerCanvas from "../../testFixtures/pointerCanvas.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import Rectangle from "../view/layout/rectangle.js";
 import scaleIndex from "../genome/scaleIndex.js";
@@ -48,8 +49,7 @@ function createController(ruler, scaleResolutions, runtime) {
 
     /** @type {Map<string, any>} */
     const listeners = new Map();
-    /** @type {Map<string, any>} */
-    const documentListeners = new Map();
+    const canvas = new PointerCanvas();
     const setValue = vi.spyOn(runtime, "setValue");
     const view = {
         spec: {},
@@ -70,8 +70,6 @@ function createController(ruler, scaleResolutions, runtime) {
         },
         paramRuntime: runtime,
     };
-    const previousDocument = globalThis.document;
-    installMockDocument(documentListeners);
     const gridChild = { view, getProjectionCoords: () => view.coords };
     const controller = new RulerMouseEventController(
         /** @type {any} */ (gridChild),
@@ -83,31 +81,7 @@ function createController(ruler, scaleResolutions, runtime) {
         scaleResolutions
     );
 
-    globalThis.document = previousDocument;
-
-    return { controller, listeners, documentListeners, setValue };
-}
-
-/**
- * @param {Map<string, any>} documentListeners
- */
-function installMockDocument(documentListeners) {
-    globalThis.document = /** @type {Document} */ ({
-        addEventListener(
-            /** @type {string} */ type,
-            /** @type {any} */ listener
-        ) {
-            documentListeners.set(type, listener);
-        },
-        removeEventListener(
-            /** @type {string} */ type,
-            /** @type {any} */ listener
-        ) {
-            if (documentListeners.get(type) === listener) {
-                documentListeners.delete(type);
-            }
-        },
-    });
+    return { controller, listeners, canvas, setValue };
 }
 
 /**
@@ -245,23 +219,24 @@ describe("RulerMouseEventController", () => {
         expect(listeners.has("mouseleave")).toBe(false);
     });
 
-    test("updates immediately on mousedown and tracks document mousemove", () => {
-        const { listeners, documentListeners, setValue } = createController(
+    test("updates immediately on mousedown and tracks captured pointer movement", () => {
+        const { listeners, canvas, setValue } = createController(
             { encodings: ["x"], on: "mousedown", snap: false },
             { x: createScaleResolution("linear") }
         );
         const stopPropagation = vi.fn();
-        installMockDocument(documentListeners);
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
-            mouseEvent: createMouseEvent({ button: 0, clientX: 150 }),
+            mouseEvent: canvas.event("pointerdown", {
+                button: 0,
+                clientX: 150,
+            }),
             proxiedMouseEvent: createMouseEvent(),
             stopPropagation,
         });
-        documentListeners.get("mousemove")(createMouseEvent({ clientX: 170 }));
-        documentListeners.get("mouseup")(createMouseEvent({ clientX: 170 }));
-        globalThis.document = undefined;
+        canvas.dispatch("pointermove", { clientX: 170 });
+        canvas.dispatch("pointerup", { clientX: 170 });
 
         expect(stopPropagation).toHaveBeenCalledOnce();
         expect(setValue).toHaveBeenNthCalledWith(1, "cursor", {
@@ -276,12 +251,11 @@ describe("RulerMouseEventController", () => {
                 x: 35,
             },
         });
-        expect(documentListeners.has("mousemove")).toBe(false);
-        expect(documentListeners.has("mouseup")).toBe(false);
+        expect(canvas.hasPointerCapture(1)).toBe(false);
     });
 
     test("applies mousedown filters before starting drag", () => {
-        const { listeners, documentListeners, setValue } = createController(
+        const { listeners, canvas, setValue } = createController(
             {
                 encodings: ["x"],
                 on: "mousedown[event.shiftKey]",
@@ -289,40 +263,42 @@ describe("RulerMouseEventController", () => {
             },
             { x: createScaleResolution("linear") }
         );
-        installMockDocument(documentListeners);
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
-            mouseEvent: createMouseEvent({ button: 0, shiftKey: false }),
+            mouseEvent: canvas.event("pointerdown", {
+                button: 0,
+                shiftKey: false,
+            }),
             proxiedMouseEvent: createMouseEvent({ shiftKey: false }),
             stopPropagation: () => {},
         });
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
-            mouseEvent: createMouseEvent({ button: 0, shiftKey: true }),
+            mouseEvent: canvas.event("pointerdown", {
+                button: 0,
+                shiftKey: true,
+            }),
             proxiedMouseEvent: createMouseEvent({ shiftKey: true }),
             stopPropagation: () => {},
         });
-        globalThis.document = undefined;
 
         expect(setValue).toHaveBeenCalledOnce();
     });
 
     test("clears mousedown rulers on mouseup when configured", () => {
-        const { listeners, documentListeners, setValue } = createController(
+        const { listeners, canvas, setValue } = createController(
             { encodings: ["x"], on: "mousedown", clear: "mouseup" },
             { x: createScaleResolution("linear") }
         );
-        installMockDocument(documentListeners);
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
-            mouseEvent: createMouseEvent({ button: 0 }),
+            mouseEvent: canvas.event("pointerdown", { button: 0 }),
             proxiedMouseEvent: createMouseEvent(),
             stopPropagation: () => {},
         });
-        documentListeners.get("mouseup")(createMouseEvent());
-        globalThis.document = undefined;
+        canvas.dispatch("pointerup");
 
         expect(setValue).toHaveBeenLastCalledWith("cursor", {
             type: "ruler",
@@ -333,26 +309,23 @@ describe("RulerMouseEventController", () => {
     });
 
     test("disposal cancels a drag without applying mouseup clearing", () => {
-        const { controller, listeners, documentListeners, setValue } =
-            createController(
-                { encodings: ["x"], on: "mousedown", clear: "mouseup" },
-                { x: createScaleResolution("linear") }
-            );
-        installMockDocument(documentListeners);
+        const { controller, listeners, canvas, setValue } = createController(
+            { encodings: ["x"], on: "mousedown", clear: "mouseup" },
+            { x: createScaleResolution("linear") }
+        );
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
-            mouseEvent: createMouseEvent({ button: 0 }),
+            mouseEvent: canvas.event("pointerdown", { button: 0 }),
             proxiedMouseEvent: createMouseEvent(),
             stopPropagation: () => {},
         });
         setValue.mockClear();
 
         controller.dispose();
-        globalThis.document = undefined;
 
         expect(controller.dragging).toBe(false);
-        expect(documentListeners.size).toBe(0);
+        expect(canvas.hasPointerCapture(1)).toBe(false);
         expect(setValue).not.toHaveBeenCalled();
     });
 });
@@ -361,18 +334,16 @@ test("disabling ignores active drag updates and releases its subscription on dis
     const runtime = new ViewParamRuntime();
     runtime.registerParam({ name: "off", value: false });
     runtime.registerParam({ name: "cursor", ruler: {} });
-    const { controller, listeners, documentListeners, setValue } =
-        createController(
-            { on: "mousedown", clear: "mouseup", disabled: { expr: "off" } },
-            { x: createScaleResolution("linear") },
-            runtime
-        );
-    const previousDocument = globalThis.document;
-    installMockDocument(documentListeners);
+    const { controller, listeners, canvas, setValue } = createController(
+        { on: "mousedown", clear: "mouseup", disabled: { expr: "off" } },
+        { x: createScaleResolution("linear") },
+        runtime
+    );
+
     try {
         const event = {
             point: { x: 50, y: 25 },
-            mouseEvent: createMouseEvent(),
+            mouseEvent: canvas.event("pointerdown"),
             proxiedMouseEvent: createMouseEvent(),
             stopPropagation: vi.fn(),
         };
@@ -382,11 +353,11 @@ test("disabling ignores active drag updates and releases its subscription on dis
         setValue.mockClear();
         event.stopPropagation.mockClear();
         listeners.get("mousedown")(event);
-        documentListeners.get("mousemove")(createMouseEvent({ clientX: 80 }));
-        documentListeners.get("mouseup")(createMouseEvent());
+        canvas.dispatch("pointermove", { clientX: 80 });
+        canvas.dispatch("pointerup");
         expect(setValue).not.toHaveBeenCalled();
         expect(event.stopPropagation).not.toHaveBeenCalled();
-        expect(documentListeners.size).toBe(0);
+        expect(canvas.hasPointerCapture(1)).toBe(false);
         controller.dispose();
         runtime.setValue("off", false);
         runtime.setValue("cursor", { type: "ruler", values: { x: 12 } });
@@ -395,7 +366,6 @@ test("disabling ignores active drag updates and releases its subscription on dis
         expect(runtime.findValue("cursor").values.x).toBe(12);
     } finally {
         controller.dispose();
-        globalThis.document = previousDocument;
     }
 });
 

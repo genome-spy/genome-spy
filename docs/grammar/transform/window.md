@@ -41,6 +41,9 @@ The `frame` contains inclusive offsets relative to the current sorted row.
 current rows, and `[null, 0]` contains every preceding row and the current row.
 `null` makes a bound unbounded. `[null, 0]` is the default.
 
+`[null, null]` includes the whole group. For whole-group aggregates without
+sorting, use the [`joinaggregate`](joinaggregate.md) shorthand.
+
 With a sort order, a frame boundary includes every tied row unless `ignorePeers`
 is true. This makes an aggregate such as a running sum agree for tied sort
 values. `ignorePeers: true` instead applies exact row offsets.
