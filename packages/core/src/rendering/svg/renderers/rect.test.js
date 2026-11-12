@@ -296,6 +296,7 @@ describe("SVG rectangle renderer", () => {
 
     test("preserves minimum rectangle size and opacity compensation", async () => {
         const { view } = await createHeadlessEngine({
+            opacity: 0.5,
             data: { values: [{}] },
             mark: {
                 type: "rect",
@@ -320,11 +321,12 @@ describe("SVG rectangle renderer", () => {
         });
         const rect = svg.querySelector('[data-mark-type="rect"] rect');
 
+        expect(rect?.parentElement.getAttribute("fill-opacity")).toBe("1");
         expect(rect?.getAttribute("x")).toBe("48");
         expect(rect?.getAttribute("y")).toBe("47");
         expect(rect?.getAttribute("width")).toBe("5");
         expect(rect?.getAttribute("height")).toBe("4");
-        expect(rect?.getAttribute("opacity")).toBe("0.5");
+        expect(rect?.getAttribute("opacity")).toBe("0.25");
     });
 
     test("exports rectangle shadows and hatches", async () => {
@@ -465,6 +467,7 @@ describe("SVG rectangle renderer", () => {
 
     test("deduplicates screen-aligned hatch patterns", async () => {
         const { view } = await createHeadlessEngine({
+            opacity: 0.5,
             data: {
                 values: [
                     { x: 0.1, x2: 0.4 },
@@ -519,6 +522,13 @@ describe("SVG rectangle renderer", () => {
         expect(
             rects.every((rect) => rect.getAttribute("fill-opacity") == "1")
         ).toBe(true);
+        expect(rects.map((rect) => rect.getAttribute("opacity"))).toEqual([
+            "0.5",
+            "0.5",
+        ]);
+        expect(rects[0].parentElement.getAttribute("stroke-opacity")).toBe(
+            "0.75"
+        );
         expect(warnings).toEqual([]);
     });
 

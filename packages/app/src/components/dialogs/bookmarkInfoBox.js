@@ -108,6 +108,10 @@ const infoBoxStyles = css`
         opacity: 1;
         transition: opacity 0.2s ease-in-out;
 
+        @media (prefers-reduced-motion: reduce) {
+            transition-duration: 0.1s;
+        }
+
         @starting-style {
             opacity: 0;
         }
@@ -250,7 +254,7 @@ export default class BookmarkInfoBox extends BaseDialog {
     }
 
     renderHeader() {
-        return html`${this.dialogTitle}
+        return html`${super.renderHeader()}
             <button
                 title="Collapse"
                 class="btn collapse"

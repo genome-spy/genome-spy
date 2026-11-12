@@ -1,6 +1,7 @@
 import LoadingStatusRegistry from "../genomeSpy/loadingStatusRegistry.js";
 import DataSource from "./sources/dataSource.js";
 import NamedSource from "./sources/namedSource.js";
+import Collector from "./collector.js";
 
 /**
  * DataFlow holds data sources and collectors for optimization and initialization.
@@ -88,13 +89,17 @@ export default class DataFlow {
             return;
         }
         let parent = endpoint.parent;
-        if (parent) {
-            parent.removeChild(endpoint);
+        if (endpoint instanceof Collector) {
+            this.removeCollector(endpoint);
+        } else {
+            parent?.removeChild(endpoint);
+            endpoint.disposeSubtree();
         }
 
-        endpoint.disposeSubtree();
-
         while (parent && parent.children.length === 0) {
+            // Registered collectors belong to their view, even without readers.
+            if (parent instanceof Collector && this.#collectors.has(parent))
+                break;
             const current = parent;
             parent = current.parent;
             if (parent) {

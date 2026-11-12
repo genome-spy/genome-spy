@@ -349,6 +349,9 @@ export type DefinedChannelScale = ChannelScale & {
     definition: ScaleDef;
 };
 
+/** Decode a u32 color series into normalized RGBA, with red in the least significant byte. */
+export const rgba8Unorm: Readonly<DefinedChannelScale>;
+
 export type ConfiguredScale<T extends string> = DefinedChannelScale & {
     type: T;
 };
@@ -767,6 +770,7 @@ export type ChannelConfigResolved =
 export type ChannelConfig = ChannelConfigInput;
 
 export type RectChannelName =
+    | "opacity"
     | "uniqueId"
     | "x"
     | "x2"
@@ -806,6 +810,7 @@ export type RectChannelName =
 export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
 
 export type PointChannelName =
+    | "opacity"
     | "xClampRange"
     | "yClampRange"
     | "uniqueId"
@@ -958,6 +963,7 @@ export type TextChannelName =
     | "baseline"
     | "fill"
     | "stroke"
+    | "fillOpacity"
     | "opacity"
     | "strokeOpacity"
     | "strokeWidth"

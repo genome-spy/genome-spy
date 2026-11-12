@@ -10,7 +10,7 @@
 import { makeLerpSmoother } from "../utils/animator.js";
 import RingBuffer from "../utils/ringBuffer.js";
 import { isTouchGestureEvent } from "../utils/interactionEvent.js";
-import { startDocumentDrag } from "../utils/documentDrag.js";
+import { startPointerDrag } from "../utils/pointerDrag.js";
 import { getScalePositionAdjustment } from "../scales/scalePosition.js";
 import Point from "./layout/point.js";
 
@@ -187,9 +187,7 @@ export function interactionToZoom(
             return handleZoom(zoomEvent);
         };
 
-        const onMousemove = /** @param {MouseEvent} moveEvent */ (
-            moveEvent
-        ) => {
+        const onMove = /** @param {PointerEvent} moveEvent */ (moveEvent) => {
             const point = Point.fromMouseEvent(moveEvent);
 
             if (lockAxis && !lockedAxis) {
@@ -219,8 +217,8 @@ export function interactionToZoom(
             prevPoint = point;
         };
 
-        return startDocumentDrag({
-            onMove: onMousemove,
+        return startPointerDrag(mouseEvent, {
+            onMove,
             hoverContext: event.target?.context,
             onRelease: () =>
                 startPanInertia(
@@ -232,16 +230,15 @@ export function interactionToZoom(
                     { minSampleCount: 5 }
                 ),
         });
-    } else if (event.type == "touchgesture") {
-        if (!isTouchGestureEvent(event.uiEvent)) {
-            return;
-        }
-
+    } else if (isTouchGestureEvent(event.uiEvent)) {
         const touchGesture = event.uiEvent;
         const { xDelta, yDelta, zDelta } = touchGesture;
 
-        if (touchGesture.phase === "end") {
-            if (touchGesture.pointerCount === 1) {
+        if (touchGesture.phase !== "move") {
+            if (
+                touchGesture.phase === "end" &&
+                touchGesture.pointerCount === 1
+            ) {
                 startPanInertia(
                     interactionState,
                     interactionState.touchPanEventBuffer,

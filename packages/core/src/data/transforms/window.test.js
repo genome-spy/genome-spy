@@ -4,6 +4,7 @@ import { processData } from "../flowTestUtils.js";
 import { optimizeDataFlow } from "../flowOptimizer.js";
 import { buildDataFlow } from "../../view/flowBuilder.js";
 import { createTestViewContext } from "../../view/testUtils.js";
+import createTransform from "./transformFactory.js";
 import WindowTransform from "./window.js";
 
 /**
@@ -286,6 +287,49 @@ describe("Window transform", () => {
         });
     });
 
+    test("uses sorted calculation order for whole-partition aggregates", () => {
+        // Floating-point addition makes the input and calculation orders distinguishable.
+        expect(
+            transform(
+                {
+                    type: "window",
+                    sort: { field: "position" },
+                    frame: [null, null],
+                    ops: ["sum"],
+                    fields: ["value"],
+                },
+                [
+                    { position: 0, value: 1e16 },
+                    { position: 2, value: 1 },
+                    { position: 1, value: -1e16 },
+                ]
+            )
+        ).toEqual([
+            { position: 0, value: 1e16, sum_value: 1 },
+            { position: 2, value: 1, sum_value: 1 },
+            { position: 1, value: -1e16, sum_value: 1 },
+        ]);
+    });
+
+    test("keeps row-specific ranks alongside whole-partition aggregates", () => {
+        expect(
+            transform(
+                {
+                    type: "window",
+                    sort: { field: "value" },
+                    frame: [null, null],
+                    ops: ["sum", "rank"],
+                    fields: ["value", null],
+                },
+                [{ value: 2 }, { value: 1 }, { value: 1 }]
+            )
+        ).toEqual([
+            { value: 2, sum_value: 4, rank: 3 },
+            { value: 1, sum_value: 4, rank: 1 },
+            { value: 1, sum_value: 4, rank: 1 },
+        ]);
+    });
+
     test("ignores missing and NaN values in field aggregates", () => {
         expect(
             transform(
@@ -473,5 +517,42 @@ describe("Window transform", () => {
                 })
             )
         ).toEqual([{ value: 1 }, { value: 2 }]);
+    });
+});
+
+describe("Joinaggregate transform", () => {
+    test("adds whole-group aggregates to each row in input order", () => {
+        /** @type {import("../../spec/transform.js").JoinAggregateParams} */
+        const params = {
+            type: "joinaggregate",
+            groupby: ["group"],
+            ops: ["count", "sum", "median"],
+            fields: [null, "value", "value"],
+            as: ["value", "groupSum", "groupMedian"],
+        };
+
+        expect(
+            processData(createTransform(params), [
+                { id: "a1", group: "A", value: 5 },
+                { id: "b1", group: "B", value: null },
+                { id: "a2", group: "A", value: 1 },
+            ])
+        ).toStrictEqual([
+            { id: "a1", group: "A", value: 2, groupSum: 6, groupMedian: 3 },
+            {
+                id: "b1",
+                group: "B",
+                value: 1,
+                groupSum: undefined,
+                groupMedian: undefined,
+            },
+            { id: "a2", group: "A", value: 2, groupSum: 6, groupMedian: 3 },
+        ]);
+    });
+
+    test("rejects window-only operations", () => {
+        const params = { type: "joinaggregate", ops: ["row_number"] };
+
+        expect(() => createTransform(params)).toThrow(/row_number/);
     });
 });

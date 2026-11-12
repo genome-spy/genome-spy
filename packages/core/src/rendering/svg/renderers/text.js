@@ -43,7 +43,7 @@ export function renderTextSvg(baseMark, options) {
             mark.encoders
         );
     const encodeStyles = createSvgAttributeEncoder(group, {
-        fill: { encoder: encoders.color, transform: toPaintString },
+        fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
             encoder: encoders.opacity,
             transform: (value) => +value * viewOpacity,

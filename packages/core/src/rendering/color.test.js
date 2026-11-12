@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { cssColorToRgba } from "./color.js";
+import { cssColorToRgba, packCssColor } from "./color.js";
 import { toGpuColor } from "./webgpu/webGpuColor.js";
 
 test.each([
@@ -17,4 +17,13 @@ test("preserves opaque and translucent color components", () => {
     expect(cssColorToRgba("rgba(255, 0, 0, 0.5)")).toEqual([1, 0, 0, 0.5]);
     expect(cssColorToRgba("#ff000080")).toEqual([1, 0, 0, 128 / 255]);
     expect(() => cssColorToRgba("invalid")).toThrow("Invalid color");
+});
+
+test("packs clamped straight RGBA into a single unsigned word", () => {
+    expect(packCssColor("rgba(-20, 300, 125, 0.5)")).toBe(0x807dff00);
+    expect(packCssColor("rebeccapurple")).toBe(0xff993366);
+    expect(packCssColor("transparent")).toBe(0);
+    expect(packCssColor(null)).toBe(0);
+    expect(packCssColor(undefined)).toBe(0);
+    expect(() => packCssColor("invalid")).toThrow("Invalid color");
 });

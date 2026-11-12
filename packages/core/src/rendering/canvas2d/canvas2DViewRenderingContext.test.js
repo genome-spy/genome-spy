@@ -1800,11 +1800,8 @@ describe("Canvas2DViewRenderingContext", () => {
             encoders.angle,
             { constant: false }
         );
-        const colorEncoder = Object.assign(
-            vi.fn(encoders.color),
-            encoders.color
-        );
-        encoders.color = colorEncoder;
+        const fillEncoder = Object.assign(vi.fn(encoders.fill), encoders.fill);
+        encoders.fill = fillEncoder;
         encoders.size = sizeEncoder;
         encoders.angle = angleEncoder;
 
@@ -1824,7 +1821,7 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(sizeEncoder).toHaveBeenCalledTimes(2);
         expect(angleEncoder).toHaveBeenCalledTimes(4);
         expect(second.calls.fonts[0]).toContain("18px");
-        expect(colorEncoder).toHaveBeenCalledTimes(2);
+        expect(fillEncoder).toHaveBeenCalledTimes(2);
         expect(first.calls.textColors).toEqual(["black", "black"]);
         expect(second.calls.textColors).toEqual(["white", "white"]);
     });

@@ -4,9 +4,173 @@ import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
+import { createEmbedParamNamespace } from "../../../paramRuntime/embedParamApi.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
 
 describe("SVG text renderer", () => {
+    test.each(/** @type {const} */ (["color", "fill"]))(
+        "preserves shared %s scales, legends and category focus",
+        async (channel) => {
+            const paint = {
+                field: "state",
+                type: /** @type {const} */ ("nominal"),
+                scale: { domain: ["A", "B"], range: ["red", "blue"] },
+            };
+            const { view } = await createHeadlessEngine({
+                data: {
+                    values: [
+                        { state: "A", x: 0.25 },
+                        { state: "B", x: 0.75 },
+                    ],
+                },
+                params: [
+                    {
+                        name: "focus",
+                        select: { type: "point", encodings: [channel] },
+                    },
+                ],
+                resolve: {
+                    scale: { [channel]: "shared" },
+                    legend: { [channel]: "shared" },
+                },
+                layer: [
+                    {
+                        name: "labels",
+                        mark: "text",
+                        encoding: {
+                            x: { field: "x", type: "quantitative", axis: null },
+                            y: { value: 0.5 },
+                            text: { field: "state" },
+                            [channel]: paint,
+                            opacity: {
+                                condition: {
+                                    test: { param: "focus", empty: false },
+                                    value: 1,
+                                },
+                                value: 0.2,
+                            },
+                        },
+                    },
+                    {
+                        name: "points",
+                        mark: "point",
+                        encoding: { [channel]: paint },
+                    },
+                ],
+            });
+            try {
+                const labels = view
+                    .getDescendants()
+                    .find((child) => child.name === "labels");
+                const points = view
+                    .getDescendants()
+                    .find((child) => child.name === "points");
+                expect(labels.getScaleResolution(channel)).toBe(
+                    points.getScaleResolution(channel)
+                );
+                expect(labels.getScaleResolution(channel).getDomain()).toEqual([
+                    "A",
+                    "B",
+                ]);
+                expect(labels.getLegendResolution(channel)).toBeDefined();
+                expect(labels.getLegendResolution(channel)).toBe(
+                    points.getLegendResolution(channel)
+                );
+                const focus =
+                    createEmbedParamNamespace(labels).getSelection("focus");
+                if (focus.type !== "point")
+                    throw new Error("Expected category selection");
+                focus.setValue([["A"]]);
+                const { svg } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 200,
+                    logicalHeight: 100,
+                });
+                const texts = svg.querySelector(
+                    '[data-name="labels"] [data-mark-type="text"]'
+                ).children;
+                expect(
+                    Array.from(texts, (text) => [
+                        text.getAttribute("fill"),
+                        text.getAttribute("fill-opacity"),
+                    ])
+                ).toEqual([
+                    ["red", "1"],
+                    ["blue", "0.2"],
+                ]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
+    test("explicit reactive fill overrides color without an unused color scale", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "paint", value: "red" }],
+            data: { values: [{ label: "A", unused: "category" }] },
+            mark: { type: "text", fill: { expr: "paint" }, opacity: 0.5 },
+            encoding: {
+                text: { field: "label" },
+                color: { field: "unused", type: "nominal" },
+            },
+        });
+        try {
+            expect(view.getScaleResolution("color")).toBeUndefined();
+            const group = () =>
+                createSvg({
+                    viewRoot: view,
+                    logicalWidth: 100,
+                    logicalHeight: 50,
+                }).svg.querySelector('[data-mark-type="text"]');
+            expect(group().getAttribute("fill")).toBe("red");
+            expect(group().getAttribute("fill-opacity")).toBe("0.5");
+            view.paramRuntime.setValue("paint", "green");
+            await view.paramRuntime.whenPropagated();
+            expect(group().getAttribute("fill")).toBe("green");
+            view.paramRuntime.setValue("paint", null);
+            await view.paramRuntime.whenPropagated();
+            expect(group().getAttribute("fill")).toBe("none");
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("keeps conditional legacy color paint after normalization", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "picked", select: "point" }],
+            data: { values: [{ id: "A" }, { id: "B" }] },
+            mark: "text",
+            encoding: {
+                key: { field: "id" },
+                text: { field: "id" },
+                color: {
+                    condition: { param: "picked", empty: false, value: "red" },
+                    value: "blue",
+                },
+            },
+        });
+        try {
+            const picked =
+                createEmbedParamNamespace(view).getSelection("picked");
+            if (picked.type !== "point")
+                throw new Error("Expected record selection");
+            picked.setValue([["A"]]);
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 50,
+            });
+            expect(
+                Array.from(
+                    svg.querySelector('[data-mark-type="text"]').children,
+                    (text) => text.getAttribute("fill")
+                )
+            ).toEqual(["red", "blue"]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("positions and squeezes text inside an encoded range", async () => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ label: "A fitted label" }] },

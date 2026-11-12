@@ -165,7 +165,7 @@ describe("logical selection predicates", () => {
             },
             UnitView
         );
-        const predicate = view.mark.encoders.color.branches[0].predicate;
+        const predicate = view.mark.encoders.fill.branches[0].predicate;
         const rows = view.getCollector().facetBatches.get(undefined);
 
         view.paramRuntime.setValue("brush", {

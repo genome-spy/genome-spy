@@ -130,6 +130,38 @@ test("collapses Files without replacing the editor or visualization", async ({
         .toBe(original);
 });
 
+test("keeps focus on a parameter control while example documentation loads", async ({
+    page,
+}) => {
+    const id = "core/techniques/input_element_binding";
+    const specUrl = `/examples/${id}.json`;
+    let releaseCatalog;
+    const catalogReady = new Promise((resolve) => {
+        releaseCatalog = resolve;
+    });
+    await page.route("**/example-catalog.json", async (route) => {
+        await catalogReady;
+        await route.fulfill({
+            json: [
+                {
+                    id,
+                    specUrl,
+                    documentation: [{ title: "Parameters", url: "/docs/" }],
+                },
+            ],
+        });
+    });
+
+    await page.goto(`/?spec=${specUrl}&renderer=canvas`);
+    const input = page.locator("#input-bindings-pane input").first();
+    await input.focus();
+    await expect(input).toBeFocused();
+    releaseCatalog();
+
+    await expect(page.getByRole("link", { name: "Parameters" })).toBeVisible();
+    await expect(input).toBeFocused();
+});
+
 test("keeps bindings active and bounded while Files and layout change", async ({
     page,
 }) => {

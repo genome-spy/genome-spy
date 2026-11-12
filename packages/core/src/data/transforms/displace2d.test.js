@@ -318,6 +318,10 @@ describe("Displace2DTransform", () => {
     test.each([40, 1000])(
         "keeps animation speed consistent across replay rates for %s-pixel labels",
         (size) => {
+            // Compare replay rates with the same solver budget, not machine load.
+            const now = vi.spyOn(performance, "now").mockReturnValue(0);
+            onTestFinished(() => now.mockRestore());
+
             const simulate = (/** @type {number} */ refreshRate) => {
                 const animator = new TestAnimator();
                 const transform = createDisplace2D(

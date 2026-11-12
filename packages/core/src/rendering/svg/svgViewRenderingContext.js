@@ -19,6 +19,7 @@ import { renderMarkSvg } from "./renderers/index.js";
 import { partitionOrderData } from "../immediate/order.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
+import { pointClipPath } from "./pointClipPath.js";
 import { createRectHatchPattern } from "./rectHatchPattern.js";
 import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
 
@@ -75,6 +76,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
+ * @prop {(shape: string) => string | undefined} getPointClipPathUrl
  * @prop {(cutoutPath: string) => string} getShadowClipPathUrl
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
@@ -117,6 +119,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Map<string, string>} */
     #shadowClipPaths = new Map();
+
+    /** @type {Map<string, string>} */
+    #pointClipPaths = new Map();
 
     /** @type {Map<string, string>} */
     #rectHatchPatterns = new Map();
@@ -451,6 +456,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                             padding,
                             inside
                         ),
+                    getPointClipPathUrl: (shape) =>
+                        this.getPointClipPathUrl(shape),
                     getShadowClipPathUrl: (cutoutPath) =>
                         this.#countingInstances
                             ? ""
@@ -768,6 +775,29 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             })
         );
         this.#defs.appendChild(mask);
+        return `url(#${id})`;
+    }
+
+    /**
+     * @param {string} shape
+     * @returns {string | undefined}
+     */
+    getPointClipPathUrl(shape) {
+        let id = this.#pointClipPaths.get(shape);
+        if (!id) {
+            const d = pointClipPath(shape);
+            if (d === undefined) {
+                return undefined;
+            }
+            id = "point-clip-" + this.#nextClipId++;
+            const clip = createSvgElement("clipPath", {
+                id,
+                clipPathUnits: "objectBoundingBox",
+            });
+            clip.appendChild(createSvgElement("path", { d }));
+            this.#defs.appendChild(clip);
+            this.#pointClipPaths.set(shape, id);
+        }
         return `url(#${id})`;
     }
 

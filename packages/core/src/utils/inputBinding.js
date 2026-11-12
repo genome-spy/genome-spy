@@ -1,7 +1,10 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { debounce } from "./debounce.js";
 import { tickStep } from "d3-array";
 import { isVariableParameter } from "../paramRuntime/paramUtils.js";
+
+const bindingIdPrefix = "gs-param-" + Math.random().toString(36).slice(2);
+let nextBindingId = 0;
 
 /**
  * @param {{
@@ -12,8 +15,6 @@ import { isVariableParameter } from "../paramRuntime/paramUtils.js";
  * }} mediator
  */
 export default function createBindingInputs(mediator) {
-    const random = Math.floor(Math.random() * 0xffffff).toString(16);
-
     /** @type {import("lit").TemplateResult[]} */
     const inputs = [];
 
@@ -44,7 +45,8 @@ export default function createBindingInputs(mediator) {
             ? debounce(setter, bind.debounce, false)
             : setter;
 
-        const id = `${random}-param-${name}`;
+        const id = `${bindingIdPrefix}-${nextBindingId++}`;
+        const descriptionId = bind.description ? id + "-description" : nothing;
 
         if (bind.input == "range") {
             inputs.push(
@@ -53,10 +55,12 @@ export default function createBindingInputs(mediator) {
                         <input
                             id=${id}
                             type="range"
+                            aria-describedby=${descriptionId}
                             min=${bind.min ?? 0}
                             max=${bind.max ?? 100}
-                            step=${bind.step ??
-                            tickStep(bind.min, bind.max, 100)}
+                            step=${
+                                bind.step ?? tickStep(bind.min, bind.max, 100)
+                            }
                             .value=${value}
                             @input=${(/** @type {any} */ e) => {
                                 debouncedSetter(e.target.valueAsNumber);
@@ -72,28 +76,36 @@ export default function createBindingInputs(mediator) {
                     <input
                         id=${id}
                         type="checkbox"
+                        aria-describedby=${descriptionId}
                         ?checked=${value}
                         @input=${(/** @type {any} */ e) =>
                             debouncedSetter(e.target.checked)}
                     />`
             );
         } else if (bind.input == "radio") {
+            const labelId = id + "-label";
             inputs.push(
-                html`<span class="label">${label}</span>
-                    <div class="radio-group">
-                        ${bind.options.map(
-                            (option, i) =>
-                                html`<label>
-                                    <input
-                                        type="radio"
-                                        name=${name}
-                                        value=${option}
-                                        .checked=${value == option}
-                                        @input=${(/** @type {any} */ e) =>
-                                            debouncedSetter(e.target.value)}
-                                    />${bind.labels?.[i] ?? option}</label
-                                >`
-                        )}
+                html`<span id=${labelId} class="label">${label}</span>
+                    <div
+                        class="radio-group"
+                        role="radiogroup"
+                        aria-labelledby=${labelId}
+                        aria-describedby=${descriptionId}
+                    >
+                        ${bind.options.map((option, i) => {
+                            const optionId = `${id}-option-${i}`;
+                            return html`<label for=${optionId}>
+                                <input
+                                    id=${optionId}
+                                    type="radio"
+                                    name=${id}
+                                    value=${option}
+                                    .checked=${value == option}
+                                    @input=${(/** @type {any} */ e) =>
+                                        debouncedSetter(e.target.value)}
+                                />${bind.labels?.[i] ?? option}</label
+                            >`;
+                        })}
                     </div>`
             );
         } else if (bind.input == "select") {
@@ -101,6 +113,7 @@ export default function createBindingInputs(mediator) {
                 html`<label for=${id}>${label}</label>
                     <select
                         id=${id}
+                        aria-describedby=${descriptionId}
                         @input=${(/** @type {any} */ e) =>
                             debouncedSetter(e.target.value)}
                     >
@@ -126,6 +139,7 @@ export default function createBindingInputs(mediator) {
                         <input
                             id=${id}
                             type=${bind.input}
+                            aria-describedby=${descriptionId}
                             placeholder=${bind.placeholder ?? ""}
                             autocomplete=${bind.autocomplete ?? "off"}
                             .value=${value}
@@ -147,7 +161,9 @@ export default function createBindingInputs(mediator) {
 
         if (bind.description) {
             inputs.push(
-                html`<div class="description">${bind.description}</div>`
+                html`<div id=${descriptionId} class="description">
+                    ${bind.description}
+                </div>`
             );
         }
     }
