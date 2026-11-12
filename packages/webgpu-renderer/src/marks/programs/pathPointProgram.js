@@ -15,7 +15,22 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
  * @property {Float32Array} entries
  */
 
-export const PATH_POINT_SHADER_BODY = /* wgsl */ `
+/** @param {boolean[]} [circleSlots] @returns {string} */
+function createPathPointShaderBody(circleSlots = []) {
+    const hasCircles = circleSlots.some(Boolean);
+    return /* wgsl */ `
+${
+    hasCircles
+        ? /* wgsl */ `
+fn isCircleShape(shape: u32) -> bool {
+    switch (shape) {
+        ${circleSlots.flatMap((circle, index) => (circle ? [`case ${index}u: { return true; }`] : [])).join("\n        ")}
+        default: { return false; }
+    }
+}
+`
+        : ""
+}
 ${POSITION_CLAMP_WGSL}
 fn placeClampedPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
 #if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
@@ -52,6 +67,14 @@ struct VSOut {
     @location(8) @interpolate(flat) strokeAlign: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
+${
+    hasCircles
+        ? /* wgsl */ `
+    @location(11) @interpolate(flat) isCircle: u32,
+    @location(12) local: vec2<f32>,
+`
+        : ""
+}
     @location(13) opacity: f32,
     @location(14) @interpolate(flat) atlasBounds: vec4<f32>,
 };
@@ -75,6 +98,14 @@ fn culledPoint() -> VSOut {
     out.strokeAlign = 0u;
     out.gradientStrength = 0.0;
     out.deviceRadius = 0.0;
+${
+    hasCircles
+        ? /* wgsl */ `
+    out.isCircle = 0u;
+    out.local = vec2<f32>(0.0);
+`
+        : ""
+}
     return out;
 }
 
@@ -96,6 +127,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(1.0, 1.0)
     );
 
+${
+    hasCircles
+        ? /* wgsl */ `
+    let isCircle = isCircleShape(shape);
+    if (isCircle && getScaled_size(i) < 0.0) { return culledPoint(); }
+`
+        : ""
+}
     var diameter = sqrt(max(getScaled_size(i), 0.0));
     var strokeWidth = max(getScaled_strokeWidth(i), 0.0);
     let strokeOpacity = getScaled_strokeOpacity(i);
@@ -107,7 +146,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     if (pickingEnabled && (strokeWidth <= 0.0 || strokeAlign == 0u)) {
         diameter = max(diameter, 1.0 / globals.dpr);
     }
-    if (diameter <= 0.0) {
+    if (diameter <= 0.0${hasCircles ? " && !isCircle" : ""}) {
         return culledPoint();
     }
     let devicePixelsPerAtlas = max(
@@ -122,7 +161,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         params.uSpread * devicePixelsPerAtlas - AA_COVERAGE_RADIUS_PIXELS,
         0.0
     ) / (strokeDistanceMultiplier * globals.dpr);
-    let halfStrokeWidth = min(strokeWidth * 0.5, maxHalfStrokeWidth);
+    let halfStrokeWidth = ${hasCircles ? "select(min(strokeWidth * 0.5, maxHalfStrokeWidth), strokeWidth * 0.5, isCircle)" : "min(strokeWidth * 0.5, maxHalfStrokeWidth)"};
     let outwardStroke = halfStrokeWidth > 0.0 && strokeAlign > 0u;
     // The antialiased outer contour is another offset curve, so its radius
     // must use the path-specific miter extent too. Keep the remaining
@@ -134,15 +173,27 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         STROKE_RASTER_SAFETY_PIXELS,
         outwardStroke
     ) / globals.dpr;
-    let localMin = entry.localBounds.xy * diameter -
+    var localMin = entry.localBounds.xy * diameter -
         entry.strokePadding.xy * coverageRadius - rasterSafety;
-    let localMax = entry.localBounds.zw * diameter +
+    var localMax = entry.localBounds.zw * diameter +
         entry.strokePadding.zw * coverageRadius + rasterSafety;
+${
+    hasCircles
+        ? /* wgsl */ `
+    if (isCircle) {
+        // Preserve the fixed circle's padded sprite and minimum picking policy.
+        let extent = (diameter + strokeWidth * f32(strokeAlign) + 1.0 / globals.dpr) * 0.5;
+        localMin = vec2<f32>(-extent);
+        localMax = vec2<f32>(extent);
+    }
+`
+        : ""
+}
     let localScreen = mix(localMin, localMax, quad[v]);
 
     // Local point coordinates use screen-space axes, so positive angles rotate
     // clockwise, matching Canvas, SVG, and the WebGPU text mark.
-    let angle = getScaled_angle(i) * PI / 180.0;
+    let angle = ${hasCircles ? "select(getScaled_angle(i), 0.0, isCircle)" : "getScaled_angle(i)"} * PI / 180.0;
     let sinTheta = sin(angle);
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
@@ -205,6 +256,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.strokeAlign = strokeAlign;
     out.gradientStrength = getScaled_gradientStrength(i);
     out.deviceRadius = diameter * globals.dpr * 0.5;
+${
+    hasCircles
+        ? /* wgsl */ `
+    out.isCircle = u32(isCircle);
+    out.local = localScreen;
+`
+        : ""
+}
 #if defined(uniqueId_DEFINED)
     out.pickId = getScaled_uniqueId(i) + 1u;
 #endif
@@ -227,11 +286,20 @@ fn signedDistanceInDevicePixels(
 }
 
 fn shade(in: VSOut) -> vec4<f32> {
-    let distance = signedDistanceInDevicePixels(
+    var distance = signedDistanceInDevicePixels(
         in.uv,
         in.atlasBounds,
         in.devicePixelsPerAtlas
     );
+${
+    hasCircles
+        ? /* wgsl */ `
+    if (in.isCircle != 0u) {
+        distance = in.deviceRadius - length(in.local * globals.dpr);
+    }
+`
+        : ""
+}
     if (pickingEnabled) {
         if (distance + in.halfStrokeWidth * globals.dpr * select(1.0, 2.0, in.strokeAlign == 2u) < 0.0) { discard; }
         return vec4<f32>(1.0);
@@ -242,8 +310,8 @@ fn shade(in: VSOut) -> vec4<f32> {
     fillColor.a *= in.fillOpacity;
     strokeColor.a *= in.strokeOpacity;
     if (in.gradientStrength > 0.0) {
-        let gradient = max(distance, 0.0) * in.gradientStrength /
-            max(in.deviceRadius, 0.0001);
+        let gradient = ${hasCircles ? "select(max(distance, 0.0), distance, in.isCircle != 0u)" : "max(distance, 0.0)"} * in.gradientStrength /
+            max(in.deviceRadius, ${hasCircles ? "select(0.0001, 0.0001 * globals.dpr, in.isCircle != 0u)" : "0.0001"});
         fillColor = mix(fillColor, vec4<f32>(vec3<f32>(1.0), fillColor.a), gradient);
     }
     fillColor = premultiplyAlpha(fillColor);
@@ -274,12 +342,15 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     return shade(in) * select(in.opacity, 1.0, pickingEnabled);
 }
 `;
+}
 
 /** Point program backed by a finite SVG-path MSDF atlas. */
 export default class PathPointProgram extends PointProgram {
     /** @returns {string} */
     get shaderBody() {
-        return PATH_POINT_SHADER_BODY;
+        return createPathPointShaderBody(
+            /** @type {boolean[]} */ (this._markConfig.circleSlots ?? [])
+        );
     }
 
     /**

@@ -16,10 +16,12 @@ function resolvePathConfig(config) {
         return null;
     }
     const table = shapes ?? [shape];
+    const circleSlots = table.map((shape) => shape === "circle");
     const paths = table.map(resolvePointShape);
     return {
         ...config,
         paths,
+        circleSlots,
         atlasOptions: { normalizationSpan: 2 },
         channels: {
             ...config.channels,
