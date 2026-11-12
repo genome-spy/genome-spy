@@ -25,6 +25,14 @@ const cases = [
     [0],
     [Number.MAX_SAFE_INTEGER],
     [0, 1, 1, 2 ** 32, Number.MAX_SAFE_INTEGER],
+    [10, 8, 11, 9],
+    [10, 8, 11, 8],
+    [10, 1, 11, 9],
+    [
+        Number.MAX_SAFE_INTEGER,
+        Number.MAX_SAFE_INTEGER - 2,
+        Number.MAX_SAFE_INTEGER - 1,
+    ],
     [10000, 100, 1000, 10, 1],
     [9, 4, 9, 1, 4],
     // Include the digit crossing bit 31, higher digits, and the largest key.

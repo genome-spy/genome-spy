@@ -33,10 +33,11 @@ export default function radixSort(arr) {
     const counts = new Uint32Array(2048);
 
     for (let shift = 0; shift < 53 && 2 ** shift <= max; shift += 11) {
+        const divisor = 2 ** shift;
         counts.fill(0);
 
         for (let i = 0; i < n; i++) {
-            counts[getDigit(values[i], shift)]++;
+            counts[getDigit(values[i], shift, divisor)]++;
         }
 
         let total = 0;
@@ -48,7 +49,7 @@ export default function radixSort(arr) {
 
         for (let i = 0; i < n; i++) {
             const value = values[i];
-            buffer[counts[getDigit(value, shift)]++] = value;
+            buffer[counts[getDigit(value, shift, divisor)]++] = value;
         }
 
         [values, buffer] = [buffer, values];
@@ -70,11 +71,12 @@ export default function radixSort(arr) {
  *
  * @param {number} value
  * @param {number} shift
+ * @param {number} divisor
  */
-function getDigit(value, shift) {
+function getDigit(value, shift, divisor) {
     return shift < 22
         ? (value >>> shift) & 0x7ff
-        : Math.floor(value / 2 ** shift) & 0x7ff;
+        : Math.floor(value / divisor) & 0x7ff;
 }
 
 /**
@@ -91,9 +93,10 @@ export function radixSortIntoLookupArray(arr) {
     let sorted = true;
 
     for (let i = 0; i < n; i++) {
+        const value = arr[i];
         indexes[i] = i;
-        max = Math.max(max, arr[i]);
-        if (i && arr[i] < arr[i - 1]) {
+        max = Math.max(max, value);
+        if (i && value < arr[i - 1]) {
             sorted = false;
         }
     }
@@ -102,14 +105,44 @@ export function radixSortIntoLookupArray(arr) {
         return indexes;
     }
 
+    // If the keys are contiguous, the largest key fixes their first position.
+    // Check the ends before initializing the dense path for obviously sparse IDs.
+    const min = max - (n - 1);
+    if (
+        min >= 0 &&
+        Number.isSafeInteger(max) &&
+        arr[0] >= min &&
+        arr[n - 1] >= min
+    ) {
+        const empty = 0xffffffff;
+        indexes.fill(empty);
+        let i = 0;
+        for (; i < n; i++) {
+            const offset = arr[i] - min;
+            if (!Number.isInteger(offset) || indexes[offset] !== empty) {
+                break;
+            }
+            indexes[offset] = i;
+        }
+        if (i === n) {
+            return indexes;
+        }
+        // Duplicate keys or holes need the stable radix path.
+        for (let j = 0; j < n; j++) {
+            indexes[j] = j;
+        }
+    }
+
     let buffer = new Uint32Array(n);
     const counts = new Uint32Array(2048);
 
     for (let shift = 0; shift < 53 && 2 ** shift <= max; shift += 11) {
+        const divisor = 2 ** shift;
         counts.fill(0);
 
+        // Every permutation contains the same keys. Count in input order.
         for (let i = 0; i < n; i++) {
-            counts[getDigit(arr[indexes[i]], shift)]++;
+            counts[getDigit(arr[i], shift, divisor)]++;
         }
 
         let total = 0;
@@ -122,7 +155,7 @@ export function radixSortIntoLookupArray(arr) {
         // Forward scatter keeps equal keys in their current physical order.
         for (let i = 0; i < n; i++) {
             const index = indexes[i];
-            buffer[counts[getDigit(arr[index], shift)]++] = index;
+            buffer[counts[getDigit(arr[index], shift, divisor)]++] = index;
         }
 
         [indexes, buffer] = [buffer, indexes];

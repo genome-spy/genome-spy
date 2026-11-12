@@ -330,6 +330,64 @@ describe("Window transform", () => {
         ]);
     });
 
+    test("orders coerced NaNs last and reverses signed-zero ties", () => {
+        const rows = transform(
+            {
+                type: "window",
+                frame: [null, null],
+                ops: ["min", "max", "median"],
+                fields: ["value", "value", "value"],
+            },
+            [{ value: 0 }, { value: -0 }, { value: 2 }, { value: "text" }]
+        );
+
+        expect(rows[0]).toEqual({
+            value: 0,
+            min_value: -0,
+            max_value: NaN,
+            median_value: 1,
+        });
+    });
+
+    test("keeps rolling quartiles and signed-zero ties in wide frames", () => {
+        const rows = transform(
+            {
+                type: "window",
+                frame: [-5000, 0],
+                ops: ["min", "median", "q3"],
+                fields: ["value", "value", "value"],
+            },
+            Array.from({ length: 9001 }, (_, i) => ({
+                value: i < 5000 ? (i % 2 ? -0 : 0) : i - 4999,
+            }))
+        );
+
+        // When values tie, the most recent one is first and leaves first.
+        expect(rows[5000].min_value).toBe(-0);
+        expect(rows[5001].min_value).toBe(0);
+        expect(rows[5002].min_value).toBe(-0);
+        expect(rows[7500].median_value).toBe(1);
+        expect(rows[9000].q3_value).toBe(2751);
+    });
+
+    test("reports a coerced NaN leaving a wide ordered frame", () => {
+        const rows = Array.from({ length: 4098 }, (_, i) => ({
+            value: i == 0 ? "text" : 4098 - i,
+        }));
+
+        expect(() =>
+            transform(
+                {
+                    type: "window",
+                    frame: [-4096, 0],
+                    ops: ["median"],
+                    fields: ["value"],
+                },
+                rows
+            )
+        ).toThrow("Window aggregate state is inconsistent.");
+    });
+
     test("ignores missing and NaN values in field aggregates", () => {
         expect(
             transform(

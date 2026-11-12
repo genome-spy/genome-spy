@@ -496,11 +496,13 @@ function partitionRows(rows, accessors) {
     const root = new Map();
     /** @type {Datum[][]} */
     const partitions = [];
+    const lastIndex = accessors.length - 1;
+    const lastAccessor = accessors[lastIndex];
 
     for (const datum of rows) {
         /** @type {Map<any, any>} */
         let level = root;
-        for (let i = 0; i < accessors.length - 1; i++) {
+        for (let i = 0; i < lastIndex; i++) {
             const key = accessors[i](datum);
             let next = level.get(key);
             if (!next) {
@@ -510,7 +512,7 @@ function partitionRows(rows, accessors) {
             level = next;
         }
 
-        const key = accessors.at(-1)(datum);
+        const key = lastAccessor(datum);
         let partition = level.get(key);
         if (!partition) {
             partition = [];
