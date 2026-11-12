@@ -72,6 +72,7 @@ export function renderTextCanvas(baseMark, options) {
                 constantFill ?? toPaintString(encoders.fill(instance.datum));
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
+                encodeNumber(encoders.fillOpacity, instance.datum) *
                 options.viewOpacity *
                 instance.fadeOpacity;
             if (fill == "none" || opacity <= 0) {

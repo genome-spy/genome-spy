@@ -49,6 +49,7 @@
     "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
+    "test:browser": "playwright test --config playwright.config.js",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json && ts-json-schema-generator --path 'src/types/transformData.d.ts' --type TransformDataOptions > dist/transform-data-schema.json",
     "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src && node scripts/removeDevelopmentOnlyArtifacts.mjs",
     "prepack": "node scripts/prepack.mjs",
