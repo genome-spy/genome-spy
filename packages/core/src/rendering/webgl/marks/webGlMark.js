@@ -1351,7 +1351,10 @@ export default class WebGLMark {
         // Note: the block is sent to GPU in setViewport(), which is repeated for each facet
         ops.push(() =>
             setBlockUniforms(this.viewUniformInfo, {
-                uViewOpacity: this.unitView.getEffectiveOpacity(),
+                uViewOpacity:
+                    options.applyViewOpacity === false
+                        ? 1
+                        : this.unitView.getEffectiveOpacity(),
                 uPickingEnabled: picking,
             })
         );

@@ -452,7 +452,7 @@ describe("SVG point renderer", () => {
         view.disposeSubtree();
     });
 
-    test("preserves inward fill when constant stroke opacity inherits view opacity", async () => {
+    test("keeps inward paints opaque inside a faded view group", async () => {
         const { view } = await createHeadlessEngine({
             opacity: 0.5,
             data: { values: [{}] },
@@ -474,14 +474,14 @@ describe("SVG point renderer", () => {
         const group = svg.querySelector('[data-mark-type="point"]');
         const circles = Array.from(group.querySelectorAll("circle"));
 
-        expect(group.getAttribute("stroke-opacity")).toBe("0.5");
-        expect(group.getAttribute("fill-opacity")).toBe("0.5");
+        expect(group.parentElement.getAttribute("opacity")).toBe("0.5");
+        expect(group.getAttribute("stroke-opacity")).toBe("1");
+        expect(group.getAttribute("fill-opacity")).toBe("1");
         expect(circles.map((circle) => circle.getAttribute("r"))).toEqual([
-            "10",
             "8",
         ]);
-        expect(circles[0].getAttribute("stroke")).toBe("none");
-        expect(circles[1].getAttribute("fill")).toBe("none");
+        expect(circles[0].getAttribute("stroke")).toBeNull();
+        expect(circles[0].getAttribute("fill")).toBeNull();
     });
 
     test("reports resolved unsupported properties separately", async () => {

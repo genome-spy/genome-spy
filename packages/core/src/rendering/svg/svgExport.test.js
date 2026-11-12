@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { RasterizationUnavailableError } from "../rasterization.js";
 import { analyzeSvgExport, createSvg, createSvgExport } from "./index.js";
+import { createEmbedParamNamespace } from "../../paramRuntime/embedParamApi.js";
 import {
     createIntervalSelection,
     createMultiPointSelection,
@@ -23,6 +24,94 @@ const { rasterizeSvgRuns } = vi.hoisted(() => ({
 }));
 
 describe("SVG export", () => {
+    test("fades nested mixed-mark views without changing encoded paint opacity", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "outer",
+            params: [{ name: "fade", value: 0.5 }],
+            opacity: { expr: "fade" },
+            layer: [
+                {
+                    name: "inner",
+                    opacity: 0.25,
+                    data: { values: [{ alpha: 0.4 }] },
+                    layer: [
+                        {
+                            mark: {
+                                type: "point",
+                                opacity: 0.6,
+                                fill: "red",
+                                stroke: "blue",
+                                strokeWidth: 4,
+                            },
+                            encoding: {
+                                x: { value: 0.5 },
+                                y: { value: 0.5 },
+                                fillOpacity: {
+                                    field: "alpha",
+                                    type: "quantitative",
+                                    scale: null,
+                                },
+                                strokeOpacity: { value: 0.8 },
+                            },
+                        },
+                        {
+                            mark: "rect",
+                            encoding: {
+                                fill: { value: "black" },
+                                x: { value: 0.2 },
+                                x2: { value: 0.8 },
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+        try {
+            const render = () =>
+                createSvg({
+                    viewRoot: view,
+                    logicalWidth: 100,
+                    logicalHeight: 100,
+                }).svg;
+            const svg = render();
+            expect(
+                svg.querySelector('[data-name="outer"]').getAttribute("opacity")
+            ).toBe("0.5");
+            expect(
+                svg.querySelector('[data-name="inner"]').getAttribute("opacity")
+            ).toBe("0.25");
+            const point = svg.querySelector('[data-mark-type="point"]');
+            expect(
+                point.querySelector("circle").getAttribute("fill-opacity")
+            ).toBe("0.4");
+            expect(point.getAttribute("stroke-opacity")).toBe("0.8");
+            const paints = Array.from(
+                svg.querySelectorAll("[data-mark-type]"),
+                (node) => node.outerHTML
+            );
+            const params = createEmbedParamNamespace(view);
+            params.get("fade").setValue(1);
+            await view.paramRuntime.whenPropagated();
+            expect(
+                Array.from(
+                    render().querySelectorAll("[data-mark-type]"),
+                    (node) => node.outerHTML
+                )
+            ).toEqual(paints);
+            params.get("fade").setValue(0);
+            await view.paramRuntime.whenPropagated();
+            const hidden = render();
+            expect(
+                hidden
+                    .querySelector('[data-name="outer"]')
+                    .getAttribute("opacity")
+            ).toBe("0");
+            expect(hidden.querySelector("[data-mark-type]")).toBeNull();
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("analyzes visible layers without emitting mark elements", async () => {
         const { view } = await createHeadlessEngine(
             /** @type {import("../../spec/root.js").RootSpec} */ ({
