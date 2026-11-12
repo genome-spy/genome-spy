@@ -25,6 +25,27 @@ function makeSplitReader(values) {
 }
 
 describe("vertexRangeIndex", () => {
+    test("retains collapsed intervals at bin boundaries", () => {
+        const values = new Float32Array([20, 20, 40, 40]);
+        // Distinct endpoint readers model x/x2 fields whose values happen to match.
+        const lookup = createVertexRangeIndexer(
+            5,
+            [0, 100],
+            makeScalarReader(values),
+            makeScalarReader(values),
+            0,
+            values.length
+        );
+        for (const [start, end, first] of [
+            [19, 21, 0],
+            [39, 41, 2],
+        ]) {
+            const span = lookup(start, end);
+            expect(span[0]).toBeLessThanOrEqual(first);
+            expect(span[1]).toBeGreaterThanOrEqual(first + 2);
+        }
+    });
+
     test("collapses repeated vertex runs into a single visible range", () => {
         const x = new Float32Array([10, 10, 10, 20, 20, 20]);
         const x2 = new Float32Array([12, 12, 12, 22, 22, 22]);

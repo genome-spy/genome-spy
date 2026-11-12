@@ -367,7 +367,7 @@ describe("SVG rectangle renderer", () => {
         const pattern = svg.querySelector("pattern");
 
         expect(
-            markGroup?.querySelector(":scope > rect")?.getAttribute("rx")
+            markGroup?.querySelector('rect[fill^="url("]')?.getAttribute("rx")
         ).toBe("5");
         expect(shadowRect?.getAttribute("fill")).toBe("#abcdef");
         expect(shadowRect?.getAttribute("fill-opacity")).toBe("1");
@@ -394,9 +394,7 @@ describe("SVG rectangle renderer", () => {
             shadowClip?.querySelector("path")?.getAttribute("clip-rule")
         ).toBe("evenodd");
         expect(
-            markGroup
-                ?.querySelector(":scope > rect:not([filter])")
-                ?.getAttribute("fill")
+            markGroup?.querySelector('rect[fill^="url("]')?.getAttribute("fill")
         ).toBe(`url(#${pattern?.getAttribute("id")})`);
         expect(pattern?.getAttribute("patternUnits")).toBe("userSpaceOnUse");
         expect(warnings).toEqual([]);
@@ -499,7 +497,7 @@ describe("SVG rectangle renderer", () => {
         });
         const pattern = svg.querySelector("pattern");
         const rects = Array.from(
-            svg.querySelectorAll('[data-mark-type="rect"] > rect')
+            svg.querySelectorAll('[data-mark-type="rect"] rect[fill^="url("]')
         );
 
         expect(svg.querySelectorAll("pattern")).toHaveLength(1);
@@ -522,13 +520,14 @@ describe("SVG rectangle renderer", () => {
         expect(
             rects.every((rect) => rect.getAttribute("fill-opacity") == "1")
         ).toBe(true);
-        expect(rects.map((rect) => rect.getAttribute("opacity"))).toEqual([
-            "0.5",
-            "0.5",
-        ]);
-        expect(rects[0].parentElement.getAttribute("stroke-opacity")).toBe(
-            "0.75"
-        );
+        expect(
+            rects.map((rect) => rect.parentElement.getAttribute("opacity"))
+        ).toEqual(["0.5", "0.5"]);
+        expect(
+            rects[0]
+                .closest('[data-mark-type="rect"]')
+                .getAttribute("stroke-opacity")
+        ).toBe("0.75");
         expect(warnings).toEqual([]);
     });
 

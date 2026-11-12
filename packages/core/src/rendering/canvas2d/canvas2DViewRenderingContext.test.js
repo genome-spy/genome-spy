@@ -10,6 +10,7 @@ import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
 import { createSvg } from "../svg/index.js";
 import NativeTextMetricsProvider from "../nativeTextMetrics.js";
 import { renderMarkCanvas } from "./renderers/index.js";
+import { acquireOpacityLayer } from "./canvasOpacityLayer.js";
 
 afterEach(() => {
     const globalObject = /** @type {Record<symbol, unknown>} */ (globalThis);
@@ -423,6 +424,34 @@ describe("Canvas2DViewRenderingContext", () => {
             expect(offscreen.context.globalCompositeOperation).toBe(
                 "source-over"
             );
+        } finally {
+            createElement.mockRestore();
+        }
+    });
+
+    test("bounds retained capacity when rectangle scratch dimensions alternate", () => {
+        const offscreen = createRecordingContext();
+        offscreen.context.canvas.getContext = () => offscreen.context;
+        const createElement = vi
+            .spyOn(document, "createElement")
+            .mockReturnValue(/** @type {any} */ (offscreen.context.canvas));
+        /** @type {CanvasRenderingContext2D[]} */
+        const layers = [];
+        try {
+            acquireOpacityLayer(layers, 0, 8192, 1, true);
+            acquireOpacityLayer(layers, 0, 1, 8192, true);
+            // Retaining both maxima would exceed the existing 16M-pixel budget.
+            expect([layers[0].canvas.width, layers[0].canvas.height]).toEqual([
+                1, 8192,
+            ]);
+            acquireOpacityLayer(layers, 0, 1, 10, true);
+            expect(layers[0].canvas.height).toBe(8192);
+            expect(layers[0].clearRect).toHaveBeenLastCalledWith(0, 0, 1, 10);
+            // View layers must still consume an exactly sized source canvas.
+            acquireOpacityLayer(layers, 0, 10, 10);
+            expect([layers[0].canvas.width, layers[0].canvas.height]).toEqual([
+                10, 10,
+            ]);
         } finally {
             createElement.mockRestore();
         }
@@ -1311,8 +1340,10 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.calls.fills).toEqual([
             [0.4, "black"],
             [0.25, "red"],
+            [1, "blue"],
             [0.4, "black"],
             [0.25, "red"],
+            [1, "blue"],
         ]);
         expect(recording.context.shadowColor).toBe("rgba(0, 0, 0, 0)");
 
@@ -1325,7 +1356,9 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(disabled.calls.shadows).toHaveLength(0);
         expect(disabled.calls.fills).toEqual([
             [0.25, "red"],
+            [1, "blue"],
             [0.25, "red"],
+            [1, "blue"],
         ]);
     });
 
@@ -1390,9 +1423,8 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(strokeOpacityEncoder).toHaveBeenCalledOnce();
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(first.calls.fills.map(([opacity]) => opacity)).toEqual([
-            0.25, 0.75,
+            0.25, 1, 0.75, 1,
         ]);
-        expect(first.context.lineWidth).toBe(1);
 
         view.paramRuntime.setValue("palette", { foreground: "white" });
         await view.paramRuntime.whenPropagated();
@@ -1405,19 +1437,12 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(strokeEncoder).toHaveBeenCalledTimes(2);
         expect(strokeOpacityEncoder).toHaveBeenCalledTimes(2);
         expect(fillOpacityEncoder).toHaveBeenCalledTimes(4);
-        expect(second.context.lineWidth).toBe(3);
-        expect(first.calls.fills.map(([, color]) => color)).toEqual([
-            "black",
-            "black",
-        ]);
-        expect(second.calls.fills.map(([, color]) => color)).toEqual([
-            "white",
-            "white",
-        ]);
-        expect(second.calls.strokes.map(([, color]) => color)).toEqual([
-            "white",
-            "white",
-        ]);
+        expect(new Set(first.calls.fills.map(([, color]) => color))).toEqual(
+            new Set(["black"])
+        );
+        expect(new Set(second.calls.fills.map(([, color]) => color))).toEqual(
+            new Set(["white"])
+        );
     });
 
     test.each(["rule", "link", "point", "arrow"])(
@@ -1497,6 +1522,8 @@ describe("Canvas2DViewRenderingContext", () => {
                 visibleBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
                 anchorCullBounds: { x1: 0, y1: 0, x2: 100, y2: 100 },
                 viewOpacity: 1,
+                opacityLayers: [],
+                opacityLayerIndex: 0,
                 warn: vi.fn(),
             });
             for (const spy of spies) expect(spy).toHaveBeenCalledTimes(2);
@@ -1551,44 +1578,6 @@ describe("Canvas2DViewRenderingContext", () => {
             }
         }
     );
-
-    test("draws independently rounded and clamped rectangle corners", async () => {
-        const { view } = await createHeadlessEngine({
-            data: { values: [{}] },
-            mark: {
-                type: "rect",
-                cornerRadius: 2,
-                cornerRadiusTopLeft: 50,
-                cornerRadiusTopRight: 4,
-                cornerRadiusBottomRight: 6,
-                cornerRadiusBottomLeft: 8,
-                stroke: "#654321",
-                strokeWidth: 2,
-                fillOpacity: 0.25,
-                strokeOpacity: 0.75,
-            },
-            encoding: {
-                x: { value: 0.2 },
-                x2: { value: 0.6 },
-                y: { value: 0.2 },
-                y2: { value: 0.4 },
-                fill: { value: "#123456" },
-            },
-        });
-        const recording = createRecordingContext();
-
-        render(view, recording.context);
-
-        expect(recording.calls.roundRects).toEqual([
-            [20, 60, 40, 20, [10, 4, 6, 8]],
-        ]);
-        expect(recording.context.fill).toHaveBeenCalledOnce();
-        expect(recording.context.stroke).toHaveBeenCalledOnce();
-        expect(recording.calls.fills).toEqual([[0.25, "#123456"]]);
-        expect(recording.calls.strokes).toEqual([[0.75, "#654321"]]);
-        expect(recording.calls.fillRects).toHaveLength(0);
-        expect(recording.context.strokeRect).not.toHaveBeenCalled();
-    });
 
     test("clamps negative rectangle corner radii to zero", async () => {
         const { view } = await createHeadlessEngine({

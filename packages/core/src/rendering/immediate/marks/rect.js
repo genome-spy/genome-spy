@@ -23,6 +23,7 @@ const RECT_SEAM_PADDING = 0.1;
 
 /**
  * @typedef {object} ResolvedRectProperties
+ * @prop {import("../../../spec/mark.js").StrokeAlign} strokeAlign
  * @prop {CornerRadii} cornerRadii
  * @prop {number} minWidth
  * @prop {number} minHeight
@@ -43,6 +44,7 @@ const RECT_SEAM_PADDING = 0.1;
  * @prop {CornerRadii} radii
  * @prop {number} opacityFactor
  * @prop {number} strokeWidth
+ * @prop {number} strokeOutset
  * @prop {string} fill
  * @prop {number} fillOpacity
  */
@@ -55,6 +57,14 @@ const RECT_SEAM_PADDING = 0.1;
  */
 export function resolveRectProperties(mark) {
     const p = mark.properties;
+    const strokeAlign = resolveMarkProperty(mark, p.strokeAlign);
+    if (
+        strokeAlign !== "inside" &&
+        strokeAlign !== "center" &&
+        strokeAlign !== "outside"
+    ) {
+        throw new Error("Invalid rectangle stroke alignment: " + strokeAlign);
+    }
     const defaultRadius = resolveMarkProperty(mark, p.cornerRadius);
     const cornerRadii = {
         topLeft: resolveMarkProperty(
@@ -85,6 +95,7 @@ export function resolveRectProperties(mark) {
     const hasCornerRadii = !hasZeroCornerRadii(cornerRadii);
 
     return {
+        strokeAlign,
         cornerRadii,
         minWidth: resolveMarkProperty(mark, p.minWidth),
         minHeight: resolveMarkProperty(mark, p.minHeight),
@@ -94,6 +105,69 @@ export function resolveRectProperties(mark) {
         hasCornerRadii,
         canPadSeams: hatch == "none" && shadow.opacity == 0 && !hasCornerRadii,
     };
+}
+
+/**
+ * @typedef {object} RectBoundary
+ * @prop {number} x
+ * @prop {number} y
+ * @prop {number} width
+ * @prop {number} height
+ * @prop {CornerRadii} radii
+ */
+
+/** @returns {RectBoundary} */
+export function createRectBoundary() {
+    return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        radii: { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 },
+    };
+}
+
+/**
+ * Offsets the resolved nominal boundary. A consumed interior has zero area;
+ * painters must omit its contour rather than stroke a collapsed centerline.
+ *
+ * @param {RectBoundary} target Caller-owned scratch geometry.
+ * @param {RectInstance} instance
+ * @param {number} offset Positive outwards, negative inwards.
+ */
+export function setRectBoundary(target, instance, offset) {
+    target.x = instance.x - offset;
+    target.y = instance.y - offset;
+    target.width = Math.max(0, instance.width + offset * 2);
+    target.height = Math.max(0, instance.height + offset * 2);
+    const r = instance.radii;
+    const rounded = !hasZeroCornerRadii(r);
+    target.radii.topLeft = rounded ? Math.max(0, r.topLeft + offset) : 0;
+    target.radii.topRight = rounded ? Math.max(0, r.topRight + offset) : 0;
+    target.radii.bottomRight = rounded
+        ? Math.max(0, r.bottomRight + offset)
+        : 0;
+    target.radii.bottomLeft = rounded ? Math.max(0, r.bottomLeft + offset) : 0;
+}
+
+/** @param {number} x @param {number} y @param {RectBoundary} boundary */
+export function containsRectBoundary(x, y, boundary) {
+    const px = x - boundary.x - boundary.width / 2;
+    const py = y - boundary.y - boundary.height / 2;
+    const r = boundary.radii;
+    const radius =
+        px > 0
+            ? py > 0
+                ? r.bottomRight
+                : r.topRight
+            : py > 0
+              ? r.bottomLeft
+              : r.topLeft;
+    if (Math.abs(px) > boundary.width / 2 || Math.abs(py) > boundary.height / 2)
+        return false;
+    const dx = Math.max(0, Math.abs(px) - boundary.width / 2 + radius);
+    const dy = Math.max(0, Math.abs(py) - boundary.height / 2 + radius);
+    return dx * dx + dy * dy <= radius * radius;
 }
 
 /**
@@ -170,6 +244,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         radii: { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 },
         opacityFactor: 1,
         strokeWidth: 0,
+        strokeOutset: 0,
         fill: "none",
         fillOpacity: 0,
     };
@@ -207,6 +282,13 @@ export function visitRectInstances(mark, properties, options, visitor) {
         const strokeWidth = strokeWidthIsConstant
             ? constantStrokeWidth
             : encodeNumber(encoders.strokeWidth, datum);
+        const strokeOutset =
+            strokeWidth *
+            (properties.strokeAlign === "inside"
+                ? 0
+                : properties.strokeAlign === "center"
+                  ? 0.5
+                  : 1);
         const fill = constantFill ?? toPaintString(encoders.fill(datum));
         const fillOpacity =
             (fillOpacityIsConstant
@@ -233,7 +315,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
                 y,
                 x + width,
                 y + height,
-                strokeWidth / 2 + shadowPadding
+                strokeOutset + shadowPadding
             )
         ) {
             continue;
@@ -247,6 +329,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         instance.height = height;
         instance.opacityFactor = opacityFactor;
         instance.strokeWidth = strokeWidth;
+        instance.strokeOutset = strokeOutset;
         instance.fill = fill;
         instance.fillOpacity = fillOpacity;
         if (properties.hasCornerRadii) {

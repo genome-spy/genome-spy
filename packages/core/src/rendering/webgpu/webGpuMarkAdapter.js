@@ -527,6 +527,7 @@ function createSelectionCondition(mark, predicate) {
  */
 function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
     mark.initializeRenderingRevisions([
+        "strokeAlign",
         "cornerRadius",
         "cornerRadiusTopRight",
         "cornerRadiusBottomRight",
@@ -569,6 +570,10 @@ function createRectConfig(mark, data, coords, viewOpacity, staticViewOpacity) {
                 viewOpacity
             ),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data, true),
+            strokeAlign: liveValue(
+                () => STROKE_ALIGN_CODES.get(readProperty(mark, "strokeAlign")),
+                "u32"
+            ),
             cornerRadiusTopRight: staticOrLivePropertyValue(
                 mark,
                 ["cornerRadius", "cornerRadiusTopRight"],
