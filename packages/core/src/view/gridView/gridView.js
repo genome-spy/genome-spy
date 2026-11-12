@@ -308,13 +308,14 @@ export default class GridView extends ContainerView {
      * Callers should sync shared axes and request layout.
      *
      * @param {number} index
+     * @param {{ checkDependencies?: boolean }} [options]
      */
-    removeChildAt(index) {
+    removeChildAt(index, options) {
         const gridChild = this.#children[index];
         if (!gridChild) {
             throw new Error("Child index out of range!");
         }
-        this.#disposeGridChild(gridChild);
+        this.#disposeGridChild(gridChild, options);
         this.#children.splice(index, 1);
         this.invalidateSizeCache();
     }
@@ -356,12 +357,14 @@ export default class GridView extends ContainerView {
 
     /**
      * @param {GridChild} gridChild
+     * @param {{ checkDependencies?: boolean }} [options]
      */
-    #disposeGridChild(gridChild) {
-        gridChild.view.assertCanDisposeSubtree();
+    #disposeGridChild(gridChild, options = {}) {
+        if (options.checkDependencies !== false)
+            gridChild.view.assertCanDisposeSubtree();
         gridChild.dispose();
         for (const view of gridChild.getChildren()) {
-            view.disposeSubtree();
+            view.disposeSubtree(options);
         }
     }
 

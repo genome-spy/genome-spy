@@ -314,7 +314,7 @@ export class ViewFactory {
         );
 
         try {
-            // Reserve local dataset names before constructing descendants.
+            // Declare datasets before descendants and release claims on failure.
             for (const { transform } of getOutputDeclarations(
                 view.spec.transform ?? []
             )) {

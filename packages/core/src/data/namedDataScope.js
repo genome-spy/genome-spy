@@ -1,7 +1,9 @@
 import DerivedCollector from "./derivedCollector.js";
 import { annotateSpecError } from "../utils/specError.js";
 
-/** @typedef {NamedDataBinding | DerivedCollector} NamedDatasetBinding */
+export const UNCLAIMED_DERIVED_DATASET = Symbol("unclaimed derived dataset");
+
+/** @typedef {NamedDataBinding | DerivedCollector | typeof UNCLAIMED_DERIVED_DATASET} NamedDatasetBinding */
 
 /**
  * A named dataset declaration or a compatibility binding for an undeclared
@@ -14,7 +16,7 @@ export class NamedDataBinding {
     /** @type {import("../view/view.js").default | undefined} */
     owner;
 
-    /** @type {() => any[] | undefined} */
+    /** @type {() => unknown} */
     getDefaultData;
 
     /** @type {any[] | undefined} */
@@ -27,7 +29,7 @@ export class NamedDataBinding {
     /**
      * @param {string} name
      * @param {import("../view/view.js").default | undefined} owner
-     * @param {() => any[] | undefined} getDefaultData
+     * @param {() => unknown} getDefaultData
      */
     constructor(name, owner, getDefaultData) {
         this.name = name;
@@ -112,6 +114,8 @@ export class NamedDataScope {
     /** @type {Map<string, NamedDataBinding>} */
     #legacyBindings = new Map();
 
+    #declarationsOpen = true;
+
     /**
      * @param {import("../view/view.js").default} view
      */
@@ -121,7 +125,9 @@ export class NamedDataScope {
         for (const [name, data] of Object.entries(view.spec.datasets ?? {})) {
             this.#localBindings.set(
                 name,
-                new NamedDataBinding(name, view, () => data)
+                !Array.isArray(data) && data?.derived === true
+                    ? UNCLAIMED_DERIVED_DATASET
+                    : new NamedDataBinding(name, view, () => data)
             );
         }
     }
@@ -129,25 +135,85 @@ export class NamedDataScope {
     /** @param {import("../spec/transform.js").PublishParams} params */
     declareDerived(params) {
         const view = this.view;
-        const name = params.dataset;
+        const target = params.dataset;
         const error = (/** @type {string} */ message) =>
             annotateSpecError(
                 new Error(message),
                 view.paramRuntime.getSpecLocation(params, ["dataset"])
             );
-        if (typeof name !== "string" || !name.trim()) {
-            throw error("publish.dataset must be a non-empty string.");
+        if (typeof target === "string") {
+            if (!target.trim())
+                throw error("publish.dataset must be a non-empty string.");
+            if (this.#localBindings.has(target)) {
+                throw error(
+                    `Duplicate named dataset "${target}" in this view.`
+                );
+            }
+            this.#localBindings.set(target, new DerivedCollector(params, view));
+            return;
         }
-        if (this.#localBindings.has(name)) {
-            throw error(`Duplicate named dataset "${name}" in this view.`);
+
+        const name = target?.name;
+        if (
+            target?.push !== "outer" ||
+            typeof name !== "string" ||
+            !name.trim()
+        ) {
+            throw error(
+                'publish.dataset requires a local name or an object with a non-empty name and push: "outer".'
+            );
         }
-        this.#localBindings.set(name, new DerivedCollector(params, view));
+        const parent = view.dataParent;
+        const owner = parent && parent.namedDataScope.#findScope(name);
+        const binding = owner?.getLocalBinding(name);
+        if (
+            binding !== UNCLAIMED_DERIVED_DATASET &&
+            !(binding instanceof DerivedCollector && binding.pushed)
+        ) {
+            throw error(
+                `Derived dataset "${name}" requires a { "derived": true } slot in the nearest ancestor that declares it.`
+            );
+        }
+        if (!owner.#declarationsOpen) {
+            throw error(
+                `Cannot claim derived dataset "${name}" in a configured ancestor.`
+            );
+        }
+        if (binding !== UNCLAIMED_DERIVED_DATASET) {
+            throw error(`Duplicate producer for derived dataset "${name}".`);
+        }
+
+        const collector = new DerivedCollector(params, view);
+        owner.#localBindings.set(name, collector);
+        view.flowOutputs.add({ owner: owner.view, producerView: view });
+        view.registerDisposer(() => {
+            view.context.dataFlow.pruneBranch(collector);
+            view.flowHandle?.terminals?.delete(collector);
+            owner.#localBindings.set(name, UNCLAIMED_DERIVED_DATASET);
+        });
     }
 
-    /** @param {string} name */
-    getDerivedCollector(name) {
-        // The factory declared this binding before flow construction.
-        return /** @type {DerivedCollector} */ (this.getLocalBinding(name));
+    /** @param {import("../spec/transform.js").TransformOutput} target */
+    getDerivedCollector(target) {
+        // The producer claimed this binding before flow construction.
+        return /** @type {DerivedCollector} */ (
+            typeof target === "string"
+                ? this.getLocalBinding(target)
+                : this.view.dataParent.namedDataScope.findDeclaredBinding(
+                      target.name
+                  )
+        );
+    }
+
+    finalizeOutputDeclarations() {
+        this.#declarationsOpen = false;
+    }
+
+    *getPushedProducers() {
+        for (const binding of this.#localBindings.values()) {
+            if (binding instanceof DerivedCollector && binding.pushed)
+                yield binding.producerView;
+        }
     }
 
     /**

@@ -14,7 +14,7 @@ SCHEMA PublishParams
 
 ## Publishing a local dataset
 
-Set `dataset` to declare a name in the current view. The name must be unique
+A string `dataset` declares a name in the current view. The name must be unique
 among that view's dataset declarations. A [`lookup`](lookup.md) later in the
 pipeline can read it through `from.name`. Descendant views can also read it
 through `data.name` or a lookup. The table follows the usual
@@ -60,5 +60,42 @@ each group and adding it to each original row with a lookup. The
     "x": { "field": "score", "type": "quantitative" },
     "y": { "field": "maxScore", "type": "quantitative" }
   }
+}
+```
+
+## Sharing a table with siblings
+
+Reserve a slot in a common ancestor with
+`"datasets": { "scores": { "derived": true } }`. Set `dataset` to
+`{ "name": "scores", "push": "outer" }` to publish to that slot. The nearest
+ancestor declaration of `scores` must be a derived slot. Author the ancestor and
+its single producer together.
+
+The second view publishes the original scores before doubling them for its own
+marks. The first view reads the original scores. Both `data.name` and
+`lookup.from.name` can read the table in either sibling order.
+
+```json
+{
+  "datasets": { "scores": { "derived": true } },
+  "vconcat": [
+    {
+      "data": { "name": "scores" },
+      "mark": "point",
+      "encoding": { "x": { "field": "score", "type": "quantitative" } }
+    },
+    {
+      "data": { "values": [{ "score": 1 }, { "score": 3 }] },
+      "transform": [
+        {
+          "type": "publish",
+          "dataset": { "name": "scores", "push": "outer" }
+        },
+        { "type": "formula", "expr": "datum.score * 2", "as": "score" }
+      ],
+      "mark": "point",
+      "encoding": { "x": { "field": "score", "type": "quantitative" } }
+    }
+  ]
 }
 ```

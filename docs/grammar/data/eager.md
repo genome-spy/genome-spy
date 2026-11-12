@@ -300,6 +300,9 @@ array is useful when all rows will be supplied dynamically:
 Each imported instance owns its declarations independently. Thus, repeated
 imports can use the same dataset names without collisions.
 
+Use `{ "derived": true }` under `datasets` to reserve a read-only slot for a
+table [published by a descendant view](../transform/publish.md#sharing-a-table-with-siblings).
+
 See [Runtime State](../../api/runtime-state.md#named-data) for dynamic updates.
 During the legacy compatibility period, unresolved names still use the
 embed-wide named-data fallback and otherwise produce empty data.

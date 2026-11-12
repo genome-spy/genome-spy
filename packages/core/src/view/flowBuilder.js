@@ -1,6 +1,9 @@
 import Collector from "../data/collector.js";
 import DerivedCollector from "../data/derivedCollector.js";
-import { NamedDataBinding } from "../data/namedDataScope.js";
+import {
+    NamedDataBinding,
+    UNCLAIMED_DERIVED_DATASET,
+} from "../data/namedDataScope.js";
 import { iterateDataDependencies } from "../data/dataReadiness.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import { annotateSpecError } from "../utils/specError.js";
@@ -63,6 +66,9 @@ export function buildDataFlow(
     /** @type {(function():void)[]} */
     const postProcessOps = [];
 
+    /** @type {Set<DerivedCollector>} */
+    const pushedDatasets = new Set();
+
     const shouldInitializeView = viewInitializationPredicate ?? (() => true);
 
     /**
@@ -76,14 +82,20 @@ export function buildDataFlow(
         if (binding instanceof NamedDataBinding) {
             return new NamedSource(data, view, binding);
         }
-        if (!binding.parent) {
+        if (
+            binding === UNCLAIMED_DERIVED_DATASET ||
+            (!binding.parent && !binding.pushed)
+        ) {
+            const reason =
+                binding === UNCLAIMED_DERIVED_DATASET
+                    ? "has no producer"
+                    : "requires an earlier publish transform in this view or an ancestor";
             throw annotateSpecError(
-                new Error(
-                    `Derived dataset "${data.name}" requires an earlier publish transform in this view or an ancestor.`
-                ),
+                new Error(`Derived dataset "${data.name}" ${reason}.`),
                 view.paramRuntime.getSpecLocation(data, ["name"])
             );
         }
+        if (!binding.parent) pushedDatasets.add(binding);
         return binding;
     }
 
@@ -180,7 +192,23 @@ export function buildDataFlow(
                         collector.specLocation
                     );
                 }
-                validateDerivedInput(currentNode, collector);
+                if (!collector.pushed) {
+                    validateDerivedInput(currentNode, collector);
+                } else {
+                    if (
+                        iterateDataDependencies(currentNode).some(
+                            (node) => node === collector
+                        )
+                    ) {
+                        throw annotateSpecError(
+                            new Error(
+                                `Dependency cycle for derived dataset "${collector.name}".`
+                            ),
+                            collector.specLocation
+                        );
+                    }
+                    pushedDatasets.add(collector);
+                }
                 currentNode.addChild(collector);
                 dataFlow.addCollector(collector);
                 trackTerminal(view, collector);
@@ -489,6 +517,18 @@ export function buildDataFlow(
         });
     }
 
+    // Earlier readers can reach producer inputs only after all branches attach.
+    for (const collector of pushedDatasets) {
+        if (!collector.parent) {
+            throw annotateSpecError(
+                new Error(
+                    `No producer was initialized for derived dataset "${collector.name}".`
+                ),
+                collector.specLocation
+            );
+        }
+        validateDerivedInput(collector.parent, collector);
+    }
     postProcessOps.forEach((op) => op());
 
     return dataFlow;

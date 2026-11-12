@@ -104,7 +104,7 @@ export default class View {
     /** @type {NamedDataScope} */
     namedDataScope;
 
-    /** @type {Set<import("../data/flowOutput.js").default>} */
+    /** @type {Set<Pick<import("../data/flowOutput.js").default, "owner" | "producerView">>} */
     flowOutputs = new Set();
 
     /** @type {import("../spec/config.js").GenomeSpyConfig[]} */

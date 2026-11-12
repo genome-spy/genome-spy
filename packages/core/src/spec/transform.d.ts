@@ -845,7 +845,7 @@ export interface CoverageParams extends TransformParamsBase {
     asEnd?: string;
 }
 
-/** A local output name, or a push to the nearest ancestor's bare parameter. */
+/** A local output name, or a push to a declaration in the nearest ancestor. */
 export type TransformOutput = string | { name: string; push: "outer" };
 
 /** Projects a completed row stream into a read-only parameter array. */
@@ -882,11 +882,13 @@ export interface PublishParams extends TransformParamsBase {
     type: "publish";
 
     /**
-     * Names the current rows as a read-only dataset in this view. Later lookups
-     * and descendant views can read the table by name.
+     * Names the current rows as a read-only dataset. A string declares it
+     * locally for later lookups and descendant views. Use
+     * `{ "name": "table", "push": "outer" }` to publish to a `{ "derived": true }`
+     * entry in the nearest ancestor that declares the name in `datasets`.
      * The input must be an eager, unpartitioned table.
      */
-    dataset: string;
+    dataset: TransformOutput;
 }
 
 export interface CollectParams extends TransformParamsBase {

@@ -231,7 +231,7 @@ export default class ConcatView extends GridView {
         return new ContainerMutationHelper(this, {
             specs: this.#getChildSpecs(),
             insertView: (view, index) => this.insertChildViewAt(view, index),
-            removeView: (index) => super.removeChildAt(index),
+            removeView: (index, options) => super.removeChildAt(index, options),
             syncMutationGuideViews: (gridChild) =>
                 this.#syncMutationGuideViews(gridChild ? [gridChild] : []),
             namePrefix: "grid",

@@ -207,10 +207,10 @@ export interface ViewSpecBase extends ResolveSpec {
      * Named datasets available to this view and its descendants.
      *
      * A descendant declaration with the same name shadows this declaration.
-     * Declare named data here to establish reliable lexical scope and enable
-     * scoped runtime updates.
+     * Arrays are named inputs that can be updated at runtime. Use
+     * `{ "derived": true }` to reserve a read-only output for a descendant publisher.
      */
-    datasets?: Record<string, any[]>;
+    datasets?: Record<string, any[] | { derived: true }>;
 
     /**
      * Mouse cursor shown while the pointer is inside the view.

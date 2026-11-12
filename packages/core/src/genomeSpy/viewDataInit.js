@@ -201,6 +201,8 @@ function getInitializationDependencies(root) {
     for (const view of required) {
         for (const output of view.paramRuntime.outputs)
             include(output.producerView);
+        for (const producer of view.namedDataScope.getPushedProducers())
+            include(producer);
     }
     return {
         predicate: (/** @type {import("../view/view.js").default} */ view) =>
