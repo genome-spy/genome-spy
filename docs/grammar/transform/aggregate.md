@@ -60,9 +60,14 @@ EXAMPLE examples/docs/grammar/transform/aggregate/aggregate-min-max.json height=
 
 ### Building boxplot statistics
 
-The following example uses `"aggregate"` to compute grouped `"min"`, `"q1"`,
-`"median"`, `"q3"`, and `"max"` values from the [Palmer Penguins
-dataset](https://allisonhorst.github.io/palmerpenguins/) and then layers them
-into a boxplot-like view.
+This boxplot shows body mass by species in the
+[Palmer Penguins dataset](https://allisonhorst.github.io/palmerpenguins/). A
+[`"window"`](window.md) with `frame: [null, null]` adds the quartiles and median
+from all measured body masses in each species to every row.
+
+The interquartile range (IQR) is the distance from Q1 to Q3. The fences extend
+below Q1 and above Q3 by 1.5 × IQR. The `"aggregate"` transform finds the smallest
+and largest observations within those fences for the whiskers. The outlier layer
+draws each observation outside the fences as a point.
 
 EXAMPLE examples/docs/grammar/transform/aggregate/aggregate-boxplot.json height=250 spechidden

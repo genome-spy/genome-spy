@@ -25,17 +25,20 @@ export default class FlowOutput {
 
     publish() {
         if (this.candidate === undefined || this.producer.disposed) return;
-        for (const input of iterateDataDependencies(this.producer)) {
-            if (
-                !input.isDataReady() ||
-                (input instanceof DataSource && !input.resultSuccessful)
-            )
-                return;
-        }
+        if (!hasSuccessfulData(this.producer)) return;
 
         if (!shallowArrayEquals(this.value.get(), this.candidate))
             this.value.set(this.candidate);
     }
+}
+
+/** @param {import("./flowNode.js").default} node */
+export function hasSuccessfulData(node) {
+    return iterateDataDependencies(node).every(
+        (input) =>
+            input.isDataReady() &&
+            (!(input instanceof DataSource) || input.resultSuccessful)
+    );
 }
 
 /**

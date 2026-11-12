@@ -4,6 +4,7 @@ import {
     SampleParams,
     AggregateParams,
     WindowParams,
+    JoinAggregateParams,
 } from "../spec/transform.js";
 
 /** A reservoir sample with the existing default size of 500. */
@@ -23,7 +24,8 @@ export type AnalysisTransformParams =
     | Omit<ExprFilterParams, "debounce">
     | AnalysisSampleParams
     | AggregateParams
-    | WindowParams;
+    | WindowParams
+    | JoinAggregateParams;
 
 /** Request for a bounded calculation on a unit view's current records. */
 export interface TransformDataOptions {

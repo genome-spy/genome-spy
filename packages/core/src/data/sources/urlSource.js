@@ -29,7 +29,7 @@ const textDecoder = new TextDecoder();
  * payloads before handing them to the registered format reader.
  */
 export default class UrlSource extends DataSource {
-    #loadId = 0;
+    #abortController = new AbortController();
 
     /**
      * @param {import("../../spec/data.js").UrlData} params
@@ -37,6 +37,8 @@ export default class UrlSource extends DataSource {
      */
     constructor(params, view) {
         super(view);
+
+        this.registerDisposer(() => this.#abortController.abort());
 
         this.params = activateExprRefProps(
             view.paramRuntime,
@@ -60,12 +62,18 @@ export default class UrlSource extends DataSource {
     /**
      *
      * @param {import("../../spec/data.js").UrlList} props
+     * @param {AbortSignal} signal
      */
-    async #loadUrlsFromFile(props) {
+    async #loadUrlsFromFile(props, signal) {
         const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
         const format = { type: props.type ?? "tsv" };
 
-        const content = await loadResponse(listUrl, responseType(format.type));
+        const content = await loadResponse(
+            listUrl,
+            responseType(format.type),
+            signal
+        );
+        signal.throwIfAborted();
 
         const files = /** @type {string[] | {url: string}[]} */ (
             read(content, toVegaLoaderFormat(format))
@@ -79,8 +87,10 @@ export default class UrlSource extends DataSource {
     async load() {
         if (this.disposed) return;
 
-        const loadId = ++this.#loadId;
-        const isCurrent = () => !this.disposed && loadId === this.#loadId;
+        this.#abortController.abort();
+        this.#abortController = new AbortController();
+        const signal = this.#abortController.signal;
+        const isCurrent = () => !this.disposed && !signal.aborted;
 
         this.setLoadingStatus("loading");
         this.reset();
@@ -93,9 +103,11 @@ export default class UrlSource extends DataSource {
             /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
             const descriptors =
                 typeof url == "object" && "urlsFromFile" in url
-                    ? (await this.#loadUrlsFromFile(url)).map((url) => ({
-                          url,
-                      }))
+                    ? (await this.#loadUrlsFromFile(url, signal)).map(
+                          (url) => ({
+                              url,
+                          })
+                      )
                     : await normalizeUrlDescriptors({
                           url: this.params.url,
                           baseUrl: this.baseUrl,
@@ -146,10 +158,18 @@ export default class UrlSource extends DataSource {
 
                 const loaded = await Promise.all(
                     descriptors.map((descriptor) =>
-                        loadUrlDescriptorOrSkip(descriptor, async () => ({
+                        loadUrlDescriptorOrSkip(
                             descriptor,
-                            content: await loadResponse(descriptor.url, type),
-                        }))
+                            async () => ({
+                                descriptor,
+                                content: await loadResponse(
+                                    descriptor.url,
+                                    type,
+                                    signal
+                                ),
+                            }),
+                            signal
+                        )
                     )
                 );
 
@@ -193,11 +213,12 @@ export default class UrlSource extends DataSource {
 /**
  * @param {string} url
  * @param {string} type
+ * @param {AbortSignal} signal
  */
-async function loadResponse(url, type) {
+async function loadResponse(url, type, signal) {
     let result;
     try {
-        result = await fetch(url);
+        result = await fetch(url, { signal });
         if (!result.ok)
             throw new Error(`${result.status} ${result.statusText}`);
     } catch (cause) {

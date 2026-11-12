@@ -2,10 +2,10 @@
 
 The `"branch"` declaration forks the current input into a separate transform
 pipeline. The input can be defined in the view or inherited from an ancestor.
-Filters and row mutations in the branch affect that pipeline only; the
-main pipeline continues with its original rows. This is useful for calculating
-summaries or publishing [`"values"`](values.md) without removing the data used
-by marks.
+Filters and row mutations in the branch affect that pipeline only. The main
+pipeline retains its original rows for marks and later transforms. A branch can
+publish scalar arrays through [`"values"`](values.md) or a named table through
+[`"publish"`](publish.md).
 
 ## Parameters
 
@@ -31,12 +31,13 @@ rows and calculates `doubled`:
 }
 ```
 
-A branch shares the declaring view's parameter scope. It does not introduce
-another view or lexical scope. Its output names must be unique in that scope.
-An explicit [`"collect"`](collect.md) can sort the branch's rows or cache them
-for replay when a filter depends on an ordinary parameter.
+A branch uses the declaring view's parameter scope. Its output parameter names
+must be unique in that scope. An explicit [`"collect"`](collect.md) can sort the
+branch's rows or cache them for replay when a filter depends on an ordinary
+parameter.
 
 ## Example
 
-The [Values example](values.md#deriving-cuts-in-a-branch) calculates cluster gaps
-from metadata in a branch while retaining every heatmap cell in the main path.
+The [Values example](values.md#deriving-cuts-in-a-branch) calculates cluster
+gaps from metadata in a branch while retaining every heatmap cell in the main
+path.

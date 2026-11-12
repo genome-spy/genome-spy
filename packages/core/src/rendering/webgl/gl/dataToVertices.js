@@ -16,6 +16,7 @@ import {
 } from "./glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
 import { createVertexRangeIndexer } from "./vertexRangeIndex.js";
+import { packCssColor } from "../../color.js";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -80,8 +81,13 @@ export class GeometryBuilder {
             const numberAccessor = accessor.asNumberAccessor();
             const scale = ce.scale;
 
-            const { largeHp, arrayConstructor, discrete, numComponents } =
-                getAttributeAndArrayTypes(scale, channel);
+            const {
+                largeHp,
+                arrayConstructor,
+                discrete,
+                numComponents,
+                packedColor,
+            } = getAttributeAndArrayTypes(scale, channel);
             const largeHpArray = [0, 0];
 
             // Core owns categorical identity, including values encoded before
@@ -104,7 +110,9 @@ export class GeometryBuilder {
                 : largeHp
                   ? (d) =>
                         splitLargeHighPrecision(numberAccessor(d), largeHpArray)
-                  : numberAccessor;
+                  : packedColor
+                    ? (d) => packCssColor(accessor(d))
+                    : numberAccessor;
 
             const attributeName = makeAttributeName(sharedChannels ?? channel);
             for (const sharedChannel of sharedChannels ?? [channel]) {

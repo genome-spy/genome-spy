@@ -24,6 +24,7 @@ export const POINT_CHANNEL_SPECS = {
     dy: { type: "f32", components: 1, default: 0.0 },
     fill: { type: "f32", components: 4, default: [0.3, 0.5, 0.7, 1.0] },
     stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    opacity: { type: "f32", components: 1, default: 1.0 },
     fillOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     angle: { type: "f32", components: 1, default: 0.0 },
@@ -59,6 +60,7 @@ struct VSOut {
     @location(8) gradientStrength: f32,
     @location(9) @interpolate(flat) strokeAlign: u32,
     @location(10) @interpolate(flat) pickId: u32,
+    @location(11) opacity: f32,
 };
 
 fn culledPoint() -> VSOut {
@@ -72,6 +74,7 @@ fn culledPoint() -> VSOut {
     out.radiusWithPadding = 0.0;
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
+    out.opacity = 0.0;
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
@@ -166,6 +169,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.radiusWithPadding = out.radius + padding * 0.5;
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
+    out.opacity = getScaled_opacity(i);
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = strokeWidth * 0.5;
@@ -224,7 +228,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shade(in) * select(in.opacity, 1.0, pickingEnabled);
 }
 `;
 

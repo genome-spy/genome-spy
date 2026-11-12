@@ -461,7 +461,7 @@ async function comparePathPointAtlases(page) {
             let accumulatedNearContourMedianDelta = 0;
             const median = (r, g, b) =>
                 Math.max(Math.min(r, g), Math.min(Math.max(r, g), b));
-            const nearContourRadius = (8 * 127) / options.spread;
+            const nearContourRadius = (8 * 255) / (2 * options.spread);
             for (let offset = 0; offset < gpu.length; offset += 4) {
                 const pixel = offset / 4;
                 const x = pixel % width;
@@ -490,7 +490,7 @@ async function comparePathPointAtlases(page) {
                 // the part sampled by ordinary fills, outlines, and AA. Large
                 // far-field differences do not affect their reconstruction.
                 const nearContour =
-                    Math.abs(wasmMedian - 128) <= nearContourRadius;
+                    Math.abs(wasmMedian - 127.5) <= nearContourRadius;
                 if (rgbDelta > differenceThreshold) {
                     rgbDifferingPixels++;
                     if (path) {

@@ -19,6 +19,7 @@ import { renderMarkSvg } from "./renderers/index.js";
 import { partitionOrderData } from "../immediate/order.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
+import { pointClipPath } from "./pointClipPath.js";
 import { createRectHatchPattern } from "./rectHatchPattern.js";
 import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
 
@@ -57,6 +58,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {Set<import("../../marks/mark.js").default>} marks
  * @prop {SvgRasterTarget[]} targets
  * @prop {Set<SVGElement>} viewNodes
+ * @prop {SVGElement} opacityScope
  * @prop {Comment} anchor
  * @prop {import("../immediate/bounds.js").RenderBounds} bounds
  * @prop {SVGImageElement | undefined} image
@@ -75,6 +77,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {boolean} [countOnly]
  * @prop {(fade: SvgViewportEdgeFade) => string | undefined} getViewportEdgeFadeMaskUrl
  * @prop {(shadow: SvgShadow) => string} getShadowFilterUrl
+ * @prop {(shape: string) => string | undefined} getPointClipPathUrl
  * @prop {(cutoutPath: string) => string} getShadowClipPathUrl
  * @prop {(hatch: SvgRectHatch) => string} getRectHatchPatternUrl
  * @prop {(fade: SvgLinkArcFade) => string | undefined} getLinkArcFadeMaskUrl
@@ -117,6 +120,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
 
     /** @type {Map<string, string>} */
     #shadowClipPaths = new Map();
+
+    /** @type {Map<string, string>} */
+    #pointClipPaths = new Map();
 
     /** @type {Map<string, string>} */
     #rectHatchPatterns = new Map();
@@ -300,6 +306,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
+        const opacity = view.getOpacity();
+        if (opacity !== 1) {
+            this.#flushRasterRun();
+        }
+
         const batch = this.#sampleFacetBatch;
         let group = batch?.viewGroups.get(view);
         if (group) {
@@ -313,6 +324,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 id: createViewGroupId(view.name, this.#nextViewId++),
                 "data-name": view.name,
                 "data-view-path": path,
+                ...(opacity !== 1
+                    ? { opacity: formatSvgUnitless(opacity) }
+                    : {}),
             });
             const title = createSvgElement("title");
             title.textContent = path;
@@ -336,6 +350,13 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         const entry = this.#viewStack.pop();
         if (entry?.view !== view) {
             throw new Error("Unbalanced SVG view rendering context stack.");
+        }
+        if (
+            !this.#countingInstances &&
+            !entry.exportExcluded &&
+            view.getOpacity() !== 1
+        ) {
+            this.#flushRasterRun();
         }
     }
 
@@ -425,7 +446,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     group,
                     visibleBounds,
                     anchorCullBounds,
-                    viewOpacity: mark.unitView.getEffectiveOpacity(),
+                    // View groups own fading; painters retain only per-paint alpha.
+                    viewOpacity: 1,
                     textMetrics: this.textMetrics,
                     secondOrderPass,
                     countOnly: this.#countingInstances,
@@ -451,6 +473,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                             padding,
                             inside
                         ),
+                    getPointClipPathUrl: (shape) =>
+                        this.getPointClipPathUrl(shape),
                     getShadowClipPathUrl: (cutoutPath) =>
                         this.#countingInstances
                             ? ""
@@ -532,8 +556,17 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * @param {import("../immediate/bounds.js").RenderBounds} visibleBounds
      */
     #recordRasterTarget(mark, visibleBounds) {
+        const opacityScope =
+            this.#viewStack.findLast((entry) =>
+                entry.node.hasAttribute("opacity")
+            )?.node ?? this.#svg;
         const batchRun = this.#sampleFacetBatch?.rasterRuns.get(mark);
         if (batchRun) {
+            if (batchRun.opacityScope !== opacityScope) {
+                throw new Error(
+                    "Sample-faceted raster mark crossed SVG opacity scopes."
+                );
+            }
             extendBounds(batchRun.bounds, visibleBounds);
             batchRun.viewNodes.add(this.currentNode);
             return;
@@ -548,6 +581,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 targets: [],
                 viewNodes: new Set(),
                 anchor,
+                opacityScope,
                 bounds: { ...visibleBounds },
                 image: undefined,
             };
@@ -768,6 +802,29 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             })
         );
         this.#defs.appendChild(mask);
+        return `url(#${id})`;
+    }
+
+    /**
+     * @param {string} shape
+     * @returns {string | undefined}
+     */
+    getPointClipPathUrl(shape) {
+        let id = this.#pointClipPaths.get(shape);
+        if (!id) {
+            const d = pointClipPath(shape);
+            if (d === undefined) {
+                return undefined;
+            }
+            id = "point-clip-" + this.#nextClipId++;
+            const clip = createSvgElement("clipPath", {
+                id,
+                clipPathUnits: "objectBoundingBox",
+            });
+            clip.appendChild(createSvgElement("path", { d }));
+            this.#defs.appendChild(clip);
+            this.#pointClipPaths.set(shape, id);
+        }
         return `url(#${id})`;
     }
 

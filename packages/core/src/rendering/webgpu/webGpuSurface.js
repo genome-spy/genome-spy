@@ -181,8 +181,15 @@ export default class WebGpuSurface {
      * @param {WebGpuExportTarget} target
      * @param {GPUColor} clearColor
      * @param {(mark: import("../../marks/mark.js").default) => boolean} [markPredicate]
+     * @param {boolean} [applyViewOpacity]
      */
-    renderLayoutToTarget(layoutResult, target, clearColor, markPredicate) {
+    renderLayoutToTarget(
+        layoutResult,
+        target,
+        clearColor,
+        markPredicate,
+        applyViewOpacity = true
+    ) {
         const framePlan = new WebGpuViewRenderingContext({
             surface: this,
             target: {
@@ -191,6 +198,7 @@ export default class WebGpuSurface {
                 dpr: target.pixelRatio,
             },
             markPredicate,
+            applyViewOpacity,
         });
         layoutResult.collectRenderCommands(framePlan);
         framePlan.finish();

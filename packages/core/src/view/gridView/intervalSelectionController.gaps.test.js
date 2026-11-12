@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
+import PointerCanvas from "../../../testFixtures/pointerCanvas.js";
 import { expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { IntervalSelectionController } from "./intervalSelectionController.js";
 import Rectangle from "../layout/rectangle.js";
 import Point from "../layout/point.js";
 
-// Exercise real scale inversion, interval normalization, and document drags.
+// Exercise real scale inversion, interval normalization, and captured pointer drags.
 test("brushes stay defined over gaps and use their visible bounds for translation", async () => {
     const { view, context } = await createHeadlessEngine({
         params: [{ name: "brush", value: { type: "interval", intervals: {} } }],
@@ -43,23 +44,20 @@ test("brushes stay defined over gaps and use their visible bounds for translatio
         view.paramRuntime,
         false
     );
+    const canvas = new PointerCanvas();
     const drag = (/** @type {number} */ start, /** @type {number} */ end) => {
+        const pointerEvent = canvas.event("pointerdown", {
+            clientX: start,
+            clientY: 25,
+        });
         listeners.get("mousedown")({
             point: new Point(start, 25),
-            mouseEvent: new MouseEvent("mousedown", {
-                button: 0,
-                clientX: start,
-                clientY: 25,
-            }),
+            mouseEvent: pointerEvent,
             proxiedMouseEvent: {},
             stopPropagation: vi.fn(),
         });
-        document.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: end, clientY: 25 })
-        );
-        document.dispatchEvent(
-            new MouseEvent("mouseup", { clientX: end, clientY: 25 })
-        );
+        canvas.dispatch("pointermove", { clientX: end, clientY: 25 });
+        canvas.dispatch("pointerup", { clientX: end, clientY: 25 });
         return view.paramRuntime.getValue("brush").intervals.x;
     };
     const clear = () => controller.clear();

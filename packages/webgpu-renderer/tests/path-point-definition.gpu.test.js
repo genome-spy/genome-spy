@@ -823,7 +823,7 @@ test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
             ).data;
             const deviceCellSize = cellSize * dpr;
             let maximumDifference = 0;
-            let emptyCells = 0;
+            let emptyResolvedCells = 0;
             let edgeContacts = 0;
 
             const pixelOffset = (row, column, x, y) =>
@@ -868,15 +868,20 @@ test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
                         }
                     }
                 }
-                if (inkPixels === 0) {
-                    emptyCells++;
+                if (inkPixels === 0 && rows[row].diameter * dpr > 1) {
+                    emptyResolvedCells++;
                 }
             }
 
             bitmap.close();
             renderer.destroy();
             canvas.remove();
-            return { dpr, maximumDifference, emptyCells, edgeContacts };
+            return {
+                dpr,
+                maximumDifference,
+                emptyResolvedCells,
+                edgeContacts,
+            };
         };
 
         return Promise.all([render(1), render(2)]);
@@ -884,9 +889,8 @@ test("PathPoint clamps pathological strokes across shapes and DPRs", async ({
 
     for (const result of results) {
         expect(result.maximumDifference).toBeLessThanOrEqual(1);
-        // One half-pixel-wide inward-stroked shape may legitimately miss all
-        // sample centers at DPR 1.
-        expect(result.emptyCells).toBeLessThanOrEqual(1);
+        // Paths at or below one physical pixel can miss sample centers with this finite field.
+        expect(result.emptyResolvedCells).toBe(0);
         expect(result.edgeContacts).toBe(0);
     }
 });

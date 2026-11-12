@@ -376,7 +376,11 @@ export default class WebGLHelper {
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {
-        const existingTexture = this.rangeTextures.get(resolution.getScale());
+        const scale = resolution.getScale();
+        if (scale.type === "null") {
+            return;
+        }
+        const existingTexture = this.rangeTextures.get(scale);
         if (!update && existingTexture) {
             return;
         }
@@ -384,7 +388,6 @@ export default class WebGLHelper {
         const channel = resolution.channel;
 
         if (isColorChannel(channel)) {
-            const scale = resolution.getScale();
             const props = scale.props;
 
             const range = /** @type {any[]} */ (scale.range());
@@ -443,8 +446,6 @@ export default class WebGLHelper {
             this.rangeTextures.set(scale, texture);
             this._ownedTextures.add(texture);
         } else {
-            const scale = resolution.getScale();
-
             if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
                 /** @type {function(any):number} Handle "shape" etc */
                 const mapper = isDiscreteChannel(channel)

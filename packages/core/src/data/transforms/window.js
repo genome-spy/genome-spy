@@ -29,6 +29,7 @@ import {
  */
 
 /** @typedef {import("../flowNode.js").Datum} Datum */
+/** @typedef {import("../../spec/transform.js").WindowParams | import("../../spec/transform.js").JoinAggregateParams} Params */
 
 /**
  * Calculates window functions over sorted partitions while preserving input
@@ -43,7 +44,7 @@ export default class WindowTransform extends Transform {
     }
 
     /**
-     * @param {import("../../spec/transform.js").WindowParams} params
+     * @param {Params} params
      * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
     constructor(params, paramRuntimeProvider) {
@@ -55,6 +56,7 @@ export default class WindowTransform extends Transform {
 
         const normalized = normalizeParams(params, this);
         this.frame = normalized.frame;
+        this.sharedFrame = normalized.sharedFrame;
         this.ignorePeers = normalized.ignorePeers;
         this.comparator = normalized.comparator;
         this.groupAccessors = normalized.groupAccessors;
@@ -119,19 +121,29 @@ export default class WindowTransform extends Transform {
     /** @param {Datum[]} partition */
     #processPartition(partition) {
         const rows = sortedRows(partition, this.comparator);
-        const bounds = createPartitionBounds(
-            rows,
-            this.comparator,
-            this.frame,
-            this.ignorePeers
+        // A full-partition aggregate needs only one frame and result per op.
+        const bounds = this.sharedFrame
+            ? {
+                  starts: [0],
+                  stops: [rows.length],
+                  peerStarts: [],
+                  peerStops: [],
+              }
+            : createPartitionBounds(
+                  rows,
+                  this.comparator,
+                  this.frame,
+                  this.ignorePeers
+              );
+        const results = this.outputFields.map(
+            () => new Array(bounds.starts.length)
         );
-        const results = this.outputFields.map(() => new Array(rows.length));
 
         for (const evaluate of this.partitionEvaluators) {
             evaluate(rows, bounds, results);
         }
 
-        writeResults(rows, results, this.outputFields);
+        writeResults(rows, results, this.outputFields, this.sharedFrame);
     }
 }
 
@@ -154,7 +166,7 @@ export default class WindowTransform extends Transform {
  */
 
 /**
- * @param {import("../../spec/transform.js").WindowParams} params
+ * @param {Params} params
  * @param {Transform} transform
  */
 function normalizeParams(params, transform) {
@@ -164,11 +176,15 @@ function normalizeParams(params, transform) {
         );
     }
 
+    const windowParams = params.type == "window" ? params : undefined;
     validateAlignedArray("fields", params.fields, params.ops.length);
-    validateAlignedArray("params", params.params, params.ops.length);
+    validateAlignedArray("params", windowParams?.params, params.ops.length);
     validateAlignedArray("as", params.as, params.ops.length);
 
-    const frame = params.frame ?? [null, 0];
+    /** @type {[number | null, number | null]} */
+    const frame = windowParams
+        ? (windowParams.frame ?? [null, 0])
+        : [null, null];
     if (!Array.isArray(frame) || frame.length != 2) {
         throw new Error(
             'The "frame" property must contain exactly two offsets.'
@@ -184,10 +200,10 @@ function normalizeParams(params, transform) {
     }
 
     const groupAccessors = transform.createFieldAccessors(params, "groupby");
-    const comparator = params.sort
+    const comparator = windowParams?.sort
         ? compare(
-              transform.createFieldAccessors(params.sort, "field"),
-              params.sort.order
+              transform.createFieldAccessors(windowParams.sort, "field"),
+              windowParams.sort.order
           )
         : undefined;
 
@@ -236,6 +252,8 @@ function normalizeParams(params, transform) {
         }
     }
 
+    const sharedFrame =
+        frame[0] == null && frame[1] == null && partitionEvaluators.length == 0;
     if (countResults.length) {
         partitionEvaluators.push(createCountEvaluator(countResults));
     }
@@ -247,7 +265,8 @@ function normalizeParams(params, transform) {
 
     return {
         frame,
-        ignorePeers: params.ignorePeers ?? false,
+        sharedFrame,
+        ignorePeers: windowParams?.ignorePeers ?? false,
         comparator,
         groupAccessors,
         partitionEvaluators,
@@ -266,7 +285,7 @@ function normalizeParams(params, transform) {
  */
 
 /**
- * @param {import("../../spec/transform.js").WindowParams} params
+ * @param {Params} params
  * @param {number} index
  * @param {Transform} transform
  * @returns {CompiledOperation}
@@ -274,15 +293,16 @@ function normalizeParams(params, transform) {
 function compileOperation(params, index, transform) {
     const op = params.ops[index];
     const fieldName = params.fields?.[index] ?? null;
-    const parameter = params.params?.[index];
-    const kind = WINDOW_ONLY_OPS.has(op)
-        ? "window"
-        : WINDOW_AGGREGATE_OPS.has(op)
-          ? "aggregate"
+    const parameter =
+        params.type == "window" ? params.params?.[index] : undefined;
+    const kind = WINDOW_AGGREGATE_OPS.has(op)
+        ? "aggregate"
+        : params.type == "window" && WINDOW_ONLY_OPS.has(op)
+          ? "window"
           : null;
 
     if (!kind) {
-        throw new Error(`Unsupported window operation: ${op}`);
+        throw new Error(`Unsupported ${params.type} operation: ${op}`);
     }
 
     const requiresField =
@@ -327,12 +347,12 @@ function compileOperation(params, index, transform) {
 function createCountEvaluator(countResults) {
     const resultIndices = countResults.map(({ resultIndex }) => resultIndex);
 
-    return (rows, bounds, results) => {
+    return (_rows, bounds, results) => {
         const resultArrays = resultIndices.map((index) => results[index]);
         const starts = bounds.starts;
         const stops = bounds.stops;
 
-        for (let index = 0; index < rows.length; index++) {
+        for (let index = 0; index < starts.length; index++) {
             const count = stops[index] - starts[index];
             for (const result of resultArrays) {
                 result[index] = count;
@@ -345,12 +365,14 @@ function createCountEvaluator(countResults) {
  * @param {Datum[]} rows
  * @param {any[][]} results
  * @param {string[]} outputFields
+ * @param {boolean} sharedFrame
  */
-function writeResults(rows, results, outputFields) {
+function writeResults(rows, results, outputFields, sharedFrame) {
     for (let index = 0; index < rows.length; index++) {
         const datum = rows[index];
+        const resultIndex = sharedFrame ? 0 : index;
         for (let i = 0; i < outputFields.length; i++) {
-            datum[outputFields[i]] = results[i][index];
+            datum[outputFields[i]] = results[i][resultIndex];
         }
     }
 }

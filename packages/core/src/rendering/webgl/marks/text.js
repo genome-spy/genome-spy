@@ -60,9 +60,10 @@ export default class WebGLTextMark extends WebGLMark {
             /** @type {import("../../../spec/channel.js").Channel} */ (
                 "y2Offset"
             ),
-            "color",
+            "fill",
             "size",
             "opacity",
+            "fillOpacity",
             "angle",
         ];
     }

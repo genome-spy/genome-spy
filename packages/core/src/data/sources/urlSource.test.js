@@ -564,7 +564,7 @@ test("an older request cannot republish after its replacement completes", async 
     source.addChild(collector);
 
     const a = source.load();
-    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledWith("a.json"));
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
 
     source.params.url = "b.json";
     await source.load();
@@ -581,27 +581,42 @@ test.each([false, true])(
     async (reject) => {
         const a = Promise.withResolvers();
         const b = Promise.withResolvers();
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         global.fetch = vi.fn(async (url) =>
             url === "a.json" ? a.promise : b.promise
         );
         const view = createViewStub();
-        const source = new UrlSource({ url: "a.json" }, view);
+        const source = new UrlSource(
+            {
+                url: {
+                    template: "{part}.json",
+                    values: ["a"],
+                    field: "part",
+                    onLoadError: "skip",
+                },
+            },
+            view
+        );
         const collector = new Collector();
         source.addChild(collector);
 
         const first = source.load();
-        await vi.waitFor(() =>
-            expect(global.fetch).toHaveBeenCalledWith("a.json")
-        );
+        await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
 
         source.params.url = "b.json";
         const second = source.load();
+        expect(global.fetch).toHaveBeenCalledWith("a.json", {
+            signal: expect.objectContaining({ aborted: true }),
+        });
         if (reject) {
-            a.reject(new Error("old failure"));
+            a.reject(
+                new DOMException("The request was aborted.", "AbortError")
+            );
         } else {
             a.resolve(new Response('[{"value":"A"}]'));
         }
         await first;
+        expect(warn).not.toHaveBeenCalled();
         expect(collector.completed).toBe(false);
         expect(/** @type {any} */ (view).loadingStatus.status).toBe("loading");
         b.resolve(new Response('[{"value":"B"}]'));
@@ -611,18 +626,21 @@ test.each([false, true])(
     }
 );
 
-test("disposal prevents pending URL publication and future loading", async () => {
+test("disposal aborts a pending URL list and prevents future loading", async () => {
     const response = Promise.withResolvers();
     global.fetch = vi.fn(async () => response.promise);
     const view = createViewStub();
-    const source = new UrlSource({ url: "a.json" }, view);
+    const source = new UrlSource({ url: { urlsFromFile: "parts.tsv" } }, view);
     const collector = new Collector();
     source.addChild(collector);
 
     const pending = source.load();
     await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
     source.dispose();
-    response.resolve(new Response('[{"value":"A"}]'));
+    expect(global.fetch).toHaveBeenCalledWith("parts.tsv", {
+        signal: expect.objectContaining({ aborted: true }),
+    });
+    response.resolve(new Response("url\na.json\n"));
     await pending;
     await source.load();
 
@@ -683,7 +701,7 @@ test("superseded fetched content never invokes its format reader", async () => {
     const collector = new Collector();
     source.addChild(collector);
     const first = source.load();
-    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledWith("a.data"));
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
     source.params.url = "b.data";
     await source.load();
     response.resolve(new Response("A"));

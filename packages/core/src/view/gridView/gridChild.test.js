@@ -1,3 +1,4 @@
+import PointerCanvas from "../../../testFixtures/pointerCanvas.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
@@ -669,39 +670,7 @@ describe("GridChild interval selection interactions", () => {
     });
 
     test("delivers independent interval commit registrations after brush completion", () => {
-        const originalDocument = globalThis.document;
-        /** @type {Map<string, Set<EventListener>>} */
-        const documentListeners = new Map();
-        globalThis.document = /** @type {Document} */ (
-            /** @type {any} */ ({
-                addEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    let listeners = documentListeners.get(type);
-                    if (!listeners) {
-                        listeners = new Set();
-                        documentListeners.set(type, listeners);
-                    }
-                    listeners.add(listener);
-                },
-                removeEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    documentListeners.get(type)?.delete(listener);
-                },
-                dispatchEvent(/** @type {Event} */ event) {
-                    for (const listener of [
-                        ...(documentListeners.get(event.type) ?? []),
-                    ]) {
-                        listener(event);
-                    }
-                    return true;
-                },
-            })
-        );
-
+        const canvas = new PointerCanvas();
         /** @type {Map<string, any[]>} */
         const listeners = new Map();
         const { view, layoutParent } = createIntervalGridChildView([
@@ -718,76 +687,77 @@ describe("GridChild interval selection interactions", () => {
             listeners.set(type, [...(listeners.get(type) ?? []), listener]);
         };
 
-        try {
-            const child = new GridChild(view, layoutParent, 0);
-            const controller =
-                view.paramRuntime.getIntervalSelectionState("brush");
-            if (!controller) {
-                throw new Error("Expected an interval selection controller.");
-            }
-
-            /** @type {{ end: number, interval: [number, number] }[]} */
-            const settledCommits = [];
-            controller.subscribeCommit((selection) => {
-                const interval = /** @type {[number, number]} */ (
-                    selection.intervals.x
-                );
-                if (!interval) {
-                    throw new Error("Expected a committed x interval.");
-                }
-                settledCommits.push({
-                    end: view.paramRuntime.getValue("brushEnd"),
-                    interval,
-                });
-            });
-
-            const commitListener = vi.fn();
-            let unsubscribeSecond = () => {};
-            let unsubscribeThird = () => {};
-            const unsubscribeFirst = controller.subscribeCommit(() => {
-                commitListener();
-                if (commitListener.mock.calls.length === 1) {
-                    unsubscribeSecond();
-                    unsubscribeThird =
-                        controller.subscribeCommit(commitListener);
-                }
-            });
-            unsubscribeSecond = controller.subscribeCommit(commitListener);
-
-            expect(settledCommits).toHaveLength(0);
-            listeners.get("mousedown")[0](
-                createInteractionEvent({
-                    mouseEvent: /** @type {any} */ ({
-                        button: 0,
-                        clientX: 50,
-                        clientY: 50,
-                    }),
-                })
-            );
-            document.dispatchEvent(
-                /** @type {Event} */ (
-                    /** @type {any} */ ({
-                        type: "mousemove",
-                        clientX: 70,
-                        clientY: 50,
-                    })
-                )
-            );
-            document.dispatchEvent(
-                /** @type {Event} */ (/** @type {any} */ ({ type: "mouseup" }))
-            );
-
-            expect(settledCommits).toHaveLength(1);
-            expect(settledCommits[0].end).toBe(settledCommits[0].interval[1]);
-            expect(commitListener).toHaveBeenCalledTimes(2);
-
-            unsubscribeFirst();
-            unsubscribeSecond();
-            unsubscribeThird();
-            child.dispose();
-        } finally {
-            globalThis.document = originalDocument;
+        const child = new GridChild(view, layoutParent, 0);
+        const controller = view.paramRuntime.getIntervalSelectionState("brush");
+        if (!controller) {
+            throw new Error("Expected an interval selection controller.");
         }
+
+        /** @type {{ end: number, interval: [number, number] }[]} */
+        const settledCommits = [];
+        controller.subscribeCommit((selection) => {
+            const interval = /** @type {[number, number]} */ (
+                selection.intervals.x
+            );
+            if (!interval) {
+                throw new Error("Expected a committed x interval.");
+            }
+            settledCommits.push({
+                end: view.paramRuntime.getValue("brushEnd"),
+                interval,
+            });
+        });
+
+        const commitListener = vi.fn();
+        let unsubscribeSecond = () => {};
+        let unsubscribeThird = () => {};
+        const unsubscribeFirst = controller.subscribeCommit(() => {
+            commitListener();
+            if (commitListener.mock.calls.length === 1) {
+                unsubscribeSecond();
+                unsubscribeThird = controller.subscribeCommit(commitListener);
+            }
+        });
+        unsubscribeSecond = controller.subscribeCommit(commitListener);
+
+        expect(settledCommits).toHaveLength(0);
+        const pointerEvent = canvas.event("pointerdown", {
+            clientX: 50,
+            clientY: 50,
+        });
+        listeners.get("mousedown")[0](
+            createInteractionEvent({ mouseEvent: pointerEvent })
+        );
+        canvas.dispatch("pointermove", { clientX: 70, clientY: 50 });
+        canvas.dispatch("pointerup");
+
+        expect(settledCommits).toHaveLength(1);
+        expect(settledCommits[0].end).toBe(settledCommits[0].interval[1]);
+        expect(commitListener).toHaveBeenCalledTimes(2);
+
+        const interrupted = canvas.event("pointerdown", {
+            clientX: 60,
+            clientY: 50,
+        });
+        listeners.get("mousedown")[0](
+            createInteractionEvent({
+                point: new Point(60, 50),
+                mouseEvent: interrupted,
+            })
+        );
+        expect(canvas.hasPointerCapture(1)).toBe(true);
+        canvas.dispatch("pointermove", { clientX: 75, clientY: 50 });
+        canvas.dispatch("pointercancel");
+        expect(settledCommits).toHaveLength(1);
+
+        const click = createInteractionEvent();
+        for (const listener of listeners.get("click") ?? []) listener(click);
+        expect(click.stopPropagation).not.toHaveBeenCalled();
+
+        unsubscribeFirst();
+        unsubscribeSecond();
+        unsubscribeThird();
+        child.dispose();
     });
 
     test("disposes interval selection view listeners", () => {

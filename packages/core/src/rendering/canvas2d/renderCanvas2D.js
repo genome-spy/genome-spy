@@ -11,6 +11,7 @@ import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
  * @param {number} options.devicePixelRatio
  * @param {string | null} options.background
  * @param {boolean} options.paint
+ * @param {boolean} [options.applyViewOpacity]
  * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
  * @param {(mark: import("../../marks/mark.js").default) => boolean} [options.markPredicate]
  * @param {import("./canvasXIndexManager.js").default} [options.xIndexManager]
@@ -18,7 +19,7 @@ import Canvas2DViewRenderingContext from "./canvas2DViewRenderingContext.js";
  */
 export default function renderCanvas2D(options) {
     const renderingContext = new Canvas2DViewRenderingContext(
-        { picking: false },
+        { picking: false, applyViewOpacity: options.applyViewOpacity },
         options
     );
     options.layoutResult.collectRenderCommands(renderingContext);

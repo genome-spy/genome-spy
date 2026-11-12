@@ -453,6 +453,10 @@ SCHEMA InteractionEventType
 
 SCHEMA IntervalSelectionParameter
 
+## JoinAggregateParams
+
+See the [JoinAggregateParams documentation](transform/joinaggregate.md#parameters).
+
 ## JsonDataFormat
 
 SCHEMA JsonDataFormat
@@ -716,6 +720,10 @@ SCHEMA PrimaryPositionalChannel
 ## ProjectParams
 
 See the [ProjectParams documentation](transform/project.md#parameters).
+
+## PublishParams
+
+See the [PublishParams documentation](transform/publish.md#parameters).
 
 ## RangeConfig
 

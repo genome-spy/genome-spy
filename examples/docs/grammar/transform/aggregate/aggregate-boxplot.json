@@ -1,7 +1,7 @@
 {
   "description": [
-    "Aggregate-driven boxplot of penguin body mass by species.",
-    "Quartiles come from the aggregate transform. Whiskers use grouped min/max because Tukey-style outlier filtering would require joinaggregate-style transforms."
+    "Penguin Body Mass Boxplot",
+    "Shows quartiles, inlier whiskers, and observations beyond the 1.5×IQR fences for each species."
   ],
 
   "width": 300,
@@ -11,7 +11,30 @@
     "url": "vega-datasets/penguins.json"
   },
 
-  "transform": [{ "type": "filter", "expr": "isFinite(datum['Body Mass (g)'])" }],
+  "transform": [
+    {
+      "type": "filter",
+      "expr": "isValid(datum['Body Mass (g)']) && isFinite(datum['Body Mass (g)'])"
+    },
+    {
+      "type": "window",
+      "groupby": ["Species"],
+      "frame": [null, null],
+      "fields": ["Body Mass (g)", "Body Mass (g)", "Body Mass (g)"],
+      "ops": ["q1", "median", "q3"],
+      "as": ["q1BodyMass", "medianBodyMass", "q3BodyMass"]
+    },
+    {
+      "type": "formula",
+      "expr": "1.5 * (datum.q3BodyMass - datum.q1BodyMass)",
+      "as": "fenceOffset"
+    },
+    {
+      "type": "formula",
+      "expr": "datum['Body Mass (g)'] < datum.q1BodyMass - datum.fenceOffset || datum['Body Mass (g)'] > datum.q3BodyMass + datum.fenceOffset",
+      "as": "isOutlier"
+    }
+  ],
 
   "encoding": {
     "x": {
@@ -26,24 +49,26 @@
   "layer": [
     {
       "transform": [
+        { "type": "filter", "expr": "!datum.isOutlier" },
         {
           "type": "aggregate",
           "groupby": ["Species"],
           "fields": [
             "Body Mass (g)",
-            "Body Mass (g)",
-            "Body Mass (g)",
-            "Body Mass (g)",
+            "q1BodyMass",
+            "medianBodyMass",
+            "q3BodyMass",
             "Body Mass (g)"
           ],
-          "ops": ["min", "q1", "median", "q3", "max"],
+          "ops": ["min", "max", "max", "max", "max"],
           "as": [
             "minBodyMass",
             "q1BodyMass",
             "medianBodyMass",
             "q3BodyMass",
             "maxBodyMass"
-          ]
+          ],
+          "description": "Find the inlier whisker endpoints and carry forward the full-group quartiles."
         }
       ],
       "layer": [
@@ -132,6 +157,21 @@
           }
         }
       ]
+    },
+
+    {
+      "transform": [{ "type": "filter", "expr": "datum.isOutlier" }],
+      "mark": {
+        "type": "point",
+        "filled": false,
+        "color": "#243b53",
+        "size": 25,
+        "strokeWidth": 1
+      },
+      "encoding": {
+        "y": { "field": "Body Mass (g)", "type": "quantitative" },
+        "tooltip": [{ "field": "Species" }, { "field": "Body Mass (g)" }]
+      }
     }
   ]
 }

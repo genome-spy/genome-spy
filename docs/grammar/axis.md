@@ -101,6 +101,11 @@ precedence over generated labels.
 
 EXAMPLE examples/docs/grammar/axis/protein-domain-ticks.json height=90 spechidden
 
+Set `tickEndpoints` to `true` to add the current continuous domain limits, or
+`"only"` to show just those limits without generated ticks or `extraValues`.
+Explicit `values` take precedence. Unlike `scale.nice`, this does not change
+the domain.
+
 By default, continuous axes cull overlapping labels. Non-zoomable x axes also
 align endpoint labels flush with the plot edges. On zoomable x axes, only ticks
 at a configured bounded zoom extent are flushed, avoiding label snapping during
@@ -201,8 +206,6 @@ such as `config.axisX`, `config.axisY`, `config.axisTop`, `config.axisBottom`,
 `config.axisIndex`, and `config.axisLocus` refine those defaults. A
 channel-level axis object overrides the configured defaults for that axis.
 
-Named styles from `config.style` can also be referenced with `axis.style`.
-
 ```json
 {
   "config": {
@@ -218,6 +221,14 @@ Named styles from `config.style` can also be referenced with `axis.style`.
     }
   }
 }
+```
+
+Named styles from `config.style` can be referenced with `axis.style`.
+The opt-in `"igv-axis"` style uses endpoint-only ticks and inward-flushed labels
+with a small gap from the tick marks and domain line:
+
+```json
+{ "axis": { "style": "igv-axis" } }
 ```
 
 ### Config Properties
