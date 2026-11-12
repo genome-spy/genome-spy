@@ -49,10 +49,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #target;
 
     /**
-     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean}} options
+     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean, applyViewOpacity?: boolean}} options
      */
     constructor(options) {
-        super({});
+        super({ applyViewOpacity: options.applyViewOpacity });
         this.surface = options.surface;
         if (options.target) {
             this.#target = options.target;
@@ -320,7 +320,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 }
                 command.label = previousLabel;
                 const clip = getViewClipFlags(command.view);
-                command.localOpacity = command.view.hasLocalOpacity();
+                command.localOpacity =
+                    this.globalOptions.applyViewOpacity !== false &&
+                    command.view.hasLocalOpacity();
                 command.clipX = clip.clipX;
                 command.clipY = clip.clipY;
             }
@@ -410,7 +412,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (state.viewport) {
             writeDrawRect(state.viewport, state.ownerCoords);
         }
-        const viewOpacity = state.mark.unitView.getEffectiveOpacity();
+        const viewOpacity =
+            this.globalOptions.applyViewOpacity === false
+                ? 1
+                : state.mark.unitView.getEffectiveOpacity();
         if (
             viewOpacity <= 0 ||
             (picking && !state.mark.isPickingParticipant())

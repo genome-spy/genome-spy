@@ -58,6 +58,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {Set<import("../../marks/mark.js").default>} marks
  * @prop {SvgRasterTarget[]} targets
  * @prop {Set<SVGElement>} viewNodes
+ * @prop {SVGElement} opacityScope
  * @prop {Comment} anchor
  * @prop {import("../immediate/bounds.js").RenderBounds} bounds
  * @prop {SVGImageElement | undefined} image
@@ -305,6 +306,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
+        const opacity = view.getOpacity();
+        if (opacity !== 1) {
+            this.#flushRasterRun();
+        }
+
         const batch = this.#sampleFacetBatch;
         let group = batch?.viewGroups.get(view);
         if (group) {
@@ -318,6 +324,9 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 id: createViewGroupId(view.name, this.#nextViewId++),
                 "data-name": view.name,
                 "data-view-path": path,
+                ...(opacity !== 1
+                    ? { opacity: formatSvgUnitless(opacity) }
+                    : {}),
             });
             const title = createSvgElement("title");
             title.textContent = path;
@@ -341,6 +350,13 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         const entry = this.#viewStack.pop();
         if (entry?.view !== view) {
             throw new Error("Unbalanced SVG view rendering context stack.");
+        }
+        if (
+            !this.#countingInstances &&
+            !entry.exportExcluded &&
+            view.getOpacity() !== 1
+        ) {
+            this.#flushRasterRun();
         }
     }
 
@@ -430,7 +446,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     group,
                     visibleBounds,
                     anchorCullBounds,
-                    viewOpacity: mark.unitView.getEffectiveOpacity(),
+                    // View groups own fading; painters retain only per-paint alpha.
+                    viewOpacity: 1,
                     textMetrics: this.textMetrics,
                     secondOrderPass,
                     countOnly: this.#countingInstances,
@@ -539,8 +556,17 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * @param {import("../immediate/bounds.js").RenderBounds} visibleBounds
      */
     #recordRasterTarget(mark, visibleBounds) {
+        const opacityScope =
+            this.#viewStack.findLast((entry) =>
+                entry.node.hasAttribute("opacity")
+            )?.node ?? this.#svg;
         const batchRun = this.#sampleFacetBatch?.rasterRuns.get(mark);
         if (batchRun) {
+            if (batchRun.opacityScope !== opacityScope) {
+                throw new Error(
+                    "Sample-faceted raster mark crossed SVG opacity scopes."
+                );
+            }
             extendBounds(batchRun.bounds, visibleBounds);
             batchRun.viewNodes.add(this.currentNode);
             return;
@@ -555,6 +581,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 targets: [],
                 viewNodes: new Set(),
                 anchor,
+                opacityScope,
                 bounds: { ...visibleBounds },
                 image: undefined,
             };

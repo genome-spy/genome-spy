@@ -63,7 +63,7 @@ export function rasterizeSvgRuns({
     try {
         for (const run of runs) {
             const renderingContext = new BufferedViewRenderingContext(
-                { picking: false },
+                { picking: false, applyViewOpacity: false },
                 {
                     webGLHelper,
                     markAdapter,

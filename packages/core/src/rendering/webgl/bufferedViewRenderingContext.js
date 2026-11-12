@@ -291,7 +291,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             this.#batch.push(() => {
                 enabled =
                     this.#markAdapter.isEntryDrawable(entry) &&
-                    mark.unitView.getEffectiveOpacity() > 0;
+                    (this.globalOptions.applyViewOpacity === false ||
+                        mark.unitView.getEffectiveOpacity() > 0);
                 viewportVisible = true;
                 orderActive =
                     !!order && !this.globalOptions.picking && order.isActive();

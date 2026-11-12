@@ -40,7 +40,9 @@ export function exportCanvas({
     });
 
     try {
-        return framebufferToDataUrl(gl, framebufferInfo, "image/png");
+        return framebufferToDataUrl(gl, framebufferInfo, "image/png", {
+            unpremultiplyAlpha: true,
+        });
     } finally {
         deleteFramebuffer(gl, framebufferInfo);
     }
@@ -83,7 +85,9 @@ export async function exportRaster({
     });
 
     try {
-        return await framebufferToBlob(gl, framebufferInfo, mimeType);
+        return await framebufferToBlob(gl, framebufferInfo, mimeType, {
+            unpremultiplyAlpha: true,
+        });
     } finally {
         deleteFramebuffer(gl, framebufferInfo);
     }

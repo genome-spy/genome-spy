@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -221,4 +223,59 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
     await expect(
         page.getByRole("button", { name: "Choose files" })
     ).toBeVisible();
+});
+
+test("reports invalid uploads and keeps the valid files in the batch", async ({
+    page,
+}) => {
+    await page.addInitScript((specText) => {
+        globalThis.localStorage.setItem(
+            "playgroundSpec",
+            JSON.stringify({ specText })
+        );
+    }, uploadedFileSpec);
+
+    await page.goto("/?renderer=canvas");
+    const pane = page.locator("file-pane");
+    await expect(
+        pane.getByText("uploaded-points.csv", { exact: true })
+    ).toBeVisible();
+    await pane.locator("#fileInput").setInputFiles([
+        {
+            name: "empty.json",
+            mimeType: "application/json",
+            buffer: Buffer.from("[]"),
+        },
+        {
+            name: "broken.json",
+            mimeType: "application/json",
+            buffer: Buffer.from("{"),
+        },
+        {
+            name: "object.json",
+            mimeType: "application/json",
+            buffer: Buffer.from("{}"),
+        },
+        {
+            name: "uploaded-points.csv",
+            mimeType: "text/csv",
+            buffer: await readFile(fixturePath),
+        },
+    ]);
+
+    const status = pane.getByRole("status");
+    await expect(status).toContainText("Could not add broken.json");
+    await expect(status).toContainText("Could not add object.json");
+    await expect(pane.getByRole("tab")).toHaveText([
+        "empty.json",
+        "uploaded-points.csv",
+        "Add new files",
+    ]);
+    await expect(pane.getByRole("table")).toContainText("Uploaded point");
+    await expect(page.locator("#genome-spy-container canvas")).toBeVisible();
+
+    await pane.getByRole("tab", { name: "empty.json" }).click();
+    await expect(pane.getByRole("tabpanel")).toContainText(
+        "This dataset has no rows."
+    );
 });

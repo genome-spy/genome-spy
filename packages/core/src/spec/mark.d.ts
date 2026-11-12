@@ -585,7 +585,7 @@ export interface TextProps
         AngleProps,
         ViewportEdgeFadeProps,
         SizeProps,
-        Pick<FillAndStrokeProps, "fill"> {
+        Pick<FillAndStrokeProps, "fill" | "fillOpacity"> {
     type: "text";
 
     /**

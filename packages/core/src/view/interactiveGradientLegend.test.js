@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { expect, test } from "vitest";
+import PointerCanvas from "../../testFixtures/pointerCanvas.js";
 import { createTestEmbed } from "./embedTestUtils.js";
 import { renderToLayout } from "./testUtils.js";
 import { intervalSelection } from "../selection/index.js";
@@ -218,11 +219,12 @@ test("numeric filters, consumer mapping, and sampling use the same range", async
     ).toEqual([100, 120]);
 });
 
-/** Real controller input with document-owned drags, independent of renderer picking.
+/** Real controller input with captured pointer drags, independent of renderer picking.
  * @param {import("./view.js").default} root
  * @param {string} name
  */
 function rampHost(root, name) {
+    const canvas = new PointerCanvas();
     const unit = root.getDescendants().find((view) => view.name === name);
     const controller = /** @type {any} */ (
         unit.paramRuntime.getSelectionController("scores")
@@ -250,7 +252,7 @@ function rampHost(root, name) {
             legend.propagateInteraction(
                 new Interaction(
                     new Point(p.x, p.y),
-                    new MouseEvent("mousedown", {
+                    canvas.event("pointerdown", {
                         button: 0,
                         clientX: p.x,
                         clientY: p.y,
@@ -260,12 +262,10 @@ function rampHost(root, name) {
         },
         move(/** @type {number} */ fraction, cross = 0) {
             const p = point(fraction, cross);
-            document.dispatchEvent(
-                new MouseEvent("mousemove", { clientX: p.x, clientY: p.y })
-            );
+            canvas.dispatch("pointermove", { clientX: p.x, clientY: p.y });
         },
         end() {
-            document.dispatchEvent(new MouseEvent("mouseup"));
+            canvas.dispatch("pointerup");
         },
         async wheel(
             /** @type {number} */ fraction,
