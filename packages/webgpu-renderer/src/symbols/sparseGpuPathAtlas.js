@@ -124,6 +124,9 @@ fn lineDistance(
         return DistanceSample(distance(point, p0), 0.0);
     }
     let t = clamp(dot(point - p0, edge) / denominator, 0.0, 1.0);
+    // Incident edges must measure a shared endpoint from identical coordinates.
+    if (t == 0.0) { return DistanceSample(distance(point, p0), t); }
+    if (t == 1.0) { return DistanceSample(distance(point, p1), t); }
     return DistanceSample(distance(point, p0 + edge * t), t);
 }
 
@@ -205,33 +208,18 @@ fn channelDistance(
     return value;
 }
 
-// The high 31 bits rank the smallest magnitude first. The low bit retains the
-// sign of the winning edge without changing that ordering.
+// Finite nonnegative f32 magnitudes use 31 bits; shift their inverse rank to
+// retain every magnitude bit and the existing positive-sign tie preference.
 fn candidatePriority(value: f32) -> u32 {
-    let orderedMagnitude = bitcast<u32>(abs(value)) & 0xfffffffeu;
-    let rank = 0xfffffffeu - orderedMagnitude;
+    let rank = (0x7fffffffu - bitcast<u32>(abs(value))) << 1u;
     let positive = select(0u, 1u, value >= 0.0);
     return rank | positive;
 }
 
-fn priorityDistance(priority: u32) -> f32 {
-    if (priority == 0u) {
-        return params.spread;
-    }
-    let orderedMagnitude = 0xfffffffeu - (priority & 0xfffffffeu);
-    let magnitude = bitcast<f32>(orderedMagnitude);
-    return select(-magnitude, magnitude, (priority & 1u) != 0u);
-}
-
-fn matchesNearestTrueSign(
-    pixelIndex: u32,
-    channelIndex: u32,
-    candidate: f32
-) -> bool {
-    let nearest = priorityDistance(
-        atomicLoad(&trueScratch[pixelIndex * 3u + channelIndex])
-    );
-    return (candidate >= 0.0) == (nearest >= 0.0);
+fn alignmentPriority(alignment: f32, signedDistance: f32) -> u32 {
+    // Alignment is finite in [0, 1], so its 31-bit rank leaves a final sign bit.
+    let rank = (0x7fffffffu - bitcast<u32>(alignment)) << 1u;
+    return rank | select(0u, 1u, signedDistance >= 0.0);
 }
 
 @fragment
@@ -256,6 +244,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             direction = in.p2 - in.p0;
         }
     }
+    if (sample.t == 0.0) { closestPoint = in.p0; }
+    if (sample.t == 1.0) { closestPoint = in.p2; }
     let closestDelta = point - closestPoint;
     let edgeCross =
         closestDelta.x * direction.y - closestDelta.y * direction.x;
@@ -279,6 +269,27 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         }
         return vec4<f32>(0.0);
     }
+    let alignment = select(
+        0.0,
+        clamp(abs(dot(closestDelta, direction)) / max(sample.magnitude * length(direction), 1e-12), 0.0, 1.0),
+        sample.t <= 0.0 || sample.t >= 1.0
+    );
+    let angleOffset = params.atlasSize.x * params.atlasSize.y * 3u;
+    // Based on msdfgen's nearest-edge perpendicular-distance selector:
+    // https://github.com/Chlumsky/msdfgen/blob/1874bcf7d9624ccc85b4bc9a85d78116f690f35b/core/edge-selectors.cpp
+    // Compare magnitude, then alignment; sign only breaks a remaining geometric tie.
+    let truePriority = candidatePriority(signedDistance);
+    let anglePriority = alignmentPriority(alignment, signedDistance);
+    if (params.passMode == 1u) {
+        for (var channel = 0u; channel < 3u; channel++) {
+            let index = pixelIndex * 3u + channel;
+            if ((in.colorMask & (1u << channel)) != 0u &&
+                (truePriority >> 1u) == (atomicLoad(&trueScratch[index]) >> 1u)) {
+                atomicMax(&trueScratch[angleOffset + index], anglePriority);
+            }
+        }
+        return vec4<f32>(0.0);
+    }
     var startDirection = in.p2 - in.p0;
     var endDirection = startDirection;
     if (in.kind == 1u) {
@@ -292,6 +303,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         }
     }
     var startDistance = signedDistance;
+    var nearestStartDistance = signedDistance;
     if (
         sample.t <= 1e-5 &&
         dot(point - in.p0, startDirection) < 0.0
@@ -302,6 +314,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             startDirection,
             signedDistance
         );
+        nearestStartDistance = candidate;
         // Include the bisector itself so symmetric corners do not retain a
         // one-pixel radial seam.
         if (dot(point - in.p0, in.startPseudoDomain) >= 0.0) {
@@ -309,6 +322,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         }
     }
     var endDistance = signedDistance;
+    var nearestEndDistance = signedDistance;
     if (
         sample.t >= 1.0 - 1e-5 &&
         dot(point - in.p2, endDirection) > 0.0
@@ -319,68 +333,41 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             endDirection,
             signedDistance
         );
+        nearestEndDistance = candidate;
         if (dot(point - in.p2, in.endPseudoDomain) <= 0.0) {
             endDistance = candidate;
         }
     }
     let startMask = in.pseudoMasks & 7u;
     let endMask = (in.pseudoMasks >> 3u) & 7u;
-    let redDistance = channelDistance(
-        signedDistance,
-        1u,
-        startMask,
-        endMask,
-        startDistance,
-        endDistance
-    );
-    let greenDistance = channelDistance(
-        signedDistance,
-        2u,
-        startMask,
-        endMask,
-        startDistance,
-        endDistance
-    );
-    let blueDistance = channelDistance(
-        signedDistance,
-        4u,
-        startMask,
-        endMask,
-        startDistance,
-        endDistance
-    );
-    if (
-        (in.colorMask & 1u) != 0u &&
-        abs(redDistance) < sample.magnitude &&
-        abs(redDistance) <= params.spread &&
-        matchesNearestTrueSign(pixelIndex, 0u, redDistance)
-    ) {
-        atomicMax(
-            &scratch[pixelIndex * 3u],
-            candidatePriority(redDistance)
+    for (var channel = 0u; channel < 3u; channel++) {
+        let mask = 1u << channel;
+        if ((in.colorMask & mask) == 0u) { continue; }
+        let nearestPriority = atomicLoad(&trueScratch[pixelIndex * 3u + channel]);
+        let selectedAngle = atomicLoad(&trueScratch[angleOffset + pixelIndex * 3u + channel]);
+        let nearest = (truePriority >> 1u) == (nearestPriority >> 1u) &&
+            anglePriority == selectedAngle;
+        var candidate = channelDistance(
+            signedDistance,
+            mask,
+            startMask,
+            endMask,
+            startDistance,
+            endDistance
         );
-    }
-    if (
-        (in.colorMask & 2u) != 0u &&
-        abs(greenDistance) < sample.magnitude &&
-        abs(greenDistance) <= params.spread &&
-        matchesNearestTrueSign(pixelIndex, 1u, greenDistance)
-    ) {
-        atomicMax(
-            &scratch[pixelIndex * 3u + 1u],
-            candidatePriority(greenDistance)
-        );
-    }
-    if (
-        (in.colorMask & 4u) != 0u &&
-        abs(blueDistance) < sample.magnitude &&
-        abs(blueDistance) <= params.spread &&
-        matchesNearestTrueSign(pixelIndex, 2u, blueDistance)
-    ) {
-        atomicMax(
-            &scratch[pixelIndex * 3u + 2u],
-            candidatePriority(blueDistance)
-        );
+        if (nearest) {
+            // The nearest edge converts independently of sharp-corner auxiliary masks.
+            candidate = channelDistance(signedDistance, mask, mask, mask,
+                nearestStartDistance, nearestEndDistance);
+        }
+        if (nearest || (
+            abs(candidate) < sample.magnitude &&
+            abs(candidate) <= params.spread &&
+            (candidate >= 0.0) == ((selectedAngle & 1u) != 0u)
+        )) {
+            atomicMax(&scratch[pixelIndex * 3u + channel], candidatePriority(
+                clamp(candidate, -params.spread, params.spread)));
+        }
     }
     return vec4<f32>(0.0);
 }
@@ -467,7 +454,7 @@ fn decodeDistance(priority: u32) -> f32 {
     if (priority == 0u) {
         return params.spread;
     }
-    let orderedMagnitude = 0xfffffffeu - (priority & 0xfffffffeu);
+    let orderedMagnitude = 0x7fffffffu - (priority >> 1u);
     let magnitude = min(bitcast<f32>(orderedMagnitude), params.spread);
     return select(-magnitude, magnitude, (priority & 1u) != 0u);
 }
@@ -857,7 +844,7 @@ function createParams(layout, passMode) {
     return data;
 }
 
-const BYTES_PER_SCRATCH_PIXEL = 3 * 4 * 2 + 4 * 2;
+const BYTES_PER_SCRATCH_PIXEL = 3 * 4 * 3 + 4 * 2;
 const DEFAULT_MAX_SCRATCH_BYTES = 64 * 1024 * 1024;
 
 /** @param {number} value */
@@ -907,6 +894,9 @@ export class MsdfAtlasGenerator {
 
     /** @type {GPUBuffer | null} */
     #pseudoParamsBuffer = null;
+
+    /** @type {GPUBuffer | null} */
+    #alignmentParamsBuffer = null;
 
     /** @type {GPUBuffer | null} */
     #scratchBuffer = null;
@@ -994,7 +984,8 @@ export class MsdfAtlasGenerator {
             nextWidth > maxDimension ||
             nextHeight > maxDimension ||
             scratchBytes > this.#maxScratchBytes ||
-            atomicBytes > maxBindingSize
+            atomicBytes * 2 > maxBindingSize ||
+            atomicBytes * 2 > this.#device.limits.maxBufferSize
         ) {
             throw new Error(
                 `MSDF generation needs ${scratchBytes} scratch bytes, exceeding its configured or device limit.`
@@ -1011,7 +1002,7 @@ export class MsdfAtlasGenerator {
         });
         this.#trueScratchBuffer = this.#device.createBuffer({
             label: "MSDF reusable true-distance scratch",
-            size: atomicBytes,
+            size: atomicBytes * 2,
             usage:
                 GPUBufferUsage.STORAGE |
                 GPUBufferUsage.COPY_SRC |
@@ -1038,6 +1029,11 @@ export class MsdfAtlasGenerator {
         }
         this.#trueParamsBuffer = this.#device.createBuffer({
             label: "MSDF true-distance parameters",
+            size: 32,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this.#alignmentParamsBuffer = this.#device.createBuffer({
+            label: "MSDF alignment parameters",
             size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
@@ -1073,6 +1069,9 @@ export class MsdfAtlasGenerator {
         const trueParamsBuffer = /** @type {GPUBuffer} */ (
             this.#trueParamsBuffer
         );
+        const alignmentParamsBuffer = /** @type {GPUBuffer} */ (
+            this.#alignmentParamsBuffer
+        );
         const pseudoParamsBuffer = /** @type {GPUBuffer} */ (
             this.#pseudoParamsBuffer
         );
@@ -1098,9 +1097,14 @@ export class MsdfAtlasGenerator {
             asGpuBufferSource(new Uint8Array(createParams(layout, 0)))
         );
         this.#device.queue.writeBuffer(
-            pseudoParamsBuffer,
+            alignmentParamsBuffer,
             0,
             asGpuBufferSource(new Uint8Array(createParams(layout, 1)))
+        );
+        this.#device.queue.writeBuffer(
+            pseudoParamsBuffer,
+            0,
+            asGpuBufferSource(new Uint8Array(createParams(layout, 2)))
         );
 
         const texture = this.#device.createTexture({
@@ -1139,6 +1143,10 @@ export class MsdfAtlasGenerator {
         const trueEdgeBindGroup = createEdgeBindGroup(
             "true-distance",
             trueParamsBuffer
+        );
+        const alignmentEdgeBindGroup = createEdgeBindGroup(
+            "alignment",
+            alignmentParamsBuffer
         );
         const pseudoEdgeBindGroup = createEdgeBindGroup(
             "pseudo-distance",
@@ -1218,15 +1226,10 @@ export class MsdfAtlasGenerator {
             pass.end();
         };
         encoder.clearBuffer(scratchBuffer, 0, scratchSize);
-        encoder.clearBuffer(trueScratchBuffer, 0, scratchSize);
+        encoder.clearBuffer(trueScratchBuffer, 0, scratchSize * 2);
         encodeEdgePass("true-distance", trueEdgeBindGroup, true);
-        encoder.copyBufferToBuffer(
-            trueScratchBuffer,
-            0,
-            scratchBuffer,
-            0,
-            scratchSize
-        );
+        encodeEdgePass("alignment", alignmentEdgeBindGroup, false);
+        // The selected geometric winner emits its signed base in the final edge pass.
         encodeEdgePass("pseudo-distance", pseudoEdgeBindGroup, false);
         encodeComputePass("raw distance", pipelines.raw, rawBindGroup);
         encodeComputePass(
@@ -1293,6 +1296,7 @@ export class MsdfAtlasGenerator {
             this.#inputs.jobs,
             this.#trueParamsBuffer,
             this.#pseudoParamsBuffer,
+            this.#alignmentParamsBuffer,
             this.#scratchBuffer,
             this.#trueScratchBuffer,
             this.#rawTexture,
@@ -1303,6 +1307,7 @@ export class MsdfAtlasGenerator {
         this.#inputs.jobs = null;
         this.#trueParamsBuffer = null;
         this.#pseudoParamsBuffer = null;
+        this.#alignmentParamsBuffer = null;
         this.#scratchBuffer = null;
         this.#trueScratchBuffer = null;
         this.#rawTexture = null;
