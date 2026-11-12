@@ -1,3 +1,8 @@
+import DerivedCollector from "./derivedCollector.js";
+import { annotateSpecError } from "../utils/specError.js";
+
+/** @typedef {NamedDataBinding | DerivedCollector} NamedDatasetBinding */
+
 /**
  * A named dataset declaration or a compatibility binding for an undeclared
  * embed-wide name.
@@ -96,14 +101,12 @@ export class NamedDataBinding {
     }
 }
 
-/**
- * Lexical named-dataset scope owned by a view.
- */
+/** Lexical named-dataset scope owned by a view. */
 export class NamedDataScope {
     /** @type {import("../view/view.js").default} */
     view;
 
-    /** @type {Map<string, NamedDataBinding>} */
+    /** @type {Map<string, NamedDatasetBinding>} */
     #localBindings = new Map();
 
     /** @type {Map<string, NamedDataBinding>} */
@@ -123,6 +126,30 @@ export class NamedDataScope {
         }
     }
 
+    /** @param {import("../spec/transform.js").PublishParams} params */
+    declareDerived(params) {
+        const view = this.view;
+        const name = params.dataset;
+        const error = (/** @type {string} */ message) =>
+            annotateSpecError(
+                new Error(message),
+                view.paramRuntime.getSpecLocation(params, ["dataset"])
+            );
+        if (typeof name !== "string" || !name.trim()) {
+            throw error("publish.dataset must be a non-empty string.");
+        }
+        if (this.#localBindings.has(name)) {
+            throw error(`Duplicate named dataset "${name}" in this view.`);
+        }
+        this.#localBindings.set(name, new DerivedCollector(params, view));
+    }
+
+    /** @param {string} name */
+    getDerivedCollector(name) {
+        // The factory declared this binding before flow construction.
+        return /** @type {DerivedCollector} */ (this.getLocalBinding(name));
+    }
+
     /**
      * Returns a dataset declared by this exact view.
      *
@@ -137,50 +164,53 @@ export class NamedDataScope {
      * binding for an undeclared name.
      *
      * @param {string} name
-     * @returns {NamedDataBinding | undefined}
+     * @returns {NamedDatasetBinding | undefined}
      */
     findDeclaredBinding(name) {
-        const local = this.#localBindings.get(name);
-        if (local) {
-            return local;
+        return this.#findScope(name).getLocalBinding(name);
+    }
+
+    /**
+     * Returns the nearest declaration's scope, or the lexical root for legacy names.
+     * @param {string} name
+     */
+    #findScope(name) {
+        /** @type {NamedDataScope} */
+        let scope = this;
+        while (!scope.#localBindings.has(name) && scope.view.dataParent) {
+            scope = scope.view.dataParent.namedDataScope;
         }
-        return this.view.dataParent?.namedDataScope.findDeclaredBinding(name);
+        return scope;
     }
 
     /**
      * Resolves a dataset declaration through the data-parent hierarchy.
      *
      * @param {string} name
-     * @returns {NamedDataBinding}
+     * @returns {NamedDatasetBinding}
      */
     resolve(name) {
-        const local = this.#localBindings.get(name);
-        if (local) {
-            return local;
-        }
-
-        const parentScope = this.view.dataParent?.namedDataScope;
-        if (parentScope) {
-            return parentScope.resolve(name);
-        }
+        const scope = this.#findScope(name);
+        const local = scope.getLocalBinding(name);
+        if (local) return local;
 
         // TODO: Remove this embed-wide fallback together with the deprecated
         // namedDataProvider and updateNamedData APIs. Unresolved names can then
         // fail fast, leaving one explicit lexical ownership model and simpler
         // source sharing, update routing, and disposal.
-        let legacy = this.#legacyBindings.get(name);
+        let legacy = scope.#legacyBindings.get(name);
         if (!legacy) {
             legacy = new NamedDataBinding(name, undefined, () =>
-                this.view.context.getNamedDataFromProvider(name)
+                scope.view.context.getNamedDataFromProvider(name)
             );
-            this.#legacyBindings.set(name, legacy);
+            scope.#legacyBindings.set(name, legacy);
         }
         return legacy;
     }
 
     dispose() {
         for (const binding of this.#localBindings.values()) {
-            binding.dispose();
+            if (binding instanceof NamedDataBinding) binding.dispose();
         }
         this.#localBindings.clear();
 

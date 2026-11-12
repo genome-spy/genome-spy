@@ -48,8 +48,8 @@ const MOMENT_OPS = new Set(["mean", "variance"]);
 /** @typedef {(state: WindowAggregateState) => any} AggregateValueReader */
 
 /**
- * Prepares the sliding-state loop once per aggregate field group. Result
- * readers are selected during setup, not for every output value.
+ * Prepares an evaluator for the requested frames of an aggregate field group.
+ * A whole-partition aggregate requests a single frame.
  *
  * @param {(datum: Datum) => any} accessor
  * @param {AggregateResult[]} results
@@ -68,7 +68,7 @@ export function createAggregatePartitionEvaluator(accessor, results) {
             let start = 0;
             let stop = 0;
 
-            for (let index = 0; index < rows.length; index++) {
+            for (let index = 0; index < starts.length; index++) {
                 const nextStart = starts[index];
                 const nextStop = stops[index];
                 while (start < nextStart) {

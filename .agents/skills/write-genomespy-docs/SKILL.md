@@ -1,9 +1,31 @@
 ---
 name: write-genomespy-docs
-description: Write and verify GenomeSpy user-facing documentation, schema-derived specification docs, and documentation examples. Use for changes in `docs/`, JSDoc in `packages/core/src/spec/*.d.ts`, docs macros, Zensical configuration, or schema/docs generation.
+description:
+  Write and verify GenomeSpy user-facing documentation, schema-derived
+  specification docs, and documentation examples. Use for package READMEs,
+  changes in `docs/`, JSDoc in `packages/core/src/spec/*.d.ts`, docs macros,
+  Zensical configuration, or schema/docs generation.
 ---
 
 # Write GenomeSpy documentation
+
+## Choose whether and where to document
+
+- A code change does not automatically need a new paragraph. Check existing
+  explanations, API types and examples first; update the authoritative source
+  only when readers need new guidance.
+- Keep package READMEs focused on purpose, getting started and essential usage.
+  They are not exhaustive reference manuals or records of completed work. Do not
+  add a section for every mark, channel, default or rendering detail.
+- Explain shared behavior once. When another mark gains the same capability,
+  update the existing explanation only if its meaning changes; do not copy a
+  paragraph with a different mark name. Prefer deleting a redundant addition.
+- Put individual options and defaults in their existing API/type documentation,
+  demonstrate usage in examples, and put release notes in Changesets. Do not
+  create a new reference page just to relocate unnecessary README prose.
+- Keep test results, measurements and implementation progress in the PR or a
+  scoped working plan, not in user documentation. Judge the complete affected
+  section after editing, including whether the new text can be omitted.
 
 ## Authoring rules
 

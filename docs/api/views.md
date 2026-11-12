@@ -175,8 +175,9 @@ const result = track.data.transform({
 ```
 
 Supported transforms are `formula`, expression-based `filter`, `sample`,
-`aggregate`, and `window`, using their existing visualization grammar. Expressions
-have `datum` and built-in functions; they do not inherit live view parameters.
+`aggregate`, `window`, and `joinaggregate`, using their visualization grammar.
+Expressions run in a standalone parameter scope with `datum` and built-in
+functions.
 Selection-parameter filters, reactive `debounce` settings, and other transform
 types are outside this API's supported grammar. Sampling uses the existing
 default size of 500 and is not seeded; an explicit size must be a positive safe integer. The generated request

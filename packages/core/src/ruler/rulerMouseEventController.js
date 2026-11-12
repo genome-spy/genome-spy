@@ -11,7 +11,7 @@ import { getRulerProjectionCoords } from "../view/scaleProjection.js";
 import { ViewInteractionListenerTracker } from "../view/viewInteractionListenerTracker.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
-import { startDocumentDrag } from "../utils/documentDrag.js";
+import { startPointerDrag } from "../utils/pointerDrag.js";
 
 /**
  * Handles pointer-driven ruler updates for a single rendered view.
@@ -151,7 +151,7 @@ export class RulerMouseEventController {
 
             event.stopPropagation();
             this.dragging = true;
-            // Keep a document drag anchored to its initiating facet cell.
+            // Keep the drag anchored to its initiating facet cell.
             const projectionCoords = getRulerProjectionCoords(
                 this.gridChild,
                 this.channels,
@@ -165,15 +165,15 @@ export class RulerMouseEventController {
                 new Point(event.point.x, event.point.y)
             );
 
-            const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
+            const onMove = (/** @type {PointerEvent} */ event) => {
                 const point = Point.fromMouseEvent(event).subtract(viewOffset);
                 this.#setValue(
                     this.#pointToRulerValue(point, projectionCoords)
                 );
             };
 
-            this.#cancelActiveDrag = startDocumentDrag({
-                onMove: mouseMoveListener,
+            this.#cancelActiveDrag = startPointerDrag(event.mouseEvent, {
+                onMove,
                 onFinish: () => {
                     this.dragging = false;
                 },

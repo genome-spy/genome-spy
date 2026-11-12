@@ -1,10 +1,11 @@
 import { collectAppearanceSelections } from "../../selection/selection.js";
 import { resolveCategoryInput } from "../../selection/categorySelection.js";
 import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
-import { cssColorToRgba } from "../color.js";
+import { cssColorToRgba, packCssColor } from "../color.js";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
 import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
+import { rgba8Unorm } from "@genome-spy/webgpu-renderer";
 import {
     packHighPrecisionU32Array,
     packHighPrecisionU32ArrayInto,
@@ -932,7 +933,7 @@ function createTextConfig(mark, data, coords, viewOpacity) {
                 value: mapProperty(mark, "baseline", BASELINE_CODES),
                 type: "u32",
             },
-            fill: createColorChannel(mark, "color", data),
+            fill: createColorChannel(mark, "fill", data),
             opacity: createOpacityChannel(mark, "opacity", data, viewOpacity),
         },
         font: outlineFont,
@@ -1192,7 +1193,8 @@ function createPositionBranch(mark, channel, data, coords, encoder, getRange) {
                           scale,
                           range,
                           readDomain,
-                          band,
+                          // Pixel y runs in the opposite direction from Core's unit range.
+                          channel[0] === "y" ? 1 - band : band,
                           channel
                       ),
         });
@@ -1624,17 +1626,19 @@ function createColorBranch(mark, channel, data, encoder) {
 
     const accessor = encoder.branches[0].accessor;
     const scale = encoder.scale;
-    if (!scale) {
+    if (!scale || scale.type === "null") {
         return {
             data: getCachedSeries(mark, channel, data, accessor, () => {
-                const colors = new Float32Array(data.length * 4);
-                forEachInBatch(data, (datum, index) => {
-                    colors.set(toRgba(mark, accessor(datum)), index * 4);
-                });
-                return colors;
+                try {
+                    return toUint32Array(data, (datum) =>
+                        packCssColor(accessor(datum))
+                    );
+                } catch (error) {
+                    throw unsupported(mark, error.message, error);
+                }
             }),
-            type: "f32",
-            inputComponents: 4,
+            type: "u32",
+            scale: rgba8Unorm,
         };
     }
 
@@ -2617,10 +2621,12 @@ function toRgba(mark, value) {
 /**
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} message
+ * @param {Error} [cause]
  */
-function unsupported(mark, message) {
+function unsupported(mark, message, cause) {
     const error = new Error(
-        `${message} Mark: ${mark.getType()}. View: ${mark.unitView.getPathString()}`
+        `${message} Mark: ${mark.getType()}. View: ${mark.unitView.getPathString()}`,
+        { cause }
     );
     /** @type {any} */ (error).view = mark.unitView;
     return error;

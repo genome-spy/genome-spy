@@ -1,6 +1,6 @@
 import clamp from "../../utils/clamp.js";
 import { makeLerpSmoother } from "../../utils/animator.js";
-import { startDocumentDrag } from "../../utils/documentDrag.js";
+import { startPointerDrag } from "../../utils/pointerDrag.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
@@ -125,31 +125,26 @@ export default class Scrollbar extends UnitView {
         this.addInteractionListener("mousedown", (event) => {
             event.stopPropagation();
 
-            if (this.#getMaxScrollOffset() <= 0) {
+            const { mouseEvent } = event;
+            if (mouseEvent.button !== 0 || this.#getMaxScrollOffset() <= 0) {
                 return;
             }
 
-            const getMouseOffset = (/** @type {MouseEvent} */ mouseEvent) =>
-                scrollDirection == "vertical"
-                    ? mouseEvent.clientY
-                    : mouseEvent.clientX;
-
-            event.mouseEvent.preventDefault();
+            const clientAxis =
+                scrollDirection === "vertical" ? "clientY" : "clientX";
+            mouseEvent.preventDefault();
             const initialScrollOffset = this.scrollOffset;
-            const initialOffset = getMouseOffset(event.mouseEvent);
+            const initialOffset = mouseEvent[clientAxis];
 
-            const onMousemove = /** @param {MouseEvent} moveEvent */ (
-                moveEvent
-            ) => {
+            /** @param {PointerEvent} moveEvent */
+            const onMove = (moveEvent) => {
                 const maxScrollOffset = this.#getMaxScrollOffset();
                 if (maxScrollOffset <= 0) {
                     return;
                 }
 
                 const scrollOffset = clamp(
-                    getMouseOffset(moveEvent) -
-                        initialOffset +
-                        initialScrollOffset,
+                    moveEvent[clientAxis] - initialOffset + initialScrollOffset,
                     0,
                     maxScrollOffset
                 );
@@ -159,8 +154,8 @@ export default class Scrollbar extends UnitView {
                 });
             };
 
-            this.#cancelActiveDrag = startDocumentDrag({
-                onMove: onMousemove,
+            this.#cancelActiveDrag = startPointerDrag(mouseEvent, {
+                onMove,
                 hoverContext: this.context,
             });
         });

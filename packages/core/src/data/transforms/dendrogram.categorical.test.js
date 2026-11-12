@@ -2,6 +2,7 @@ import { expect, onTestFinished, test, vi } from "vitest";
 import DendrogramTransform from "./dendrogram.js";
 import { processData } from "../flowTestUtils.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import { createTopLevelDatasetApi } from "../../view/viewMutationApi.js";
 
 const fields = {
     type: /** @type {const} */ ("dendrogram"),
@@ -134,7 +135,7 @@ test("explicit orders must be unique complete scalar arrays", () => {
 });
 
 test("publication, cached replay, failures, and zero-edge trees follow the real source boundary", async () => {
-    const { view, context } = await createHeadlessEngine({
+    const { view } = await createHeadlessEngine({
         datasets: { tree: tree() },
         data: { name: "tree" },
         transform: [{ ...params, domainParam: "order" }],
@@ -155,11 +156,9 @@ test("publication, cached replay, failures, and zero-edge trees follow the real 
     expect(Object.isFrozen(initial)).toBe(true);
     const notify = vi.fn();
     onTestFinished(runtime.createExpression("order").subscribe(notify));
-    const update = (/** @type {any[]} */ rows) =>
-        context.dataFlow.updateNamedDataBinding(
-            view.namedDataScope.getLocalBinding("tree"),
-            rows
-        );
+    const datasets = createTopLevelDatasetApi({ viewRoot: view });
+    const update = (/** @type {ReturnType<typeof tree>} */ rows) =>
+        datasets.set("tree", rows);
     update(tree());
     await runtime.whenPropagated();
     expect(runtime.getValue("order")).toBe(initial);

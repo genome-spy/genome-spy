@@ -346,8 +346,8 @@ with `titleOrient`.
 {
   "legend": {
     "title": "Sample group",
-    "titleOrient": "left",
-    "titlePadding": 3
+    "titleOrient": "bottom",
+    "titleAnchor": "middle"
   }
 }
 ```

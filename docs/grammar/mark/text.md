@@ -6,9 +6,11 @@ EXAMPLE examples/docs/grammar/mark/text/text-mark.json height=150
 
 ## Channels
 
-In addition to primary and secondary [position](./index.md#channels) channels
-and `color` and `opacity` channels, point mark has the following channels:
-`text`, `size`, and `angle`.
+Text supports primary and secondary [position](./index.md#channels) channels,
+plus `fill`, `color`, `opacity`, `text`, `size`, and `angle`.
+
+The `fill` property or channel controls the text color. `color` remains an alias;
+an explicit `fill` takes precedence.
 
 ## Properties
 

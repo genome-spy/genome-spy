@@ -1728,6 +1728,58 @@ describe("GridView legends", () => {
             );
         });
 
+        test("anchors a side symbol title without moving its padding", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: {
+                        disable: false,
+                        titleOrient: "right",
+                        titleAnchor: "end",
+                        titlePadding: 7,
+                    },
+                },
+            });
+            const [legend] = getLegends(view);
+            const title = getLegendUnitChild(legend, "title");
+            const mark = /** @type {import("../../spec/mark.js").TextProps} */ (
+                title.spec.mark
+            );
+
+            expect(mark).toMatchObject({
+                y: 0,
+                align: "left",
+                baseline: "bottom",
+            });
+            expect(mark.x).toBeCloseTo(
+                7 / getSizeDefMinPx(title.getSize().width)
+            );
+        });
+
+        test("resets a configured title anchor with a null legend override", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: { disable: false, titleAnchor: "end" },
+                },
+                vconcat: [
+                    {
+                        data: { values: [{ group: "a" }] },
+                        mark: "point",
+                        encoding: {
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { titleAnchor: null },
+                            },
+                        },
+                    },
+                ],
+            });
+            const [legend] = getLegends(view);
+            const title = getLegendUnitChild(legend, "title");
+
+            expect(title.spec.mark).toMatchObject({ x: 0, align: "left" });
+        });
+
         test.each(
             /** @type {const} */ ([
                 ["nominal", "vertical", "top", 0, 31, 70, 44],

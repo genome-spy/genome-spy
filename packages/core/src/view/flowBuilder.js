@@ -1,4 +1,9 @@
 import Collector from "../data/collector.js";
+import DerivedCollector from "../data/derivedCollector.js";
+import { NamedDataBinding } from "../data/namedDataScope.js";
+import { iterateDataDependencies } from "../data/dataReadiness.js";
+import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
+import { annotateSpecError } from "../utils/specError.js";
 import {
     getAuxiliaryDataInput,
     hasAuxiliaryDataInput,
@@ -46,10 +51,8 @@ export function buildDataFlow(
      * @typedef {import("../data/flowNode.js").default} FlowNode
      */
 
-    /** @type {FlowNode[]} "Current nodes" on the path from view root to the current view */
-    const nodeStack = [];
-    /** @type {{view: View, nodeStackDepth: number}[]} */
-    const viewStack = [];
+    /** @type {FlowNode[]} */
+    const parentNodes = [];
 
     /** @type {FlowNode} */
     let currentNode;
@@ -61,6 +64,28 @@ export function buildDataFlow(
     const postProcessOps = [];
 
     const shouldInitializeView = viewInitializationPredicate ?? (() => true);
+
+    /**
+     * @param {import("../spec/data.js").Data} data
+     * @param {View} view
+     */
+    function createFlowInput(data, view) {
+        if (!isNamedData(data)) return createDataSource(data, view);
+
+        const binding = view.namedDataScope.resolve(data.name);
+        if (binding instanceof NamedDataBinding) {
+            return new NamedSource(data, view, binding);
+        }
+        if (!binding.parent) {
+            throw annotateSpecError(
+                new Error(
+                    `Derived dataset "${data.name}" requires an earlier publish transform in this view or an ancestor.`
+                ),
+                view.paramRuntime.getSpecLocation(data, ["name"])
+            );
+        }
+        return binding;
+    }
 
     /**
      * @param {FlowNode} node
@@ -76,7 +101,6 @@ export function buildDataFlow(
         }
         currentNode.addChild(node);
         currentNode = node;
-        nodeStack.push(node);
         return node;
     }
 
@@ -113,6 +137,12 @@ export function buildDataFlow(
         append(transform);
     }
 
+    /** @param {View} view @param {FlowNode} node */
+    function trackTerminal(view, node) {
+        const handle = (view.flowHandle ??= {});
+        (handle.terminals ??= new Set()).add(node);
+    }
+
     /**
      * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
@@ -135,13 +165,25 @@ export function buildDataFlow(
                 }
 
                 const main = currentNode;
-                const depth = nodeStack.length;
                 createTransforms(params.transform, view);
-                view.flowHandle ??= {};
-                view.flowHandle.terminals ??= new Set();
-                view.flowHandle.terminals.add(currentNode);
+                if (currentNode !== main) trackTerminal(view, currentNode);
                 currentNode = main;
-                nodeStack.length = depth;
+                continue;
+            }
+            if (params.type === "publish") {
+                const collector = view.namedDataScope.getDerivedCollector(
+                    params.dataset
+                );
+                if (!currentNode) {
+                    throw annotateSpecError(
+                        new Error("A publish transform requires input data."),
+                        collector.specLocation
+                    );
+                }
+                validateDerivedInput(currentNode, collector);
+                currentNode.addChild(collector);
+                dataFlow.addCollector(collector);
+                trackTerminal(view, collector);
                 continue;
             }
             if (inheritsFacetData(view)) {
@@ -166,21 +208,31 @@ export function buildDataFlow(
             /** @type {FlowNode} */
             let transform;
             /**
-             * @type {{ collector: Collector, source: DataSource } | undefined}
+             * @type {{ collector: Collector, source?: DataSource } | undefined}
              */
             let auxiliaryInput;
             try {
                 const auxiliaryData = getAuxiliaryDataInput(params);
                 if (auxiliaryData) {
-                    auxiliaryInput = createAuxiliaryDataBranch(
+                    auxiliaryInput = resolveAuxiliaryInput(
                         auxiliaryData.data,
                         auxiliaryData.transforms,
                         view
                     );
+                    if (!auxiliaryInput.source && params.type !== "lookup") {
+                        throw new Error(
+                            `Only lookup can use a derived table as a side input.`
+                        );
+                    }
                 }
                 transform = createTransform(params, view, auxiliaryInput);
+                if (auxiliaryInput && !auxiliaryInput.source) {
+                    // Replay the join after the table publishes without resetting
+                    // the upstream branch that produces the table.
+                    appendNode(new Collector({ type: "collect" }));
+                }
             } catch (e) {
-                if (auxiliaryInput) {
+                if (auxiliaryInput?.source) {
                     releaseAuxiliaryCollector(view, auxiliaryInput.collector);
                 }
                 console.warn(e);
@@ -192,7 +244,7 @@ export function buildDataFlow(
 
             appendTransformWithClone(transform, appendTransform);
 
-            if (auxiliaryInput) {
+            if (auxiliaryInput?.source) {
                 transform.registerDisposer(() =>
                     releaseAuxiliaryCollector(view, auxiliaryInput.collector)
                 );
@@ -201,17 +253,17 @@ export function buildDataFlow(
     }
 
     /**
-     * Creates a side-input source branch with optional unary transforms.
+     * Borrows a published table or creates an owned side-input branch.
      *
      * @param {import("../spec/data.js").Data} data
      * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
-     * @returns {{ collector: Collector, source: DataSource }}
+     * @returns {{ collector: Collector, source?: DataSource }}
      */
-    function createAuxiliaryDataBranch(data, transforms, view) {
-        const dataSource = isNamedData(data)
-            ? new NamedSource(data, view)
-            : createDataSource(data, view);
+    function resolveAuxiliaryInput(data, transforms, view) {
+        const dataSource = createFlowInput(data, view);
+        if (dataSource instanceof DerivedCollector)
+            return { collector: dataSource };
 
         /** @type {FlowNode} */
         let node = dataSource;
@@ -252,18 +304,15 @@ export function buildDataFlow(
     function releaseAuxiliaryCollector(view, collector) {
         view.flowHandle?.auxiliaryCollectors?.delete(collector);
         dataFlow.pruneBranch(collector);
-        dataFlow.removeCollector(collector);
     }
 
     function isInBranchWithIdentifier() {
-        return (
-            nodeStack.findLastIndex(
-                (node) => node instanceof IdentifierTransform
-            ) >
-            nodeStack.findLastIndex(
-                (node) => node instanceof DataSource || node.createsNewIdentity
-            )
-        );
+        for (let node = currentNode; node; node = node.parent) {
+            if (node instanceof DataSource || node.createsNewIdentity)
+                return false;
+            if (node instanceof IdentifierTransform) return true;
+        }
+        return false;
     }
 
     /** @param {View} view */
@@ -271,10 +320,7 @@ export function buildDataFlow(
         if (!shouldInitializeView(view)) {
             const flowNode = view.flowHandle?.node;
             if (flowNode) {
-                if (flowNode !== currentNode) {
-                    currentNode = flowNode;
-                    nodeStack.push(flowNode);
-                }
+                currentNode = flowNode;
                 return;
             }
             if (
@@ -299,17 +345,28 @@ export function buildDataFlow(
                 dataFlow.removeDataSource(previousDataSource);
             }
 
-            const dataSource = isNamedData(view.spec.data)
-                ? new NamedSource(view.spec.data, view)
-                : createDataSource(view.spec.data, view);
-
-            currentNode = dataSource;
-            nodeStack.push(dataSource);
-            dataFlow.addDataSource(dataSource);
-            view.flowHandle ??= {};
-            view.flowHandle.dataSource = dataSource;
+            currentNode = createFlowInput(view.spec.data, view);
+            if (currentNode instanceof DataSource) {
+                dataFlow.addDataSource(currentNode);
+                view.flowHandle ??= {};
+                view.flowHandle.dataSource = currentNode;
+            }
         }
 
+        const input = currentNode;
+        try {
+            buildViewPipeline(view);
+        } catch (error) {
+            // Let rollback prune a partial pipeline or a source created for this view.
+            const source = view.flowHandle?.dataSource;
+            if (currentNode !== input || (source && source === input))
+                trackTerminal(view, currentNode);
+            throw error;
+        }
+    };
+
+    /** @param {View} view */
+    function buildViewPipeline(view) {
         if (view.spec.transform) {
             createTransforms(view.spec.transform, view);
         }
@@ -404,13 +461,13 @@ export function buildDataFlow(
             view.flowHandle.node = currentNode;
             if (
                 !(view instanceof UnitView) &&
+                !(currentNode instanceof DerivedCollector) &&
                 (view.spec.data || view.spec.transform)
             ) {
-                view.flowHandle.terminals ??= new Set();
-                view.flowHandle.terminals.add(currentNode);
+                trackTerminal(view, currentNode);
             }
         }
-    };
+    }
 
     // Views only keep track of their children based on the layout hierachy.
     // Thus, let's get traversable hierarchies using dataParents.
@@ -423,16 +480,11 @@ export function buildDataFlow(
     for (const dataTree of dataTrees) {
         visitTree(dataTree, {
             preOrder: (node) => {
-                viewStack.push({
-                    view: node.ref,
-                    nodeStackDepth: nodeStack.length,
-                });
+                parentNodes.push(currentNode);
                 processView(node.ref);
             },
             postOrder: () => {
-                const { nodeStackDepth } = viewStack.pop();
-                nodeStack.length = nodeStackDepth;
-                currentNode = nodeStack.at(-1);
+                currentNode = parentNodes.pop();
             },
         });
     }
@@ -440,6 +492,29 @@ export function buildDataFlow(
     postProcessOps.forEach((op) => op());
 
     return dataFlow;
+}
+
+/**
+ * @param {import("../data/flowNode.js").default} input
+ * @param {DerivedCollector} collector
+ */
+function validateDerivedInput(input, collector) {
+    if (
+        inheritsFacetData(collector.producerView) ||
+        iterateDataDependencies(input).some(
+            (node) =>
+                node instanceof SingleAxisLazySource ||
+                (node instanceof DataSource &&
+                    "lazy" in (node.view.spec.data ?? {}))
+        )
+    ) {
+        throw annotateSpecError(
+            new Error(
+                `Derived dataset "${collector.name}" requires an eager, unpartitioned input.`
+            ),
+            collector.specLocation
+        );
+    }
 }
 
 /**

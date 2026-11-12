@@ -193,6 +193,39 @@ for (const dpr of [1, 2]) {
                             17,
                             32
                         );
+                        const pngColors = [];
+                        for (const fade of [0.5, 1]) {
+                            await paint({ viewFade: fade });
+                            const { blob } = await api.imageExport.raster({
+                                pixelRatio: dpr,
+                                background: null,
+                            });
+                            const legacy = await globalThis.fetch(
+                                api.exportCanvas(64, 64, dpr, null)
+                            );
+                            for (const png of [blob, await legacy.blob()]) {
+                                const bitmap =
+                                    await globalThis.createImageBitmap(png);
+                                const scratch = new globalThis.OffscreenCanvas(
+                                    bitmap.width,
+                                    bitmap.height
+                                );
+                                const context = scratch.getContext("2d");
+                                context.drawImage(bitmap, 0, 0);
+                                bitmap.close();
+                                pngColors.push({
+                                    fade,
+                                    color: Array.from(
+                                        context.getImageData(
+                                            17 * dpr,
+                                            32 * dpr,
+                                            1,
+                                            1
+                                        ).data
+                                    ),
+                                });
+                            }
+                        }
                         await paint({ viewFade: 1 });
                         const hatch = pixel(
                             await paint({ alpha: 0, hatch: "diagonal" }),
@@ -250,6 +283,7 @@ for (const dpr of [1, 2]) {
                             transparentErrors,
                             subpixel,
                             viewFade,
+                            pngColors,
                             blend,
                             hatch,
                             fades,
@@ -290,6 +324,9 @@ for (const dpr of [1, 2]) {
             close(result.subpixel, [112, 0, 32, 143]);
             close(result.blend, [128, 0, 128, 255]);
             close(result.viewFade, [0, 0, 128, 128]);
+            // PNG stores straight colors; fading blue changes alpha, not its RGB value.
+            for (const { fade, color } of result.pngColors)
+                close(color, [0, 0, 255, Math.round(255 * fade)]);
             close(result.hatch, [255, 0, 0, 255]);
             for (const fade of result.fades) close(fade, [0, 0, 128, 128]);
             close(result.floor, [0, 0, 191, 191]);
