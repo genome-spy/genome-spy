@@ -41,9 +41,12 @@ display: block;
 touch-action: none;
 transform: scale(1, 1);
 opacity: 1;
+
+@media (prefers-reduced-motion: no-preference) {
 transition:
 transform 0.6s,
 opacity 0.6s;
+}
 
 &:focus,
 &:focus-visible {

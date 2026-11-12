@@ -133,6 +133,52 @@ describe("SVG gradient legends", () => {
         }
     );
 
+    test.each(
+        /** @type {const} */ ([
+            ["top", undefined, undefined, 0, "start"],
+            ["top", "middle", undefined, 0.5, "middle"],
+            ["bottom", "end", undefined, 1, "end"],
+            ["bottom", "middle", "right", 0.5, "end"],
+        ])
+    )(
+        "places a %s title with anchor=%s and alignment=%s",
+        async (titleOrient, titleAnchor, titleAlign, position, textAnchor) => {
+            // A title wider than the fixed ramp must still anchor to that ramp.
+            const titleText =
+                titleAnchor === "middle" && titleAlign === undefined
+                    ? "A title wider than the ramp"
+                    : "Signal";
+            const render = await createLegendRenderer({
+                orient: titleOrient,
+                direction: "horizontal",
+                legend: {
+                    title: titleText,
+                    titleOrient,
+                    titleAnchor,
+                    titleAlign,
+                    gradientLength: 80,
+                },
+            });
+            const svg = render();
+            const ramp = svg.querySelector('[data-name="gradientRamp"] rect');
+            const title = svg.querySelector(
+                `[data-name="legend_${titleOrient}"] [data-name="title"] [data-mark-type="text"]`
+            );
+            const text = title.querySelector("text");
+            const x = +text
+                .getAttribute("transform")
+                .match(/translate\(([-.\d]+) /)[1];
+
+            expect(text.textContent).toBe(titleText);
+            expect(title.getAttribute("text-anchor")).toBe(textAnchor);
+            expect(x).toBeCloseTo(
+                +ramp.getAttribute("x") +
+                    position * +ramp.getAttribute("width"),
+                1
+            );
+        }
+    );
+
     test("keeps discrete gradient legends as color buckets", async () => {
         const render = await createLegendRenderer({
             orient: "bottom",

@@ -6,6 +6,7 @@ import UnitView from "@genome-spy/core/view/unitView.js";
 import Point from "@genome-spy/core/view/layout/point.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import { renderToLayout } from "@genome-spy/core/view/testUtils.js";
+import PointerCanvas from "../../../core/testFixtures/pointerCanvas.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 
 test("routes sample-pane legend brushing and clearing to segment opacity", async () => {
@@ -74,17 +75,16 @@ test("routes sample-pane legend brushing and clearing to segment opacity", async
 
         expect(opacity()).toEqual([1, 1, 1]);
 
+        const canvas = new PointerCanvas();
         // Start at the sample pane so the test covers routing into its legend.
         view.propagateInteraction(
             new Interaction(
                 new Point(x, point.y),
-                new MouseEvent("mousedown", { clientX: x, clientY: point.y })
+                canvas.event("pointerdown", { clientX: x, clientY: point.y })
             )
         );
-        document.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: x, clientY: y })
-        );
-        document.dispatchEvent(new MouseEvent("mouseup"));
+        canvas.dispatch("pointermove", { clientX: x, clientY: y });
+        canvas.dispatch("pointerup", { clientX: x, clientY: y });
         expect(opacity()).toEqual([0, 1, 0]);
 
         view.propagateInteraction(

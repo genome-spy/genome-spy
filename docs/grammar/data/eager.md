@@ -263,11 +263,11 @@ disabled and delimited fields remain strings.
 
 ## Named Data
 
-Use `data.name` to reference a dataset declared separately with `datasets`.
-The `datasets` property declares named arrays for a view subtree. A named data
-reference first checks its own view and then its enclosing views. A declaration
-in a more deeply nested view shadows an enclosing declaration with the same
-name.
+Use `data.name` to read a named input or a
+[published table](../transform/publish.md). Declare named inputs as arrays under
+`datasets`. A named data reference first checks its own view and then its
+enclosing views. A declaration in a more deeply nested view shadows an enclosing
+declaration with the same name.
 
 ```json title="Example: Named dataset"
 {
@@ -283,9 +283,8 @@ name.
 }
 ```
 
-The declaring view owns the dataset. Its descendants may reference it, but a
-runtime update must target the declaring view itself. An empty declaration is
-useful when all rows will be supplied dynamically:
+For writable datasets, target runtime updates at the declaring view. An empty
+array is useful when all rows will be supplied dynamically:
 
 ```json
 {
@@ -301,8 +300,7 @@ useful when all rows will be supplied dynamically:
 Each imported instance owns its declarations independently. Thus, repeated
 imports can use the same dataset names without collisions.
 
-Named datasets must be arrays. See
-[Runtime State](../../api/runtime-state.md#named-data) for dynamic updates.
+See [Runtime State](../../api/runtime-state.md#named-data) for dynamic updates.
 During the legacy compatibility period, unresolved names still use the
 embed-wide named-data fallback and otherwise produce empty data.
 

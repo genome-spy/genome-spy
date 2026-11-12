@@ -42,7 +42,7 @@ const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
 const inspectorPaneRef = createRef();
-const inputBindingsHostRef = createRef();
+/** @type {import("lit/directives/ref.js").Ref<HTMLElement>} */
 const inputBindingsPaneRef = createRef();
 /** @type {import("./workspace.js").WorkspaceState} */
 const workspaceState = {
@@ -80,8 +80,14 @@ export function getCurrentEmbedResult() {
 }
 
 let previousStringifiedSpec = "";
-let suppressNextEditorChange = false;
+let applyingLoadedSpec = false;
+let autosaveUnavailable = false;
 const editorState = createEditorState();
+
+/** @type {AbortController | undefined} */
+let specRequest;
+let specLoadError = "";
+
 let renderer = getRendererFromUrl(new URL(window.location.href));
 let updateInProgress = false;
 let pendingUpdate = false;
@@ -134,20 +140,55 @@ function setExamplePickerHash(open) {
     window.history.replaceState({}, "", formatPlaygroundUrl(url));
 }
 
-async function loadSpec() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const specParam = urlParams.get("spec");
-    if (specParam) {
-        return loadSpecFromUrl(specParam);
+/**
+ * @param {string | null} specParam
+ * @param {boolean} pushHistory
+ */
+async function loadSpec(
+    specParam = new URLSearchParams(window.location.search).get("spec"),
+    pushHistory = false
+) {
+    specRequest?.abort();
+    const request = new AbortController();
+    specRequest = request;
+    clearSpecLoadError();
+
+    let state;
+    try {
+        state = specParam
+            ? await loadSpecFromUrl(specParam, request.signal)
+            : loadLocalSpec();
+    } catch (error) {
+        if (request.signal.aborted) return;
+        if (!editorState.getCurrent(editorRef.value)) {
+            setEditorSpec(loadLocalSpec());
+        }
+        specLoadError = error instanceof Error ? error.message : String(error);
+        renderLayout();
+        return;
+    } finally {
+        if (specRequest === request) specRequest = undefined;
     }
 
-    const storedState = loadStoredState();
-    inheritedBaseUrl = storedState?.inheritedBaseUrl;
-    sourceExampleId = storedState?.sourceExampleId;
+    if (request.signal.aborted) return;
+    if (pushHistory) {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("spec", specParam);
+        window.history.pushState({}, "", formatPlaygroundUrl(nextUrl));
+    }
+    setEditorSpec(state);
+}
 
-    return storedState?.specText?.length > 0
-        ? storedState.specText
-        : defaultSpec;
+function loadLocalSpec() {
+    const storedState = loadStoredState();
+    return storedState?.specText ? storedState : { specText: defaultSpec };
+}
+
+function clearSpecLoadError() {
+    if (specLoadError) {
+        specLoadError = "";
+        renderLayout();
+    }
 }
 
 async function ensureExampleCatalogLoaded() {
@@ -252,14 +293,23 @@ function closeExamplePicker() {
 }
 
 /**
- * @param {string} specText
+ * @param {StoredState} state
  */
-function setEditorSpec(specText) {
+function setEditorSpec(state) {
+    const { specText } = state;
+    inheritedBaseUrl = state.inheritedBaseUrl;
+    sourceExampleId = state.sourceExampleId;
     revealMissingFilesOnNextUpdate = true;
     editorState.set(specText);
-    if (editorRef.value) {
-        suppressNextEditorChange = true;
-        editorRef.value.value = specText;
+    const editor = editorRef.value;
+    if (editor) {
+        // The editor emits its change event synchronously during assignment.
+        applyingLoadedSpec = true;
+        try {
+            editor.value = specText;
+        } finally {
+            applyingLoadedSpec = false;
+        }
     }
     void update(true);
     if (sourceExampleId) {
@@ -307,24 +357,11 @@ function clearSpecQueryParam() {
 }
 
 /**
- * @param {string} specUrl
- */
-async function openSpec(specUrl) {
-    const specText = await loadSpecFromUrl(specUrl);
-    const nextUrl = new URL(window.location.href);
-
-    nextUrl.searchParams.set("spec", specUrl);
-    window.history.pushState({}, "", formatPlaygroundUrl(nextUrl));
-
-    setEditorSpec(specText);
-}
-
-/**
  * @param {ExampleCatalogEntry} entry
  */
 async function openCatalogEntry(entry) {
     closeExamplePicker();
-    await openSpec(entry.specUrl);
+    await loadSpec(entry.specUrl, true);
 }
 
 /**
@@ -335,7 +372,13 @@ async function openCatalogEntry(entry) {
  * @returns {StoredState | undefined}
  */
 function loadStoredState() {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
+    let storedValue;
+    try {
+        storedValue = window.localStorage.getItem(STORAGE_KEY);
+    } catch {
+        return undefined;
+    }
+
     if (!storedValue) {
         return undefined;
     }
@@ -362,22 +405,30 @@ function loadStoredState() {
  * @param {string} specText
  */
 function storeState(specText) {
-    window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-            specText,
-            inheritedBaseUrl,
-            sourceExampleId,
-        })
-    );
+    let unavailable = false;
+    try {
+        window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ specText, inheritedBaseUrl, sourceExampleId })
+        );
+    } catch {
+        unavailable = true;
+    }
+
+    if (autosaveUnavailable !== unavailable) {
+        autosaveUnavailable = unavailable;
+        renderLayout();
+    }
 }
 
 /**
  * @param {string} specParam
+ * @param {AbortSignal} signal
+ * @returns {Promise<StoredState>}
  */
-async function loadSpecFromUrl(specParam) {
+async function loadSpecFromUrl(specParam, signal) {
     const specUrl = new URL(specParam, window.location.href);
-    const response = await fetch(specUrl);
+    const response = await fetch(specUrl, { signal });
     if (!response.ok) {
         throw new Error(
             `Could not load specification: ${response.status} ${response.statusText}`
@@ -386,7 +437,7 @@ async function loadSpecFromUrl(specParam) {
     const specText = await response.text();
     const sourceBaseUrl = inferSpecBaseUrl(specUrl.href);
     // Keep the original example identity after editing removes the spec query.
-    sourceExampleId =
+    const sourceExampleId =
         specUrl.origin === window.location.origin
             ? specUrl.pathname.match(
                   /^\/(?:examples|docs\/example-specs)\/((?:docs|core|app)\/.+)\.json$/
@@ -394,12 +445,13 @@ async function loadSpecFromUrl(specParam) {
             : undefined;
 
     if (shouldInjectBaseUrl(specUrl)) {
-        inheritedBaseUrl = undefined;
-        return injectBaseUrl(specText, sourceBaseUrl);
+        return {
+            specText: injectBaseUrl(specText, sourceBaseUrl),
+            sourceExampleId,
+        };
     }
 
-    inheritedBaseUrl = sourceBaseUrl;
-    return specText;
+    return { specText, inheritedBaseUrl: sourceBaseUrl, sourceExampleId };
 }
 
 /**
@@ -559,9 +611,7 @@ async function updateVisualization(force) {
 
         try {
             embedResult = await embed(container, parsedSpec, {
-                inputBindingContainer: /** @type {HTMLElement} */ (
-                    inputBindingsHostRef.value
-                ),
+                inputBindingContainer: inputBindingsPaneRef.value,
                 powerPreference: "high-performance",
                 renderer: selectedRenderer,
                 getSpecOrigin: (fragment) => origins.get(fragment),
@@ -589,7 +639,7 @@ async function updateVisualization(force) {
         }
         editor.observeDataLoading(embedResult, runtimeAttempt);
         hasInputBindings = Boolean(
-            document.querySelector(".gs-input-bindings")
+            inputBindingsPaneRef.value.querySelector(".gs-input-bindings")
         );
         if (inspectorHandle) {
             await inspectorHandle.session.refresh();
@@ -647,18 +697,33 @@ const toolbarTemplate = () => {
 const debouncedUpdate = debounce(() => update(), 500, false);
 
 function handleEditorChange() {
-    if (suppressNextEditorChange) {
-        suppressNextEditorChange = false;
+    if (applyingLoadedSpec) {
         return;
     }
 
+    specRequest?.abort();
     editorState.syncFromEditor(editorRef.value);
     clearSpecQueryParam();
+    clearSpecLoadError();
     debouncedUpdate();
 }
 
 const editorPaneTemplate = () => html`
     <section id="editor-pane" slot="editor">
+        <p
+            class="editor-notice"
+            role="alert"
+            ?data-visible=${Boolean(specLoadError)}
+        >
+            ${specLoadError}
+        </p>
+        <p
+            class="editor-notice"
+            role="status"
+            ?data-visible=${autosaveUnavailable}
+        >
+            ${autosaveUnavailable ? "Local autosave is unavailable. Your changes may be lost when you leave this page." : ""}
+        </p>
         ${documentationTemplate()}
         <code-editor
             ${ref(editorRef)}
@@ -711,7 +776,6 @@ const workspaceTemplate = () => html`
 
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
-        <div id="input-bindings-host" ${ref(inputBindingsHostRef)}></div>
         <gs-example-picker
             ?open=${isExamplePickerOpen}
             .loading=${isExampleCatalogLoading}
@@ -734,10 +798,11 @@ const layoutTemplate = () => html`
         >
             <div
                 id="genome-spy-container"
+                data-pane-label="Visualization"
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            <section id="workspace-pane" slot="2">
+            <section id="workspace-pane" data-pane-label="Workspace" slot="2">
                 ${workspaceTemplate()}
                 <section
                     id="inspector-pane"
@@ -750,30 +815,8 @@ const layoutTemplate = () => html`
 `;
 
 function renderLayout() {
-    moveInputBindingsToHost();
     render(layoutTemplate(), document.body);
-    placeInputBindings();
     void ensureInspectorPanel();
-}
-
-function moveInputBindingsToHost() {
-    const inputBindings = document.querySelector(".gs-input-bindings");
-    const host = inputBindingsHostRef.value;
-
-    if (inputBindings && host && inputBindings.parentElement !== host) {
-        host.append(inputBindings);
-    }
-}
-
-function placeInputBindings() {
-    const inputBindings = document.querySelector(".gs-input-bindings");
-    const destination = hasInputBindings
-        ? inputBindingsPaneRef.value
-        : inputBindingsHostRef.value;
-
-    if (inputBindings && destination) {
-        destination.append(inputBindings);
-    }
 }
 
 function syncExamplePickerFromUrl() {
@@ -788,22 +831,16 @@ setFavicon(favIcon);
 renderLayout();
 syncExamplePickerFromUrl();
 
-loadSpec().then(setEditorSpec);
+void loadSpec();
 
 window.addEventListener("popstate", () => {
     renderer = getRendererFromUrl(new URL(window.location.href));
     syncExamplePickerFromUrl();
-    loadSpec().then(setEditorSpec);
+    void loadSpec();
 });
 
 window.addEventListener("hashchange", () => {
     syncExamplePickerFromUrl();
-});
-
-window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isExamplePickerOpen) {
-        closeExamplePicker();
-    }
 });
 
 /**
