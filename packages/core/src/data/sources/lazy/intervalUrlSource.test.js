@@ -189,6 +189,28 @@ describe("IntervalUrlSource", () => {
         }
     );
 
+    it.each(/** @type {const} */ (["domain", "window"]))(
+        "loads the in-bounds portion at either genome edge with %s debounce",
+        async (mode) => {
+            vi.useFakeTimers();
+            const calls = createCalls();
+            const source = new TestSource(mode, calls, createViewStub());
+
+            source.onDomainChanged([-5, 5]);
+            await vi.runAllTimersAsync();
+            expect(calls.loads).toHaveBeenNthCalledWith(1, [0, 20]);
+
+            source.onDomainChanged([95, 105]);
+            await vi.runAllTimersAsync();
+            expect(calls.loads).toHaveBeenNthCalledWith(2, [80, 100]);
+
+            source.onDomainChanged([-25, 5]);
+            await vi.runAllTimersAsync();
+            expect(calls.loads).toHaveBeenCalledTimes(2);
+            source.dispose();
+        }
+    );
+
     it("skips a queued detail read after zooming outside the window limit", async () => {
         vi.useFakeTimers();
         const calls = createCalls();

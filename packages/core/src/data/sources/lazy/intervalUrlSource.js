@@ -198,12 +198,12 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     #coversCurrentDomain(interval) {
         const domain = this.#lastDomain;
         const windowSize = withoutExprRef(this.params.windowSize);
-        return (
-            !domain ||
-            (domain[0] >= interval[0] &&
-                domain[1] <= interval[1] &&
-                domain[1] - domain[0] <= windowSize)
-        );
+        if (!domain) return true;
+        if (domain[1] - domain[0] > windowSize) return false;
+
+        const start = Math.max(0, domain[0]);
+        const end = Math.min(this.genome.totalSize, domain[1]);
+        return start < end && start >= interval[0] && end <= interval[1];
     }
 
     /**
