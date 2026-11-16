@@ -47,6 +47,9 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /** @type {number[] | undefined} */
     #lastDomain;
 
+    /** @type {number[] | undefined} */
+    #activeWindow;
+
     /** @type {(interval: number[], windowSize?: number) => any} */
     #debouncedRequest = (interval, windowSize) =>
         this.requestInterval(interval, windowSize);
@@ -123,7 +126,10 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
                 wait,
                 false
             );
-            this.onDomainChanged = onDomainChanged;
+            this.onDomainChanged = (/** @type {number[]} */ domain) => {
+                this.#updateDomain(domain);
+                onDomainChanged(domain);
+            };
             this.registerDisposer(() => onDomainChanged.cancel());
         } else if (mode == "window") {
             const request = debounce(this.#debouncedRequest, wait, false);
@@ -136,7 +142,7 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
 
     /** @protected */
     reloadUrlDescriptors() {
-        this.#abortController.abort();
+        this.#cancelRequest();
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
         this.invalidateData();
@@ -146,7 +152,7 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
 
     /** @protected */
     reloadLastDomain() {
-        this.#abortController.abort();
+        this.#cancelRequest();
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
         this._lastLoadedDomain = undefined;
@@ -163,12 +169,41 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
 
     /** @param {number[]} domain Linearized domain */
     onDomainChanged(domain) {
-        this.#lastDomain = domain;
+        this.#updateDomain(domain);
         const windowSize = withoutExprRef(this.params.windowSize) ?? -1;
-        if (domain[1] - domain[0] <= windowSize) {
+        if (domain[1] - domain[0] <= windowSize && !this.#activeWindow) {
             const interval = this.getChangedWindow(domain, windowSize);
             if (interval) this.#debouncedRequest(interval, windowSize);
         }
+    }
+
+    /** @param {number[]} domain */
+    #updateDomain(domain) {
+        this.#lastDomain = domain;
+        if (
+            this.#activeWindow &&
+            !this.#coversCurrentDomain(this.#activeWindow)
+        ) {
+            this.#cancelRequest();
+            this.setLoadingStatus("complete");
+        }
+    }
+
+    #cancelRequest() {
+        this.#activeWindow = undefined;
+        this.#abortController.abort();
+    }
+
+    /** @param {number[]} interval */
+    #coversCurrentDomain(interval) {
+        const domain = this.#lastDomain;
+        const windowSize = withoutExprRef(this.params.windowSize);
+        return (
+            !domain ||
+            (domain[0] >= interval[0] &&
+                domain[1] <= interval[1] &&
+                domain[1] - domain[0] <= windowSize)
+        );
     }
 
     /**
@@ -186,8 +221,12 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      */
     async requestInterval(domain, windowSize) {
         if (this.disposed) return;
+        if (windowSize !== undefined && !this.#coversCurrentDomain(domain)) {
+            return;
+        }
 
-        this.#abortController.abort();
+        this.#cancelRequest();
+        this.#activeWindow = windowSize === undefined ? undefined : domain;
         this.#abortController = new AbortController();
         const signal = this.#abortController.signal;
         this.setLoadingStatus("loading");
@@ -228,6 +267,10 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
                 errorPhase,
                 getSpecErrorLocation(e)
             );
+        } finally {
+            if (signal === this.#abortController.signal) {
+                this.#activeWindow = undefined;
+            }
         }
     }
 

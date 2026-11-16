@@ -29,9 +29,11 @@ class TestSource extends IntervalUrlSource {
 
     /**
      * @param {number[]} interval
+     * @param {object[]} _handles
+     * @param {AbortSignal} _signal
      * @returns {Promise<{interval: number[], data: import("../../flowNode.js").Datum[][]}>}
      */
-    async loadWindow(interval) {
+    async loadWindow(interval, _handles, _signal) {
         this.calls.loads(interval);
         return { interval, data: [/** @type {any[]} */ ([])] };
     }
@@ -136,6 +138,66 @@ describe("IntervalUrlSource", () => {
         expect(calls.loads).toHaveBeenCalledWith([0, 20]);
         expect(view.loadingStatuses).toEqual(["loading", "complete"]);
         expect(source.isDataReadyForDomain({ x: [0, 10] })).toBe(true);
+        source.dispose();
+    });
+
+    it.each(
+        /** @type {const} */ ([
+            ["domain", "success"],
+            ["domain", "error"],
+            ["window", "success"],
+            ["window", "error"],
+        ])
+    )(
+        "discards superseded fixed windows before the next %s debounce (%s)",
+        async (mode, outcome) => {
+            vi.useFakeTimers();
+            const view = createViewStub();
+            const source = new TestSource(mode, createCalls(), view);
+            source.params.debounce = 200;
+            const first = Promise.withResolvers();
+            const load = vi
+                .spyOn(source, "loadWindow")
+                .mockReturnValueOnce(first.promise);
+            const publish = vi.spyOn(source, "publishInterval");
+
+            source.onDomainChanged([0, 10]);
+            await vi.advanceTimersByTimeAsync(200);
+            const signal = load.mock.calls[0][2];
+
+            source.onDomainChanged([5, 15]);
+            expect(signal.aborted).toBe(false);
+            source.onDomainChanged([25, 35]);
+            expect(signal.aborted).toBe(true);
+
+            if (outcome === "success") {
+                first.resolve({ interval: [0, 20], data: [[{ id: "old" }]] });
+            } else {
+                first.reject(new Error("Old request failed"));
+            }
+            await vi.advanceTimersByTimeAsync(199);
+            expect(publish).not.toHaveBeenCalled();
+            expect(view.loadingStatuses).not.toContain("error");
+
+            await vi.advanceTimersByTimeAsync(1);
+            expect(publish).toHaveBeenCalledExactlyOnceWith(
+                [[]],
+                [20, 40],
+                [{}]
+            );
+            source.dispose();
+        }
+    );
+
+    it("skips a queued detail read after zooming outside the window limit", async () => {
+        vi.useFakeTimers();
+        const calls = createCalls();
+        const source = new TestSource("window", calls, createViewStub());
+        source.onDomainChanged([0, 10]);
+        source.onDomainChanged([0, 50]);
+
+        await vi.runAllTimersAsync();
+        expect(calls.modules).not.toHaveBeenCalled();
         source.dispose();
     });
 
