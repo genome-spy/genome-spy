@@ -374,6 +374,15 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     type: "interval";
 
     /**
+     * Enables one-finger brushing. Can reference a bound parameter to switch
+     * between brushing and panning on touchscreens.
+     *
+     * __Default value:__ `true` for an unfiltered brush on a plot without a
+     * zoomable axis for panning, otherwise `false`.
+     */
+    touchDrag?: boolean | ExprRef;
+
+    /**
      * An array of encoding channels that define the interval selection.
      */
     encodings?: IntervalSelectionChannel[];
@@ -642,6 +651,16 @@ export interface RulerConfig {
      * __Default value:__ `"mousemove"`
      */
     on?: RulerEventType | RulerEventConfig | string;
+
+    /**
+     * Enables one-finger dragging for pointer rulers. Can reference a bound
+     * parameter to switch between ruler dragging and panning on touchscreens.
+     *
+     * __Default value:__ `true` for an unfiltered `"mousedown"` ruler where
+     * the view has no zoomable positional scale available for panning,
+     * otherwise `false`.
+     */
+    touchDrag?: boolean | ExprRef;
 
     /**
      * Event that clears the ruler, or `false` to keep the current value.

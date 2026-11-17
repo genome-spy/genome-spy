@@ -7,6 +7,7 @@ import {
     getEventFilterLocation,
 } from "../../utils/interactionConfig.js";
 import { startPointerDrag } from "../../utils/pointerDrag.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import {
@@ -183,7 +184,6 @@ export class IntervalSelectionController {
         const requiresShiftToBrush = channels.some((channel) =>
             scaleResolutions[channel].isZoomable()
         );
-
         const eventConfig =
             /** @type {import("../../spec/parameter.js").EventConfig} */ (
                 select.on ??
@@ -202,6 +202,13 @@ export class IntervalSelectionController {
                 `Interval selection param "${name}" currently supports only "mousedown" in "on".`
             );
         }
+
+        const { touchDrag = !eventConfig.filter && !requiresShiftToBrush } =
+            select;
+        const overridesPan = select.touchDrag !== undefined;
+        const touchDragEnabled = isExprRef(touchDrag)
+            ? paramRuntime.createExpression(touchDrag)
+            : () => touchDrag;
 
         const source =
             "select" in param && typeof param.select === "object"
@@ -476,15 +483,17 @@ export class IntervalSelectionController {
             return rectangle.containsPoint(point.x, point.y) ? rectangle : null;
         };
 
-        this.#addViewInteractionListener("mousedown", (event) => {
-            if (
-                event.mouseEvent.button != 0 ||
-                !isInsideHost(event.point) ||
-                !ownsInteraction(event.point)
-            ) {
-                return;
-            }
+        /** @param {import("../../utils/interaction.js").default} event */
+        const canStartDrag = (event) =>
+            event.mouseEvent.button === 0 &&
+            isInsideHost(event.point) &&
+            ownsInteraction(event.point);
 
+        /**
+         * @param {import("../../utils/interaction.js").default} event
+         * @param {PointerEvent} [touchEvent]
+         */
+        const startDrag = (event, touchEvent) => {
             const selection = selectionExpr();
             const projectionCoords = this.host.getProjectionCoords(
                 channels[0],
@@ -495,33 +504,19 @@ export class IntervalSelectionController {
             // may be nonlinear.
             const translatedRectangle = selectionRectAt(event.point);
 
-            if (translatedRectangle) {
-                // Started dragging an existing selection
-                // Start of dragging should prevent click propagation so that
-                // no other selections or events are triggered.
-                preventNextClickPropagation = true;
-            } else {
-                const mouseDownPoint = event.point;
-                if (isActiveIntervalSelection(selectionExpr())) {
-                    // If there's a selection, prevent the next click from propagating.
-                    // The first click will clear the selection, not trigger
-                    // any other possible selections.
-                    preventNextClickPropagation = true;
-                }
-
-                const startSelection = eventPredicate(event.proxiedMouseEvent);
-
-                if (!startSelection) {
-                    if (
-                        !clearEventConfig ||
-                        !isActiveIntervalSelection(selection)
-                    ) {
-                        return;
-                    }
-
+            if (!touchEvent) {
+                const hasSelection = isActiveIntervalSelection(selection);
+                // Let the first click on or outside a brush belong to that brush.
+                if (hasSelection) preventNextClickPropagation = true;
+                if (
+                    !translatedRectangle &&
+                    !eventPredicate(event.proxiedMouseEvent)
+                ) {
                     // If mouse button is released and there was a selection,
                     // it should be cleared unless the viewport was panned by dragging.
-                    pendingClearStart = mouseDownPoint;
+                    if (clearEventConfig && hasSelection) {
+                        pendingClearStart = event.point;
+                    }
                     return;
                 }
             }
@@ -530,11 +525,11 @@ export class IntervalSelectionController {
             event.stopPropagation();
 
             const brush = { start: event.point, translatedRectangle };
-            activeBrush = brush;
             const state = paramRuntime.getIntervalSelectionState(name);
             state.begin(this, () => this.#cancelActiveDrag());
+            activeBrush = brush;
             setIntervalDragActive(Boolean(translatedRectangle));
-            if (!translatedRectangle) {
+            if (!touchEvent && !translatedRectangle) {
                 clearSelection();
             }
 
@@ -601,20 +596,62 @@ export class IntervalSelectionController {
                 setter({ type: "interval", intervals });
             };
 
-            this.#cancelActiveDrag = startPointerDrag(event.mouseEvent, {
-                onMove,
-                hoverContext: view.context,
-                onFinish: (released) => {
-                    activeBrush = null;
-                    setIntervalDragActive(false);
-                    if (!released) {
-                        preventNextClickPropagation = false;
-                        state.finish(this, false);
-                    }
-                },
-                onRelease: () => state.finish(this, true),
-            });
+            this.#cancelActiveDrag = startPointerDrag(
+                touchEvent ?? event.mouseEvent,
+                {
+                    onMove,
+                    capture: !touchEvent,
+                    hoverContext: touchEvent ? undefined : view.context,
+                    onFinish: (released) => {
+                        activeBrush = null;
+                        setIntervalDragActive(false);
+                        if (!released) {
+                            preventNextClickPropagation = false;
+                            state.finish(this, false);
+                        }
+                    },
+                    onRelease: () => state.finish(this, true),
+                }
+            );
+            if (touchEvent) onMove(touchEvent);
+            return this.#cancelActiveDrag;
+        };
+        this.#addViewInteractionListener("mousedown", (event) => {
+            if (canStartDrag(event)) startDrag(event);
         });
+        if (touchDrag) {
+            this.#addViewInteractionListener("touchdragstart", (event) => {
+                const drag = event.uiEvent;
+                if (
+                    "activeEvent" in drag &&
+                    !event.stopped &&
+                    (!drag.brush ||
+                        (overridesPan && !drag.brush.overridesPan)) &&
+                    touchDragEnabled() &&
+                    canStartDrag(event)
+                ) {
+                    drag.brush = {
+                        start: () => startDrag(event, drag.activeEvent),
+                        overridesPan,
+                    };
+                }
+            });
+            if (
+                clearEventConfig?.type === "dblclick" &&
+                !clearEventConfig.filter
+            ) {
+                this.#addViewInteractionListener("touchtap", (event) => {
+                    if (
+                        touchDragEnabled() &&
+                        isInsideHost(event.point) &&
+                        ownsInteraction(event.point) &&
+                        !selectionRectAt(event.point)
+                    ) {
+                        this.clear();
+                    }
+                });
+            }
+        }
 
         this.#viewListeners.add("mouseup", (event) => {
             if (!pendingClearStart) {

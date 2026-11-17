@@ -19,6 +19,8 @@ import {
 /** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
 /** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
 
+const TAP_DISTANCE = 4;
+
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
     #viewRoot;
@@ -733,6 +735,42 @@ export default class InteractionController {
         /** @type {ReturnType<typeof readTouchGesture>} */
         let previousTouchGesture;
 
+        /** @type {PointerEvent | undefined} */
+        let touchStart;
+        /** @type {(() => boolean) | undefined} */
+        let cancelTouchDrag;
+
+        /**
+         * @param {PointerEvent} start
+         * @param {PointerEvent} activeEvent
+         */
+        const startTouchTool = (start, activeEvent) => {
+            if (this.#isInteractionFrozen()) return;
+
+            /** @type {import("../utils/interactionEvent.js").TouchDragStartEvent} */
+            const drag = {
+                type: "touchdragstart",
+                pointerEvent: start,
+                activeEvent,
+            };
+            const interaction = dispatchInteraction(
+                this.#toCanvasPoint(start),
+                drag
+            );
+            if (interaction.stopped) return;
+
+            // Brushes need movement to define a range and take precedence over rulers.
+            if (drag.brush && (!drag.panAvailable || drag.brush.overridesPan)) {
+                if (activeEvent.type === "pointermove")
+                    return drag.brush.start();
+            } else if (
+                drag.ruler &&
+                (!drag.panAvailable || drag.ruler.overridesPan)
+            ) {
+                return drag.ruler.start();
+            }
+        };
+
         /**
          * @param {PointerEvent} event
          * @param {boolean} canceled
@@ -743,7 +781,17 @@ export default class InteractionController {
             const moved = type === "pointermove";
             if (!started && !touches.has(pointerId)) return;
 
-            if (started) canvas.setPointerCapture(pointerId);
+            if (started) {
+                canvas.setPointerCapture(pointerId);
+                if (touches.size === 0) {
+                    touchStart = event;
+                    stopPanInertia(this.#animator);
+                } else {
+                    touchStart = undefined;
+                    cancelTouchDrag?.();
+                    cancelTouchDrag = undefined;
+                }
+            }
             if (started || moved) {
                 this.#wheelInertia.cancel();
                 touches.set(pointerId, event);
@@ -754,14 +802,46 @@ export default class InteractionController {
             this.#tooltipUpdateRequested = false;
             const previous = previousTouchGesture;
             const current = readTouchGesture();
+            const start = touchStart;
+            const withinTapDistance =
+                start && getClientDistance(start, event) < TAP_DISTANCE;
+            if (moved && withinTapDistance) return;
+
             previousTouchGesture = current;
-            if (started) return;
+            if (started) {
+                if (start) {
+                    cancelTouchDrag = startTouchTool(start, event);
+                    if (cancelTouchDrag) touchStart = undefined;
+                }
+                return;
+            }
+            touchStart = undefined;
             if (!moved) {
+                if (cancelTouchDrag) {
+                    cancelTouchDrag = undefined;
+                    return;
+                }
+                if (
+                    !canceled &&
+                    withinTapDistance &&
+                    !this.#isInteractionFrozen()
+                ) {
+                    const point = this.#toCanvasPoint(event);
+                    if (this.#isInsideCanvas(point)) {
+                        dispatchInteraction(point, {
+                            type: "touchtap",
+                            pointerEvent: event,
+                        });
+                    }
+                }
                 if (canceled || !current) {
                     dispatchTouchGesture(previous, canceled ? "cancel" : "end");
                 }
                 return;
             }
+
+            if (start) cancelTouchDrag = startTouchTool(start, event);
+            if (cancelTouchDrag) return;
 
             const xDelta = current.centerX - previous.centerX;
             const yDelta = current.centerY - previous.centerY;
@@ -902,6 +982,7 @@ export default class InteractionController {
         return () => {
             listeners.abort();
             finishPress();
+            cancelTouchDrag?.();
             for (const id of touches.keys()) {
                 if (canvas.hasPointerCapture(id))
                     canvas.releasePointerCapture(id);

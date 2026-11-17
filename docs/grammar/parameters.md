@@ -224,6 +224,17 @@ You can override this behavior with `select.on`, for example `"on": "mousedown"`
 to always start brushing on plain drag. The selection can be cleared by clicking
 outside the selected area.
 
+On a touchscreen, drag with one finger to create or move a brush on a plot
+without a zoomable axis when `select.on` has no filter. On plots with a zoomable
+axis, one finger pans by default. Set `select.touchDrag` to `true` or bind it
+to a checkbox parameter with `{ "expr": "brushMode" }` to switch between
+brushing and panning. Two fingers still pinch to zoom.
+
+For a brush with unfiltered double-click clearing, tap outside the brush in
+the plot to clear it. This shortcut is available when `touchDrag` is enabled.
+If `touchDrag` is omitted, it is available for non-zoomable brushed channels
+with no filter on `select.on`.
+
 Active interval selections can also be resized with the mouse wheel when the
 pointer is over the selection rectangle. This is controlled by `select.zoom`.
 By default, `select.zoom` is:
@@ -347,6 +358,15 @@ Pointer-driven rulers use `ruler.on`:
 - `"mousedown"` updates on press and continues while dragging. Use an event
   filter such as `"mousedown[event.shiftKey]"` when plain drag is used for zoom
   or pan gestures.
+
+On a touchscreen, tap to place a ruler whose `on` has no filter. On a plot
+without a zoomable axis, an unfiltered `"mousedown"` ruler updates as soon as
+your finger lands and follows it during a drag. Use `ruler.touchDrag` to
+override the default or bind it to a checkbox parameter to switch between
+ruler dragging and panning.
+A ruler configured to clear on `"mouseup"` appears during a drag and clears
+when the drag ends. If brushing and ruler dragging are both enabled on the
+same plot, the brush takes precedence.
 
 Viewport-driven rulers use `"source": "viewport"` and track the center of the
 current scale viewport. A viewport ruler must not define `on` and does not clear

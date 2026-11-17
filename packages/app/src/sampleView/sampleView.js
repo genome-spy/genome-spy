@@ -1811,6 +1811,14 @@ export default class SampleView extends ContainerView {
                 event.point.y
             );
 
+            if (
+                "activeEvent" in event.uiEvent &&
+                inMainPaneZoomSurface &&
+                this.#gridChild.view.getScaleResolution("x")?.isZoomable()
+            ) {
+                event.uiEvent.panAvailable = true;
+            }
+
             if (event.type === "wheelclaimprobe") {
                 const wheelEvent = event.wheelEvent;
                 const resolution = this.#gridChild.view.getScaleResolution("x");
