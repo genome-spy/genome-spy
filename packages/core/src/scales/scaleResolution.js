@@ -214,7 +214,12 @@ export default class ScaleResolution {
 
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
-            createExpression: (expr) => this.#createExpression(expr),
+            createExpression: (expr, layoutProperty) => {
+                const expression = this.#createExpression(expr);
+                if (layoutProperty)
+                    this.#validateLayoutExpression(expression, layoutProperty);
+                return expression;
+            },
             onRangeChange: () => {
                 this.#notifyListeners("range");
                 this.#viewContext.animator.requestRender();
@@ -233,8 +238,6 @@ export default class ScaleResolution {
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
             getAxisLength: () => this.getAxisLength(),
-            validateLayoutExpression: (expression, property) =>
-                this.#validateLayoutExpression(expression, property),
         });
 
         this.#interactionController = new ScaleInteractionController({

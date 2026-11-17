@@ -4,7 +4,7 @@ import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
-import clamp from "../utils/clamp.js";
+import { normalizeBandScaleProperty } from "./bandScaleProperties.js";
 import { isScalar } from "../utils/variableTools.js";
 
 import createScale, {
@@ -77,11 +77,8 @@ export default class ScaleInstanceManager {
     /** @type {(range: any[]) => void} */
     #setRange;
 
-    /** @type {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} */
+    /** @type {(expr: import("../spec/parameter.js").ExprRef, layoutProperty?: string) => import("../paramRuntime/types.js").ExprRefFunction} */
     #createExpression;
-
-    /** @type {(expression: import("../paramRuntime/types.js").ExprRefFunction, property: string) => void} */
-    #validateLayoutExpression;
 
     /** @type {() => void} */
     #onRangeChange;
@@ -115,13 +112,12 @@ export default class ScaleInstanceManager {
     /**
      * @param {object} options
      * @param {() => ViewParamRuntime} options.getRuntime
-     * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+     * @param {(expr: import("../spec/parameter.js").ExprRef, layoutProperty?: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
      * @param {(domain: any[]) => void} options.onDomainChange
      * @param {(viewport: import("./scaleBand.js").CategoricalViewport | null) => void} [options.onViewportChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      * @param {() => number} [options.getAxisLength]
-     * @param {(expression: import("../paramRuntime/types.js").ExprRefFunction, property: string) => void} [options.validateLayoutExpression]
      */
     constructor({
         getRuntime,
@@ -133,7 +129,6 @@ export default class ScaleInstanceManager {
         },
         getGenomeStore,
         getAxisLength = () => 0,
-        validateLayoutExpression = () => {},
     }) {
         this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
@@ -142,7 +137,6 @@ export default class ScaleInstanceManager {
         this.#onViewportChange = onViewportChange;
         this.#getGenomeStore = getGenomeStore;
         this.#getAxisLength = getAxisLength;
-        this.#validateLayoutExpression = validateLayoutExpression;
     }
 
     get scale() {
@@ -350,9 +344,7 @@ export default class ScaleInstanceManager {
         /** @param {any} value @param {string} [layoutProperty] */
         const bind = (value, layoutProperty) => {
             if (!isExprRef(value)) return () => value;
-            const expression = this.#createExpression(value);
-            if (layoutProperty)
-                this.#validateLayoutExpression(expression, layoutProperty);
+            const expression = this.#createExpression(value, layoutProperty);
             dependencies.push(...expression.dependencies);
             return expression;
         };
@@ -422,10 +414,11 @@ export default class ScaleInstanceManager {
                 const common = readPadding(0) ?? 0;
                 const inner = readPadding(1) ?? common;
                 const outer = readPadding(2) ?? common;
-                padding =
-                    scale.type === "band"
-                        ? [clamp(inner), clamp(outer)]
-                        : [Math.min(1, inner), outer];
+                const kind = scale.type === "band" ? "band" : "index";
+                padding = [
+                    normalizeBandScaleProperty(kind, "paddingInner", inner),
+                    normalizeBandScaleProperty(kind, "paddingOuter", outer),
+                ];
             }
             const command = this.#rangeCommand.get();
             const canUseCommand =
