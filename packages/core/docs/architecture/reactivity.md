@@ -133,8 +133,7 @@ consumes the resolution's assembly-configuration ref. Domain-to-range expression
 remain valid, while mapping feedback is rejected by graph cycle validation.
 
 WebGL scale uniforms apply in an owned operation before render effects. Mapping
-publication invalidates retained WebGPU resources and queues axis tick and step
-size updates.
+publication invalidates retained WebGPU resources and queues step-size updates.
 Retained WebGL range textures observe completed mappings through graph effects.
 Public `scale.range(value)` calls submit an explicit range command that
 persists through navigation until the bound range values or configuration change.

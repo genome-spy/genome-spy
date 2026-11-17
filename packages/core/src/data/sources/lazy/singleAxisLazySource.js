@@ -90,8 +90,15 @@ export default class SingleAxisLazySource extends DataSource {
         }
 
         this.#listening = true;
-        this.registerDisposer(
-            this.subscribeScaleChanges(this.#fireDomainChanged)
+        this.scaleResolution.addEventListener(
+            "domain",
+            this.#fireDomainChanged
+        );
+        this.registerDisposer(() =>
+            this.scaleResolution.removeEventListener(
+                "domain",
+                this.#fireDomainChanged
+            )
         );
         this.view.context.addBroadcastListener(
             "layoutComputed",
@@ -103,13 +110,6 @@ export default class SingleAxisLazySource extends DataSource {
                 this.#fireDomainChanged
             )
         );
-    }
-
-    /** @protected @param {() => void} listener */
-    subscribeScaleChanges(listener) {
-        this.scaleResolution.addEventListener("domain", listener);
-        return () =>
-            this.scaleResolution.removeEventListener("domain", listener);
     }
 
     /**
