@@ -319,8 +319,10 @@ export default class BaseProgram {
             analysisByChannel: compiledChannels.analysisByChannel,
             label: this.label,
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),
-            setUniformValue: (name, value) =>
-                this._setUniformValue(name, value),
+            getUniformSetter: (name) =>
+                /** @type {UniformBuffer} */ (
+                    this._uniformBufferState
+                ).getSetter(name),
         });
         this.#selectionResources = new SelectionResourceManager({
             device: this.device,
@@ -418,7 +420,7 @@ export default class BaseProgram {
         });
         this.#initializeUniforms();
         const dynamicValues =
-            /** @type {Record<string, {value: number | number[]}>} */ (
+            /** @type {Record<string, import("../../../index.d.ts").DynamicValueConfig>} */ (
                 this._markConfig.dynamicValues ?? {}
             );
         for (const [name, config] of Object.entries(dynamicValues)) {
@@ -976,10 +978,11 @@ export default class BaseProgram {
                 `Uniform "${uniformName}" is not available for updates.`
             );
         }
+        const write = this._uniformBufferState.getSetter(uniformName);
         return {
             set: (value) => {
                 this._assertAlive();
-                this._setUniformValue(uniformName, value);
+                write(value);
                 this._queueSlotUpdate(false);
             },
         };
@@ -1017,11 +1020,12 @@ export default class BaseProgram {
                 `Uniform "${uniformName}" is not available for updates.`
             );
         }
+        const write = this._uniformBufferState.getSetter(uniformName);
         return {
             set: (value) => {
                 this._assertAlive();
                 validateScalarSlotValue(name, config.type, value);
-                this._setUniformValue(uniformName, value);
+                write(value);
                 this._queueSlotUpdate(false);
             },
         };
@@ -1031,7 +1035,7 @@ export default class BaseProgram {
      * Hook for mark programs whose draw parameters mirror an extra uniform.
      *
      * @param {string} name
-     * @param {number | number[]} value
+     * @param {import("../../../index.d.ts").NumericValue} value
      * @internal
      */
     _setExtraUniformValue(name, value) {
@@ -1039,40 +1043,23 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType, components?: string[] }} def
+     * @param {import("./selectionResources.js").SelectionDef} def
      * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
     #createSelectionSlot(def) {
-        /**
-         * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} next
-         */
-        const update = (next) => {
+        /** @param {import("./selectionResources.js").SelectionValue} value */
+        const set = (value) => {
             this._assertAlive();
             const needsRebind = this.#selectionResources.updateSelection(
-                def.name,
-                next,
+                def,
+                value,
                 this._extraBuffers
             );
             this._queueSlotUpdate(needsRebind);
         };
-
-        if (def.type === "single") {
-            return {
-                type: "single",
-                set: (id) => update({ type: "single", id }),
-            };
-        }
-        if (def.type === "multi") {
-            return {
-                type: "multi",
-                set: (ids) => update({ type: "multi", ids }),
-            };
-        }
-        return {
-            type: "interval",
-            components: def.components ?? [],
-            set: (intervals) => update({ type: "interval", intervals }),
-        };
+        return def.type === "interval"
+            ? { type: def.type, components: def.components ?? [], set }
+            : { type: def.type, set };
     }
 
     /**
@@ -1161,7 +1148,8 @@ export default class BaseProgram {
                 layout.push({
                     name: `u_${name}`,
                     type: channel.type ?? "f32",
-                    components: channel.components ?? 1,
+                    components:
+                        channel.inputComponents ?? channel.components ?? 1,
                 });
             }
             if (isSeriesChannelConfig(channel) && channel.scale) {

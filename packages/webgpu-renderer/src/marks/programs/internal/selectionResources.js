@@ -12,15 +12,16 @@ import {
     SELECTION_PREFIX,
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
-import { packHighPrecisionU32 } from "../../../utils/highPrecision.js";
+import { packHighPrecisionU32Array } from "../../../utils/highPrecision.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  * @typedef {import("../../../index.d.ts").SelectionType} SelectionType
  * @typedef {import("../../../index.d.ts").VisibilityPredicate} VisibilityPredicate
  * @typedef {import("../../../types.js").ScalarType} ScalarType
+ * @typedef {import("../../../utils/uniformBuffer.js").UniformValue} UniformValue
  *
- * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", intervals: Readonly<Partial<Record<string, readonly [number, number] | null>>> }} SelectionUpdate
+ * @typedef {number | Uint32Array | Readonly<Partial<Record<string, readonly [number, number] | null>>>} SelectionValue
  *
  */
 
@@ -366,7 +367,7 @@ export class SelectionResourceManager {
     /** @type {string} */
     #label;
 
-    /** @type {(name: string, value: number|number[]) => void} */
+    /** @type {(name: string, value: UniformValue) => void} */
     #setUniformValue;
 
     /** @type {Map<string, SelectionDef>} */
@@ -386,7 +387,7 @@ export class SelectionResourceManager {
      * @param {VisibilityPredicate} [params.visibleWhen]
      * @param {import("../../../index.d.ts").MarkOrder} [params.order]
      * @param {string} [params.label]
-     * @param {(name: string, value: number|number[]) => void} params.setUniformValue
+     * @param {(name: string, value: UniformValue) => void} params.setUniformValue
      */
     constructor({
         device,
@@ -514,54 +515,35 @@ export class SelectionResourceManager {
      */
     initializeSelections(extraBuffers) {
         for (const def of this.#selectionDefs.values()) {
-            if (def.type === "single") {
-                this.updateSelection(
-                    def.name,
-                    { type: "single", id: 0 },
-                    extraBuffers
-                );
-            } else if (def.type === "interval") {
-                this.updateSelection(
-                    def.name,
-                    { type: "interval", intervals: {} },
-                    extraBuffers
-                );
-            } else if (def.type === "multi") {
-                this.updateSelection(
-                    def.name,
-                    { type: "multi", ids: new Uint32Array() },
-                    extraBuffers
-                );
-            } else {
-                throw new Error(
-                    `Selection "${def.name}" has unsupported type "${def.type}".`
-                );
-            }
+            this.updateSelection(
+                def,
+                def.type === "single"
+                    ? 0
+                    : def.type === "interval"
+                      ? {}
+                      : new Uint32Array(),
+                extraBuffers
+            );
         }
     }
 
     /**
-     * @param {string} name
-     * @param {SelectionUpdate} update
+     * @param {SelectionDef} def
+     * @param {SelectionValue} value
      * @param {Map<string, GPUBuffer>} extraBuffers
      * @returns {boolean} Whether a bind group rebuild is required.
      */
-    updateSelection(name, update, extraBuffers) {
-        const def = this.#selectionDefs.get(name);
-        if (!def) {
-            throw new Error(`Unknown selection "${name}".`);
-        }
-        if (update.type !== def.type) {
-            throw new Error(
-                `Selection "${name}" must remain type "${def.type}".`
-            );
-        }
-
-        if (update.type === "single") {
-            this.#setUniformValue(SELECTION_PREFIX + name, update.id);
-            this.#setOrderSelectionActive(name, update.id !== 0);
-        } else if (update.type === "interval") {
-            const intervals = update.intervals ?? {};
+    updateSelection(def, value, extraBuffers) {
+        const { name, type } = def;
+        if (type === "single") {
+            const id = /** @type {number} */ (value);
+            this.#setUniformValue(SELECTION_PREFIX + name, id);
+            this.#setOrderSelectionActive(name, id !== 0);
+        } else if (type === "interval") {
+            const intervals =
+                /** @type {Readonly<Partial<Record<string, readonly [number, number] | null>>>} */ (
+                    value
+                ) ?? {};
             const components = def.components ?? [];
             for (const component of Object.keys(intervals)) {
                 if (!components.includes(component)) {
@@ -588,9 +570,7 @@ export class SelectionResourceManager {
                 const bounds = representation
                     ? active
                         ? representation.inputComponents === 2
-                            ? Array.from(interval).flatMap((value) =>
-                                  Array.from(packHighPrecisionU32(value))
-                              )
+                            ? packHighPrecisionU32Array(interval)
                             : Array.from(interval)
                         : representation.inputComponents === 2
                           ? INACTIVE_PACKED_BOUNDS
@@ -614,7 +594,8 @@ export class SelectionResourceManager {
                 }
             }
             this.#setOrderSelectionActive(name, allActive);
-        } else if (update.type === "multi") {
+        } else if (type === "multi") {
+            const ids = /** @type {Uint32Array} */ (value);
             const bufferName = SELECTION_BUFFER_PREFIX + name;
             const existing = this.#selectionBuffers.get(name);
             // The shader derives its hash mask from the bound buffer length.
@@ -622,9 +603,9 @@ export class SelectionResourceManager {
                 existing?.buffer.size / (Uint32Array.BYTES_PER_ELEMENT * 2);
             const reuseExisting =
                 existingCapacity !== undefined &&
-                update.ids.length / existingCapacity <= DEFAULT_MAX_LOAD_FACTOR;
+                ids.length / existingCapacity <= DEFAULT_MAX_LOAD_FACTOR;
             const { table, size } = buildHashTableSet(
-                update.ids,
+                ids,
                 reuseExisting ? { capacity: existingCapacity } : undefined
             );
             validateStorageBufferSize(

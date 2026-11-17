@@ -143,6 +143,29 @@ describe("CanvasXIndexManager", () => {
         });
     });
 
+    test("drops and restores a cached index when link geometry becomes unsafe", () => {
+        const data = Array.from({ length: 1000 }, (_, x) => ({ x }));
+        const { mark } = createFixture(data);
+        mark.getType = () => "link";
+        mark.properties.linkShape = "line";
+        const manager = new CanvasXIndexManager();
+        const range = /** @type {[number, number]} */ ([0, 0]);
+
+        expect(manager.prepare(mark)).toBe(true);
+        expect(manager.query(data, range)).toBe(true);
+        expect(range[0]).toBeGreaterThan(0);
+        expect(range[1]).toBeLessThan(data.length);
+        const firstRange = Array.from(range);
+
+        mark.properties.linkShape = "arc";
+        expect(manager.prepare(mark)).toBe(false);
+
+        mark.properties.linkShape = "line";
+        expect(manager.prepare(mark)).toBe(true);
+        expect(manager.query(data, range)).toBe(true);
+        expect(range).toEqual(firstRange);
+    });
+
     test("bypasses transient facetIndex groups", () => {
         const data = [{ x: 10 }];
         const fixture = createFixture(data);

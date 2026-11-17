@@ -75,7 +75,7 @@ function createManager(channels, limits = {}) {
         device,
         analysisByChannel,
         getDefaultScaleRange: () => undefined,
-        setUniformValue: (name, value) => {
+        getUniformSetter: (name) => (value) => {
             uniforms.set(name, value);
         },
     });
@@ -123,6 +123,18 @@ describe("ScaleResourceManager", () => {
         expect(needsRebind).toBe(true);
         expect(manager.tableBuffer?.size).toBeGreaterThan(0);
         expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 10]);
+
+        const viewport = { interval: /** @type {[number, number]} */ ([1, 2]) };
+        updater.updateViewport(viewport);
+        // Later membership changes must use the detached requested viewport.
+        viewport.interval[0] = 100;
+        updater.updateDomain([10, 20, 30]);
+        expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([1, 2]);
+        expect(() => updater.updateViewport({ interval: [2, 1] })).toThrow(
+            "finite increasing interval"
+        );
+        updater.updateViewport(null);
+        expect(uniforms.get(DOMAIN_PREFIX + "x")).toEqual([0, 3]);
     });
 
     it("updates ordinal ranges and writes range buffers", () => {
@@ -361,6 +373,8 @@ describe("grouping gap resources", () => {
         expect(uniforms.get("gapTable_x")).toEqual(uniforms.get("gapTable_x2"));
         manager.getScaleUpdater("x").updateDomain([5, 15]);
         manager.updateGapWidth("x", 12);
+        expect(uniforms.get("gapGeometry_x")).toEqual([12, 0, 1, 0]);
+        expect(uniforms.get("gapGeometry_x2")).toEqual([6, 0, 1, 0]);
         expect(buffers).toHaveLength(1);
         manager.updateGapPositions("x", [10, 12]);
         expect(buffers[0].destroy).toHaveBeenCalledOnce();

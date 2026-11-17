@@ -1,10 +1,15 @@
+import { isNumericArray } from "../types.js";
+
 /**
  * @param {import("../types.js").ScalarType} type
  * @param {1|2|4} components
- * @param {number|number[]} value
+ * @param {import("../index.d.ts").NumericValue} value
  * @returns {string}
  */
 export function formatLiteral(type, components, value) {
+    if (typeof value !== "number" && !isNumericArray(value)) {
+        throw new Error("WGSL literals require a numeric scalar or vector.");
+    }
     const scalarType = type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
 
     /**
@@ -26,14 +31,11 @@ export function formatLiteral(type, components, value) {
     };
 
     if (components === 1) {
-        return formatScalar(Array.isArray(value) ? value[0] : value);
+        return formatScalar(typeof value === "number" ? value : value[0]);
     }
-    const values = Array.isArray(value) ? value : [value];
-    const padded = values.slice(0, components);
-    while (padded.length < components) {
-        padded.push(0);
-    }
-    return `vec${components}<${scalarType}>(${padded
-        .map(formatScalar)
-        .join(", ")})`;
+    const values = typeof value === "number" ? [value] : value;
+    const formatted = Array.from({ length: components }, (_, i) =>
+        formatScalar(values[i])
+    );
+    return `vec${components}<${scalarType}>(${formatted.join(", ")})`;
 }

@@ -71,7 +71,7 @@ export function resolveArrowProperties(mark) {
 /**
  * @param {import("../../../marks/arrow.js").default} mark
  * @param {ReturnType<typeof resolveArrowProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, viewOpacity: number, countOnly?: boolean}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, viewOpacity: number, countOnly?: boolean, start?: number, end?: number}} options
  * @param {(instance: ArrowInstance) => void} visitor
  * @param {string} [constantStroke] A caller's draw-scoped stroke snapshot.
  */
@@ -156,7 +156,7 @@ export function visitArrowInstances(
  *
  * @param {import("../../../marks/arrow.js").default} mark
  * @param {ReturnType<typeof resolveArrowProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, countOnly?: boolean}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, countOnly?: boolean, start?: number, end?: number}} options
  * @param {(instance: ArrowSkeletonInstance) => void} visitor
  */
 export function visitArrowSkeletonInstances(
@@ -166,11 +166,13 @@ export function visitArrowSkeletonInstances(
     visitor
 ) {
     const { coords, data, visibleBounds, countOnly } = options;
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    if (start === end) {
         return 0;
     }
     const projectXRange = prepareRangeProjection(
@@ -215,7 +217,8 @@ export function visitArrowSkeletonInstances(
     };
     let instanceCount = 0;
 
-    for (const datum of data) {
+    for (let index = start; index < end; index++) {
+        const datum = data[index];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
         const direction = resolveDirection(encoders.direction, datum);
