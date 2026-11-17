@@ -1175,14 +1175,13 @@ function createBandPositionScale(
             band: reverse ? 1 - band : band,
         }),
         readDomain,
-        readRange,
-        scale.type === "band" ? configurableScale : undefined
+        readRange
     );
     Object.defineProperty(result, "viewport", {
         enumerable: true,
         get: readViewport,
     });
-    return retainGroupingGaps(result, scale, channel);
+    return retainBandScaleProperties(result, scale, channel);
 }
 
 /**
@@ -1225,30 +1224,33 @@ function createIndexPositionScale(scale, range, band, channel, peer) {
             align: configurableScale.align(),
             band,
         }),
-        () => scale.domain().map(Number),
-        undefined,
-        scale.type === "index" ? configurableScale : undefined
+        () => scale.domain().map(Number)
     );
-    return retainGroupingGaps(result, scale, channel, peer);
+    return retainBandScaleProperties(result, scale, channel, peer);
 }
 
-/** Keep grouping-gap inputs live without copying their initial snapshots.
+/** Keep padding and grouping-gap inputs live in retained scale configs.
  * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} target
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {string} channel
  * @param {string} [peer]
  */
-function retainGroupingGaps(target, scale, channel, peer) {
-    if (!hasGroupingGaps(scale.props)) return target;
+function retainBandScaleProperties(target, scale, channel, peer) {
     const source = /** @type {any} */ (scale);
-    Object.assign(target, {
-        gapEnabled: true,
-        gapAxis: channel[0] === "y" ? "y" : "x",
-    });
-    const properties = ["gapPositions", "gapWidth"];
-    if ("gapDomain" in source) {
-        Object.assign(target, { gapPeer: peer });
-        properties.push("gapDomain");
+    const properties =
+        scale.type === "band" || scale.type === "index"
+            ? ["paddingInner", "paddingOuter"]
+            : [];
+    if (hasGroupingGaps(scale.props)) {
+        Object.assign(target, {
+            gapEnabled: true,
+            gapAxis: channel[0] === "y" ? "y" : "x",
+        });
+        properties.push("gapPositions", "gapWidth");
+        if ("gapDomain" in source) {
+            Object.assign(target, { gapPeer: peer });
+            properties.push("gapDomain");
+        }
     }
     for (const property of properties) {
         Object.defineProperty(target, property, {
@@ -1830,20 +1832,8 @@ function createNumericScale(mark, channel, scale, range, domain) {
  * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} scale
  * @param {(() => number[])} [readDomain]
  * @param {(() => any)} [readRange]
- * @param {{paddingInner: () => number, paddingOuter: () => number}} [paddingSource]
  */
-function retainScaleLeaves(scale, readDomain, readRange, paddingSource) {
-    if (paddingSource) {
-        for (const key of /** @type {const} */ ([
-            "paddingInner",
-            "paddingOuter",
-        ])) {
-            Object.defineProperty(scale, key, {
-                enumerable: true,
-                get: () => paddingSource[key](),
-            });
-        }
-    }
+function retainScaleLeaves(scale, readDomain, readRange) {
     if (readDomain)
         Object.defineProperty(scale, "domain", {
             enumerable: true,

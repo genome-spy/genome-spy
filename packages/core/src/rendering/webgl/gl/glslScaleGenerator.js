@@ -293,13 +293,9 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
     const paddingUniformName = "uPadding_" + primary;
-    const dynamicPadding =
-        (scale.type === "band" || scale.type === "index") &&
-        ["padding", "paddingInner", "paddingOuter"].some((key) =>
-            isExprRef(scale.props?.[key])
-        );
+    const hasPaddingUniform = scale.type === "band" || scale.type === "index";
     const paddingArguments = () =>
-        dynamicPadding
+        hasPaddingUniform
             ? [paddingUniformName + ".x", paddingUniformName + ".y"]
             : scale.type === "point"
               ? [1, scale.padding()]
@@ -614,7 +610,7 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
         rangeUniform,
         paddingUniformName,
         paddingUniform:
-            dynamicPadding && channel === primary
+            hasPaddingUniform && channel === primary
                 ? `    uniform vec2 ${paddingUniformName};`
                 : undefined,
     };

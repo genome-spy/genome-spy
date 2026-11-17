@@ -149,6 +149,47 @@ describe("supported mark channels", () => {
 });
 
 describe("mark rendering revisions", () => {
+    test("invalidates scale resources before an immediate draw in a transaction", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ x: 0 }, { x: 10 }] },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "index",
+                        scale: {
+                            domain: [0, 10],
+                            paddingInner: { expr: "2 / span(domain('x'))" },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+        try {
+            view.mark.initializeRenderingRevisions([]);
+            const before = view.mark.getRenderingRevision("resources");
+            const render = vi
+                .spyOn(view.context, "renderImmediately")
+                .mockImplementation(() => {
+                    expect(
+                        view.mark.getRenderingRevision("resources")
+                    ).toBeGreaterThan(before);
+                });
+            let zoom = Promise.resolve();
+            view.paramRuntime.runInTransaction(() => {
+                zoom = view.getScaleResolution("x").zoomTo([2, 5], {
+                    renderImmediately: true,
+                });
+            });
+            expect(render).toHaveBeenCalledOnce();
+            await zoom;
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("owns expression-backed configuration and resource revisions", async () => {
         const view = await create(
             {
@@ -285,10 +326,7 @@ describe("mark rendering revisions", () => {
         view.mark.initializeEncoders();
         view.mark.initializeRenderingRevisions(["strokeCap"]);
 
-        view.paramRuntime.runInTransaction(() => {
-            resolution.scale.domain(["A", "B", "C", "D"]);
-            resolution.scale.range([0, 2]);
-        });
+        resolution.scale.domain(["A", "B", "C", "D"]);
         view.paramRuntime.flushNow();
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
         expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);

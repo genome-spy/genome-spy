@@ -5,6 +5,19 @@ import UnitView from "../../view/unitView.js";
 import { createAndInitialize } from "../../view/testUtils.js";
 import { createWebGLMark } from "./rendererResources.js";
 import { replaceOrderGuard } from "./marks/webGlMark.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+
+vi.mock("twgl.js", async (importOriginal) => ({
+    ...(await importOriginal()),
+    /** @param {WebGL2RenderingContext} _gl @param {WebGLProgram} program */
+    createProgramInfoFromProgram: (_gl, program) => ({
+        program,
+        uniformSetters: {},
+    }),
+}));
+vi.mock("./gl/uniformBlocks.js", () => ({
+    createUniformBlockInfo: () => ({ buffer: {} }),
+}));
 import { fetchExample } from "../../spec/exampleTestUtils.js";
 
 const VERTEX_SHADER = 0x8b31;
@@ -680,19 +693,77 @@ describe("generated shader snapshots", () => {
     });
 });
 
-test("reactive index padding is supplied through a shared uniform for both band edges", async () => {
-    const sources = await captureShaderSources({
-        params: [{ name: "gap", value: 0 }],
-        data: { values: [{ x: 0 }] },
+test("a retained WebGL program uses newly attached padding on the first immediate draw", async () => {
+    const child = /** @type {import("../../spec/view.js").UnitSpec} */ ({
         mark: "rect",
-        encoding: {
-            x: {
-                field: "x",
-                type: "index",
-                scale: { padding: { expr: "gap" } },
-            },
-        },
+        encoding: { x: { field: "x", type: "index" } },
     });
-    expect(sources.vertex).toContain("uniform vec2 uPadding_x;");
-    expect(sources.vertex).toContain("uPadding_x.x, uPadding_x.y");
+    const { view, context } = await createHeadlessEngine({
+        params: [{ name: "gap", value: 0.4 }],
+        data: { values: [{ x: 0 }, { x: 9 }] },
+        layer: [child],
+    });
+    const layer = /** @type {import("../../view/layerView.js").default} */ (
+        view
+    );
+    const glHelper = createFakeGlHelper();
+    Object.assign(glHelper.gl, {
+        isContextLost: () => false,
+        useProgram() {},
+        deleteBuffer() {},
+    });
+    const delegate = createWebGLMark(
+        findUnitView(view).mark,
+        /** @type {any} */ (glHelper)
+    );
+    const padding = vi.fn();
+    vi.spyOn(
+        /** @type {any} */ (delegate),
+        "createMarkUniformSetter"
+    ).mockImplementation((name) =>
+        name === "uPadding_x" ? padding : () => {}
+    );
+    try {
+        delegate.initializeGraphics();
+        delegate.finalizeGraphicsInitialization();
+        const { vertex } = glHelper.getCapturedSources();
+        expect(vertex).toContain("uniform vec2 uPadding_x;");
+        expect(vertex.match(/uPadding_x.x, uPadding_x.y/g)).toHaveLength(2);
+        expect(padding).toHaveBeenLastCalledWith([0, 0]);
+
+        await layer.addChildSpec({
+            ...child,
+            scales: {
+                x: {
+                    domain: [0, 9],
+                    zoom: true,
+                    padding: { expr: 'gap / span(domain("x"))' },
+                },
+            },
+        });
+        expect(padding).toHaveBeenLastCalledWith([0.04, 0.04]);
+
+        const resolution = view.getScaleResolution("x");
+        const render = vi
+            .spyOn(context, "renderImmediately")
+            .mockImplementation(() => {
+                expect(padding).toHaveBeenLastCalledWith([0.08, 0.08]);
+            });
+        // An immediate render in the transaction must see the applied mapping.
+        let navigation;
+        view.paramRuntime.runInTransaction(() => {
+            navigation = resolution.zoomTo([0, 4], { renderImmediately: true });
+        });
+        await navigation;
+        expect(render).toHaveBeenCalledOnce();
+
+        delegate.dispose();
+        padding.mockClear();
+        view.paramRuntime.setValue("gap", 0.2);
+        await view.paramRuntime.whenPropagated();
+        expect(padding).not.toHaveBeenCalled();
+    } finally {
+        delegate.dispose();
+        view.disposeSubtree();
+    }
 });

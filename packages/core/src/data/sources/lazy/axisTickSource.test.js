@@ -20,7 +20,7 @@ function createViewStub({
     zoomExtent,
 }) {
     /** @type {(() => void) | undefined} */
-    let lastDomainListener;
+    let mappingListener;
     /** @type {(() => void) | undefined} */
     let extentListener;
     let currentZoomExtent = zoomExtent;
@@ -48,22 +48,17 @@ function createViewStub({
                 extentListener = undefined;
             };
         },
-        addEventListener: (
-            /** @type {string} */ type,
-            /** @type {() => void} */ listener
-        ) => {
-            if (type == "domain") {
-                lastDomainListener = listener;
-            }
-        },
-        removeEventListener: (
-            /** @type {string} */ type,
-            /** @type {() => void} */ listener
-        ) => {
-            if (type == "domain" && lastDomainListener === listener) {
-                lastDomainListener = undefined;
-            }
-        },
+        getMappingRef: () => ({
+            subscribe: (/** @type {() => void} */ listener) => {
+                mappingListener = () => {
+                    listener();
+                    paramRuntime.flushNow();
+                };
+                return () => {
+                    mappingListener = undefined;
+                };
+            },
+        }),
         getAxisLength: () => axisLength,
         getDomain: () => [0, 100],
         getScale: () => scale,
@@ -79,7 +74,7 @@ function createViewStub({
     );
 
     return {
-        getDomainListener: () => lastDomainListener,
+        getMappingListener: () => mappingListener,
         paramRuntime,
         setZoomExtent: (/** @type {number[]} */ extent) => {
             currentZoomExtent = extent;
@@ -284,7 +279,7 @@ describe("AxisTickSource", () => {
     });
 
     test("endpoint ticks follow exact scale limits without changing them", async () => {
-        const { getDomainListener, view } = createViewStub({ axisLength: 55 });
+        const { getMappingListener, view } = createViewStub({ axisLength: 55 });
         const scale = /** @type {any} */ (
             scaleLinear().domain([-0.013, 0.0087])
         );
@@ -311,7 +306,7 @@ describe("AxisTickSource", () => {
             [0.005, 0.005],
         ]) {
             scale.domain(domain);
-            getDomainListener()();
+            getMappingListener()();
             const rows = Array.from(collector.getData());
             expect(
                 rows.filter((row) => row.explicit).map((row) => row.value)
@@ -456,8 +451,52 @@ describe("AxisTickSource", () => {
         ]);
     });
 
-    test("does not propagate unchanged ticks on domain events", async () => {
-        const { getDomainListener, view } = createViewStub({
+    test("index ticks follow padding changes before an immediate draw", async () => {
+        const { view } = await createHeadlessEngine({
+            width: 200,
+            height: 30,
+            params: [{ name: "gap", value: 0 }],
+            data: { values: [{ x: 0 }, { x: 5 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "index",
+                    axis: null,
+                    scale: { paddingOuter: { expr: "gap" } },
+                },
+            },
+        });
+        const source = new AxisTickSource(
+            { type: "axisTicks", channel: "x", axis: { tickCount: 6 } },
+            view
+        );
+        source.activate();
+        try {
+            await source.load();
+            expect(source.ticks).toEqual([0, 1, 2, 3, 4, 5]);
+            const render = vi
+                .spyOn(view.context, "renderImmediately")
+                .mockImplementation(() => {
+                    expect(source.ticks).toEqual([0, 1, 2, 3, 4, 5, 6]);
+                });
+            let zoom = Promise.resolve();
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.setValue("gap", 0.8);
+                zoom = view.getScaleResolution("x").zoomTo([0, 5], {
+                    renderImmediately: true,
+                });
+            });
+            expect(render).toHaveBeenCalledOnce();
+            await zoom;
+        } finally {
+            source.dispose();
+            view.disposeSubtree();
+        }
+    });
+
+    test("does not propagate unchanged ticks on mapping changes", async () => {
+        const { getMappingListener, view } = createViewStub({
             axisLength: 160,
         });
         const source = new AxisTickSource(
@@ -476,14 +515,14 @@ describe("AxisTickSource", () => {
         await source.load();
         onDomainChangedSpy.mockClear();
         const resetSpy = vi.spyOn(collector, "reset");
-        getDomainListener()?.();
+        getMappingListener()?.();
 
         expect(onDomainChangedSpy).toHaveBeenCalledOnce();
         expect(resetSpy).not.toHaveBeenCalled();
     });
 
     test("updates labels when the domain changes but ticks do not", async () => {
-        const { getDomainListener, view } = createViewStub({ axisLength: 20 });
+        const { getMappingListener, view } = createViewStub({ axisLength: 20 });
         const scale = /** @type {any} */ (scaleLinear().domain([0, 0]));
         scale.type = "linear";
         vi.spyOn(view.getScaleResolution(), "getScale").mockReturnValue(scale);
@@ -506,7 +545,7 @@ describe("AxisTickSource", () => {
 
         const resetSpy = vi.spyOn(collector, "reset");
         scale.domain([0, 4]);
-        getDomainListener()?.();
+        getMappingListener()?.();
 
         expect([...collector.getData()].map((datum) => datum.label)).toEqual([
             "0",
@@ -515,12 +554,12 @@ describe("AxisTickSource", () => {
 
         resetSpy.mockClear();
         scale.domain([0, 4.1]);
-        getDomainListener()?.();
+        getMappingListener()?.();
         expect(resetSpy).not.toHaveBeenCalled();
     });
 
-    test("removes domain listeners on dispose", () => {
-        const { getDomainListener, view } = createViewStub({
+    test("removes the scale listener on dispose", () => {
+        const { getMappingListener, view } = createViewStub({
             axisLength: 160,
         });
         const source = new AxisTickSource(
@@ -532,11 +571,11 @@ describe("AxisTickSource", () => {
             /** @type {any} */ (view)
         );
         source.activate();
-        const domainListener = getDomainListener();
+        const mappingListener = getMappingListener();
 
         source.dispose();
 
-        expect(getDomainListener()).toBeUndefined();
-        expect(() => domainListener()).not.toThrow();
+        expect(getMappingListener()).toBeUndefined();
+        expect(() => mappingListener()).not.toThrow();
     });
 });

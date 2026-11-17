@@ -94,6 +94,19 @@ export default class AxisTickSource extends SingleAxisLazySource {
         return "axisTickSource";
     }
 
+    /** @param {() => void} listener */
+    subscribeScaleChanges(listener) {
+        const unsubscribe = this.scaleResolution
+            .getMappingRef()
+            .subscribe(() => {
+                this.paramRuntime.requestUpdate(listener);
+            });
+        return () => {
+            unsubscribe();
+            this.paramRuntime.cancelUpdate(listener);
+        };
+    }
+
     async load() {
         // Force the ticks to be recalculated. This is needed because the async
         // initialization process and non-deterministic order of events.

@@ -4,6 +4,7 @@ import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import clamp from "../utils/clamp.js";
 import { isScalar } from "../utils/variableTools.js";
 
 import createScale, {
@@ -31,7 +32,7 @@ const MANAGED_SCALE_PROPERTIES = /** @type {const} */ ([
  * @typedef {{
  *   scale: import("../types/encoder.js").VegaScale,
  *   props: import("../spec/scale.js").Scale,
- *   padding: (number | undefined)[] | undefined,
+ *   padding: [number, number] | undefined,
  *   domain: readonly any[],
  *   gapDomain: readonly number[] | undefined,
  *   viewport: import("./scaleBand.js").CategoricalViewport | null | undefined,
@@ -79,8 +80,8 @@ export default class ScaleInstanceManager {
     /** @type {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} */
     #createExpression;
 
-    /** @type {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} */
-    #validateGapExpression;
+    /** @type {(expression: import("../paramRuntime/types.js").ExprRefFunction, property: string) => void} */
+    #validateLayoutExpression;
 
     /** @type {() => void} */
     #onRangeChange;
@@ -120,7 +121,7 @@ export default class ScaleInstanceManager {
      * @param {(viewport: import("./scaleBand.js").CategoricalViewport | null) => void} [options.onViewportChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      * @param {() => number} [options.getAxisLength]
-     * @param {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} [options.validateGapExpression]
+     * @param {(expression: import("../paramRuntime/types.js").ExprRefFunction, property: string) => void} [options.validateLayoutExpression]
      */
     constructor({
         getRuntime,
@@ -132,7 +133,7 @@ export default class ScaleInstanceManager {
         },
         getGenomeStore,
         getAxisLength = () => 0,
-        validateGapExpression = () => {},
+        validateLayoutExpression = () => {},
     }) {
         this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
@@ -141,7 +142,7 @@ export default class ScaleInstanceManager {
         this.#onViewportChange = onViewportChange;
         this.#getGenomeStore = getGenomeStore;
         this.#getAxisLength = getAxisLength;
-        this.#validateGapExpression = validateGapExpression;
+        this.#validateLayoutExpression = validateLayoutExpression;
     }
 
     get scale() {
@@ -346,11 +347,12 @@ export default class ScaleInstanceManager {
             scale.type === "null"
                 ? []
                 : [this.#domainState, this.#rangeCommand];
-        /** @param {any} value @param {boolean} [gapInput] */
-        const bind = (value, gapInput = false) => {
+        /** @param {any} value @param {string} [layoutProperty] */
+        const bind = (value, layoutProperty) => {
             if (!isExprRef(value)) return () => value;
             const expression = this.#createExpression(value);
-            if (gapInput) this.#validateGapExpression(expression);
+            if (layoutProperty)
+                this.#validateLayoutExpression(expression, layoutProperty);
             dependencies.push(...expression.dependencies);
             return expression;
         };
@@ -367,15 +369,31 @@ export default class ScaleInstanceManager {
             throw new Error(
                 "Grouping gaps on band/point scales do not support round: true."
             );
-        const positions = bind(gaps ? props.gapPositions : null, true);
-        const width = bind(gaps ? (props.gapWidth ?? 6) : 0, true);
+        const positions = bind(
+            gaps ? props.gapPositions : null,
+            "Grouping gaps"
+        );
+        const width = bind(gaps ? (props.gapWidth ?? 6) : 0, "Grouping gaps");
+        const paddingInputs = PADDING_KEYS.some((key) => isExprRef(props[key]))
+            ? PADDING_KEYS.map((key) => bind(props[key], "Reactive padding"))
+            : undefined;
+        /** @param {number} index */
+        const readPadding = (index) => {
+            const key = PADDING_KEYS[index];
+            const value = paddingInputs[index](null);
+            const max = index === 0 ? Infinity : 1;
+            if (
+                isExprRef(props[key]) &&
+                !(Number.isFinite(value) && value >= 0 && value <= max)
+            )
+                throw new Error(
+                    `${key} expression must resolve to a finite number from 0 to ${max}.`
+                );
+            return value;
+        };
         /** @type {import("../spec/scale.js").Scale["gapPositions"]} */
         let previousPositions;
         let gapPositions = normalizeGapPositions(null);
-        const paddingExpressions =
-            scale.type === "band" || scale.type === "index"
-                ? PADDING_PROPERTIES.map((key) => bind(props[key]))
-                : undefined;
         // Expressions may bootstrap parameters that reference this scale. Once
         // bound, graph cycle checks guard feedback and observers can read mapping.
         this.#initializingRange = false;
@@ -398,29 +416,16 @@ export default class ScaleInstanceManager {
                 expression(null)
             );
             if (props.reverse) configuredRange?.reverse();
-            const padding = paddingExpressions?.map((expression, index) => {
-                const value = expression(null);
-                if (
-                    isExprRef(props[PADDING_PROPERTIES[index]]) &&
-                    (typeof value !== "number" ||
-                        !Number.isFinite(value) ||
-                        value < 0 ||
-                        (index > 0 && value > 1))
-                ) {
-                    throw new Error(
-                        PADDING_PROPERTIES[index] +
-                            " expression must resolve to a finite number " +
-                            (index > 0
-                                ? "between 0 and 1."
-                                : "greater than or equal to 0.")
-                    );
-                }
-                return value;
-            });
-            if (padding) {
-                padding[1] ??= padding[0] ?? 0;
-                padding[2] ??= padding[0] ?? 0;
-                padding.shift(); // Compare only effective inner/outer padding.
+            /** @type {[number, number] | undefined} */
+            let padding;
+            if (paddingInputs) {
+                const common = readPadding(0) ?? 0;
+                const inner = readPadding(1) ?? common;
+                const outer = readPadding(2) ?? common;
+                padding =
+                    scale.type === "band"
+                        ? [clamp(inner), clamp(outer)]
+                        : [Math.min(1, inner), outer];
             }
             const command = this.#rangeCommand.get();
             const canUseCommand =
@@ -459,14 +464,13 @@ export default class ScaleInstanceManager {
 
     /** Validate configuration once and retain its properties for live application.
      * @param {import("../spec/scale.js").Scale} props
-     * @param {(number | undefined)[] | undefined} padding
+     * @param {[number, number] | undefined} padding
      */
     #prepareMapping(props, padding) {
         props = this.#withPropertyDefaults(props);
         if (padding) {
-            for (const key of PADDING_PROPERTIES) delete props[key];
-            props.paddingInner = padding[0];
-            props.paddingOuter = padding[1];
+            delete props.padding;
+            [props.paddingInner, props.paddingOuter] = padding;
         }
         const working = this.#scale.copy();
         working.type = this.#scale.type;
@@ -601,14 +605,13 @@ export default class ScaleInstanceManager {
         /** @type {import("../spec/scale.js").Scale & { domainIndexer?: ReturnType<typeof createIndexer> }} */
         const physicalProps = { ...props };
         for (const key of MANAGED_SCALE_PROPERTIES) delete physicalProps[key];
-        for (const key of PADDING_PROPERTIES) {
-            if (isExprRef(physicalProps[key])) {
-                if (props.type !== "band" && props.type !== "index")
-                    throw new Error(
-                        key + " expressions require a band or index scale."
-                    );
-                delete physicalProps[key];
-            }
+        for (const key of PADDING_KEYS) {
+            if (!isExprRef(physicalProps[key])) continue;
+            if (physicalProps.type !== "band" && physicalProps.type !== "index")
+                throw new Error(
+                    key + " expressions require a band or index scale."
+                );
+            delete physicalProps[key];
         }
         return physicalProps;
     }
@@ -688,7 +691,7 @@ function equalMapping(a, b) {
     );
 }
 
-const PADDING_PROPERTIES = /** @type {const} */ ([
+const PADDING_KEYS = /** @type {const} */ ([
     "padding",
     "paddingInner",
     "paddingOuter",

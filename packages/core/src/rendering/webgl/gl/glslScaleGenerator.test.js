@@ -75,7 +75,6 @@ test.each(/** @type {const} */ (["band", "point"]))(
             "geometry.x / (uViewportSize.y * getSampleFacetPos().height)"
         );
 
-        // WebGL's existing range listener reads this payload for the uniform.
         const payloads = [getRangeForGlsl(scale, "y")];
         resolution.addEventListener("range", () =>
             payloads.push(getRangeForGlsl(scale, "y"))

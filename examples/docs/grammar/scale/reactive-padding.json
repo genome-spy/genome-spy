@@ -1,5 +1,4 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
   "description": [
     "Zoom-adaptive nucleotide spacing",
     "Zoom in to reveal one-pixel gaps. Adaptive padding avoids subpixel gaps and keeps narrow bases visible."

@@ -380,6 +380,23 @@ describe("ScaleInstanceManager", () => {
         expect(() => runtime.flushNow()).not.toThrow();
     });
 
+    test("keeps prior setter precedence for literal padding", () => {
+        const manager = createManager({
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale = /** @type {import("d3-scale").ScaleBand<string>} */ (
+            createScale(manager, {
+                type: "band",
+                domain: ["a", "b"],
+                paddingInner: 0.1,
+                padding: 0.5,
+            })
+        );
+        expect(scale.paddingInner()).toBe(0.5);
+    });
+
     test("ignores overridden padding changes and preserves rangeStep fallback", () => {
         const runtime = new ViewParamRuntime();
         const setPadding = runtime.registerParam({
@@ -426,6 +443,15 @@ describe("ScaleInstanceManager", () => {
         expect(scale.paddingInner()).toBe(0);
         expect(scale.paddingOuter()).toBe(0);
         expect(scale.range()).toEqual([0, 20]);
+
+        setPadding(2);
+        runtime.flushNow();
+        expect(scale.range()).toEqual([0, 30]);
+        expect(scale.step()).toBe(10);
+        changed.mockClear();
+        setPadding(3);
+        runtime.flushNow();
+        expect(changed).not.toHaveBeenCalled();
     });
 
     test("dispose prevents pending and future range changes", () => {

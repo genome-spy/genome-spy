@@ -885,13 +885,12 @@ export default class BaseProgram {
      */
     #createScaleSlot(name) {
         const updater = this.#scaleResources.getScaleUpdater(name);
+        const innerUniform = SCALE_PADDING_INNER_PREFIX + name;
+        const outerUniform = SCALE_PADDING_OUTER_PREFIX + name;
         return {
             setPadding: this.#slotSetter((inner, outer) => {
-                if (
-                    !this._uniformBufferState.entries.has(
-                        SCALE_PADDING_INNER_PREFIX + name
-                    )
-                )
+                const { entries } = this._uniformBufferState;
+                if (!entries.has(innerUniform) || !entries.has(outerUniform))
                     throw new Error(
                         `Scale on "${name}" does not support padding updates.`
                     );
@@ -905,8 +904,8 @@ export default class BaseProgram {
                     throw new Error(
                         "Padding requires inner in [0, 1] and finite nonnegative outer padding."
                     );
-                this._setUniformValue(SCALE_PADDING_INNER_PREFIX + name, inner);
-                this._setUniformValue(SCALE_PADDING_OUTER_PREFIX + name, outer);
+                this._setUniformValue(innerUniform, inner);
+                this._setUniformValue(outerUniform, outer);
             }),
             setViewport: this.#slotSetter(updater.updateViewport),
             setGapPositions: this.#slotSetter((values) =>

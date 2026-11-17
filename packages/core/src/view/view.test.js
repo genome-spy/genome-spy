@@ -1472,6 +1472,39 @@ describe("Step sizing and domain updates", () => {
         };
     }
 
+    test("rejects padding that depends on the width of its step-sized axis", async () => {
+        const spec = createGroupedBarStepSpec(
+            { step: 10, for: "position" },
+            { padding: { expr: "width < 22 ? 0.5 : 0" } }
+        );
+        await expect(createHeadlessEngine(spec)).rejects.toThrow(
+            "Reactive padding on a step-sized axis cannot depend on its allocated width."
+        );
+    });
+
+    test("offset padding depends on allocated width only with position-step sizing", async () => {
+        const padding = { padding: { expr: "width < 22 ? 0.5 : 0" } };
+        await expect(
+            createHeadlessEngine(
+                createGroupedBarStepSpec({ step: 10 }, undefined, padding)
+            )
+        ).rejects.toThrow(
+            "Reactive padding on a step-sized axis cannot depend on its allocated width."
+        );
+        const { view } = await createHeadlessEngine(
+            createGroupedBarStepSpec(
+                { step: 10, for: "position" },
+                undefined,
+                padding
+            )
+        );
+        try {
+            expect(view.getSize().width.px).toBeCloseTo(22);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("Offset padding resizes a step-sized view", async () => {
         const spec = createGroupedBarStepSpec(
             { step: 10 },
@@ -1860,7 +1893,7 @@ describe("Utility methods", () => {
 });
 
 test.each(["band", "index"])(
-    "reactive %s padding updates step size",
+    "reactive %s padding updates step size before an immediate draw",
     async (type) => {
         const requestLayoutReflow = vi.fn();
         const { view } = await createHeadlessEngine(
@@ -1875,6 +1908,7 @@ test.each(["band", "index"])(
                         type: type === "band" ? "nominal" : "index",
                         scale: {
                             type: /** @type {"band" | "index"} */ (type),
+                            zoom: true,
                             padding: { expr: "gap" },
                         },
                     },
@@ -1885,9 +1919,24 @@ test.each(["band", "index"])(
         try {
             expect(view.getSize().width.px).toBeCloseTo(20);
             requestLayoutReflow.mockClear();
-            view.paramRuntime.setValue("gap", 0.5);
-            await view.paramRuntime.whenPropagated();
-            expect(view.getSize().width.px).toBeCloseTo(25);
+            const render = vi
+                .spyOn(view.context, "renderImmediately")
+                .mockImplementation(() => {
+                    expect(view.getSize().width.px).toBeCloseTo(25);
+                });
+            const scale = view.getScaleResolution("x");
+            let zoom = Promise.resolve();
+            view.paramRuntime.runInTransaction(() => {
+                view.paramRuntime.setValue("gap", 0.5);
+                zoom =
+                    type === "band"
+                        ? scale.zoomToViewport([0, 2], {
+                              renderImmediately: true,
+                          })
+                        : scale.zoomTo([0, 1], { renderImmediately: true });
+            });
+            expect(render).toHaveBeenCalledOnce();
+            await zoom;
             expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
             requestLayoutReflow.mockClear();
             view.paramRuntime.setValue("gap", 0.5);

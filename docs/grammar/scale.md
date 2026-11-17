@@ -597,12 +597,10 @@ EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
 
 ### Reactive padding
 
-Padding expressions can reveal gaps only when bands are wide enough to display
-them. Zoom into this random 1,000-base sequence: there are no gaps below a
-one-pixel step, then the gaps ease smoothly to one pixel at a three-pixel step.
-This avoids subpixel gaps that can accentuate aliasing at overview zoom levels.
-The padding never reduces a band below one pixel once the step reaches one
-pixel; `minWidth` keeps narrower overview marks visible.
+Padding expressions can reveal gaps as bands grow wide enough to display them.
+In this random 1,000-base sequence, gaps begin above a one-pixel step and grow
+to one pixel at a three-pixel step. This reduces aliasing at overview zoom
+levels. The `minWidth` mark property keeps narrow bands visible.
 
 EXAMPLE examples/docs/grammar/scale/reactive-padding.json height=160
 
@@ -611,12 +609,14 @@ smoothstep easing, `t * t * (3 - 2 * t)`, for the gap. Outer padding is half the
 inner padding, keeping the step independent of padding. Reading `bandwidth('x')`
 to set the same scale's padding would create a dependency cycle.
 
-Explicit `paddingInner` and `paddingOuter` override `padding`. Step-sized views
-resize when the effective padding changes.
+When a scale uses padding expressions, explicit `paddingInner` and
+`paddingOuter` override `padding`. Step-sized views resize when the effective
+padding changes. Padding that determines a step-sized axis must be independent
+of the resulting plot width or height.
 
-Padding expressions must produce finite, nonnegative numbers; inner and outer
-padding must be between 0 and 1. Point and continuous scales currently accept
-numeric padding only.
+Padding expressions must produce finite, nonnegative numbers. Expressions for
+`paddingInner` and `paddingOuter` must produce a value between 0 and 1. Point
+and continuous scales accept numeric padding only.
 
 ### Domain from Selection Parameters
 

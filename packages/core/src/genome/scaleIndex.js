@@ -183,7 +183,7 @@ export default function scaleIndex() {
             scale.invert(range[1]) + offset,
             Math.min(count, Math.ceil(domainSpan))
         )
-            .filter(Number.isInteger)
+            .filter((tick) => Number.isInteger(tick) && tick >= numberingOffset)
             .map((x) => x - numberingOffset);
     };
 
