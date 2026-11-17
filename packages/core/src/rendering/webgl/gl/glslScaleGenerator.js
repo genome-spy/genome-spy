@@ -12,6 +12,7 @@ import {
     isDiscreteChannel,
     getPrimaryChannel,
     isFieldDef,
+    isOffsetChannel,
     isPrimaryPositionalChannel,
 } from "../../../encoder/encoder.js";
 import { asArray, peek } from "../../../utils/arrayUtils.js";
@@ -452,10 +453,10 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
 
     if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
-        // Positional band-like scales reuse shaders when their range changes.
-        const liveBandRange =
-            isPrimaryPositionalChannel(channel) &&
-            ["band", "point", "index"].includes(scale.type);
+        // A retained band, point, or index position can get a new declared range.
+        const liveBandRange = isPrimaryPositionalChannel(channel)
+            ? ["band", "point", "index"].includes(scale.type)
+            : isOffsetChannel(channel) && scale.type === "band";
         if (
             liveBandRange ||
             isExprRef(rangeProp) ||

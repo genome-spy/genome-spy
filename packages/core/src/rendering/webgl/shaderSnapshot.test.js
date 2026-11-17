@@ -772,3 +772,78 @@ test("a retained WebGL program uses newly attached index range and padding on th
         view.disposeSubtree();
     }
 });
+
+test("a retained WebGL band offset uses a newly attached reactive range", async () => {
+    const child = /** @type {import("../../spec/view.js").UnitSpec} */ ({
+        mark: "point",
+        encoding: {
+            // The quantitative primary leaves the offset with a literal default range.
+            x: {
+                field: "x",
+                type: "quantitative",
+                scale: { zoom: true },
+            },
+            xOffset: { field: "group", type: "nominal" },
+        },
+    });
+    const { view, context } = await createHeadlessEngine({
+        params: [{ name: "upper", value: 42 }],
+        data: {
+            values: [
+                { x: 0, group: "a" },
+                { x: 9, group: "b" },
+            ],
+        },
+        layer: [child],
+    });
+    const layer = /** @type {import("../../view/layerView.js").default} */ (
+        view
+    );
+    const glHelper = createFakeGlHelper();
+    Object.assign(glHelper.gl, {
+        isContextLost: () => false,
+        useProgram() {},
+        deleteBuffer() {},
+    });
+    const delegate = createWebGLMark(
+        findUnitView(view).mark,
+        /** @type {any} */ (glHelper)
+    );
+    const range = vi.fn();
+    vi.spyOn(
+        /** @type {any} */ (delegate),
+        "createMarkUniformSetter"
+    ).mockImplementation((name) =>
+        name === "range_xOffset" ? range : () => {}
+    );
+    try {
+        delegate.initializeGraphics();
+        delegate.finalizeGraphicsInitialization();
+        expect(range).toHaveBeenLastCalledWith([0, 1]);
+
+        await layer.addChildSpec({
+            ...child,
+            scales: {
+                xOffset: { type: "band", range: [0, { expr: "upper" }] },
+            },
+        });
+        expect(range).toHaveBeenLastCalledWith([0, 42]);
+
+        const x = view.getScaleResolution("x");
+        const render = vi
+            .spyOn(context, "renderImmediately")
+            .mockImplementation(() => {
+                expect(range).toHaveBeenLastCalledWith([0, 78]);
+            });
+        let navigation;
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("upper", 78);
+            navigation = x.zoomTo([0, 4], { renderImmediately: true });
+        });
+        await navigation;
+        expect(render).toHaveBeenCalledOnce();
+    } finally {
+        delegate.dispose();
+        view.disposeSubtree();
+    }
+});
