@@ -688,15 +688,29 @@ from separate runs to infer a new WebGL gap, or claim the historical +18.5%
 pane comparison is resolved. Reprofile normalization and submission before
 choosing another optimization; the larger shared-geometry cache remains deferred.
 
-## Plan retention
+## Final delivery
 
-Use `prepare-genomespy-change` and `write-genomespy-changeset` at delivery. The
-existing App patch fragment records metadata identity-collision and exhausted-row
-fixes. Assess final user-visible effects; pure refactoring and the unpublished
-WebGPU renderer do not independently require release notes. Historical release
-checks and the native revision checks pass.
+The retained arrangement, shared CPU band projection, and native sidebar viewport
+are complete. The existing App patch fragment covers metadata identity collisions
+and exhausted-row visibility. The release-policy check passes with the queued
+fixed-group minor release.
 
-Keep this plan with the feature branch/draft PR for discussion. Before merge,
-reconcile every pending item, commit the completed/discarded decisions, then remove
-this temporary plan in a later commit. Do not merge temporary plans. The current
-task authorizes publishing the two branches as stacked draft PRs.
+The pane and visible-only arrangement experiments are discarded. The measured
+CPU tradeoff and the real-cohort validation remain recorded against their original
+revisions. The final sync includes the retained slot and scale-domain changes
+from #737 and #739. The CPU comparison above uses the previous master at
+`15c1bc96d`.
+
+After the sync, 5,669 unit tests, workspace TypeScript checks, lint, and release
+checks passed. All four grouped browser checks passed with 384 samples. Opening
+and closing peek and scrolling recorded zero layout computations on WebGL and
+WebGPU, and the hover and picking control passed. The full MCCA checks and CPU
+timings remain historical.
+
+Shared renderer scale resources are deferred to
+[#698](https://github.com/genome-spy/genome-spy/issues/698), starting with the
+WebGL and WebGPU SampleView uniform experiment. Generic regular-band placement,
+geometry-only topology reuse, reactive band padding, and retained frames remain
+separate optimization opportunities. The archived results provide the starting
+point for future measurements. Remove this working plan before the squash merge
+and link this revision from the PR.
