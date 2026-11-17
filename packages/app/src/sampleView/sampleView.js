@@ -723,7 +723,7 @@ export default class SampleView extends ContainerView {
                         { name: "_sampleRowIds", value: [] },
                         { name: "_sampleRowCuts", value: [] },
                         { name: "_sampleRowGap", value: 0 },
-                        { name: "_sampleRowInset", value: 0 },
+                        { name: "_sampleRowPadding", value: 0 },
                         { name: "_sampleRowStep", value: 0 },
                         { name: "_sampleRowSummaryHeight", value: 0 },
                         { name: "_sampleRowAnchor", value: 1 },
@@ -734,8 +734,9 @@ export default class SampleView extends ContainerView {
                             domain: { expr: "_sampleRowIds" },
                             gapPositions: { expr: "_sampleRowCuts" },
                             gapWidth: { expr: "_sampleRowGap" },
-                            paddingInner: 0,
-                            paddingOuter: 0,
+                            paddingInner: { expr: "_sampleRowPadding" },
+                            // Half the inner padding on each edge preserves the row step.
+                            paddingOuter: { expr: "_sampleRowPadding / 2" },
                             reverse: true,
                         },
                     },
@@ -1094,12 +1095,13 @@ export default class SampleView extends ContainerView {
         this.#rowScaleRevision = frame.revision;
 
         const height = this.#preparedLayoutHeight || this.childCoords.height;
+        const padding = frame.step > 0 ? (2 * frame.inset) / frame.step : 0;
         const runtime = this.#sidebarView.paramRuntime;
         runtime.runInTransaction(() => {
             runtime.setValue("_sampleRowIds", frame.sampleIds);
             runtime.setValue("_sampleRowCuts", frame.cuts);
             runtime.setValue("_sampleRowGap", frame.gap);
-            runtime.setValue("_sampleRowInset", frame.inset);
+            runtime.setValue("_sampleRowPadding", padding);
             runtime.setValue("_sampleRowStep", frame.step);
             runtime.setValue("_sampleRowSummaryHeight", frame.summaryHeight);
             runtime.setValue("_sampleRowAnchor", 1 - frame.origin / height);

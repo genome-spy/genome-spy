@@ -734,73 +734,75 @@ export default class WebGLMark {
                     domainUniformName,
                     rangeUniform,
                     rangeUniformName,
+                    paddingUniform,
+                    paddingUniformName,
                 } = generateScaleGlsl(channel, scale, channelDef);
 
                 scaleCode.push(glsl);
-                dynamicMarkUniforms.push(domainUniform);
-                dynamicMarkUniforms.push(rangeUniform);
 
-                if (rangeUniform) {
-                    this.#callAfterShaderCompilation.push(() => {
-                        const rangeSetter =
-                            this.createMarkUniformSetter(rangeUniformName);
+                dynamicMarkUniforms.push(domainUniform, rangeUniform);
+                if (paddingUniform) dynamicMarkUniforms.push(paddingUniform);
 
-                        const set = () =>
-                            rangeSetter(getRangeForGlsl(scale, channel));
-                        this.registerScaleResolutionListener(
-                            scaleResolution,
-                            "range",
-                            set
-                        );
-
-                        // Initial value
-                        set();
-                    });
-                }
-
-                if (domainUniform) {
+                if (domainUniform || rangeUniform || paddingUniform) {
                     this.#callAfterShaderCompilation.push(() => {
                         const domainSetter =
+                            domainUniform &&
                             this.createMarkUniformSetter(domainUniformName);
-                        const set = () => {
+                        const rangeSetter =
+                            rangeUniform &&
+                            this.createMarkUniformSetter(rangeUniformName);
+                        const paddingSetter =
+                            paddingUniform &&
+                            this.createMarkUniformSetter(paddingUniformName);
+                        /** @param {import("../../../scales/scaleInstanceManager.js").MappingConfiguration} configuration */
+                        const set = (configuration) => {
+                            const live = configuration.scale;
+                            const current =
+                                live.type === scale.type ? live : scale;
+                            if (rangeSetter)
+                                rangeSetter(getRangeForGlsl(current, channel));
+                            if (paddingSetter) {
+                                const bandScale =
+                                    /** @type {import("../../../genome/scaleIndex.js").ScaleIndex} */ (
+                                        current
+                                    );
+                                paddingSetter([
+                                    bandScale.paddingInner(),
+                                    bandScale.paddingOuter(),
+                                ]);
+                            }
+                            if (!domainSetter) return;
                             let domain;
-                            if (isDiscrete(scale.type)) {
+                            if (isDiscrete(current.type)) {
                                 domain =
-                                    "viewport" in scale
+                                    "viewport" in current
                                         ? /** @type {import("../../../scales/scaleBand.js").CategoricalGapScale} */ (
-                                              scale
+                                              current
                                           ).viewport()?.interval
                                         : undefined;
-                                domain ??= [
-                                    0,
-                                    scaleResolution.getDomainRef().get().length,
-                                ];
-                            } else if (isDiscretizing(scale.type)) {
-                                domain = getDiscretizingDomainForGlsl(scale);
+                                domain ??= [0, configuration.domain.length];
+                            } else if (isDiscretizing(current.type)) {
+                                domain = getDiscretizingDomainForGlsl(current);
                             } else {
-                                domain = scale.domain();
+                                domain = current.domain();
                             }
 
                             domainSetter(
-                                isIndexLikeDomainType(scale.type)
+                                isIndexLikeDomainType(current.type)
                                     ? toHighPrecisionDomainUniform(domain)
                                     : domain
                             );
                         };
 
-                        this.registerScaleResolutionListener(
-                            scaleResolution,
-                            "domain",
+                        const mapping = scaleResolution.getMappingRef();
+                        // Immediate rendering can run before terminal mapping observers.
+                        const binding = this.unitView.paramRuntime.operation(
+                            "WebGL scale uniforms",
+                            [mapping],
+                            () => mapping.get(),
                             set
                         );
-
-                        this.registerScaleResolutionListener(
-                            scaleResolution,
-                            "viewport",
-                            set
-                        );
-                        // Initial value
-                        set();
+                        this.scaleResolutionDisposers.push(binding.dispose);
                     });
                 }
             }
@@ -1064,18 +1066,6 @@ export default class WebGLMark {
             }
             this.bufferInfo = undefined;
         }
-    }
-
-    /**
-     * @param {import("../../../scales/scaleResolution.js").default} resolution
-     * @param {import("../../../types/scaleResolutionApi.js").ScaleResolutionEventType} type
-     * @param {() => void} listener
-     */
-    registerScaleResolutionListener(resolution, type, listener) {
-        resolution.addEventListener(type, listener);
-        this.scaleResolutionDisposers.push(() =>
-            resolution.removeEventListener(type, listener)
-        );
     }
 
     dispose() {

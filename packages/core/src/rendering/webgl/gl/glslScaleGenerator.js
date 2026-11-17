@@ -292,6 +292,14 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const primary = getPrimaryChannel(channel);
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
+    const paddingUniformName = "uPadding_" + primary;
+    const hasPaddingUniform = scale.type === "band" || scale.type === "index";
+    const paddingArguments = () =>
+        hasPaddingUniform
+            ? [paddingUniformName + ".x", paddingUniformName + ".y"]
+            : scale.type === "point"
+              ? [1, scale.padding()]
+              : [scale.paddingInner(), scale.paddingOuter()];
 
     const { hp, attributeType, packedColor } = getAttributeAndArrayTypes(
         scale,
@@ -384,8 +392,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
                 gaps ? "scaleGaps_" + primary : "scaleBandHp",
                 "domain",
                 rangeUniformName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                ...paddingArguments(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 toDecimal(channelDef.band ?? (gaps && peer ? 0 : 0.5)),
@@ -410,8 +417,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
                 gaps ? "scaleBandGaps_" + primary : "scaleBand",
                 "domain",
                 rangeUniformName,
-                transform === "point" ? 1 : scale.paddingInner(),
-                transform === "point" ? scale.padding() : scale.paddingOuter(),
+                ...paddingArguments(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 toDecimal(channelDef.band ?? 0.5)
@@ -602,6 +608,11 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
         domainUniform,
         rangeUniformName,
         rangeUniform,
+        paddingUniformName,
+        paddingUniform:
+            hasPaddingUniform && channel === primary
+                ? `    uniform vec2 ${paddingUniformName};`
+                : undefined,
     };
 }
 

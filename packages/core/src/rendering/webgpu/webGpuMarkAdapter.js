@@ -1177,11 +1177,8 @@ function createBandPositionScale(
         readDomain,
         readRange
     );
-    Object.defineProperty(result, "viewport", {
-        enumerable: true,
-        get: readViewport,
-    });
-    return retainGroupingGaps(result, scale, channel);
+    retainScaleLeaf(result, "viewport", readViewport);
+    return retainBandScaleProperties(result, scale, channel);
 }
 
 /**
@@ -1226,32 +1223,35 @@ function createIndexPositionScale(scale, range, band, channel, peer) {
         }),
         () => scale.domain().map(Number)
     );
-    return retainGroupingGaps(result, scale, channel, peer);
+    return retainBandScaleProperties(result, scale, channel, peer);
 }
 
-/** Keep grouping-gap inputs live without copying their initial snapshots.
+/** Keep padding and grouping-gap inputs live in retained scale configs.
  * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} target
  * @param {import("../../types/encoder.js").VegaScale} scale
  * @param {string} channel
  * @param {string} [peer]
  */
-function retainGroupingGaps(target, scale, channel, peer) {
-    if (!hasGroupingGaps(scale.props)) return target;
+function retainBandScaleProperties(target, scale, channel, peer) {
     const source = /** @type {any} */ (scale);
-    Object.assign(target, {
-        gapEnabled: true,
-        gapAxis: channel[0] === "y" ? "y" : "x",
-    });
-    const properties = ["gapPositions", "gapWidth"];
-    if ("gapDomain" in source) {
-        Object.assign(target, { gapPeer: peer });
-        properties.push("gapDomain");
+    /** @type {(keyof import("@genome-spy/webgpu-renderer").DefinedChannelScale)[]} */
+    const properties =
+        scale.type === "band" || scale.type === "index"
+            ? ["paddingInner", "paddingOuter"]
+            : [];
+    if (hasGroupingGaps(scale.props)) {
+        Object.assign(target, {
+            gapEnabled: true,
+            gapAxis: channel[0] === "y" ? "y" : "x",
+        });
+        properties.push("gapPositions", "gapWidth");
+        if ("gapDomain" in source) {
+            Object.assign(target, { gapPeer: peer });
+            properties.push("gapDomain");
+        }
     }
     for (const property of properties) {
-        Object.defineProperty(target, property, {
-            enumerable: true,
-            get: () => source[property](),
-        });
+        retainScaleLeaf(target, property, () => source[property]());
     }
     return target;
 }
@@ -1829,17 +1829,18 @@ function createNumericScale(mark, channel, scale, range, domain) {
  * @param {(() => any)} [readRange]
  */
 function retainScaleLeaves(scale, readDomain, readRange) {
-    if (readDomain)
-        Object.defineProperty(scale, "domain", {
-            enumerable: true,
-            get: readDomain,
-        });
-    if (readRange)
-        Object.defineProperty(scale, "range", {
-            enumerable: true,
-            get: readRange,
-        });
+    if (readDomain) retainScaleLeaf(scale, "domain", readDomain);
+    if (readRange) retainScaleLeaf(scale, "range", readRange);
     return scale;
+}
+
+/**
+ * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} scale
+ * @param {keyof import("@genome-spy/webgpu-renderer").DefinedChannelScale} property
+ * @param {() => any} read
+ */
+function retainScaleLeaf(scale, property, read) {
+    Object.defineProperty(scale, property, { enumerable: true, get: read });
 }
 
 /**

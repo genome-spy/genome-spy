@@ -167,6 +167,8 @@ export type ChannelCondition =
       };
 
 export type ScaleSlotHandle = {
+    /** Update band/index inner and outer padding without rebuilding geometry. */
+    setPadding(inner: number, outer: number): void;
     /** Change a band scale's rank window without changing category IDs; null fits all. */
     setViewport(viewport: ScaleViewport | null): void;
     /** Update the domain and optional fractional gap ranks together; omit ranks for ordinary fitting. */

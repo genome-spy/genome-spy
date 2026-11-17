@@ -30,6 +30,7 @@ layout(std140) uniform Mark {
 
     mediump float uDomain_y[2];
     uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -435,6 +436,7 @@ layout(std140) uniform Mark {
 
     mediump float uDomain_y[2];
     uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -956,7 +958,7 @@ float scale_y(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -983,7 +985,7 @@ float scale_y2(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -1465,6 +1467,7 @@ layout(std140) uniform Mark {
 
     mediump float uDomain_y[2];
     uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -1874,6 +1877,7 @@ layout(std140) uniform Mark {
 
     mediump float uDomain_y[2];
     uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -2378,7 +2382,7 @@ float scale_y(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.25, 0.25, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -2405,7 +2409,7 @@ float scale_y2(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.25, 0.25, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -7639,6 +7643,7 @@ layout(std140) uniform Mark {
     uniform highp uint uParam_highlight;
     mediump float uDomain_x[2];
     uniform vec2 range_x;
+    uniform vec2 uPadding_x;
     mediump float uDomain_y[2];
 
 
@@ -8057,6 +8062,7 @@ layout(std140) uniform Mark {
     uniform highp uint uParam_highlight;
     mediump float uDomain_x[2];
     uniform vec2 range_x;
+    uniform vec2 uPadding_x;
     mediump float uDomain_y[2];
 
 
@@ -8520,7 +8526,7 @@ float scale_x(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
-    float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 0.0);
+    float transformed = scaleBand(value, domain, range_x, uPadding_x.x, uPadding_x.y, 0.5, 0.0);
     return transformed;
 
 }
@@ -8595,7 +8601,7 @@ float scale_x2(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
-    float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 1.0);
+    float transformed = scaleBand(value, domain, range_x, uPadding_x.x, uPadding_x.y, 0.5, 1.0);
     return transformed;
 
 }

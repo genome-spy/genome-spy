@@ -214,7 +214,12 @@ export default class ScaleResolution {
 
         this.#scaleManager = new ScaleInstanceManager({
             getRuntime: () => this.#runtime,
-            createExpression: (expr) => this.#createExpression(expr),
+            createExpression: (expr, layoutProperty) => {
+                const expression = this.#createExpression(expr);
+                if (layoutProperty)
+                    this.#validateLayoutExpression(expression, layoutProperty);
+                return expression;
+            },
             onRangeChange: () => {
                 this.#notifyListeners("range");
                 this.#viewContext.animator.requestRender();
@@ -233,8 +238,6 @@ export default class ScaleResolution {
             },
             getGenomeStore: () => this.#viewContext.genomeStore,
             getAxisLength: () => this.getAxisLength(),
-            validateGapExpression: (expression) =>
-                this.#validateGapExpression(expression),
         });
 
         this.#interactionController = new ScaleInteractionController({
@@ -341,16 +344,20 @@ export default class ScaleResolution {
     /** Reject graph-visible feedback from a step-sized view's own layout signal.
      * Authored width/height parameters are external inputs, not layout signals.
      * @param {import("../paramRuntime/types.js").ExprRefFunction} expression
+     * @param {string} property
      */
-    #validateGapExpression(expression) {
-        const dimension = this.channel === "x" ? "width" : "height";
+    #validateLayoutExpression(expression, property) {
+        const { channel } = this;
+        if (!["x", "xOffset", "y", "yOffset"].includes(channel)) return;
+        const dimension = channel.startsWith("x") ? "width" : "height";
+        const offset = channel.endsWith("Offset");
         const views = new Set([
             this.#expressionScopeView,
             ...Array.from(this.#members, (member) => member.view),
         ]);
         for (const view of views) {
             if (
-                !view.isStepSized(dimension) ||
+                !view.isStepSized(dimension, offset) ||
                 view.paramRuntime.hasConfiguredParamInScopeChain(dimension)
             )
                 continue;
@@ -360,7 +367,7 @@ export default class ScaleResolution {
                 expression.dependencies.some((ref) => dependsOn(ref, size))
             )
                 throw new Error(
-                    `Grouping gaps on a step-sized axis cannot depend on its allocated ${dimension}.`
+                    `${property} on a step-sized axis cannot depend on its allocated ${dimension}.`
                 );
         }
     }

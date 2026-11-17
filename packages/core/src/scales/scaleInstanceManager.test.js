@@ -380,6 +380,81 @@ describe("ScaleInstanceManager", () => {
         expect(() => runtime.flushNow()).not.toThrow();
     });
 
+    test("keeps prior setter precedence for literal padding", () => {
+        const manager = createManager({
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale = /** @type {import("d3-scale").ScaleBand<string>} */ (
+            createScale(manager, {
+                type: "band",
+                domain: ["a", "b"],
+                paddingInner: 0.1,
+                padding: 0.5,
+            })
+        );
+        expect(scale.paddingInner()).toBe(0.5);
+    });
+
+    test("ignores overridden padding changes and restores reactive padding on reconfiguration", () => {
+        const runtime = new ViewParamRuntime();
+        const setPadding = runtime.registerParam({
+            name: "padding",
+            value: 0.2,
+        });
+        const changed = vi.fn();
+        const manager = createManager({
+            runtime,
+            onRangeChange: changed,
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const props = /** @type {import("../spec/scale.js").Scale} */ ({
+            type: "band",
+            domain: ["a", "b"],
+            padding: { expr: "padding" },
+            paddingInner: 0.1,
+            paddingOuter: 0.3,
+        });
+        const scale = /** @type {import("d3-scale").ScaleBand<string>} */ (
+            createScale(manager, props)
+        );
+        changed.mockClear();
+
+        // Both explicit values override the changed general padding.
+        setPadding(0.5);
+        runtime.flushNow();
+        expect(changed).not.toHaveBeenCalled();
+        expect(scale.paddingInner()).toBe(0.1);
+
+        delete props.paddingInner;
+        manager.configureMapping(props);
+        expect(scale.paddingInner()).toBe(0.5);
+        expect(changed).toHaveBeenCalledTimes(1);
+
+        delete props.paddingOuter;
+        manager.configureMapping(props);
+        expect(scale.paddingOuter()).toBe(0.5);
+        setPadding(0);
+        runtime.flushNow();
+        expect(scale.paddingInner()).toBe(0);
+        expect(scale.paddingOuter()).toBe(0);
+
+        setPadding(2);
+        runtime.flushNow();
+        expect(scale.paddingInner()).toBe(1);
+        expect(scale.paddingOuter()).toBe(1);
+        manager.configureMapping({ ...props, paddingOuter: 1, align: 0.25 });
+        expect(scale.paddingInner()).toBe(1);
+        expect(scale.paddingOuter()).toBe(1);
+        expect(scale.align()).toBe(0.25);
+        changed.mockClear();
+        setPadding(3);
+        runtime.flushNow();
+        expect(changed).not.toHaveBeenCalled();
+    });
+
     test("dispose prevents pending and future range changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });

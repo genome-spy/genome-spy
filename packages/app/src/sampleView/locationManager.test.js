@@ -55,15 +55,21 @@ test("row padding follows configured density without changing logical band steps
         { location: 33, size: 24 },
     ]);
     expect(manager.getBandLayout().inset).toBe(3);
+});
 
-    const custom = createManager({
+test.each([
+    [0.4, 6, 18],
+    [-0.4, 0, 30],
+    [1.4, 15, 0],
+])("uses a bounded row spacing fraction for %s", (factor, location, size) => {
+    const manager = createManager({
         height: 30,
         groups: [["s1"]],
-        sampleLayout: { sampleSpacingFactor: 0.4 },
+        sampleLayout: { sampleSpacingFactor: factor },
     });
-    expect(custom.getLocations().samples[0].locSize).toEqual({
-        location: 6,
-        size: 18,
+    expect(manager.getLocations().samples[0].locSize).toEqual({
+        location,
+        size,
     });
 });
 

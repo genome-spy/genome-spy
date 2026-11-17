@@ -1,3 +1,7 @@
+import {
+    SCALE_PADDING_INNER_PREFIX,
+    SCALE_PADDING_OUTER_PREFIX,
+} from "../../../wgsl/prefixes.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
 import { UniformBuffer } from "../../../utils/uniformBuffer.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
@@ -881,7 +885,20 @@ export default class BaseProgram {
      */
     #createScaleSlot(name) {
         const updater = this.#scaleResources.getScaleUpdater(name);
+        const innerUniform = SCALE_PADDING_INNER_PREFIX + name;
+        const outerUniform = SCALE_PADDING_OUTER_PREFIX + name;
         return {
+            setPadding: this.#slotSetter((inner, outer) => {
+                const { entries } = this._uniformBufferState;
+                if (!entries.has(innerUniform) || !entries.has(outerUniform))
+                    throw new Error(
+                        `Scale on "${name}" does not support padding updates.`
+                    );
+                if (!Number.isFinite(inner) || !Number.isFinite(outer))
+                    throw new Error("Padding requires finite values.");
+                this._setUniformValue(innerUniform, inner);
+                this._setUniformValue(outerUniform, outer);
+            }),
             setViewport: this.#slotSetter(updater.updateViewport),
             setGapPositions: this.#slotSetter((values) =>
                 this.#scaleResources.updateGapPositions(name, values)

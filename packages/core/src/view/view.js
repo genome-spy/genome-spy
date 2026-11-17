@@ -795,9 +795,11 @@ export default class View {
     /**
      * Whether the authored or configured size is step-based, without materializing scales.
      * @param {"width" | "height"} dimension
+     * @param {boolean} offset Require the offset scale to contribute to the step size.
      */
-    isStepSized(dimension) {
-        return isStepSize(this.#getDimensionValue(dimension).value);
+    isStepSized(dimension, offset = false) {
+        const { value } = this.#getDimensionValue(dimension);
+        return isStepSize(value) && (!offset || value.for !== "position");
     }
 
     /**
@@ -832,7 +834,9 @@ export default class View {
                 this.context.requestLayoutReflow();
             }
         };
-        this.registerDisposer(resolution.observeMapping(listener));
+        const schedule = () => this.paramRuntime.requestUpdate(listener);
+        this.registerDisposer(resolution.getMappingRef().subscribe(schedule));
+        this.registerDisposer(() => this.paramRuntime.cancelUpdate(listener));
 
         if (value.for != "position") {
             const offsetChannel = dimension == "width" ? "xOffset" : "yOffset";
@@ -842,7 +846,7 @@ export default class View {
                 isDiscrete(offsetResolution.getResolvedScaleType())
             ) {
                 this.registerDisposer(
-                    offsetResolution.observeMapping(listener)
+                    offsetResolution.getMappingRef().subscribe(schedule)
                 );
             }
         }

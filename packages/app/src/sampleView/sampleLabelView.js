@@ -255,8 +255,8 @@ function createLabelViewSpec(sampleDef, metadataDef) {
             align: sampleDef.labelAlign ?? "left",
             fitToBand: true,
             flushY: false,
-            yOffset: { expr: "-_sampleRowInset" },
-            y2Offset: { expr: "_sampleRowInset" },
+            yOffset: 0,
+            y2Offset: 0,
         },
         opacity: { expr: "_sampleRowStep > 0 ? 1 : 0" },
         encoding: {

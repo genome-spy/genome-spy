@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
                     setDomain: vi.fn(),
                     setViewport: vi.fn(),
                     setRange: vi.fn(),
+                    setPadding: vi.fn(),
                     setGapPositions: vi.fn(),
                     setGapWidth: vi.fn(),
                 },
@@ -535,6 +536,55 @@ describe("WebGpuSurface", () => {
             1, 11,
         ]);
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
+    });
+
+    test("updates reactive padding alongside a signed index literal without replacing series", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "padding", value: 0 }],
+            data: { values: [{ x: 0 }, { x: 1 }] },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "index",
+                    scale: {
+                        paddingInner: { expr: "padding" },
+                        paddingOuter: -0.2,
+                    },
+                },
+                fill: { value: "black" },
+                stroke: { value: null },
+            },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        const { mark } =
+            /** @type {import("../../view/unitView.js").default} */ (view);
+        mark.initializeData();
+        const translated = createWebGpuMarkConfig(
+            mark,
+            {},
+            Rectangle.create(0, 0, 100, 50)
+        );
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+
+        const { definition, config, properties } = translated;
+        surface.updateMark(mark, definition, config, properties);
+        view.paramRuntime.setValue("padding", 0.4);
+        await view.paramRuntime.whenPropagated();
+        surface.updateMark(mark, definition, config, properties);
+
+        expect(
+            mocks.handle.scales.x.default.setPadding
+        ).toHaveBeenCalledExactlyOnceWith(0.4, -0.2);
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
     });
 
     test("reuses owned domains while computed color ranges stay live", async () => {

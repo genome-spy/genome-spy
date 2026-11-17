@@ -866,8 +866,8 @@ function createAttributeSpec(
         mark: {
             type: "rect",
             xOffset: -0.5,
-            yOffset: { expr: "-_sampleRowInset" },
-            y2Offset: { expr: "_sampleRowInset" },
+            yOffset: 0,
+            y2Offset: 0,
         },
         encoding: {
             y: { field: sampleIdField, type: "nominal", axis: null },
@@ -929,8 +929,8 @@ function createAttributeSpec(
             mark: {
                 type: "rect",
                 xOffset: -0.5,
-                yOffset: { expr: "-_sampleRowInset" },
-                y2Offset: { expr: "_sampleRowInset" },
+                yOffset: 0,
+                y2Offset: 0,
             },
             encoding: {
                 y: { field: sampleIdField, type: "nominal", axis: null },

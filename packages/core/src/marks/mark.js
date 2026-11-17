@@ -574,7 +574,7 @@ export default class Mark {
                             this.unitView.getScaleResolution(resolutionChannel);
                         if (resolution && !scales.has(resolution)) {
                             this.unitView.registerDisposer(
-                                resolution.observeMapping(
+                                resolution.getMappingRef().subscribe(
                                     () => state.resources++
                                 )
                             );

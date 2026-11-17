@@ -117,7 +117,6 @@ export function createSampleViewStub(options) {
                 },
                 { name: "_sampleRowCuts", value: [] },
                 { name: "_sampleRowGap", value: 0 },
-                { name: "_sampleRowInset", value: 0 },
                 { name: "_sampleRowStep", value: 1 },
             ],
         },

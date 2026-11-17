@@ -661,7 +661,7 @@ export class LocationManager {
 
 /** @param {number} step @param {number} spacingFactor */
 function getSampleRowInset(step, spacingFactor) {
-    return step * spacingFactor * 0.5 * smoothstep(15, 22, step);
+    return step * clamp(spacingFactor) * 0.5 * smoothstep(15, 22, step);
 }
 
 /**
