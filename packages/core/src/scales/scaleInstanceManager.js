@@ -9,7 +9,7 @@ import { isScalar } from "../utils/variableTools.js";
 import createScale, {
     configureScaleProperties,
     configureScaleRange,
-    configureDomain,
+    applyScaleDomain,
     getScalePropertyDefaults,
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -18,6 +18,14 @@ import {
     hasGroupingGaps,
     normalizeGapPositions,
 } from "../genome/indexGapMapping.js";
+
+const MANAGED_SCALE_PROPERTIES = /** @type {const} */ ([
+    "assembly",
+    "domainIndexer",
+    "gapPositions",
+    "gapWidth",
+    "viewport",
+]);
 
 /**
  * @typedef {{
@@ -320,7 +328,7 @@ export default class ScaleInstanceManager {
         const working = this.#scale.copy();
         working.type = this.#scale.type;
         configureScaleProperties(working, this.#withPropertyDefaults(props));
-        return configureDomain(working, props);
+        return applyScaleDomain(working, props);
     }
 
     /** @param {import("../spec/scale.js").Scale} props */
@@ -553,23 +561,10 @@ export default class ScaleInstanceManager {
      * @returns {import("../spec/scale.js").Scale}
      */
     #stripNonScaleProps(props) {
-        // Avoid sending non-scale properties into vega-scale.
-        // Strip internal runtime-only props before passing into vega-scale.
-        const propsAny = /** @type {any} */ (props);
-        const {
-            assembly: _assembly,
-            domainIndexer: _domainIndexer,
-            gapPositions: _gapPositions,
-            gapWidth: _gapWidth,
-            viewport: _viewport,
-            ...rest
-        } = propsAny;
-        void _assembly;
-        void _domainIndexer;
-        void _gapPositions;
-        void _gapWidth;
-        void _viewport;
-        return rest;
+        /** @type {import("../spec/scale.js").Scale & { domainIndexer?: ReturnType<typeof createIndexer> }} */
+        const physicalProps = { ...props };
+        for (const key of MANAGED_SCALE_PROPERTIES) delete physicalProps[key];
+        return physicalProps;
     }
 
     #wrapScaleInterceptors() {
