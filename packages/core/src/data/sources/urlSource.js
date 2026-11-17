@@ -64,7 +64,7 @@ export default class UrlSource extends DataSource {
      * @param {import("../../spec/data.js").UrlList} props
      * @param {AbortSignal} signal
      */
-    async #loadUrlsFromFile(props, signal) {
+    async #loadDescriptorsFromFile(props, signal) {
         const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
         const format = { type: props.type ?? "tsv" };
 
@@ -75,13 +75,14 @@ export default class UrlSource extends DataSource {
         );
         signal.throwIfAborted();
 
-        const files = /** @type {string[] | {url: string}[]} */ (
+        return /** @type {string[] | {url: string}[]} */ (
             read(content, toVegaLoaderFormat(format))
-        )
-            .map((u) => (typeof u === "string" ? u : u.url))
-            .map((u) => concatUrl(listUrl, u));
-
-        return files;
+        ).map((entry) => ({
+            url: concatUrl(
+                listUrl,
+                typeof entry === "string" ? entry : entry.url
+            ),
+        }));
     }
 
     async load() {
@@ -103,11 +104,7 @@ export default class UrlSource extends DataSource {
             /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
             const descriptors =
                 typeof url == "object" && "urlsFromFile" in url
-                    ? (await this.#loadUrlsFromFile(url, signal)).map(
-                          (url) => ({
-                              url,
-                          })
-                      )
+                    ? await this.#loadDescriptorsFromFile(url, signal)
                     : await normalizeUrlDescriptors({
                           url: this.params.url,
                           baseUrl: this.baseUrl,
@@ -116,9 +113,9 @@ export default class UrlSource extends DataSource {
 
             if (!isCurrent()) return;
 
-            const urls = descriptors.map((descriptor) => descriptor.url);
-            if (urls.length > 0 && urls[0]) {
-                const format = getFormat(this.params, urls);
+            const firstUrl = descriptors[0]?.url;
+            if (firstUrl) {
+                const format = getFormat(this.params, firstUrl);
                 const type = responseType(format.type);
 
                 /**
