@@ -499,6 +499,16 @@ export default class View {
         return this.coords.shrink(this.getOverhang());
     }
 
+    /**
+     * Returns the plot frame for a title anchored to the allocated viewport.
+     * Use the view's own insets even when its parent collapses their reservation.
+     * @param {import("./layout/rectangle.js").default} viewportCoords
+     * @param {number} _devicePixelRatio
+     */
+    getTitlePlotCoords(viewportCoords, _devicePixelRatio) {
+        return viewportCoords.shrink(this.getOverhang());
+    }
+
     /** @returns {{ view: View, coords: import("./layout/rectangle.js").default, chrome: boolean }[]} */
     getLayoutFootprints() {
         return [
