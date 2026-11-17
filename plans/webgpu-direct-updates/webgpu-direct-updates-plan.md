@@ -1,8 +1,30 @@
 # WebGPU CPU cost of retained updates
 
-Status: CPU-focused implementation, independent review, native measurements and
-applicable verification are complete. Retain this temporary plan with the draft
-PR and retire it before merge.
+Status: the #659 implementation and its verification are complete. This is the
+final investigation record before plan retirement.
+
+## November 17 standalone delivery
+
+The foundation was rebased onto master `88115c0e4`. The rebase preserves
+categorical y endpoints, direct CSS color inputs and separate text fill
+opacity. The existing SampleView passed its unit suite, and the sample plots
+rendered and picked on WebGL and WebGPU. The metadata hierarchy rendered on
+both backends. Its generic picking probe also fails on master. The complete
+unit suite, browser tests and both CI workflows passed on `aa489e3eb`.
+After removing two unused WGSL placement helpers, the renderer unit tests,
+native GPU checks, renderer types and scoped lint passed again.
+
+Deliver #659 independently. Deferred #660 work includes replaying its four
+commits from the old foundation, retargeting to master and verifying the
+consumer's navigation, grouping, alignment and picking. Shared scale ownership
+remains tracked in #698. The prepared-frame proposal is archived as a separate,
+unapproved experiment. Discard additional local allocation shortcuts from this
+PR, including empty target intersection rejection, Core scope reuse and the
+other deferred experiments described below.
+
+The published Canvas indexing improvement carries a Core patch changeset. The
+temporary plans and attribution report retire in a separate commit. The earlier
+CPU measurements remain historical and no new benchmark was run for this rebase.
 
 ## November 6 remote-master refresh
 
