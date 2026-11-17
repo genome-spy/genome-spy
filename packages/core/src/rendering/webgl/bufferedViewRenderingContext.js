@@ -151,6 +151,11 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
      * changes.
      */
     render() {
+        // Track mutations may dispose guides before the replacement layout commits.
+        // Retain the last image rather than resurrecting marks from the old draw list.
+        for (const entry of this.#entries) {
+            if (entry.ownerDisposed) return;
+        }
         this.finish();
 
         this.#markAdapter.synchronize(this.#entries);

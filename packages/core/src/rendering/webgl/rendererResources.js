@@ -46,6 +46,7 @@ export function createWebGLMark(mark, glHelper, rendererResources) {
  * @prop {import("../../marks/mark.js").default} mark
  * @prop {import("./types.js").WebGLMark} graphics
  * @prop {"compiling" | "ready" | "failed" | "disposed"} state
+ * @prop {boolean} ownerDisposed Whether the view lifetime has ended, not just its GPU allocation.
  * @prop {import("../../data/collector.js").default | undefined} collector
  * @prop {number} dataRevision
  * @prop {number} configurationRevision
@@ -206,6 +207,7 @@ export default class WebGLRendererResources {
             mark,
             graphics,
             state: "compiling",
+            ownerDisposed: false,
             collector: undefined,
             dataRevision: -1,
             configurationRevision: -1,
@@ -214,7 +216,10 @@ export default class WebGLRendererResources {
             scaleResolutions: new Set(),
         };
         this.#markEntries.set(mark, entry);
-        mark.unitView.registerDisposer(() => this.releaseMark(mark));
+        mark.unitView.registerDisposer(() => {
+            entry.ownerDisposed = true;
+            this.releaseMark(mark);
+        });
 
         try {
             this.#retainScaleResolutions(entry);
