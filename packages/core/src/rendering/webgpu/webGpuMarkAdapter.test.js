@@ -164,7 +164,7 @@ describe("WebGPU mark adapter", () => {
         }
     });
 
-    test("retains live categorical ranges and gaps for ordinary and text occurrences", async () => {
+    test("retains reversed categorical ranges and live gaps for ordinary and text occurrences", async () => {
         const { view, context } = await createHeadlessEngine({
             config: { mark: { color: "black" } },
             params: [{ name: "gap", value: 10 }],
@@ -215,14 +215,11 @@ describe("WebGPU mark adapter", () => {
             );
         expect(Object.isFrozen(categoryDomain)).toBe(true);
 
-        view.paramRuntime.runInTransaction(() => {
-            view.paramRuntime.setValue("gap", 20);
-            scale.range([0.9, -0.8]);
-        });
+        view.paramRuntime.setValue("gap", 20);
         await view.paramRuntime.whenPropagated();
 
-        expect(rect.y.scale.range).toEqual([40, 380]);
-        expect(text.y.scale.range).toEqual([20, 360]);
+        expect(rect.y.scale.range).toEqual([20, 220]);
+        expect(text.y.scale.range).toEqual([0, 200]);
         expect(rect.y.scale.gapWidth).toBe(20);
         expect(text.y.scale.gapWidth).toBe(20);
         expect(rect.y.scale.band).toBe(1);
@@ -230,13 +227,7 @@ describe("WebGPU mark adapter", () => {
         expect(rect.y.scale.align).toBe(0.8);
         expect(rect.y.data).toBe(categoryData);
         expect(rect.y.scale.domain).toBe(categoryDomain);
-        expect(scale.range()).toEqual([0.9, -0.8]);
-
-        scale.range([0.1, 0.9]);
-        expect(rect.y.scale.range).toEqual([200, 40]);
-        expect(text.y.scale.range).toEqual([180, 20]);
-        expect(rect.y.scale.domain).toEqual([0, 1]);
-        expect(rect.y.data).toBe(categoryData);
+        expect(scale.range()).toEqual([1, 0]);
 
         scale.domain(["B", "A"]);
         expect(rect.y.scale.domain).toEqual([1, 0]);
@@ -405,6 +396,11 @@ describe("WebGPU mark adapter", () => {
             resolve: { scale: { fillOpacity: "independent" } },
             params: [
                 { name: "alpha", value: 0.75 },
+                { name: "opacityRange", value: [0, 0.5] },
+                {
+                    name: "fillRange",
+                    value: ["transparent", "rgba(255, 0, 0, 0.5)"],
+                },
                 { name: "chosen", select: "point" },
             ],
             layer: [
@@ -418,7 +414,13 @@ describe("WebGPU mark adapter", () => {
                             },
                             field: "opacity",
                             type: "quantitative",
-                            scale: { domain: [0, 1], range: [0, 0.5] },
+                            scale: {
+                                domain: [0, 1],
+                                range: [
+                                    { expr: "opacityRange[0]" },
+                                    { expr: "opacityRange[1]" },
+                                ],
+                            },
                         },
                         fill: {
                             field: "opacity",
@@ -426,7 +428,10 @@ describe("WebGPU mark adapter", () => {
                             scale: {
                                 type: "threshold",
                                 domain: [0.5],
-                                range: ["transparent", "rgba(255, 0, 0, 0.5)"],
+                                range: [
+                                    { expr: "fillRange[0]" },
+                                    { expr: "fillRange[1]" },
+                                ],
                             },
                         },
                     },
@@ -469,14 +474,11 @@ describe("WebGPU mark adapter", () => {
 
         view.paramRuntime.runInTransaction(() => {
             view.paramRuntime.setValue("alpha", 0.5);
-            units[0]
-                .getScaleResolution("fillOpacity")
-                .getScale()
-                .range([0.25, 0.75]);
-            units[0]
-                .getScaleResolution("fill")
-                .getScale()
-                .range(["rgba(0, 255, 0, 0.25)", "transparent"]);
+            view.paramRuntime.setValue("opacityRange", [0.25, 0.75]);
+            view.paramRuntime.setValue("fillRange", [
+                "rgba(0, 255, 0, 0.25)",
+                "transparent",
+            ]);
         });
         await view.paramRuntime.whenPropagated();
 

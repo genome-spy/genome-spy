@@ -135,14 +135,13 @@ remain valid, while mapping feedback is rejected by graph cycle validation.
 WebGL scale uniforms apply in an owned operation before render effects. Mapping
 publication invalidates retained WebGPU resources and queues step-size updates.
 Retained WebGL range textures observe completed mappings through graph effects.
-Public `scale.range(value)` calls submit an explicit range command that
-persists through navigation until the bound range values or configuration change.
+Update a managed range by declaring a range expression and changing its inputs.
 The mapping operation and its owner live for the resolution lifetime, including
-identity scales. Replacing the physical scale retains this ref, clears old range
-commands, and uses physical identity in equality so retained consumers are notified
-even when numeric values are unchanged. The domain owner retains navigation state,
-including fractional boundary ranks that keep partially visible gaps moving
-continuously with the domain.
+identity scales. Replacing the physical scale retains this ref. Physical scale
+identity ensures retained consumers are notified even when numeric values are
+unchanged. The domain owner retains navigation state, including fractional
+boundary ranks that keep partially visible gaps moving continuously with the
+domain.
 CPU encoders use owned operations depending on mapping to refresh their captured
 physical scale and metadata before observer effects. Equality skips in-place scale
 updates; per-datum evaluation still calls the captured scale directly. Conditional

@@ -79,12 +79,6 @@ describe("graph-owned scale mapping", () => {
                 { category: "activated" },
             ]);
             expectColors(["resting", "activated"]);
-
-            // Public range commands remain authoritative across data updates.
-            scale.range(["red"]);
-            source.updateDynamicData([{ category: "activated" }]);
-            expect(scale.range()).toEqual(["red"]);
-            expect(mark.encoders.fill({ category: "activated" })).toBe("red");
         } finally {
             view.disposeSubtree();
         }
@@ -254,30 +248,14 @@ describe("graph-owned scale mapping", () => {
             view.disposeSubtree();
         }
     );
-
-    test("publishes public range commands and resumes expression control on input changes", async () => {
-        const { view } = await createHeadlessEngine(mappingSpec());
-        const resolution = view.getScaleResolution("size");
-        resolution.scale.range([0, 100]);
-        expect(view.paramRuntime.getValue("mapped")).toBe(50);
-        expect(view.paramRuntime.getValue("inverted")).toBe(1);
-
-        resolution.scale.domain([0, 20]);
-        expect(resolution.scale.range()).toEqual([0, 100]);
-        expect(view.paramRuntime.getValue("mapped")).toBe(25);
-        view.paramRuntime.setValue("high", 20);
-        expect(resolution.scale.range()).toEqual([0, 40]);
-        expect(view.paramRuntime.getValue("mapped")).toBe(10);
-        view.paramRuntime.setValue("high", 10);
-        expect(resolution.scale.range()).toEqual([0, 20]);
-        expect(view.paramRuntime.getValue("mapped")).toBe(5);
-        view.disposeSubtree();
-    });
 });
 
 test("mapping dependencies survive view-level scale recreation", async () => {
     const { view } = await createHeadlessEngine({
-        params: [{ name: "mapped", expr: "scale('size', 5)" }],
+        params: [
+            { name: "mapped", expr: "scale('size', 5)" },
+            { name: "rangeEnd", value: 100 },
+        ],
         data: { values: [{ value: 5 }] },
         mark: "point",
         scales: { size: { type: "linear", domain: [0, 10], range: [0, 20] } },
@@ -297,13 +275,10 @@ test("mapping dependencies survive view-level scale recreation", async () => {
         const encoded = vi.fn(() => mark.encoders.size({ value: 5 }));
         resolution.addEventListener("range", encoded);
 
-        resolution.scale.range([0, 40]);
-        changed.mockClear();
-        encoded.mockClear();
         resolution.attachViewLevelScaleProps(view, {
             type: "linear",
             domain: [0, 10],
-            range: [0, 100],
+            range: [0, { expr: "rangeEnd" }],
         });
         view.paramRuntime.flushNow();
 
@@ -323,7 +298,7 @@ test("mapping dependencies survive view-level scale recreation", async () => {
         );
         view.paramRuntime.flushNow();
         expect(changed).toHaveBeenCalled();
-        resolution.scale.range([0, 200]);
+        view.paramRuntime.setValue("rangeEnd", 200);
         expect(view.paramRuntime.getValue("mapped")).toBe(100);
 
         resolution.clearViewLevelScaleProps(view);

@@ -43,7 +43,7 @@ test("continuous expression ranges retain their numeric uniform", () => {
 });
 
 test.each(/** @type {const} */ (["band", "point"]))(
-    "positional %s shaders retain numeric range commands through the live uniform contract",
+    "positional %s shaders share a live numeric range uniform across endpoints",
     async (type) => {
         const { view } = await createHeadlessEngine({
             data: { values: [{ category: "A" }, { category: "B" }] },
@@ -75,16 +75,7 @@ test.each(/** @type {const} */ (["band", "point"]))(
             "geometry.x / (uViewportSize.y * getSampleFacetPos().height)"
         );
 
-        const payloads = [getRangeForGlsl(scale, "y")];
-        resolution.addEventListener("range", () =>
-            payloads.push(getRangeForGlsl(scale, "y"))
-        );
-        scale.range([0.9, -0.8]);
-        await view.paramRuntime.whenPropagated();
-        expect(payloads).toEqual([
-            [1, 0],
-            [0.9, -0.8],
-        ]);
+        expect(getRangeForGlsl(scale, "y")).toEqual([1, 0]);
 
         const secondary = generateScaleGlsl("y2", scale, {
             field: "category",

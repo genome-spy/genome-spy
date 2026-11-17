@@ -452,7 +452,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
 
     if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
-        // Positional categorical ranges can move through runtime range commands.
+        // Positional categorical scales reuse shaders when their range changes.
         const liveCategoricalRange =
             isPrimaryPositionalChannel(channel) &&
             (scale.type === "band" || scale.type === "point");

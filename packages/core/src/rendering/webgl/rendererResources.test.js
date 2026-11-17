@@ -562,6 +562,7 @@ function createScaleResolution() {
 
 test("range textures keep observing a recreated physical scale", async () => {
     const { view } = await createHeadlessEngine({
+        params: [{ name: "firstColor", value: "black" }],
         data: { values: [{ value: 5 }] },
         mark: "point",
         scales: {
@@ -585,7 +586,7 @@ test("range textures keep observing a recreated physical scale", async () => {
         resolution.attachViewLevelScaleProps(view, {
             type: "linear",
             domain: [0, 10],
-            range: ["black", "white"],
+            range: [{ expr: "firstColor" }, "white"],
         });
         expect(glHelper.createRangeTexture).toHaveBeenCalledWith(
             resolution,
@@ -593,7 +594,7 @@ test("range textures keep observing a recreated physical scale", async () => {
         );
         fixture.dispose();
         glHelper.createRangeTexture.mockClear();
-        resolution.scale.range(["red", "blue"]);
+        view.paramRuntime.setValue("firstColor", "green");
         expect(glHelper.createRangeTexture).not.toHaveBeenCalled();
     } finally {
         fixture.dispose();
