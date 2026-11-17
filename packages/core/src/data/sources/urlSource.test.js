@@ -376,7 +376,6 @@ test("UrlSource reads gzip-compressed URL lists transparently", async () => {
     const source = new UrlSource(
         {
             url: { urlsFromFile: "/data/variants.tsv.gz", type: "tsv" },
-            format: { type: "tsv" },
         },
         createViewStub()
     );
@@ -626,6 +625,33 @@ test.each([false, true])(
         expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
     }
 );
+
+test("replacing a pending URL list skips the superseded manifest entries", async () => {
+    const manifest = Promise.withResolvers();
+    global.fetch = vi.fn(async (url) =>
+        url === "parts.tsv" ? manifest.promise : new Response('[{"value":"B"}]')
+    );
+    const source = new UrlSource(
+        { url: { urlsFromFile: "parts.tsv" } },
+        createViewStub()
+    );
+    const collector = new Collector();
+    source.addChild(collector);
+
+    const pending = source.load();
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
+
+    source.params.url = "b.json";
+    await source.load();
+    manifest.resolve(new Response("url\na.json\n"));
+    await pending;
+
+    expect(global.fetch).toHaveBeenCalledWith("parts.tsv", {
+        signal: expect.objectContaining({ aborted: true }),
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+});
 
 test("disposal aborts a pending URL list and prevents future loading", async () => {
     const response = Promise.withResolvers();
