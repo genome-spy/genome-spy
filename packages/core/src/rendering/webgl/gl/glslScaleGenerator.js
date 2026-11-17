@@ -291,6 +291,18 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const primary = getPrimaryChannel(channel);
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
+    const packedBandRange = scale.type === "band" || scale.type === "index";
+    // The packed uniform uses xy for the range and zw for inner/outer padding.
+    const bandArguments = () =>
+        packedBandRange
+            ? [
+                  rangeUniformName + ".xy",
+                  rangeUniformName + ".z",
+                  rangeUniformName + ".w",
+              ]
+            : scale.type === "point"
+              ? [rangeUniformName, 1, scale.padding()]
+              : [rangeUniformName, scale.paddingInner(), scale.paddingOuter()];
 
     const { hp, attributeType, packedColor } = getAttributeAndArrayTypes(
         scale,
@@ -382,9 +394,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             functionCall = makeScaleCall(
                 gaps ? "scaleGaps_" + primary : "scaleBandHp",
                 "domain",
-                rangeUniformName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                ...bandArguments(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 toDecimal(channelDef.band ?? (gaps && peer ? 0 : 0.5)),
@@ -408,9 +418,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             functionCall = makeScaleCall(
                 gaps ? "scaleBandGaps_" + primary : "scaleBand",
                 "domain",
-                rangeUniformName,
-                transform === "point" ? 1 : scale.paddingInner(),
-                transform === "point" ? scale.padding() : scale.paddingOuter(),
+                ...bandArguments(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 toDecimal(channelDef.band ?? 0.5)
@@ -440,10 +448,16 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
 
     const range = getRangeForGlsl(scale, channel);
 
-    /** @type {string} */
-    let rangeUniform;
-
-    if (range && channel == primary && scale.type !== "ordinal") {
+    let rangeUniform =
+        packedBandRange && channel === primary
+            ? `    uniform vec4 ${rangeUniformName};`
+            : undefined;
+    if (
+        !rangeUniform &&
+        range &&
+        channel == primary &&
+        scale.type !== "ordinal"
+    ) {
         const rangeProp = scale.props.range ?? [];
         // Maybe the scale could be annotated with a "dynamicRange" property or something
         if (isExprRef(rangeProp) || rangeProp.some(isExprRef)) {
@@ -921,6 +935,17 @@ export const getRangeForGlsl = (scale, channel) =>
         : scale.range
           ? scale.range()
           : undefined;
+
+/** Values for the shader range uniform. Band/index use xy for range and zw for padding.
+ * @param {any} scale
+ * @param {Channel} channel
+ */
+export function getRangeUniformValues(scale, channel) {
+    const range = getRangeForGlsl(scale, channel);
+    return scale.type === "band" || scale.type === "index"
+        ? [range[0], range[1], scale.paddingInner(), scale.paddingOuter()]
+        : range;
+}
 
 /**
  * @param {string[]} conditions

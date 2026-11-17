@@ -3,9 +3,22 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import View from "../../view/view.js";
 import UnitView from "../../view/unitView.js";
 import { createAndInitialize } from "../../view/testUtils.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createWebGLMark } from "./rendererResources.js";
 import { replaceOrderGuard } from "./marks/webGlMark.js";
 import { fetchExample } from "../../spec/exampleTestUtils.js";
+
+vi.mock("twgl.js", async (importOriginal) => ({
+    ...(await importOriginal()),
+    /** @param {WebGL2RenderingContext} _gl @param {WebGLProgram} program */
+    createProgramInfoFromProgram: (_gl, program) => ({
+        program,
+        uniformSetters: {},
+    }),
+}));
+vi.mock("./gl/uniformBlocks.js", () => ({
+    createUniformBlockInfo: () => ({ buffer: {} }),
+}));
 
 const VERTEX_SHADER = 0x8b31;
 const FRAGMENT_SHADER = 0x8b30;
@@ -674,3 +687,81 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 });
+
+test.each(/** @type {const} */ (["band", "index"]))(
+    "retains the packed %s range and padding before an immediate draw",
+    async (type) => {
+        const index = type === "index";
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ x: index ? 0 : "a" }, { x: index ? 3 : "b" }] },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: index ? "index" : "nominal",
+                    axis: null,
+                    scale: {
+                        type,
+                        zoom: true,
+                        paddingInner: 0.2,
+                        paddingOuter: 0.1,
+                    },
+                },
+            },
+        });
+        const glHelper = createFakeGlHelper();
+        Object.assign(glHelper.gl, {
+            isContextLost: () => false,
+            useProgram() {},
+            deleteBuffer() {},
+        });
+        const delegate = createWebGLMark(
+            findUnitView(view).mark,
+            /** @type {any} */ (glHelper)
+        );
+        const range = vi.fn();
+        Object.assign(delegate, {
+            createMarkUniformSetter: (/** @type {string} */ name) =>
+                name === "range_x" ? range : () => {},
+        });
+        try {
+            delegate.initializeGraphics();
+            delegate.finalizeGraphicsInitialization();
+            const { vertex } = glHelper.getCapturedSources();
+            expect(vertex).toContain("uniform vec4 range_x;");
+            expect(
+                vertex.match(/range_x.xy, range_x.z, range_x.w/g)
+            ).toHaveLength(2);
+            expect(range).toHaveBeenLastCalledWith([0, 1, 0.2, 0.1]);
+
+            const resolution = view.getScaleResolution("x");
+            const render = vi
+                .spyOn(view.context, "renderImmediately")
+                .mockImplementation(() => {
+                    expect(range).toHaveBeenLastCalledWith([
+                        0.25, 0.75, 0.2, 0.1,
+                    ]);
+                });
+            // The existing program must receive the new range before this draw.
+            let navigation;
+            view.paramRuntime.runInTransaction(() => {
+                resolution.scale.range([0.25, 0.75]);
+                navigation = index
+                    ? resolution.zoomTo([1, 2], { renderImmediately: true })
+                    : resolution.zoomToViewport([0.25, 1.75], {
+                          renderImmediately: true,
+                      });
+            });
+            await navigation;
+            expect(render).toHaveBeenCalledOnce();
+
+            delegate.dispose();
+            range.mockClear();
+            resolution.scale.range([0, 1]);
+            expect(range).not.toHaveBeenCalled();
+        } finally {
+            delegate.dispose();
+            view.disposeSubtree();
+        }
+    }
+);

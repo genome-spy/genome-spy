@@ -20,7 +20,7 @@ import {
     generateScaleGlsl,
     getAttributeAndArrayTypes,
     getDiscretizingDomainForGlsl,
-    getRangeForGlsl,
+    getRangeUniformValues,
     makeAttributeName,
     PARAM_PREFIX,
     RANGE_PREFIX,
@@ -747,70 +747,55 @@ export default class WebGLMark {
                 } = generateScaleGlsl(channel, scale, channelDef);
 
                 scaleCode.push(glsl);
-                dynamicMarkUniforms.push(domainUniform);
-                dynamicMarkUniforms.push(rangeUniform);
+                dynamicMarkUniforms.push(domainUniform, rangeUniform);
 
-                if (rangeUniform) {
-                    this.#callAfterShaderCompilation.push(() => {
-                        const rangeSetter =
-                            this.createMarkUniformSetter(rangeUniformName);
-
-                        const set = () =>
-                            rangeSetter(getRangeForGlsl(scale, channel));
-                        this.registerScaleResolutionListener(
-                            scaleResolution,
-                            "range",
-                            set
-                        );
-
-                        // Initial value
-                        set();
-                    });
-                }
-
-                if (domainUniform) {
+                if (domainUniform || rangeUniform) {
                     this.#callAfterShaderCompilation.push(() => {
                         const domainSetter =
+                            domainUniform &&
                             this.createMarkUniformSetter(domainUniformName);
-                        const set = () => {
-                            let domain;
-                            if (isDiscrete(scale.type)) {
-                                domain =
-                                    "viewport" in scale
-                                        ? /** @type {import("../../../scales/scaleBand.js").CategoricalGapScale} */ (
-                                              scale
-                                          ).viewport()?.interval
-                                        : undefined;
-                                domain ??= [
-                                    0,
-                                    scaleResolution.getDomainRef().get().length,
-                                ];
-                            } else if (isDiscretizing(scale.type)) {
-                                domain = getDiscretizingDomainForGlsl(scale);
-                            } else {
-                                domain = scale.domain();
+                        const rangeSetter =
+                            rangeUniform &&
+                            this.createMarkUniformSetter(rangeUniformName);
+                        const mapping = scaleResolution.getMappingRef();
+                        // Apply uniforms before effects can draw an immediate zoom frame.
+                        const binding = this.unitView.paramRuntime.operation(
+                            "WebGL scale uniforms",
+                            [mapping],
+                            () => mapping.get(),
+                            ({ scale: live, domain: displayedDomain }) => {
+                                const current =
+                                    live.type === scale.type ? live : scale;
+                                if (rangeSetter)
+                                    rangeSetter(
+                                        getRangeUniformValues(current, channel)
+                                    );
+                                if (!domainSetter) return;
+
+                                let domain;
+                                if (isDiscrete(current.type)) {
+                                    domain =
+                                        "viewport" in current
+                                            ? /** @type {import("../../../scales/scaleBand.js").CategoricalGapScale} */ (
+                                                  current
+                                              ).viewport()?.interval
+                                            : undefined;
+                                    domain ??= [0, displayedDomain.length];
+                                } else if (isDiscretizing(current.type)) {
+                                    domain =
+                                        getDiscretizingDomainForGlsl(current);
+                                } else {
+                                    domain = current.domain();
+                                }
+
+                                domainSetter(
+                                    isIndexLikeDomainType(current.type)
+                                        ? toHighPrecisionDomainUniform(domain)
+                                        : domain
+                                );
                             }
-
-                            domainSetter(
-                                isIndexLikeDomainType(scale.type)
-                                    ? toHighPrecisionDomainUniform(domain)
-                                    : domain
-                            );
-                        };
-
-                        this.registerScaleResolutionListener(
-                            scaleResolution,
-                            "domain",
-                            set
                         );
-
-                        this.registerScaleResolutionListener(
-                            scaleResolution,
-                            "viewport",
-                            set
-                        );
-                        // Initial value
-                        set();
+                        this.scaleResolutionDisposers.push(binding.dispose);
                     });
                 }
             }
@@ -876,7 +861,7 @@ export default class WebGLMark {
         for (const axis of /** @type {const} */ (["x", "y"])) {
             const scale = encoders[axis]?.scale;
             if (scale && hasGroupingGaps(scale.props)) {
-                hidden.push(`!gapFits_${axis}(${RANGE_PREFIX}${axis})`);
+                hidden.push(`!gapFits_${axis}(${RANGE_PREFIX}${axis}.xy)`);
             }
         }
 
@@ -1074,18 +1059,6 @@ export default class WebGLMark {
             }
             this.bufferInfo = undefined;
         }
-    }
-
-    /**
-     * @param {import("../../../scales/scaleResolution.js").default} resolution
-     * @param {import("../../../types/scaleResolutionApi.js").ScaleResolutionEventType} type
-     * @param {() => void} listener
-     */
-    registerScaleResolutionListener(resolution, type, listener) {
-        resolution.addEventListener(type, listener);
-        this.scaleResolutionDisposers.push(() =>
-            resolution.removeEventListener(type, listener)
-        );
     }
 
     dispose() {
