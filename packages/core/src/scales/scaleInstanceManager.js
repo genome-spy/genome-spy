@@ -435,7 +435,8 @@ export default class ScaleInstanceManager {
                 (previous?.scale === scale &&
                     previous?.props === props &&
                     previous.domain.length === domain.length &&
-                    equalRange(previous.padding, padding))
+                    (!("rangeStep" in props) ||
+                        equalRange(previous.padding, padding)))
                     ? undefined
                     : this.#prepareMapping(props, padding);
             return {
@@ -491,6 +492,7 @@ export default class ScaleInstanceManager {
     /** @param {MappingConfiguration} configuration */
     #applyMapping({
         props,
+        padding,
         range,
         prepared,
         gapPositions,
@@ -509,6 +511,16 @@ export default class ScaleInstanceManager {
             if ("bins" in prepared)
                 /** @type {any} */ (this.#scale).bins = prepared.bins;
             else delete (/** @type {any} */ (this.#scale).bins);
+        } else if (
+            padding &&
+            !equalRange(this.mapping.get()?.padding, padding)
+        ) {
+            // A padding-only update can reuse the live domain and its category lookup.
+            const [paddingInner, paddingOuter] = padding;
+            configureScaleProperties(this.#scale, {
+                paddingInner,
+                paddingOuter,
+            });
         }
         if (viewport !== undefined && "viewport" in this.#scale)
             this.#mirrorViewport(viewport);

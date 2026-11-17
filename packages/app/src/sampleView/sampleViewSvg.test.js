@@ -86,16 +86,22 @@ describe("SampleView SVG export", () => {
             initializeFlow: false,
             disableGroupUpdates: false,
             spec: {
-                config: { mark: { color: "black" } },
+                config: {
+                    mark: { color: "black" },
+                    // Sidebar rows keep their shared geometry under plot mark defaults.
+                    rect: { yOffset: -3, y2Offset: 3 },
+                    text: { yOffset: 4, y2Offset: 4 },
+                },
                 data: {
                     values: samples.map((sample) => ({ sample, value: 1 })),
                 },
                 samples: {},
-                sampleLayout: { peekGroupSpacing: 1000 },
+                // This close-up height tapers spacing below the fitted fraction.
+                sampleLayout: { sampleHeight: 20, peekGroupSpacing: 1000 },
                 metadata: {},
                 spec: {
                     name: "sample-plot",
-                    mark: "rect",
+                    mark: { type: "rect", yOffset: 0, y2Offset: 0 },
                     encoding: {
                         sample: { field: "sample" },
                         x: {
@@ -219,11 +225,12 @@ describe("SampleView SVG export", () => {
         expect(plots).toHaveLength(3);
         expect(bars).toHaveLength(2);
         expect(labels).toHaveLength(3);
-        expect(
+        const backgrounds = Array.from(
             svg.querySelectorAll(
                 '[data-name="attribute-group-missing-background"] rect'
             )
-        ).toHaveLength(3);
+        );
+        expect(backgrounds).toHaveLength(3);
         for (let i = 0; i < labels.length; i++) {
             const y = Number(plots[i].getAttribute("y"));
             const height = Number(plots[i].getAttribute("height"));
@@ -235,6 +242,7 @@ describe("SampleView SVG export", () => {
         for (const [bar, plot] of [
             [bars[0], plots[0]],
             [bars[1], plots[2]],
+            [backgrounds[1], plots[1]],
         ]) {
             expect(Number(bar.getAttribute("y"))).toBeCloseTo(
                 Number(plot.getAttribute("y"))
@@ -256,6 +264,9 @@ describe("SampleView SVG export", () => {
         const initialViewport = rowScale.viewport();
         expect(initialViewport).not.toBeNull();
         expect(rowScale.range()).toEqual([1, 0]);
+        const initialPadding = rowScale.paddingInner();
+        expect(initialPadding).toBeCloseTo(0.2);
+        expect(rowScale.paddingOuter()).toBeCloseTo(initialPadding / 2);
 
         const plot = view
             .getDescendants()
@@ -270,7 +281,15 @@ describe("SampleView SVG export", () => {
             callback(performance.now() + 1000);
         const requestLayout = vi.fn();
         context.requestLayoutReflow = requestLayout;
+        const copyRowScale = vi.spyOn(rowScale, "copy");
         await view.locationManager.togglePeek(true, 120, "A");
+        expect(copyRowScale).not.toHaveBeenCalled();
+        copyRowScale.mockRestore();
+        expect(rowScale.paddingInner()).toBeGreaterThan(0);
+        expect(rowScale.paddingInner()).toBeLessThan(initialPadding);
+        expect(rowScale.paddingOuter()).toBeCloseTo(
+            rowScale.paddingInner() / 2
+        );
         view.locationManager.setScrollOffset(100);
         const empty = render().svg;
         expect(
@@ -334,6 +353,7 @@ describe("SampleView SVG export", () => {
             logicalHeight: 40,
         });
         expect(view.locationManager.getBandLayout().step).toBe(0);
+        expect(rowScale.paddingInner()).toBe(0);
         expect(
             exhausted.svg.querySelectorAll(
                 '[data-name="sample-plot"] rect, [data-name="sample-labels"] text, [data-name="attribute-bar-value"] rect, [data-name="attribute-group-missing-background"] rect'
