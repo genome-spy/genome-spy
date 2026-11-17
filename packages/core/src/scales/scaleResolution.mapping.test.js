@@ -1,4 +1,4 @@
-import reactivePaddingSpec from "../../../../examples/docs/grammar/scale/reactive-padding.json" with { type: "json" };
+import reactivePaddingSpec from "../../../../examples/core/scales/reactive-padding.json" with { type: "json" };
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import createVegaScale from "../scale/scale.js";

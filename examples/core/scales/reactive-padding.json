@@ -4,8 +4,9 @@
     "Zoom in to reveal one-pixel gaps. Adaptive padding avoids subpixel gaps and keeps narrow bases visible."
   ],
 
-  "width": 700,
-  "height": 70,
+  "width": "container",
+  "height": "container",
+
   "params": [
     { "name": "stepPx", "expr": "width / span(domain('x'))" },
     { "name": "gapProgress", "expr": "clamp((stepPx - 1) / 2, 0, 1)" },

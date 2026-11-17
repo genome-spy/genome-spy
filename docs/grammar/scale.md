@@ -545,8 +545,7 @@ drives default scale type inference.
 Scale `domain` and `range` properties can contain expression references that
 depend on parameters. When a parameter changes, the scale and visualization
 update automatically. A scale domain can also be linked directly to an interval
-selection parameter. Band and index scales also support expressions in
-`padding`, `paddingInner`, and `paddingOuter`.
+selection parameter.
 
 ### Expression-driven domains and ranges
 
@@ -594,29 +593,6 @@ EXAMPLE examples/docs/grammar/scale/shared-scale-expression.json height=230
     parameter scope. Do not rely on this fallback in new specifications. Make
     the scale independent or declare the parameter on the resolution owner. The
     fallback is planned for removal in GenomeSpy 2.0.
-
-### Reactive padding
-
-Padding expressions can reveal gaps as bands grow wide enough to display them.
-In this random 1,000-base sequence, gaps begin above a one-pixel step and grow
-to one pixel at a three-pixel step. This reduces aliasing at overview zoom
-levels. The `minWidth` mark property keeps narrow bands visible.
-
-EXAMPLE examples/docs/grammar/scale/reactive-padding.json height=160
-
-The example derives the unpadded step from `width / span(domain('x'))` and uses
-smoothstep easing, `t * t * (3 - 2 * t)`, for the gap. Outer padding is half the
-inner padding, keeping the step independent of padding. Reading `bandwidth('x')`
-to set the same scale's padding would create a dependency cycle.
-
-When a scale uses padding expressions, explicit `paddingInner` and
-`paddingOuter` override `padding`. Step-sized views resize when the effective
-padding changes. Padding that determines a step-sized axis must be independent
-of the resulting plot width or height.
-
-Padding expressions must produce finite, nonnegative numbers. Expressions for
-`paddingInner` and `paddingOuter` must produce a value between 0 and 1. Point
-and continuous scales accept numeric padding only.
 
 ### Domain from Selection Parameters
 
