@@ -61,10 +61,41 @@ export function createAggregatePartitionEvaluator(accessor, results) {
 
     return /** @type {AggregatePartitionEvaluator} */ (
         (rows, bounds, output) => {
-            const state = new WindowAggregateState(accessor, ops);
             const resultArrays = resultIndices.map((index) => output[index]);
             const starts = bounds.starts;
             const stops = bounds.stops;
+
+            // Frame boundaries are monotonic. These endpoints imply that
+            // every requested frame covers the whole partition.
+            const wholePartition =
+                starts[starts.length - 1] === 0 && stops[0] === rows.length;
+            const state = new WindowAggregateState(
+                accessor,
+                ops,
+                wholePartition
+            );
+            if (wholePartition) {
+                for (const row of rows) {
+                    state.add(row);
+                }
+                if (state.needsOrderedValues) {
+                    // Stable sorting after reversing preserves the tie order
+                    // of left insertion, which is observable for signed zeros.
+                    state.values
+                        .reverse()
+                        .sort(
+                            (a, b) =>
+                                a - b ||
+                                Number(Number.isNaN(a)) -
+                                    Number(Number.isNaN(b))
+                        );
+                }
+                for (let i = 0; i < readers.length; i++) {
+                    resultArrays[i].fill(readers[i](state));
+                }
+                return;
+            }
+
             let start = 0;
             let stop = 0;
 
@@ -161,12 +192,14 @@ export class WindowAggregateState {
     /**
      * @param {(datum: Datum) => any} accessor
      * @param {string[]} ops
+     * @param {boolean} [deferSorting]
      */
-    constructor(accessor, ops) {
+    constructor(accessor, ops, deferSorting = false) {
         this.accessor = accessor;
         this.needsSum = ops.includes("sum");
         this.needsMoments = ops.some((op) => MOMENT_OPS.has(op));
         this.needsOrderedValues = ops.some((op) => ORDERED_OPS.has(op));
+        this.deferSorting = deferSorting;
         this.reset();
     }
 
@@ -200,11 +233,15 @@ export class WindowAggregateState {
             this.m2 += delta * (numericValue - this.mean);
         }
         if (this.needsOrderedValues) {
-            this.values.splice(
-                bisectLeft(this.values, numericValue),
-                0,
-                numericValue
-            );
+            if (this.deferSorting) {
+                this.values.push(numericValue);
+            } else {
+                this.values.splice(
+                    bisectLeft(this.values, numericValue),
+                    0,
+                    numericValue
+                );
+            }
         }
     }
 
