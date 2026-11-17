@@ -754,8 +754,9 @@ export default class WebGLMark {
                         const paddingSetter =
                             paddingUniform &&
                             this.createMarkUniformSetter(paddingUniformName);
-                        const set = () => {
-                            const live = scaleResolution.getScale();
+                        /** @param {import("../../../scales/scaleInstanceManager.js").MappingConfiguration} configuration */
+                        const set = (configuration) => {
+                            const live = configuration.scale;
                             const current =
                                 live.type === scale.type ? live : scale;
                             if (rangeSetter)
@@ -779,10 +780,7 @@ export default class WebGLMark {
                                               current
                                           ).viewport()?.interval
                                         : undefined;
-                                domain ??= [
-                                    0,
-                                    scaleResolution.getDomainRef().get().length,
-                                ];
+                                domain ??= [0, configuration.domain.length];
                             } else if (isDiscretizing(current.type)) {
                                 domain = getDiscretizingDomainForGlsl(current);
                             } else {

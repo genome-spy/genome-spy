@@ -369,8 +369,9 @@ export default class ScaleInstanceManager {
         const paddingInputs = PADDING_KEYS.some((key) => isExprRef(props[key]))
             ? PADDING_KEYS.map((key) => bind(props[key], "Reactive padding"))
             : undefined;
-        /** @param {number} index */
-        const readPadding = (index) => {
+        const bandKind = scale.type === "band" ? "band" : "index";
+        /** @param {number} index @param {number} [fallback] */
+        const readPadding = (index, fallback = 0) => {
             const key = PADDING_KEYS[index];
             const value = paddingInputs[index](null);
             const max = index === 0 ? Infinity : 1;
@@ -381,7 +382,10 @@ export default class ScaleInstanceManager {
                 throw new Error(
                     `${key} expression must resolve to a finite number from 0 to ${max}.`
                 );
-            return value;
+            const effective = value ?? fallback;
+            return key === "padding"
+                ? effective
+                : normalizeBandScaleProperty(bandKind, key, effective);
         };
         /** @type {import("../spec/scale.js").Scale["gapPositions"]} */
         let previousPositions;
@@ -411,14 +415,8 @@ export default class ScaleInstanceManager {
             /** @type {[number, number] | undefined} */
             let padding;
             if (paddingInputs) {
-                const common = readPadding(0) ?? 0;
-                const inner = readPadding(1) ?? common;
-                const outer = readPadding(2) ?? common;
-                const kind = scale.type === "band" ? "band" : "index";
-                padding = [
-                    normalizeBandScaleProperty(kind, "paddingInner", inner),
-                    normalizeBandScaleProperty(kind, "paddingOuter", outer),
-                ];
+                const common = readPadding(0);
+                padding = [readPadding(1, common), readPadding(2, common)];
             }
             const command = this.#rangeCommand.get();
             const canUseCommand =
@@ -493,17 +491,18 @@ export default class ScaleInstanceManager {
         viewport,
     }) {
         // Reset can leave a queued update behind while scale recreation fails.
-        if (!this.#scale || this.#scale.type === "null") return;
+        const scale = this.#scale;
+        if (!scale || scale.type === "null") return;
         if (prepared) {
-            configureScaleProperties(this.#scale, prepared.props);
+            configureScaleProperties(scale, prepared.props);
             // Copy through raw setters; public setters submit reactive commands.
             // Restore the interpolator last: range() replaces color schemes.
             if (this.#setRange) this.#setRange(prepared.range());
-            if ("interpolator" in prepared && "interpolator" in this.#scale)
-                this.#scale.interpolator(prepared.interpolator());
+            if ("interpolator" in prepared && "interpolator" in scale)
+                scale.interpolator(prepared.interpolator());
             if ("bins" in prepared)
-                /** @type {any} */ (this.#scale).bins = prepared.bins;
-            else delete (/** @type {any} */ (this.#scale).bins);
+                /** @type {any} */ (scale).bins = prepared.bins;
+            else delete (/** @type {any} */ (scale).bins);
         }
         // Static preparation can restore literal or default padding.
         if (
@@ -511,22 +510,14 @@ export default class ScaleInstanceManager {
             (prepared || !equalRange(this.mapping.get()?.padding, padding))
         ) {
             const [paddingInner, paddingOuter] = padding;
-            configureScaleProperties(this.#scale, {
-                paddingInner,
-                paddingOuter,
-            });
+            configureScaleProperties(scale, { paddingInner, paddingOuter });
         }
-        if (viewport !== undefined && "viewport" in this.#scale)
+        if (viewport !== undefined && "viewport" in scale)
             this.#mirrorViewport(viewport);
-        if (range) this.#setRange(range);
-        else if (props.scheme === undefined && this.#defaultRange) {
-            this.#setRange(this.#defaultRange);
-        }
-        if ("gapPositions" in this.#scale) {
-            const scale =
-                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
-                    this.#scale
-                );
+        const nextRange =
+            range ?? (props.scheme === undefined && this.#defaultRange);
+        if (nextRange) this.#setRange(nextRange);
+        if ("gapPositions" in scale) {
             if (!shallowArrayEquals(scale.gapPositions(), gapPositions))
                 scale.gapPositions(gapPositions);
             if (scale.gapWidth() !== (gapWidth ?? 0)) scale.gapWidth(gapWidth);
