@@ -923,12 +923,7 @@ describe("WebGPU mark adapter", () => {
         /** @type {any} */ (mark.unitView.context.textMetrics).getPreparedFont =
             () => outlineFont;
 
-        const translated = createWebGpuMarkConfig(
-            mark,
-            /** @type {any} */ ({}),
-            Rectangle.ZERO,
-            0.25
-        );
+        const translated = createWebGpuMarkConfig(mark, {}, Rectangle.ZERO);
         if (!translated) {
             throw new Error("Expected a translated text mark.");
         }
@@ -938,7 +933,7 @@ describe("WebGPU mark adapter", () => {
             fontStyle: "italic",
             fontWeight: 700,
             channels: {
-                opacity: { value: 0.125 },
+                opacity: { value: 0.5 },
                 fillOpacity: { data: new Float32Array([0.4]) },
             },
         });
