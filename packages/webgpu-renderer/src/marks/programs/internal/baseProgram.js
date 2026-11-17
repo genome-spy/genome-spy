@@ -15,6 +15,20 @@ import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 
+/**
+ * @template T
+ * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<T>>} groups
+ * @param {string} name
+ * @param {T} slot
+ * @param {number} [index]
+ */
+function addChannelSlot(groups, name, slot, index) {
+    /** @type {import("../../../index.d.ts").ChannelSlotGroup<T>} */
+    const group = (groups[name] ??= {});
+    if (index === undefined) Object.assign(group, slot, { default: slot });
+    else (group.conditions ??= {})[index] = slot;
+}
+
 let debugResourcesEnabled = false;
 
 /**
@@ -810,106 +824,36 @@ export default class BaseProgram {
      */
     #buildSlotHandles() {
         /**
-         * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>} map
-         * @param {string} name
-         * @returns {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>}
+         * @param {string} name Logical channel receiving the slot.
+         * @param {string} source Resolved channel, possibly a synthetic branch.
+         * @param {number} [index]
          */
-        const ensureScaleGroup = (map, name) => {
-            if (!map[name]) {
-                map[name] = {};
-            }
-            return map[name];
-        };
-
-        /**
-         * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>>} map
-         * @param {string} name
-         * @returns {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>}
-         */
-        const ensureValueGroup = (map, name) => {
-            if (!map[name]) {
-                map[name] = {};
-            }
-            return map[name];
-        };
-
-        /**
-         * @param {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>} group
-         * @param {import("../../../index.d.ts").ScaleSlotHandle} slot
-         */
-        const attachScaleSlot = (group, slot) => {
-            group.default = slot;
-            group.setDomain = slot.setDomain;
-            group.setViewport = slot.setViewport;
-            group.setRange = slot.setRange;
-            group.setGapPositions = slot.setGapPositions;
-            group.setGapWidth = slot.setGapWidth;
-        };
-
-        /**
-         * @param {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>} group
-         * @param {import("../../../index.d.ts").ValueSlotHandle} slot
-         */
-        const attachValueSlot = (group, slot) => {
-            group.default = slot;
-            group.set = slot.set;
+        const add = (name, source, index) => {
+            const channel = this._channels[source];
+            if (!channel) return;
+            if (channel.scale)
+                addChannelSlot(
+                    this.#slotHandles.scales,
+                    name,
+                    this.#createScaleSlot(source),
+                    index
+                );
+            if (isValueChannelConfig(channel) && channel.dynamic)
+                addChannelSlot(
+                    this.#slotHandles.values,
+                    name,
+                    this.#createValueSlot(source),
+                    index
+                );
         };
 
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (this.#conditionalChannelNames.has(name)) {
-                continue;
-            }
-            if (channel.scale) {
-                attachScaleSlot(
-                    ensureScaleGroup(this.#slotHandles.scales, name),
-                    this.#createScaleSlot(name)
-                );
-            }
-            if (isValueChannelConfig(channel) && channel.dynamic) {
-                attachValueSlot(
-                    ensureValueGroup(this.#slotHandles.values, name),
-                    this.#createValueSlot(name)
-                );
-            }
-            const conditions = channel.conditions ?? [];
-            if (!conditions.length) {
-                continue;
-            }
-            for (const [conditionIndex, condition] of conditions.entries()) {
-                if (!condition.channelName) {
-                    continue;
-                }
-                const conditionChannel = this._channels[condition.channelName];
-                if (!conditionChannel) {
-                    continue;
-                }
-                if (conditionChannel.scale) {
-                    const group = ensureScaleGroup(
-                        this.#slotHandles.scales,
-                        name
-                    );
-                    if (!group.conditions) {
-                        group.conditions = {};
-                    }
-                    group.conditions[conditionIndex] = this.#createScaleSlot(
-                        condition.channelName
-                    );
-                }
-                if (
-                    isValueChannelConfig(conditionChannel) &&
-                    conditionChannel.dynamic
-                ) {
-                    const group = ensureValueGroup(
-                        this.#slotHandles.values,
-                        name
-                    );
-                    if (!group.conditions) {
-                        group.conditions = {};
-                    }
-                    group.conditions[conditionIndex] = this.#createValueSlot(
-                        condition.channelName
-                    );
-                }
+            if (this.#conditionalChannelNames.has(name)) continue;
+            add(name, name);
+            for (const [index, { channelName }] of (
+                channel.conditions ?? []
+            ).entries()) {
+                if (channelName) add(name, channelName, index);
             }
         }
 
@@ -938,32 +882,29 @@ export default class BaseProgram {
     #createScaleSlot(name) {
         const updater = this.#scaleResources.getScaleUpdater(name);
         return {
-            setViewport: (viewport) => {
-                this._assertAlive();
-                updater.updateViewport(viewport);
-                this._queueSlotUpdate(false);
-            },
-            setGapPositions: (values) => {
-                this._assertAlive();
-                this._queueSlotUpdate(
-                    this.#scaleResources.updateGapPositions(name, values)
-                );
-            },
-            setGapWidth: (width) => {
-                this._assertAlive();
-                this.#scaleResources.updateGapWidth(name, width);
-                this._queueSlotUpdate(false);
-            },
-            setDomain: (domain, ranks) => {
-                this._assertAlive();
-                const needsRebind = updater.updateDomain(domain, ranks);
-                this._queueSlotUpdate(needsRebind);
-            },
-            setRange: (range) => {
-                this._assertAlive();
-                const needsRebind = updater.updateRange(range);
-                this._queueSlotUpdate(needsRebind);
-            },
+            setViewport: this.#slotSetter(updater.updateViewport),
+            setGapPositions: this.#slotSetter((values) =>
+                this.#scaleResources.updateGapPositions(name, values)
+            ),
+            setGapWidth: this.#slotSetter((width) =>
+                this.#scaleResources.updateGapWidth(name, width)
+            ),
+            setDomain: this.#slotSetter(updater.updateDomain),
+            setRange: this.#slotSetter(updater.updateRange),
+        };
+    }
+
+    /**
+     * Apply a live slot write and queue its upload. A writer returns true when
+     * the update also requires rebuilding the bind group.
+     * @template T, U
+     * @param {(value: T, second?: U) => boolean | void} write
+     * @returns {(value: T, second?: U) => void}
+     */
+    #slotSetter(write) {
+        return (value, second) => {
+            this._assertAlive();
+            this._queueSlotUpdate(write(value, second) === true);
         };
     }
 
@@ -978,13 +919,10 @@ export default class BaseProgram {
                 `Uniform "${uniformName}" is not available for updates.`
             );
         }
-        const write = this._uniformBufferState.getSetter(uniformName);
         return {
-            set: (value) => {
-                this._assertAlive();
-                write(value);
-                this._queueSlotUpdate(false);
-            },
+            set: this.#slotSetter(
+                this._uniformBufferState.getSetter(uniformName)
+            ),
         };
     }
 
@@ -997,11 +935,9 @@ export default class BaseProgram {
             throw new Error(`Uniform "${name}" is not available for updates.`);
         }
         return {
-            set: (value) => {
-                this._assertAlive();
-                this._setExtraUniformValue(name, value);
-                this._queueSlotUpdate(false);
-            },
+            set: this.#slotSetter((value) =>
+                this._setExtraUniformValue(name, value)
+            ),
         };
     }
 
@@ -1022,12 +958,10 @@ export default class BaseProgram {
         }
         const write = this._uniformBufferState.getSetter(uniformName);
         return {
-            set: (value) => {
-                this._assertAlive();
+            set: this.#slotSetter((value) => {
                 validateScalarSlotValue(name, config.type, value);
                 write(value);
-                this._queueSlotUpdate(false);
-            },
+            }),
         };
     }
 
@@ -1047,16 +981,15 @@ export default class BaseProgram {
      * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
     #createSelectionSlot(def) {
-        /** @param {import("./selectionResources.js").SelectionValue} value */
-        const set = (value) => {
-            this._assertAlive();
-            const needsRebind = this.#selectionResources.updateSelection(
-                def,
-                value,
-                this._extraBuffers
-            );
-            this._queueSlotUpdate(needsRebind);
-        };
+        const set = this.#slotSetter(
+            /** @param {import("./selectionResources.js").SelectionValue} value */
+            (value) =>
+                this.#selectionResources.updateSelection(
+                    def,
+                    value,
+                    this._extraBuffers
+                )
+        );
         return def.type === "interval"
             ? { type: def.type, components: def.components ?? [], set }
             : { type: def.type, set };
