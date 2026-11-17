@@ -208,7 +208,7 @@ describe("WebGPU interaction benchmark driver", () => {
         });
     });
 
-    test("permits only closeup layouts accounted for by active sample membership", () => {
+    test("rejects layout during closeup navigation", () => {
         const state = {
             domains: [[0, 10]],
             peekState: 0,
@@ -228,24 +228,17 @@ describe("WebGPU interaction benchmark driver", () => {
             ],
             profile: {
                 frames: Array.from({ length: 3 }, () => ({ kind: "render" })),
-                phaseTotals: { layout: 2 },
-                countTotals: {
-                    layoutComputations: 2,
-                    sampleArrangementMembershipChanges: 2,
-                },
+                phaseTotals: { layout: 0 },
+                countTotals: { layoutComputations: 0 },
             },
         };
         expect(validateInteractionResult(input).passed).toBe(true);
 
-        input.profile.countTotals.layoutComputations = 3;
+        input.profile.countTotals.layoutComputations = 1;
         expect(validateInteractionResult(input).passed).toBe(false);
 
-        input.profile.countTotals.layoutComputations = 2;
-        input.caseName = "wasd-zoom";
-        input.keyboardEvents = [
-            { type: "keydown", code: "KeyW" },
-            { type: "keyup", code: "KeyW" },
-        ];
+        input.profile.countTotals.layoutComputations = 0;
+        input.profile.phaseTotals.layout = 1;
         expect(validateInteractionResult(input).passed).toBe(false);
     });
 });

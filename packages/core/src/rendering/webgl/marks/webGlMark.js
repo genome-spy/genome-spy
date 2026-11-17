@@ -1356,27 +1356,28 @@ export default class WebGLMark {
      */
     prepareSampleFacetRendering(options) {
         const opts = options.sampleFacetRenderingOptions;
-        const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
 
-        if (opts && locationSetter) {
+        if (opts) {
             const scale = opts.pixelToUnit;
             const pos = opts.locSize.location * scale;
             const height = opts.locSize.size * scale;
 
-            if (pos > 1.0 || pos + height < 0.0) {
-                // Not visible
+            if (height <= 0 || pos > 1 || pos + height < 0) {
                 return false;
             }
 
             // Use WebGL directly, because twgl uses gl.uniform2fv, which has an
             // inferior performance. Based on profiling, this optimization gives
             // a significant performance boost.
-            this.gl.uniform2f(
-                // @ts-expect-error
-                locationSetter.location, // TODO: Make a twgl pull request to fix typing
-                pos,
-                height
-            );
+            const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
+            if (locationSetter) {
+                this.gl.uniform2f(
+                    // @ts-expect-error
+                    locationSetter.location, // TODO: Make a twgl pull request to fix typing
+                    pos,
+                    height
+                );
+            }
         }
 
         return true;

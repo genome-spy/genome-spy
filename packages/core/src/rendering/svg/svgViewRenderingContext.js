@@ -370,6 +370,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
+        const sampleFacet = options.sampleFacetRenderingOptions;
+        if (sampleFacet && sampleFacet.locSize.size <= 0) {
+            return;
+        }
+
         if (mark.unitView.getEffectiveOpacity() <= 0) {
             return;
         }

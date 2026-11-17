@@ -7,7 +7,14 @@ import {
     initializeViewData,
     initializeVisibleViewData,
 } from "@genome-spy/core/genomeSpy/viewDataInit.js";
+import SoftwarePickingBuffer from "@genome-spy/core/rendering/canvas2d/picking/softwarePickingBuffer.js";
+import SoftwarePickingRasterizer from "@genome-spy/core/rendering/canvas2d/picking/softwarePickingRasterizer.js";
+import SoftwarePickingViewRenderingContext from "@genome-spy/core/rendering/canvas2d/picking/softwarePickingViewRenderingContext.js";
+import SvgViewRenderingContext from "@genome-spy/core/rendering/svg/svgViewRenderingContext.js";
 import { createSvg } from "@genome-spy/core/svg/index.js";
+import { createLayoutResult } from "@genome-spy/core/view/layout/layoutResult.js";
+import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import MergeSampleFacets from "./mergeFacets.js";
 
@@ -160,11 +167,42 @@ describe("SampleView SVG export", () => {
             context.textMetrics
         );
 
-        const { svg, warnings } = createSvg({
-            viewRoot: view,
-            logicalWidth: 500,
-            logicalHeight: 240,
-        });
+        const width = 500;
+        const height = 240;
+        // Replay the same arranged commands while the sample camera changes.
+        const layout = createLayoutResult(
+            view,
+            Rectangle.create(0, 0, width, height),
+            { renderingOptions: { firstFacet: true } }
+        );
+        const textMetrics = context.textMetrics;
+        const render = () => {
+            const svgContext = new SvgViewRenderingContext(
+                { picking: false },
+                { width, height, textMetrics }
+            );
+            layout.collectRenderCommands(svgContext);
+            return {
+                svg: svgContext.getSvg(),
+                warnings: svgContext.getWarnings(),
+            };
+        };
+        const pick = (/** @type {number} */ x, /** @type {number} */ y) => {
+            const buffer = new SoftwarePickingBuffer(width, height);
+            const rasterizer = new SoftwarePickingRasterizer(buffer);
+            layout.collectRenderCommands(
+                new SoftwarePickingViewRenderingContext({
+                    width,
+                    height,
+                    textMetrics,
+                    devicePixelRatio: 1,
+                    getRasterizer: () => rasterizer,
+                })
+            );
+            return buffer.read(x, y);
+        };
+
+        const { svg, warnings } = render();
         const plots = Array.from(
             svg.querySelectorAll(
                 '[data-name="sample-plot"] [data-mark-type="rect"] rect'
@@ -222,6 +260,9 @@ describe("SampleView SVG export", () => {
         const plot = view
             .getDescendants()
             .find((candidate) => candidate.name === "sample-plot");
+        if (!(plot instanceof UnitView)) throw new Error("Missing sample plot");
+        const firstFacetCoords = plot.facetCoords.get(["A"]);
+        const middleOfPlot = view.childCoords.x + view.childCoords.width / 2;
         const topology = view.locationManager
             .getPlacementSource()
             .getSnapshot().topology;
@@ -231,11 +272,7 @@ describe("SampleView SVG export", () => {
         context.requestLayoutReflow = requestLayout;
         await view.locationManager.togglePeek(true, 120, "A");
         view.locationManager.setScrollOffset(100);
-        const empty = createSvg({
-            viewRoot: view,
-            logicalWidth: 500,
-            logicalHeight: 240,
-        }).svg;
+        const empty = render().svg;
         expect(
             empty.querySelectorAll('[data-name="sample-plot"] rect')
         ).toHaveLength(0);
@@ -245,17 +282,11 @@ describe("SampleView SVG export", () => {
         const emptyViewport = rowScale.viewport();
         expect(emptyViewport).not.toEqual(initialViewport);
         expect(rowScale.range()).toEqual([1, 0]);
-        expect(plot.facetCoords.size).toBe(0);
+        expect(plot.facetCoords.get(["A"])).toBe(firstFacetCoords);
+        expect(pick(middleOfPlot, height / 2)).toBe(0);
 
-        requestLayout.mockClear();
         view.locationManager.setScrollOffset(Infinity);
-        // Membership invalidation must precede this first render after an empty batch.
-        expect(requestLayout).toHaveBeenCalled();
-        const next = createSvg({
-            viewRoot: view,
-            logicalWidth: 500,
-            logicalHeight: 240,
-        }).svg;
+        const next = render().svg;
         expect(
             next.querySelectorAll('[data-name="sample-plot"] rect')
         ).toHaveLength(1);
@@ -266,6 +297,14 @@ describe("SampleView SVG export", () => {
             )
         ).toEqual(["C"]);
         const nextPlot = next.querySelector('[data-name="sample-plot"] rect');
+        const id = pick(
+            middleOfPlot,
+            Number(nextPlot.getAttribute("y")) +
+                Number(nextPlot.getAttribute("height")) / 2
+        );
+        expect(plot.getCollector().findDatumByUniqueId(id)).toMatchObject({
+            sample: "C",
+        });
         const nextBar = Array.from(
             next.querySelectorAll('[data-name="attribute-bar-value"] rect')
         ).at(-1);
@@ -288,6 +327,7 @@ describe("SampleView SVG export", () => {
         // Fixed group summaries can exhaust the fitted rows. Metadata and
         // labels must disappear while the summaries remain visible.
         await view.locationManager.togglePeek(false);
+        expect(requestLayout).not.toHaveBeenCalled();
         const exhausted = createSvg({
             viewRoot: view,
             logicalWidth: 500,

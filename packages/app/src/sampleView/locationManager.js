@@ -553,30 +553,6 @@ export class LocationManager {
         };
     }
 
-    /** Half-open display-rank interval, retaining exact viewport-edge contact. */
-    getVisibleSampleRange() {
-        if (!this.#ensureDynamicLocations() || this.#rowGeometry.step === 0)
-            return [0, 0];
-        const samples = this.#locations.samples;
-        let lo = 0;
-        let hi = samples.length;
-        while (lo < hi) {
-            const mid = (lo + hi) >>> 1;
-            const row = samples[mid].locSize;
-            if (row.location + row.size < 0) lo = mid + 1;
-            else hi = mid;
-        }
-        const first = lo;
-        hi = samples.length;
-        const height = this.#layoutInputs.height;
-        while (lo < hi) {
-            const mid = (lo + hi) >>> 1;
-            if (samples[mid].locSize.location <= height) lo = mid + 1;
-            else hi = mid;
-        }
-        return [first, lo];
-    }
-
     #ensureBaseLayout() {
         const height = this.#locationContext.getHeight();
         if (!(height > 0)) return false;

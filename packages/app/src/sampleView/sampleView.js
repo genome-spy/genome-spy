@@ -182,8 +182,6 @@ export default class SampleView extends ContainerView {
 
     #sampleRenderTopologyRevision = -1;
 
-    #hasActiveSamples = false;
-
     #selectionExpansionMultiParamWarningShown = false;
 
     // A close-up transition invalidates any pending wheel zoom replay.
@@ -590,7 +588,6 @@ export default class SampleView extends ContainerView {
             onLocationUpdate: ({ sampleHeight }) => {
                 this.#sampleHeightParam?.(sampleHeight);
                 this.#syncRowScale();
-                this.#updateActiveSamples(true);
             },
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,
@@ -1132,21 +1129,6 @@ export default class SampleView extends ContainerView {
         }
     }
 
-    /** Invalidate retained occurrence membership before the renderer starts.
-     * @param {boolean} requestLayout
-     */
-    #updateActiveSamples(requestLayout) {
-        if (!this.#rowScaleResolution) return;
-        const [start, end] = this.locationManager.getVisibleSampleRange();
-        const hasActiveSamples = start !== end;
-        if (hasActiveSamples === this.#hasActiveSamples) return;
-        this.#hasActiveSamples = hasActiveSamples;
-        if (requestLayout) {
-            countPerformance("sampleArrangementMembershipChanges");
-            this.context.requestLayoutReflow();
-        }
-    }
-
     /**
      * @param {import("./sampleViewTypes.js").SampleLocation[]} sampleLocations
      * @param {number} viewHeight
@@ -1156,7 +1138,6 @@ export default class SampleView extends ContainerView {
         const placementSource = this.locationManager.getPlacementSource();
         const placementTopologyRevision =
             placementSource.getSnapshot().topology.revision;
-        if (!this.#hasActiveSamples) return [];
         if (
             this.#sampleRenderLocationSource === sampleLocations &&
             this.#sampleRenderHeight === viewHeight &&
@@ -1165,8 +1146,8 @@ export default class SampleView extends ContainerView {
             return this.#sampleRenderOptions;
         }
 
-        // Keep all occurrences retained while any row is visible. Rebuilding
-        // layout as the visible interval moves costs more than renderer culling.
+        // Keep the arranged occurrences through gaps and collapsed rows.
+        // Renderers test visibility from the live placement geometry.
         const pixelToUnit = 1 / viewHeight;
         this.#sampleRenderOptions = sampleLocations.map((sampleLocation) => ({
             sampleFacetRenderingOptions: {
@@ -1396,7 +1377,6 @@ export default class SampleView extends ContainerView {
 
         this.#rowScaleResolution = this.#sidebarView.getScaleResolution("y");
         this.#syncRowScale();
-        this.#updateActiveSamples(false);
         this.#sidebarView.arrange(
             context,
             this.sidebarCoords.expand(alignedOverhangs.sidebarVerticalOverhang),

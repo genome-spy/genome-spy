@@ -28,6 +28,28 @@ resolution preserves master's coverage of faded repeated facets and local opacit
 scopes. The removed fixture exercised the retired texture-indexed placement path.
 Earlier timing comparisons retain their original baselines.
 
+## Retain facet arrangement and share the CPU band projection
+
+1. Keep the repeated plot arrangements for the complete displayed sample set
+   through vertical scroll, peek and gap-only viewports. Publish live placement
+   geometry and cull offscreen or collapsed facets for both paint and picking.
+   Arrange again on structural changes such as membership changes. Verify gap
+   entry and reentry from the same arrangement, including zero-height rows.
+   Commit as `fix(app): retain sample facets across viewport gaps`.
+2. Reuse Core's numeric band projection and inverse for the full requested
+   SampleView row geometry. App owns camera policy and cached group ranks. Use
+   those ranks in the existing placement pass to preserve constant work per
+   row. Derive the sidebar viewport from the same pixel geometry, including
+   fractional group-gap edges. Verify alignment and preserve row and summary
+   geometry at zero pitch. Commit as
+   `refactor(app): share SampleView band projection with Core`.
+
+Use browser layout counters for ordinary scrolling, opening and closing peek
+through settling, and gap-only recovery. Compare warmed paired WebGL and WebGPU
+traces against the original PR head and master with profiling disabled for
+timing. Check output and interaction state before interpreting CPU or cadence.
+The existing App patch fragment covers the SampleView fixes in this draft.
+
 ## November 6 remote-master refresh
 
 Rebased the foundation onto remote master `0cd106618`, then replayed all three
@@ -183,12 +205,11 @@ Fixed metadata guides and labels remain in their ordinary viewport coordinates.
 
 ### 4. Retained plot arrangement and consumer simplifications
 
-Retain the complete nonempty row batch and let renderers cull occurrences.
-Ordinary scrolling changes neither occurrence membership nor full layout.
-Request membership reflow only for wholly empty/nonempty transitions, detected
-before the renderer consumes pending layout requests. Clear stale facet coordinates
-for an empty repeated subtree while retaining complete packing topology/resources.
-Keep distinct stable per-row geometry and isolated option envelopes.
+Retain the complete displayed row batch and let renderers cull occurrences using
+live geometry, including when a gap fills the viewport or rows collapse. Scroll
+and peek keep the same arrangement. An empty displayed sample set clears its
+facet coordinates when its structural change is arranged. Keep distinct stable
+per-row geometry and isolated option envelopes.
 
 Exact/nearest sample lookup uses binary search over monotonic live row bounds,
 including padding/gap exclusion and the existing nearest-row tie rule. Axis

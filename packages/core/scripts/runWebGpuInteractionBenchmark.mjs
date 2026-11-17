@@ -562,16 +562,7 @@ export function validateInteractionResult({
         ((profile?.countTotals?.layoutComputations ?? 0) > 0 ||
             (profile?.phaseTotals?.layout ?? 0) > 0)
     ) {
-        const computations = profile?.countTotals?.layoutComputations ?? 0;
-        const membershipChanges =
-            caseName === "open-closeup" || caseName === "closeup-wheel"
-                ? (profile?.countTotals?.sampleArrangementMembershipChanges ??
-                  0)
-                : 0;
-        if (!computations || computations > membershipChanges)
-            errors.push(
-                `${caseName} invoked layout without an active sample membership change.`
-            );
+        errors.push(`${caseName} invoked layout during navigation.`);
     }
 
     return { passed: errors.length === 0, errors };
