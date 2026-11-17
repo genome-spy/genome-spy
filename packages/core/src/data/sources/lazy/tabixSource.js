@@ -1,10 +1,6 @@
-import {
-    activateExprRefProps,
-    withoutExprRef,
-} from "../../../paramRuntime/paramUtils.js";
+import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
 import {
     attachDescriptorFieldsToData,
-    getUrlDescriptorExpressions,
     urlDescriptorKey,
 } from "../urlDescriptor.js";
 import IntervalUrlSource from "./intervalUrlSource.js";
@@ -43,23 +39,9 @@ export default class TabixSource extends IntervalUrlSource {
         const channel = withoutExprRef(paramsWithDefaults.channel);
         super(view, channel);
 
-        this.params = activateExprRefProps(
-            view.paramRuntime,
-            paramsWithDefaults,
-            (props) => {
-                if (
-                    props.has("url") ||
-                    props.has("indexUrl") ||
-                    props.has("addChrPrefix")
-                ) {
-                    this.reloadUrlDescriptors();
-                } else if (props.has("windowSize")) {
-                    this.reloadLastDomain();
-                }
-            },
-            (disposer) => this.registerDisposer(disposer),
-            getUrlDescriptorExpressions(paramsWithDefaults.url)
-        );
+        this.params = this.activateUrlParams(paramsWithDefaults, {
+            descriptorKeys: ["indexUrl", "addChrPrefix"],
+        });
 
         if (!withoutExprRef(this.params.url)) {
             throw new Error("No URL provided for TabixSource");
