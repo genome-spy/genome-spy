@@ -1,13 +1,11 @@
 import { compare } from "vega-util";
-import { sum as d3sum } from "d3-array";
+import { groups as d3groups, sum as d3sum } from "d3-array";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
     createFileBatchPropagator,
 } from "../fileBatchUtils.js";
-
-/** @typedef {import("../flowNode.js").Datum} Datum */
 
 export default class StackTransform extends Transform {
     /** @type {import("../fileBatchUtils.js").FileBatchStart[]} */
@@ -25,7 +23,7 @@ export default class StackTransform extends Transform {
         super(params, paramRuntimeProvider);
         this.params = params;
 
-        /** @type {Datum[]} */
+        /** @type {any[]} */
         this.buffer = [];
     }
 
@@ -37,7 +35,7 @@ export default class StackTransform extends Transform {
 
     /**
      *
-     * @param {Datum} datum
+     * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
         this.buffer.push(datum);
@@ -80,11 +78,12 @@ export default class StackTransform extends Transform {
             : () => 1;
 
         const groupFields = this.createFieldAccessors(params, "groupby");
-        const groups = groupFields.length
-            ? groupRows(this.buffer, groupFields)
-            : [this.buffer];
 
-        /** @type {(datum: Datum) => boolean} */
+        const groups = d3groups(this.buffer, (row) =>
+            groupFields.map((f) => f(row)).join()
+        ).map((a) => a[1]);
+
+        /** @type {(datum: any) => boolean} */
         let inclusionPredicate = (_datum) => true;
 
         if (params.baseField) {
@@ -95,7 +94,7 @@ export default class StackTransform extends Transform {
         /** @type {(value: number, sum: number) => number} */
         let offsetF;
 
-        /** @type {(values: Datum[], accessor: (datum: Datum) => number) => number} */
+        /** @type {(values: number[], accessor: (datum: any) => number) => number} */
         let sumF;
 
         switch (params.offset) {
@@ -168,27 +167,4 @@ export default class StackTransform extends Transform {
         this.buffer = [];
         this.#fileBatchStarts = [];
     }
-}
-
-/**
- * @param {Datum[]} rows
- * @param {((row: Datum) => any)[]} accessors
- */
-function groupRows(rows, accessors) {
-    const keyParts = new Array(accessors.length);
-
-    // Keep the existing string coercion and comma-joined keys.
-    /** @type {(row: Datum) => string} */
-    const keyOf =
-        accessors.length == 1
-            ? (row) => `${accessors[0]?.(row) ?? ""}`
-            : (row) => {
-                  for (let i = 0; i < accessors.length; i++) {
-                      const accessor = accessors[i];
-                      keyParts[i] = accessor?.(row);
-                  }
-                  return keyParts.join();
-              };
-
-    return Map.groupBy(rows, keyOf).values();
 }

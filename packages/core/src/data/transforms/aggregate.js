@@ -4,9 +4,6 @@ import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
 
 export default class AggregateTransform extends Transform {
-    /** @type {number | undefined} Undefined when rows are buffered. */
-    #count;
-
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -33,7 +30,6 @@ export default class AggregateTransform extends Transform {
          */
         this.as = [];
 
-        let countOnly = true;
         if (params.fields) {
             if (params.fields.length != params.ops.length) {
                 throw new Error("Fields and ops must have the same length!");
@@ -49,40 +45,30 @@ export default class AggregateTransform extends Transform {
                 const accessor = this.createFieldAccessor(params, "fields", {
                     index: i,
                 });
-                const name = params.ops[i];
-                const op = AGGREGATE_OPS[name];
-                countOnly &&= name === "count";
+                const op = AGGREGATE_OPS[params.ops[i]];
                 this.ops.push((arr) => op(arr, accessor));
                 this.as.push(
-                    params.as ? params.as[i] : `${name}_${params.fields[i]}`
+                    params.as
+                        ? params.as[i]
+                        : `${params.ops[i]}_${params.fields[i]}`
                 );
             });
         } else {
             this.ops.push((arr) => AGGREGATE_OPS.count(arr));
             this.as.push("count");
         }
-
-        this.#count = countOnly && !params.groupby?.length ? 0 : undefined;
     }
 
     reset() {
         super.reset();
-        this.#clearBatch();
-    }
-
-    #clearBatch() {
         this.buffer = [];
-        if (this.#count !== undefined) {
-            this.#count = 0;
-        }
     }
 
     /**
      * Propagate the current buffer as one aggregated batch.
      */
     #flushBuffer() {
-        const groupby =
-            this.#count === undefined ? (this.params.groupby ?? []) : [];
+        const groupby = this.params.groupby ?? [];
         const data = groupby.length
             ? groupRows(
                   this.buffer,
@@ -113,9 +99,8 @@ export default class AggregateTransform extends Transform {
         for (let i = 0; i < depth; i++) {
             datum[groupby[i]] = path[i];
         }
-        const count = this.#count;
         for (let i = 0; i < this.ops.length; i++) {
-            datum[this.as[i]] = count ?? this.ops[i](data);
+            datum[this.as[i]] = this.ops[i](data);
         }
         this._propagate(datum);
     }
@@ -125,11 +110,7 @@ export default class AggregateTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        if (this.#count !== undefined) {
-            this.#count++;
-        } else {
-            this.buffer.push(datum);
-        }
+        this.buffer.push(datum);
     }
 
     /**
@@ -143,9 +124,9 @@ export default class AggregateTransform extends Transform {
         if (flowBatch.type == "file") {
             return;
         }
-        if (this.#count || this.buffer.length || this.inFacet) {
+        if (this.buffer.length > 0 || this.inFacet) {
             this.#flushBuffer();
-            this.#clearBatch();
+            this.buffer = [];
         }
 
         super.beginBatch(flowBatch);

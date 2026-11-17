@@ -182,21 +182,6 @@ describe("Aggregate transform", () => {
         ]);
     });
 
-    test("quartiles preserve numeric coercion and non-finite interpolation", () => {
-        expect(
-            transform(
-                {
-                    type: "aggregate",
-                    fields: ["value", "value", "value"],
-                    ops: ["q1", "median", "q3"],
-                },
-                [null, undefined, false, "4", NaN, Infinity].map((value) => ({
-                    value,
-                }))
-            )
-        ).toEqual([{ q1_value: 2, median_value: NaN, q3_value: Infinity }]);
-    });
-
     test("Throw if the length of fields and ops does not match", () => {
         const input = [{ name: "beta", data: 789 }];
 

@@ -4,5 +4,5 @@
 
 <!-- category: improvement -->
 
-Speed up `window`, `joinaggregate`, `aggregate`, `stack`, and `collect` on large
-data batches.
+Speed up whole-partition `window` and `joinaggregate` calculations and grouped
+`aggregate` on large data batches.

@@ -1,4 +1,4 @@
-import { bisector, bisectRight, quantileSorted } from "d3-array";
+import { bisectLeft, quantileSorted } from "d3-array";
 
 /**
  * Compatibility note: this module follows the aggregate portion of Vega's
@@ -33,9 +33,6 @@ export const WINDOW_AGGREGATE_OPS = new Set([
 const ORDERED_OPS = new Set(["min", "max", "q1", "median", "q3"]);
 const MOMENT_OPS = new Set(["mean", "variance"]);
 
-const BLOCK_SIZE = 256;
-const BLOCK_SHIFT_THRESHOLD = 4096;
-
 /**
  * @typedef {{ op: string, resultIndex: number }} AggregateResult
  */
@@ -67,15 +64,37 @@ export function createAggregatePartitionEvaluator(accessor, results) {
             const resultArrays = resultIndices.map((index) => output[index]);
             const starts = bounds.starts;
             const stops = bounds.stops;
-            // Frame boundaries are monotonic, so these endpoints imply that
-            // every requested frame covers the same whole partition.
+
+            // Frame boundaries are monotonic. These endpoints imply that
+            // every requested frame covers the whole partition.
             const wholePartition =
-                starts[starts.length - 1] == 0 && stops[0] == rows.length;
+                starts[starts.length - 1] === 0 && stops[0] === rows.length;
             const state = new WindowAggregateState(
                 accessor,
                 ops,
                 wholePartition
             );
+            if (wholePartition) {
+                for (const row of rows) {
+                    state.add(row);
+                }
+                if (state.needsOrderedValues) {
+                    // Stable sorting after reversing preserves the tie order
+                    // of left insertion, which is observable for signed zeros.
+                    state.values
+                        .reverse()
+                        .sort(
+                            (a, b) =>
+                                a - b ||
+                                Number(Number.isNaN(a)) -
+                                    Number(Number.isNaN(b))
+                        );
+                }
+                for (let i = 0; i < readers.length; i++) {
+                    resultArrays[i].fill(readers[i](state));
+                }
+                return;
+            }
 
             let start = 0;
             let stop = 0;
@@ -86,16 +105,14 @@ export function createAggregatePartitionEvaluator(accessor, results) {
                 while (start < nextStart) {
                     state.remove(rows[start++]);
                 }
+                while (start > nextStart) {
+                    state.add(rows[--start]);
+                }
                 while (stop < nextStop) {
                     state.add(rows[stop++]);
                 }
-
-                if (wholePartition) {
-                    state.sortValues();
-                    for (let i = 0; i < readers.length; i++) {
-                        resultArrays[i].fill(readers[i](state));
-                    }
-                    return;
+                while (stop > nextStop) {
+                    state.remove(rows[--stop]);
                 }
 
                 for (let i = 0; i < readers.length; i++) {
@@ -117,17 +134,18 @@ function createAggregateValueReader(op) {
         case "sum":
             return (state) => (state.valid ? state.sum : undefined);
         case "min":
-            return (state) => (state.valid ? state.min() : undefined);
+            return (state) => (state.valid ? state.values[0] : undefined);
         case "max":
-            return (state) => (state.valid ? state.max() : undefined);
+            return (state) =>
+                state.valid ? state.values[state.values.length - 1] : undefined;
         case "mean":
             return (state) => (state.valid ? state.mean : undefined);
         case "q1":
-            return (state) => (state.valid ? state.quantile(0.25) : undefined);
+            return (state) => (state.valid ? state.q1() : undefined);
         case "median":
-            return (state) => (state.valid ? state.quantile(0.5) : undefined);
+            return (state) => (state.valid ? state.median() : undefined);
         case "q3":
-            return (state) => (state.valid ? state.quantile(0.75) : undefined);
+            return (state) => (state.valid ? state.q3() : undefined);
         case "variance":
             return (state) =>
                 state.valid > 1 ? state.m2 / (state.valid - 1) : undefined;
@@ -141,7 +159,7 @@ function createAggregateValueReader(op) {
  * Rows enter and leave each state once per boundary movement, avoiding a
  * full-frame scan for every output row.
  */
-class WindowAggregateState {
+export class WindowAggregateState {
     /** @type {(datum: Datum) => any} */
     accessor;
 
@@ -154,13 +172,22 @@ class WindowAggregateState {
     /** @type {boolean} */
     needsOrderedValues;
 
-    valid = 0;
-    sum = 0;
-    mean = 0;
-    m2 = 0;
+    /** @type {number} */
+    valid;
 
-    /** @type {number[][]} */
-    #blocks = [[]];
+    /** @type {number} */
+    sum;
+
+    /** @type {number} */
+    mean;
+
+    /** @type {number} */
+    m2;
+
+    // TODO: Use an ordered multiset if large moving frames make splice-based
+    // updates a bottleneck.
+    /** @type {number[]} */
+    values;
 
     /**
      * @param {(datum: Datum) => any} accessor
@@ -173,24 +200,15 @@ class WindowAggregateState {
         this.needsMoments = ops.some((op) => MOMENT_OPS.has(op));
         this.needsOrderedValues = ops.some((op) => ORDERED_OPS.has(op));
         this.deferSorting = deferSorting;
+        this.reset();
     }
 
-    sortValues() {
-        const values = this.#blocks[0];
-        values.sort(compareNumbers);
-
-        // Left insertion reverses ties. Only signed zeros can compare equal
-        // while remaining observably different.
-        for (
-            let left = findInsertIndex(values, 0),
-                right = bisectRight(values, 0) - 1;
-            left < right;
-            left++, right--
-        ) {
-            const value = values[left];
-            values[left] = values[right];
-            values[right] = value;
-        }
+    reset() {
+        this.valid = 0;
+        this.sum = 0;
+        this.mean = 0;
+        this.m2 = 0;
+        this.values = [];
     }
 
     /** @param {Datum} datum */
@@ -215,7 +233,15 @@ class WindowAggregateState {
             this.m2 += delta * (numericValue - this.mean);
         }
         if (this.needsOrderedValues) {
-            this.#changeOrdered(numericValue, true);
+            if (this.deferSorting) {
+                this.values.push(numericValue);
+            } else {
+                this.values.splice(
+                    bisectLeft(this.values, numericValue),
+                    0,
+                    numericValue
+                );
+            }
         }
     }
 
@@ -248,124 +274,23 @@ class WindowAggregateState {
             }
         }
         if (this.needsOrderedValues) {
-            this.#changeOrdered(numericValue, false);
-        }
-    }
-
-    /**
-     * @param {number} value
-     * @param {boolean} add
-     */
-    #changeOrdered(value, add) {
-        const blocks = this.#blocks;
-        const index =
-            blocks.length == 1
-                ? 0
-                : findBlock(blocks, value, 0, blocks.length - 1);
-        const block = blocks[index];
-        let offset = block.length;
-        if (add && (this.deferSorting || value > block[offset - 1])) {
-            block.push(value);
-        } else {
-            offset = findInsertIndex(block, value);
-            if (add) {
-                block.splice(offset, 0, value);
-            } else {
-                if (block[offset] !== value) {
-                    throw new Error("Window aggregate state is inconsistent.");
-                }
-                block.splice(offset, 1);
+            const index = bisectLeft(this.values, numericValue);
+            if (this.values[index] !== numericValue) {
+                throw new Error("Window aggregate state is inconsistent.");
             }
-        }
-
-        if (blocks.length == 1) {
-            // A single block stays flat until a splice shifts thousands of values.
-            if (block.length - offset >= BLOCK_SHIFT_THRESHOLD) {
-                this.#blocks = [];
-                for (let i = 0; i < block.length; i += BLOCK_SIZE) {
-                    this.#blocks.push(block.slice(i, i + BLOCK_SIZE));
-                }
-            }
-        } else if (block.length > 2 * BLOCK_SIZE) {
-            blocks.splice(index + 1, 0, block.splice(BLOCK_SIZE));
-        } else if (block.length == 0) {
-            blocks.splice(index, 1);
-        } else if (!add && block.length < BLOCK_SIZE) {
-            const left = Math.min(index, blocks.length - 2);
-            if (
-                blocks[left].length + blocks[left + 1].length <=
-                BLOCK_SIZE * 1.5
-            ) {
-                blocks[left].push(...blocks[left + 1]);
-                blocks.splice(left + 1, 1);
-            }
+            this.values.splice(index, 1);
         }
     }
 
-    min() {
-        return this.#blocks[0][0];
+    q1() {
+        return quantileSorted(this.values, 0.25);
     }
 
-    max() {
-        const block = this.#blocks[this.#blocks.length - 1];
-        return block[block.length - 1];
+    median() {
+        return quantileSorted(this.values, 0.5);
     }
 
-    /** @param {number} p */
-    quantile(p) {
-        const blocks = this.#blocks;
-        if (blocks.length == 1) {
-            return quantileSorted(blocks[0], p);
-        }
-        const position = (this.valid - 1) * p;
-        const rank = Math.floor(position);
-        let index = rank;
-        let blockIndex = 0;
-        while (index >= blocks[blockIndex].length) {
-            index -= blocks[blockIndex++].length;
-        }
-        const block = blocks[blockIndex];
-        const lower = block[index];
-        const upper =
-            index + 1 < block.length
-                ? block[index + 1]
-                : blocks[blockIndex + 1][0];
-        return lower + (upper - lower) * (position - rank);
+    q3() {
+        return quantileSorted(this.values, 0.75);
     }
-}
-
-// Stop at the final block even when a value sorts after its maximum.
-const findBlock = bisector(
-    /** @param {number[]} block */ (block) => block[block.length - 1]
-).left;
-
-/**
- * Match numeric bisectLeft, including NaNs at the end of the array.
- * @param {number[]} values
- * @param {number} value
- */
-function findInsertIndex(values, value) {
-    let low = 0;
-    let high = values.length;
-    if (Number.isNaN(value)) {
-        return high;
-    }
-    while (low < high) {
-        const middle = (low + high) >>> 1;
-        if (values[middle] < value) {
-            low = middle + 1;
-        } else {
-            high = middle;
-        }
-    }
-    return low;
-}
-
-/**
- * Matches bisectLeft's order, which places numeric NaNs after other values.
- * @param {number} a
- * @param {number} b
- */
-function compareNumbers(a, b) {
-    return a < b ? -1 : a > b ? 1 : Number(a !== a) - Number(b !== b);
 }
