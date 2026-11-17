@@ -287,13 +287,40 @@ function copyScaleForDomain(scale) {
     return copy;
 }
 
+/**
+ * Prepare the domain without mutating a copyable scale.
+ */
 export function configureDomain(
+    scale,
+    properties,
+    logger,
+    suppressUninitializedDomain = false
+) {
+    return applyScaleDomain(
+        scale.domain ? copyScaleForDomain(scale) : scale,
+        properties,
+        logger,
+        suppressUninitializedDomain
+    );
+}
+
+/**
+ * Apply a domain to a scale owned by the caller.
+ * @internal
+ * @param {import("../types/encoder.js").VegaScale} scale
+ * @param {import("../spec/scale.js").Scale} _
+ * @param {ReturnType<typeof ensureLogger>} [logger]
+ * @param {boolean} [suppressUninitializedDomain]
+ */
+export function applyScaleDomain(
     scale,
     _,
     logger,
     suppressUninitializedDomain = false
 ) {
-    if (!scale.domain) {
+    const rawDomain = _.domainRaw;
+    let domain = rawDomain || _.domain;
+    if (!scale.domain || !domain) {
         return {
             domain: null,
             count: 0,
@@ -304,108 +331,68 @@ export function configureDomain(
 
     logger = ensureLogger(logger);
 
-    const workingScale = copyScaleForDomain(scale);
+    const type = scale.type;
+    if (!rawDomain) {
+        // Adjust the continuous domain for minimum pixel padding.
+        if (includePad(type) && _.padding && domain[0] !== peek(domain)) {
+            domain = padDomain(
+                type,
+                domain,
+                _.range,
+                _.padding,
+                _.exponent,
+                _.constant
+            );
+        }
 
-    // check raw domain, if provided use that and exit early
-    var raw = rawDomain(workingScale, _.domainRaw, logger);
-    if (raw > -1) {
-        return {
-            domain: workingScale.domain(),
-            count: raw,
-            ordinalUnknown:
-                workingScale.type === Ordinal
-                    ? _.domainImplicit
-                        ? scaleImplicit
-                        : undefined
-                    : undefined,
-            applyOrdinalUnknown: false,
-        };
+        const zero = _.zero || (_.zero === undefined && includeZero(scale));
+        if (
+            zero ||
+            _.domainMin != null ||
+            _.domainMax != null ||
+            _.domainMid != null
+        ) {
+            domain = domain.slice();
+            const last = domain.length - 1 || 1;
+            if (zero) {
+                if (domain[0] > 0) domain[0] = 0;
+                if (domain[last] < 0) domain[last] = 0;
+            }
+            if (_.domainMin != null) domain[0] = _.domainMin;
+            if (_.domainMax != null) domain[last] = _.domainMax;
+
+            if (_.domainMid != null) {
+                const mid = _.domainMid;
+                if (mid < domain[0] || mid > domain[last]) {
+                    logger.warn(
+                        "Scale domainMid exceeds domain min or max.",
+                        mid
+                    );
+                }
+                domain.splice(last, 0, mid);
+            }
+        }
     }
 
-    var domain = _.domain,
-        type = workingScale.type,
-        zero = _.zero || (_.zero === undefined && includeZero(workingScale)),
-        n,
-        mid;
-
-    if (!domain) {
-        return {
-            domain: null,
-            count: 0,
-            ordinalUnknown: undefined,
-            applyOrdinalUnknown: false,
-        };
-    }
-
-    // adjust continuous domain for minimum pixel padding
-    if (includePad(type) && _.padding && domain[0] !== peek(domain)) {
-        domain = padDomain(
+    scale.domain(
+        domainCheck(
             type,
             domain,
-            _.range,
-            _.padding,
-            _.exponent,
-            _.constant
-        );
-    }
-
-    // adjust domain based on zero, min, max settings
-    if (
-        zero ||
-        _.domainMin != null ||
-        _.domainMax != null ||
-        _.domainMid != null
-    ) {
-        n = (domain = domain.slice()).length - 1 || 1;
-        if (zero) {
-            if (domain[0] > 0) domain[0] = 0;
-            if (domain[n] < 0) domain[n] = 0;
-        }
-        if (_.domainMin != null) domain[0] = _.domainMin;
-        if (_.domainMax != null) domain[n] = _.domainMax;
-
-        if (_.domainMid != null) {
-            mid = _.domainMid;
-            if (mid < domain[0] || mid > domain[n]) {
-                logger.warn("Scale domainMid exceeds domain min or max.", mid);
-            }
-            domain.splice(n, 0, mid);
-        }
-    }
-
-    // set the scale domain
-    workingScale.domain(
-        domainCheck(type, domain, logger, suppressUninitializedDomain)
+            logger,
+            !rawDomain && suppressUninitializedDomain
+        )
     );
-
-    // perform 'nice' adjustment as requested
-    if (_.nice && workingScale.nice) {
-        workingScale.nice(
-            (_.nice !== true && tickCount(workingScale, _.nice)) || null
-        );
+    if (!rawDomain && _.nice && scale.nice) {
+        scale.nice((_.nice !== true && tickCount(scale, _.nice)) || null);
     }
 
-    // return the cardinality of the domain
     return {
-        domain: workingScale.domain(),
+        domain: scale.domain(),
         count: domain.length,
         ordinalUnknown:
-            type === Ordinal
-                ? _.domainImplicit
-                    ? scaleImplicit
-                    : undefined
-                : undefined,
-        applyOrdinalUnknown: type === Ordinal,
+            type === Ordinal && _.domainImplicit ? scaleImplicit : undefined,
+        applyOrdinalUnknown: type === Ordinal && !rawDomain,
     };
-}
-
-function rawDomain(scale, raw, logger) {
-    if (raw) {
-        scale.domain(domainCheck(scale.type, raw, logger));
-        return raw.length;
-    } else {
-        return -1;
-    }
 }
 
 function padDomain(type, domain, range, pad, exponent, constant) {
