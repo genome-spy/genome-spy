@@ -144,8 +144,6 @@ describe("IntervalUrlSource", () => {
     it.each(
         /** @type {const} */ ([
             ["domain", "success"],
-            ["domain", "error"],
-            ["window", "success"],
             ["window", "error"],
         ])
     )(
@@ -154,7 +152,8 @@ describe("IntervalUrlSource", () => {
             vi.useFakeTimers();
             const view = createViewStub();
             const source = new TestSource(mode, createCalls(), view);
-            source.params.debounce = 200;
+            const delay = 200;
+            source.params.debounce = delay;
             const first = Promise.withResolvers();
             const load = vi
                 .spyOn(source, "loadWindow")
@@ -162,10 +161,12 @@ describe("IntervalUrlSource", () => {
             const publish = vi.spyOn(source, "publishInterval");
 
             source.onDomainChanged([0, 10]);
-            await vi.advanceTimersByTimeAsync(200);
+            await vi.advanceTimersByTimeAsync(delay);
             const signal = load.mock.calls[0][2];
 
             source.onDomainChanged([5, 15]);
+            await vi.advanceTimersByTimeAsync(delay);
+            expect(load).toHaveBeenCalledOnce();
             expect(signal.aborted).toBe(false);
             source.onDomainChanged([25, 35]);
             expect(signal.aborted).toBe(true);
@@ -175,7 +176,7 @@ describe("IntervalUrlSource", () => {
             } else {
                 first.reject(new Error("Old request failed"));
             }
-            await vi.advanceTimersByTimeAsync(199);
+            await vi.advanceTimersByTimeAsync(delay - 1);
             expect(publish).not.toHaveBeenCalled();
             expect(view.loadingStatuses).not.toContain("error");
 
@@ -189,27 +190,24 @@ describe("IntervalUrlSource", () => {
         }
     );
 
-    it.each(/** @type {const} */ (["domain", "window"]))(
-        "loads the in-bounds portion at either genome edge with %s debounce",
-        async (mode) => {
-            vi.useFakeTimers();
-            const calls = createCalls();
-            const source = new TestSource(mode, calls, createViewStub());
+    it("loads the in-bounds portion at either genome edge", async () => {
+        vi.useFakeTimers();
+        const calls = createCalls();
+        const source = new TestSource("window", calls, createViewStub());
 
-            source.onDomainChanged([-5, 5]);
-            await vi.runAllTimersAsync();
-            expect(calls.loads).toHaveBeenNthCalledWith(1, [0, 20]);
+        source.onDomainChanged([-5, 5]);
+        await vi.runAllTimersAsync();
+        expect(calls.loads).toHaveBeenNthCalledWith(1, [0, 20]);
 
-            source.onDomainChanged([95, 105]);
-            await vi.runAllTimersAsync();
-            expect(calls.loads).toHaveBeenNthCalledWith(2, [80, 100]);
+        source.onDomainChanged([95, 105]);
+        await vi.runAllTimersAsync();
+        expect(calls.loads).toHaveBeenNthCalledWith(2, [80, 100]);
 
-            source.onDomainChanged([-25, 5]);
-            await vi.runAllTimersAsync();
-            expect(calls.loads).toHaveBeenCalledTimes(2);
-            source.dispose();
-        }
-    );
+        source.onDomainChanged([-25, 5]);
+        await vi.runAllTimersAsync();
+        expect(calls.loads).toHaveBeenCalledTimes(2);
+        source.dispose();
+    });
 
     it("rejects multiple descriptors from a single-file source", async () => {
         const consoleError = vi

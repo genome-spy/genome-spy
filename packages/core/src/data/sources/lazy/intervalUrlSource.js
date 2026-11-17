@@ -121,19 +121,13 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     setupUrlLoading(options) {
         this.#options = options;
 
+        let handleDomain = this.onDomainChanged.bind(this);
         const wait = () => withoutExprRef(this.params.debounce);
         const mode = this.params.debounceMode;
         if (mode == "domain") {
-            const onDomainChanged = debounce(
-                this.onDomainChanged.bind(this),
-                wait,
-                false
-            );
-            this.onDomainChanged = (/** @type {number[]} */ domain) => {
-                this.#updateDomain(domain);
-                onDomainChanged(domain);
-            };
-            this.registerDisposer(() => onDomainChanged.cancel());
+            const debounced = debounce(handleDomain, wait, false);
+            handleDomain = debounced;
+            this.registerDisposer(() => debounced.cancel());
         } else if (mode == "window") {
             const request = debounce(this.#debouncedRequest, wait, false);
             this.#debouncedRequest = request;
@@ -141,6 +135,18 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         } else {
             throw new Error("Invalid debounceMode: " + mode);
         }
+
+        this.onDomainChanged = (/** @type {number[]} */ domain) => {
+            this.#lastDomain = domain;
+            if (
+                this.#activeWindow &&
+                !this.#coversCurrentDomain(this.#activeWindow)
+            ) {
+                this.#cancelRequest();
+                this.setLoadingStatus("complete");
+            }
+            handleDomain(domain);
+        };
     }
 
     /** @protected */
@@ -154,27 +160,28 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         this.onDomainChanged(this.scaleResolution.getDomain());
     }
 
-    /** @protected */
-    reloadLastDomain() {
+    /**
+     * @param {number[]} [domain] Defaults to the latest known domain.
+     * @protected
+     */
+    reloadLastDomain(domain) {
         this.#pendingReload ||= this.#activeWindow !== undefined;
         this.#cancelRequest();
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
         this._lastLoadedDomain = undefined;
         this.onDomainChanged(
-            this.#lastDomain ?? this.scaleResolution.getDomain()
+            domain ?? this.#lastDomain ?? this.scaleResolution.getDomain()
         );
     }
 
     /** @param {number[]} domain */
     requestDataForDomain(domain) {
-        this.#lastDomain = domain;
-        this.reloadLastDomain();
+        this.reloadLastDomain(domain);
     }
 
     /** @param {number[]} domain Linearized domain */
     onDomainChanged(domain) {
-        this.#updateDomain(domain);
         const windowSize = this.#getWindowSizeForDomain(domain);
         if (windowSize !== undefined && !this.#activeWindow) {
             const interval = this.getChangedWindow(domain, windowSize);
@@ -195,18 +202,6 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         return windowSize != null && domain[1] - domain[0] <= windowSize
             ? windowSize
             : undefined;
-    }
-
-    /** @param {number[]} domain */
-    #updateDomain(domain) {
-        this.#lastDomain = domain;
-        if (
-            this.#activeWindow &&
-            !this.#coversCurrentDomain(this.#activeWindow)
-        ) {
-            this.#cancelRequest();
-            this.setLoadingStatus("complete");
-        }
     }
 
     #cancelRequest() {
@@ -237,7 +232,6 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      * @protected
      */
     queueDomain(domain) {
-        this.#lastDomain = domain;
         this.#debouncedRequest(domain);
     }
 
