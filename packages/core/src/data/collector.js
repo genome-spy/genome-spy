@@ -216,27 +216,21 @@ export default class Collector extends FlowNode {
     }
 
     #propagateToChildren() {
-        if (this.children.length) {
-            for (const [facetId, data] of this.facetBatches.entries()) {
-                if (facetId) {
-                    /** @type {import("../types/flowBatch.js").FacetBatch} */
-                    const facetBatch = { type: "facet", facetId };
-                    for (const child of this.children) {
-                        child.beginBatch(facetBatch);
-                    }
-                }
-                const propagate = createFileBatchPropagator(
-                    this.#getFileBatch,
-                    (batch) => {
-                        for (const child of this.children) {
-                            child.beginBatch(batch);
-                        }
-                    },
-                    (datum) => this._propagate(datum)
-                );
-                for (let i = 0, n = data.length; i < n; i++) {
-                    propagate(data[i]);
-                }
+        if (!this.children.length) return;
+
+        const beginBatch = super.beginBatch.bind(this);
+        /** @param {Datum} datum */
+        const emit = (datum) => this._propagate(datum);
+
+        for (const [facetId, data] of this.facetBatches) {
+            if (facetId) beginBatch({ type: "facet", facetId });
+            const propagate = createFileBatchPropagator(
+                this.#getFileBatch,
+                beginBatch,
+                emit
+            );
+            for (let i = 0, n = data.length; i < n; i++) {
+                propagate(data[i]);
             }
         }
     }
