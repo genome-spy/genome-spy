@@ -693,7 +693,7 @@ describe("generated shader snapshots", () => {
     });
 });
 
-test("a retained WebGL program uses newly attached padding on the first immediate draw", async () => {
+test("a retained WebGL program uses newly attached index range and padding on the first immediate draw", async () => {
     const child = /** @type {import("../../spec/view.js").UnitSpec} */ ({
         mark: "rect",
         encoding: { x: { field: "x", type: "index" } },
@@ -717,12 +717,14 @@ test("a retained WebGL program uses newly attached padding on the first immediat
         /** @type {any} */ (glHelper)
     );
     const padding = vi.fn();
+    const range = vi.fn();
     vi.spyOn(
         /** @type {any} */ (delegate),
         "createMarkUniformSetter"
-    ).mockImplementation((name) =>
-        name === "uPadding_x" ? padding : () => {}
-    );
+    ).mockImplementation((name) => {
+        if (name === "range_x") return range;
+        return name === "uPadding_x" ? padding : () => {};
+    });
     try {
         delegate.initializeGraphics();
         delegate.finalizeGraphicsInitialization();
@@ -730,6 +732,7 @@ test("a retained WebGL program uses newly attached padding on the first immediat
         expect(vertex).toContain("uniform vec2 uPadding_x;");
         expect(vertex.match(/uPadding_x.x, uPadding_x.y/g)).toHaveLength(2);
         expect(padding).toHaveBeenLastCalledWith([0, 0]);
+        expect(range).toHaveBeenLastCalledWith([0, 1]);
 
         await layer.addChildSpec({
             ...child,
@@ -737,6 +740,7 @@ test("a retained WebGL program uses newly attached padding on the first immediat
                 x: {
                     domain: [0, 9],
                     zoom: true,
+                    reverse: true,
                     padding: { expr: 'gap / span(domain("x"))' },
                 },
             },
@@ -748,6 +752,7 @@ test("a retained WebGL program uses newly attached padding on the first immediat
             .spyOn(context, "renderImmediately")
             .mockImplementation(() => {
                 expect(padding).toHaveBeenLastCalledWith([0.08, 0.08]);
+                expect(range).toHaveBeenLastCalledWith([1, 0]);
             });
         // An immediate render in the transaction must see the applied mapping.
         let navigation;

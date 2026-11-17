@@ -452,12 +452,12 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
 
     if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
-        // Positional categorical scales reuse shaders when their range changes.
-        const liveCategoricalRange =
+        // Positional band-like scales reuse shaders when their range changes.
+        const liveBandRange =
             isPrimaryPositionalChannel(channel) &&
-            (scale.type === "band" || scale.type === "point");
+            ["band", "point", "index"].includes(scale.type);
         if (
-            liveCategoricalRange ||
+            liveBandRange ||
             isExprRef(rangeProp) ||
             rangeProp.some(isExprRef)
         ) {
