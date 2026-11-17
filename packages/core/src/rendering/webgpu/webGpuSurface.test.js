@@ -538,18 +538,18 @@ describe("WebGpuSurface", () => {
         expect(mocks.handle.values.size.default.set).toHaveBeenCalledWith(6);
     });
 
-    test("updates padding through the scale-only path without replacing series", async () => {
+    test("updates reactive padding alongside a signed index literal without replacing series", async () => {
         const { view } = await createHeadlessEngine({
             params: [{ name: "padding", value: 0 }],
-            data: { values: [{ x: "a" }, { x: "b" }] },
+            data: { values: [{ x: 0 }, { x: 1 }] },
             mark: "rect",
             encoding: {
                 x: {
                     field: "x",
-                    type: "nominal",
+                    type: "index",
                     scale: {
                         paddingInner: { expr: "padding" },
-                        paddingOuter: { expr: "padding / 2" },
+                        paddingOuter: -0.2,
                     },
                 },
                 fill: { value: "black" },
@@ -582,7 +582,7 @@ describe("WebGpuSurface", () => {
 
         expect(
             mocks.handle.scales.x.default.setPadding
-        ).toHaveBeenCalledExactlyOnceWith(0.4, 0.2);
+        ).toHaveBeenCalledExactlyOnceWith(0.4, -0.2);
         expect(mocks.handle.series.replace).not.toHaveBeenCalled();
         expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
     });

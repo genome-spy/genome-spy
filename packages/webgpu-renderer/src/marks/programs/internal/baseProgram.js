@@ -894,16 +894,8 @@ export default class BaseProgram {
                     throw new Error(
                         `Scale on "${name}" does not support padding updates.`
                     );
-                if (
-                    !Number.isFinite(inner) ||
-                    !Number.isFinite(outer) ||
-                    inner < 0 ||
-                    inner > 1 ||
-                    outer < 0
-                )
-                    throw new Error(
-                        "Padding requires inner in [0, 1] and finite nonnegative outer padding."
-                    );
+                if (!Number.isFinite(inner) || !Number.isFinite(outer))
+                    throw new Error("Padding requires finite values.");
                 this._setUniformValue(innerUniform, inner);
                 this._setUniformValue(outerUniform, outer);
             }),
