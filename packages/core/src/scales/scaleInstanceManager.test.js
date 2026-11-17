@@ -64,6 +64,24 @@ describe("ScaleInstanceManager", () => {
         expect(onRangeChange).toHaveBeenCalledTimes(2);
     });
 
+    test("copies own scale options without activating a prototype option", () => {
+        const manager = createManager({
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale =
+            /** @type {import("d3-scale").ScaleLinear<number, number>} */ (
+                createScale(
+                    manager,
+                    JSON.parse(
+                        '{"type":"linear","domain":[0,1],"__proto__":{"clamp":true}}'
+                    )
+                )
+            );
+        expect(scale.clamp()).toBe(false);
+    });
+
     test("preserves the full scheme interpolator when applying mapping properties", () => {
         const manager = createManager({
             onRangeChange: () => {},

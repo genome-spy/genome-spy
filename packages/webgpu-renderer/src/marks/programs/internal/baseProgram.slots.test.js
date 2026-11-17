@@ -147,7 +147,7 @@ describe("BaseProgram slot handles", () => {
         expect(markPickingDirty).not.toHaveBeenCalled();
     });
 
-    it("updates scale domains through slots", () => {
+    it("keeps default and conditional scale updates independent", () => {
         const renderer = createMockRenderer();
         const program = createSlotProgram(renderer, {
             channels: {
@@ -160,6 +160,20 @@ describe("BaseProgram slot handles", () => {
                         domain: [0, 1],
                         range: [0, 1],
                     },
+                    conditions: [
+                        {
+                            when: { selection: "brush", type: "single" },
+                            channel: {
+                                value: 0.5,
+                                type: "f32",
+                                scale: {
+                                    type: "linear",
+                                    domain: [0, 1],
+                                    range: [0, 1],
+                                },
+                            },
+                        },
+                    ],
                 },
                 size: { value: 1, type: "f32", dynamic: true },
                 fill: {
@@ -171,24 +185,22 @@ describe("BaseProgram slot handles", () => {
             },
         });
 
-        const domainEntry =
-            program._uniformBufferState.entries.get("uDomain_x");
-        program.getSlotHandles().scales.x.setDomain([2, 4]);
+        const slot = program.getSlotHandles().scales.x;
+        slot.setDomain([2, 4]);
+        slot.conditions[0].setDomain([6, 8]);
 
-        expect(domainEntry).toBeTruthy();
-        const stride = domainEntry.stride ?? 16;
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                domainEntry.offset,
-                true
-            )
-        ).toBe(2);
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                domainEntry.offset + stride,
-                true
-            )
-        ).toBe(4);
+        const uniforms = program._uniformBufferState;
+        const view = new DataView(uniforms.data);
+        /** @param {string} name */
+        const readDomain = (name) => {
+            const { offset, stride } = uniforms.entries.get(name);
+            return [
+                view.getFloat32(offset, true),
+                view.getFloat32(offset + stride, true),
+            ];
+        };
+        expect(readDomain("uDomain_x")).toEqual([2, 4]);
+        expect(readDomain("uDomain_x__cond0")).toEqual([6, 8]);
     });
 
     it.each(/** @type {const} */ (["threshold", "quantize"]))(
