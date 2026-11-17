@@ -50,6 +50,9 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /** @type {number[] | undefined} */
     #activeWindow;
 
+    /** Whether the loading status is waiting for a replacement read to start. */
+    #pendingReload = false;
+
     /** @type {(interval: number[], windowSize?: number) => any} */
     #debouncedRequest = (interval, windowSize) =>
         this.requestInterval(interval, windowSize);
@@ -146,12 +149,14 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
         this.invalidateData();
+        this.#pendingReload = true;
         this.setLoadingStatus("loading");
         this.onDomainChanged(this.scaleResolution.getDomain());
     }
 
     /** @protected */
     reloadLastDomain() {
+        this.#pendingReload ||= this.#activeWindow !== undefined;
         this.#cancelRequest();
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
@@ -170,11 +175,26 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     /** @param {number[]} domain Linearized domain */
     onDomainChanged(domain) {
         this.#updateDomain(domain);
-        const windowSize = withoutExprRef(this.params.windowSize) ?? -1;
-        if (domain[1] - domain[0] <= windowSize && !this.#activeWindow) {
+        const windowSize = this.#getWindowSizeForDomain(domain);
+        if (windowSize !== undefined && !this.#activeWindow) {
             const interval = this.getChangedWindow(domain, windowSize);
-            if (interval) this.#debouncedRequest(interval, windowSize);
+            if (interval) {
+                this.#debouncedRequest(interval, windowSize);
+                return;
+            }
         }
+        this.#completeSkippedReload();
+    }
+
+    /**
+     * @param {number[]} domain
+     * @returns {number | undefined}
+     */
+    #getWindowSizeForDomain(domain) {
+        const windowSize = withoutExprRef(this.params.windowSize);
+        return windowSize != null && domain[1] - domain[0] <= windowSize
+            ? windowSize
+            : undefined;
     }
 
     /** @param {number[]} domain */
@@ -194,12 +214,18 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         this.#abortController.abort();
     }
 
+    #completeSkippedReload() {
+        if (this.#pendingReload) {
+            this.#pendingReload = false;
+            this.setLoadingStatus("complete");
+        }
+    }
+
     /** @param {number[]} interval */
     #coversCurrentDomain(interval) {
         const domain = this.#lastDomain;
-        const windowSize = withoutExprRef(this.params.windowSize);
         if (!domain) return true;
-        if (domain[1] - domain[0] > windowSize) return false;
+        if (this.#getWindowSizeForDomain(domain) === undefined) return false;
 
         const start = Math.max(0, domain[0]);
         const end = Math.min(this.genome.totalSize, domain[1]);
@@ -222,9 +248,11 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     async requestInterval(domain, windowSize) {
         if (this.disposed) return;
         if (windowSize !== undefined && !this.#coversCurrentDomain(domain)) {
+            this.#completeSkippedReload();
             return;
         }
 
+        this.#pendingReload = false;
         this.#cancelRequest();
         this.#activeWindow = windowSize === undefined ? undefined : domain;
         this.#abortController = new AbortController();

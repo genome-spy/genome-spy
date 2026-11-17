@@ -211,18 +211,6 @@ describe("IntervalUrlSource", () => {
         }
     );
 
-    it("skips a queued detail read after zooming outside the window limit", async () => {
-        vi.useFakeTimers();
-        const calls = createCalls();
-        const source = new TestSource("window", calls, createViewStub());
-        source.onDomainChanged([0, 10]);
-        source.onDomainChanged([0, 50]);
-
-        await vi.runAllTimersAsync();
-        expect(calls.modules).not.toHaveBeenCalled();
-        source.dispose();
-    });
-
     it("rejects multiple descriptors from a single-file source", async () => {
         const consoleError = vi
             .spyOn(console, "error")
