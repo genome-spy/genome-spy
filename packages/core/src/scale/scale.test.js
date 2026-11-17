@@ -11,8 +11,6 @@ import { expect, test } from "vitest";
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-/* eslint-disable */
-
 import * as util from "vega-util";
 import * as vs from "vega-scale";
 import createScale, {
@@ -206,22 +204,8 @@ test("Scale respects range configuration", function () {
     s = scale(util.extend({ reverse: true }, params));
     expect(s.range()).toEqual([10, 0]);
 
-    // rangeStep
-    params = {
-        type: "band",
-        domain: ["a", "b", "c"],
-        rangeStep: 20,
-        padding: 0,
-    };
-    s = scale(params);
-    expect(s.range()).toEqual([0, 60]);
-    expect(s.bandwidth()).toBe(20);
     expect(vs.scale("band")().gapMapping).toBeTypeOf("function");
     expect(vs.scale("point")().gapMapping).toBeTypeOf("function");
-
-    s = expect(function () {
-        scale(util.extend({}, params, { type: "linear" }));
-    }).toThrow();
 });
 
 test("Scale respects range color schemes", function () {

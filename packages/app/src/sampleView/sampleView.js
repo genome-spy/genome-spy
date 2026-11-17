@@ -1095,15 +1095,13 @@ export default class SampleView extends ContainerView {
         this.#rowScaleRevision = frame.revision;
 
         const height = this.#preparedLayoutHeight || this.childCoords.height;
+        const padding = frame.step > 0 ? (2 * frame.inset) / frame.step : 0;
         const runtime = this.#sidebarView.paramRuntime;
         runtime.runInTransaction(() => {
             runtime.setValue("_sampleRowIds", frame.sampleIds);
             runtime.setValue("_sampleRowCuts", frame.cuts);
             runtime.setValue("_sampleRowGap", frame.gap);
-            runtime.setValue(
-                "_sampleRowPadding",
-                frame.step > 0 ? (2 * frame.inset) / frame.step : 0
-            );
+            runtime.setValue("_sampleRowPadding", padding);
             runtime.setValue("_sampleRowStep", frame.step);
             runtime.setValue("_sampleRowSummaryHeight", frame.summaryHeight);
             runtime.setValue("_sampleRowAnchor", 1 - frame.origin / height);

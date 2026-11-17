@@ -429,16 +429,14 @@ export default class ScaleInstanceManager {
             if (command && !canUseCommand) this.#rangeCommandActive = false;
             const range =
                 command && canUseCommand ? command.range : configuredRange;
-            // Interpolating schemes and rangeStep depend on domain cardinality.
+            // Interpolating schemes depend on domain cardinality.
             const prepared =
                 scale.type === "null" ||
                 (previous?.scale === scale &&
-                    previous?.props === props &&
-                    previous.domain.length === domain.length &&
-                    (!("rangeStep" in props) ||
-                        equalRange(previous.padding, padding)))
+                    previous.props === props &&
+                    previous.domain.length === domain.length)
                     ? undefined
-                    : this.#prepareMapping(props, padding);
+                    : this.#prepareMapping(props);
             return {
                 scale,
                 props,
@@ -458,14 +456,9 @@ export default class ScaleInstanceManager {
 
     /** Validate configuration once and retain its properties for live application.
      * @param {import("../spec/scale.js").Scale} props
-     * @param {[number, number] | undefined} padding
      */
-    #prepareMapping(props, padding) {
+    #prepareMapping(props) {
         props = this.#withPropertyDefaults(props);
-        if (padding) {
-            delete props.padding;
-            [props.paddingInner, props.paddingOuter] = padding;
-        }
         const working = this.#scale.copy();
         working.type = this.#scale.type;
         configureScaleProperties(working, props);
@@ -511,11 +504,12 @@ export default class ScaleInstanceManager {
             if ("bins" in prepared)
                 /** @type {any} */ (this.#scale).bins = prepared.bins;
             else delete (/** @type {any} */ (this.#scale).bins);
-        } else if (
+        }
+        // Static preparation can restore literal or default padding.
+        if (
             padding &&
-            !equalRange(this.mapping.get()?.padding, padding)
+            (prepared || !equalRange(this.mapping.get()?.padding, padding))
         ) {
-            // A padding-only update can reuse the live domain and its category lookup.
             const [paddingInner, paddingOuter] = padding;
             configureScaleProperties(this.#scale, {
                 paddingInner,
@@ -525,11 +519,7 @@ export default class ScaleInstanceManager {
         if (viewport !== undefined && "viewport" in this.#scale)
             this.#mirrorViewport(viewport);
         if (range) this.#setRange(range);
-        else if (
-            props.scheme === undefined &&
-            !("rangeStep" in props) &&
-            this.#defaultRange
-        ) {
+        else if (props.scheme === undefined && this.#defaultRange) {
             this.#setRange(this.#defaultRange);
         }
         if ("gapPositions" in this.#scale) {

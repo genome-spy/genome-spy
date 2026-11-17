@@ -397,7 +397,7 @@ describe("ScaleInstanceManager", () => {
         expect(scale.paddingInner()).toBe(0.5);
     });
 
-    test("ignores overridden padding changes and preserves rangeStep fallback", () => {
+    test("ignores overridden padding changes and restores reactive padding on reconfiguration", () => {
         const runtime = new ViewParamRuntime();
         const setPadding = runtime.registerParam({
             name: "padding",
@@ -413,7 +413,6 @@ describe("ScaleInstanceManager", () => {
         const props = /** @type {import("../spec/scale.js").Scale} */ ({
             type: "band",
             domain: ["a", "b"],
-            rangeStep: 10,
             padding: { expr: "padding" },
             paddingInner: 0.1,
             paddingOuter: 0.3,
@@ -427,12 +426,11 @@ describe("ScaleInstanceManager", () => {
         setPadding(0.5);
         runtime.flushNow();
         expect(changed).not.toHaveBeenCalled();
-        expect(scale.range()).toEqual([0, 25]);
+        expect(scale.paddingInner()).toBe(0.1);
 
         delete props.paddingInner;
         manager.configureMapping(props);
         expect(scale.paddingInner()).toBe(0.5);
-        expect(scale.range()[1]).toBeCloseTo(21);
         expect(changed).toHaveBeenCalledTimes(1);
 
         delete props.paddingOuter;
@@ -442,12 +440,15 @@ describe("ScaleInstanceManager", () => {
         runtime.flushNow();
         expect(scale.paddingInner()).toBe(0);
         expect(scale.paddingOuter()).toBe(0);
-        expect(scale.range()).toEqual([0, 20]);
 
         setPadding(2);
         runtime.flushNow();
-        expect(scale.range()).toEqual([0, 30]);
-        expect(scale.step()).toBe(10);
+        expect(scale.paddingInner()).toBe(1);
+        expect(scale.paddingOuter()).toBe(1);
+        manager.configureMapping({ ...props, paddingOuter: 1, align: 0.25 });
+        expect(scale.paddingInner()).toBe(1);
+        expect(scale.paddingOuter()).toBe(1);
+        expect(scale.align()).toBe(0.25);
         changed.mockClear();
         setPadding(3);
         runtime.flushNow();

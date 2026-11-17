@@ -63,7 +63,6 @@ import {
     isContinuous,
     isInterpolating,
     isLogarithmic,
-    bandSpace,
     interpolateColors,
     interpolateRange,
     interpolate as getInterpolate,
@@ -121,7 +120,6 @@ var SKIP = toSet([
     "zero",
     "bins",
     "range",
-    "rangeStep",
     "round",
     "reverse",
     "interpolate",
@@ -487,13 +485,7 @@ function configureRange(scale, _, count) {
         round = _.round || false,
         range = _.range;
 
-    // if range step specified, calculate full range extent
-    if (_.rangeStep != null) {
-        range = configureRangeStep(type, _, count);
-    }
-
-    // else if a range scheme is defined, use that
-    else if (_.scheme) {
+    if (_.scheme) {
         range = configureScheme(type, _, count);
         if (isFunction(range)) {
             if (scale.interpolator) {
@@ -527,20 +519,6 @@ function configureRange(scale, _, count) {
     }
 
     if (range) scale.range(flip(range, _.reverse));
-}
-
-function configureRangeStep(type, _, count) {
-    if (type !== Band && type !== Point) {
-        error("Only band and point scales support rangeStep.");
-    }
-
-    // calculate full range based on requested step size and padding
-    var outer = (_.paddingOuter != null ? _.paddingOuter : _.padding) || 0,
-        inner =
-            type === Point
-                ? 1
-                : (_.paddingInner != null ? _.paddingInner : _.padding) || 0;
-    return [0, _.rangeStep * bandSpace(count, inner, outer)];
 }
 
 function configureScheme(type, _, count) {
