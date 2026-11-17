@@ -166,12 +166,4 @@ describe("CanvasXIndexManager", () => {
         expect(range).toEqual(firstRange);
     });
 
-    test("bypasses transient facetIndex groups", () => {
-        const data = [{ x: 10 }];
-        const fixture = createFixture(data);
-        fixture.mark.encoders.facetIndex = constantEncoder(0);
-        const manager = new CanvasXIndexManager();
-
-        expect(manager.prepare(fixture.mark)).toBe(false);
-    });
 });

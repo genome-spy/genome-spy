@@ -98,7 +98,7 @@ export class MetadataView extends ConcatView {
             hconcat: [], // Contents are added dynamically
             spacing: metadataDef.spacing ?? 1,
             resolve: {
-                scale: { default: "independent" },
+                scale: { default: "independent", y: "shared" },
                 axis: { default: "independent" },
             },
         };
@@ -325,6 +325,13 @@ export class MetadataView extends ConcatView {
         this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
+        // Attribute names are unrestricted, including the private column's base name.
+        const fields = new Set(sampleMetadata.attributeNames);
+        for (const datum of Object.values(sampleMetadata.entities)) {
+            for (const field of Object.keys(datum)) fields.add(field);
+        }
+        let sampleIdField = "_sampleId";
+        while (fields.has(sampleIdField)) sampleIdField = "_" + sampleIdField;
 
         const metadataGeneration = ++this.#metadataGeneration;
         const ready = this.#metadataReady.reset();
@@ -342,7 +349,7 @@ export class MetadataView extends ConcatView {
             if (this.#isMetadataStale(metadataGeneration)) {
                 return;
             }
-            await this.#createViews(metadataGeneration);
+            await this.#createViews(metadataGeneration, sampleIdField);
             if (this.#isMetadataStale(metadataGeneration)) {
                 return;
             }
@@ -363,7 +370,7 @@ export class MetadataView extends ConcatView {
             );
 
             dynamicSource.updateDynamicData(
-                this.#buildMetadataTable(sampleMetadata)
+                this.#buildMetadataTable(sampleMetadata, sampleIdField)
             );
 
             await this.#loadMetadataSubtree(dynamicSource, viewPredicate);
@@ -417,24 +424,28 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * Builds a metadata table with sample index numbers for sorting.
+     * Builds one metadata row per sample.
      *
      * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
+     * @param {string} sampleIdField
      * @returns {Array<Record<string, unknown>>}
      */
-    #buildMetadataTable(sampleMetadata) {
+    #buildMetadataTable(sampleMetadata, sampleIdField) {
         const sampleEntities =
             this.#sampleView.sampleHierarchy.sampleData.entities;
 
         const metadataTable = Object.entries(sampleMetadata.entities).map(
             ([sample, metadatum]) => ({
-                sample,
-                indexNumber: sampleEntities[sample]?.indexNumber,
                 ...metadatum,
+                [sampleIdField]: sample,
             })
         );
 
-        if (metadataTable.findIndex((d) => d.indexNumber === undefined) >= 0) {
+        if (
+            Object.keys(sampleMetadata.entities).some(
+                (sample) => !Object.hasOwn(sampleEntities, sample)
+            )
+        ) {
             console.warn("Some metadata entries do not match any sample data");
         }
 
@@ -473,8 +484,11 @@ export class MetadataView extends ConcatView {
         } while (pending !== this.#metadataUpdateTail);
     }
 
-    /** @param {number} metadataGeneration */
-    async #createViews(metadataGeneration) {
+    /**
+     * @param {number} metadataGeneration
+     * @param {string} sampleIdField
+     */
+    async #createViews(metadataGeneration, sampleIdField) {
         this.setChildren([]);
         this.#attributeViews.clear();
 
@@ -521,6 +535,7 @@ export class MetadataView extends ConcatView {
                                 createAttributeSpec(
                                     attributeName,
                                     attributeDef,
+                                    sampleIdField,
                                     this.#sampleView.spec.metadata
                                 ),
                                 container,
@@ -569,8 +584,7 @@ export class MetadataView extends ConcatView {
                         visible: attributeDef.visible ?? true,
                         spacing: this.#sampleView.spec.metadata?.spacing ?? 1,
                         resolve: {
-                            // TODO: scale could be shared within groups
-                            scale: { default: "independent" },
+                            scale: { default: "independent", y: "shared" },
                             axis: { default: "independent" },
                         },
                     };
@@ -827,9 +841,15 @@ export class MetadataView extends ConcatView {
 /**
  * @param {string} attributeName
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} attributeDef
+ * @param {string} sampleIdField
  * @param {import("@genome-spy/app/spec/sampleView.js").MetadataDef} [metadataDef]
  */
-function createAttributeSpec(attributeName, attributeDef, metadataDef) {
+function createAttributeSpec(
+    attributeName,
+    attributeDef,
+    sampleIdField,
+    metadataDef
+) {
     if (!attributeDef) {
         throw new Error("No attribute definition for " + attributeName);
     }
@@ -846,9 +866,11 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
         mark: {
             type: "rect",
             xOffset: -0.5,
+            yOffset: { expr: "-_sampleRowInset" },
+            y2Offset: { expr: "_sampleRowInset" },
         },
         encoding: {
-            facetIndex: { field: "indexNumber" },
+            y: { field: sampleIdField, type: "nominal", axis: null },
             color: {
                 field: escapedEncodingField,
                 type: attributeDef.type,
@@ -859,7 +881,7 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
                 legend: null,
             },
         },
-        opacity: 1,
+        opacity: { expr: "_sampleRowStep > 0 ? 1 : 0" },
     };
 
     if (attributeDef.barScale && attributeDef.type == "quantitative") {
@@ -903,12 +925,15 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
     if (missingValueColor !== null) {
         attributeSpec.layer.unshift({
             name: getAttributeBackgroundViewName(attributeName),
+            opacity: { expr: "_sampleRowStep > 0 ? 1 : 0" },
             mark: {
                 type: "rect",
                 xOffset: -0.5,
+                yOffset: { expr: "-_sampleRowInset" },
+                y2Offset: { expr: "_sampleRowInset" },
             },
             encoding: {
-                facetIndex: { field: "indexNumber" },
+                y: { field: sampleIdField, type: "nominal", axis: null },
                 fill: { value: missingValueColor },
                 fillOpacity: { value: 1 },
                 stroke: { value: null },

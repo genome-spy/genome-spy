@@ -1,91 +1,115 @@
 // @ts-check
-import { describe, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import {
-    calculateLocations,
     computeScrollMetrics,
     getClosestSampleLocationAt,
     getSampleLocationAt,
     LocationManager,
 } from "./locationManager.js";
 
-describe("LocationManager defaults", () => {
-    test("LocationManager uses default sample layout values", () => {
-        // Exercise LocationManager defaults instead of calculateLocations inputs.
-        const root = createRootGroup();
-        const groupA = createSampleGroup("A", ["s1", "s2"]);
-        const groupB = createSampleGroup("B", ["s3"]);
-        root.groups = [groupA, groupB];
-
-        const manager = createLocationManager(root, { height: 100 });
-        const locations = manager.getLocations();
-
-        const summaryByName = new Map(
-            locations.summaries.map((summary) => [
-                summary.key.at(-1).name,
-                summary,
-            ])
-        );
-
-        expect(summaryByName.get("A").locSize.location).toBe(0);
-        expect(summaryByName.get("B").locSize.location).toBeCloseTo(
-            68.33333333333333
-        );
-
-        expect(manager.getScrollableHeight()).toBe(120);
+test("one display topology supplies fitted rows, summaries and ancestor bounds", () => {
+    const manager = createManager({
+        height: 40,
+        summaryHeight: 4,
+        sampleLayout: { groupSpacing: 2 },
     });
+    const { samples, summaries, groups } = manager.getLocations();
 
-    test("LocationManager applies configured sample layout values", () => {
-        // Custom layout verifies that SampleView can control density constants.
-        const root = createRootGroup();
-        const groupA = createSampleGroup("A", ["s1", "s2"]);
-        const groupB = createSampleGroup("B", ["s3"]);
-        root.groups = [groupA, groupB];
-
-        const manager = createLocationManager(root, {
-            height: 100,
-            sampleLayout: {
-                sampleHeight: 20,
-                groupSpacing: 8,
-                peekGroupSpacing: 12,
-            },
-        });
-        const locations = manager.getLocations();
-
-        const summaryByName = new Map(
-            locations.summaries.map((summary) => [
-                summary.key.at(-1).name,
-                summary,
-            ])
-        );
-
-        expect(summaryByName.get("A").locSize.location).toBe(0);
-        expect(summaryByName.get("B").locSize.location).toBeCloseTo(
-            69.33333333333334
-        );
-
-        expect(manager.getScrollableHeight()).toBe(72);
+    expect(samples.map((row) => row.key)).toEqual(["s1", "s2", "s3"]);
+    expect(samples.map((row) => row.locSize)).toEqual([
+        { location: 4, size: 10 },
+        { location: 14, size: 10 },
+        { location: 30, size: 10 },
+    ]);
+    expect(summaries.map((group) => group.locSize)).toEqual([
+        { location: 0, size: 24 },
+        { location: 26, size: 14 },
+    ]);
+    expect(
+        groups.map(({ key, locSize }) => [
+            key.group.name,
+            key.depth,
+            key.n,
+            locSize,
+        ])
+    ).toEqual([
+        ["Root", 0, 3, { location: 0, size: 40 }],
+        ["A", 1, 2, { location: 0, size: 24 }],
+        ["B", 1, 1, { location: 26, size: 14 }],
+    ]);
+    expect(manager.getBandLayout()).toMatchObject({
+        sampleIds: ["s1", "s2", "s3"],
+        cuts: ["s3"],
+        gap: 6,
+        inset: 0,
+        origin: 4,
     });
+    expect(manager.getScrollableHeight()).toBe(128);
+});
 
-    test("LocationManager returns no group background rects when locations are unavailable", () => {
-        const root = createRootGroup();
-        root.groups = [createSampleGroup("A", ["s1"])];
+test("row padding follows configured density without changing logical band steps", () => {
+    const manager = createManager({ height: 60, groups: [["s1", "s2"]] });
+    expect(manager.getLocations().samples.map((row) => row.locSize)).toEqual([
+        { location: 3, size: 24 },
+        { location: 33, size: 24 },
+    ]);
+    expect(manager.getBandLayout().inset).toBe(3);
 
-        const manager = createLocationManager(root, { height: 0 });
-
-        expect(
-            manager.getGroupBackgroundRects(Rectangle.create(0, 0, 100, 0))
-        ).toEqual([]);
+    const custom = createManager({
+        height: 30,
+        groups: [["s1"]],
+        sampleLayout: { sampleSpacingFactor: 0.4 },
+    });
+    expect(custom.getLocations().samples[0].locSize).toEqual({
+        location: 6,
+        size: 18,
     });
 });
 
+test("peek retains the selected sample at the pointer and scroll geometry remains live", async () => {
+    const manager = createManager({ height: 40, summaryHeight: 4 });
+    const locations = manager.getLocations();
+    const row = locations.samples[2].locSize;
+    await manager.togglePeek(true, 20, "s3");
+    expect(manager.getLocations()).toBe(locations);
+    expect(locations.samples[2].locSize).toBe(row);
+    expect(row.location + row.size / 2).toBeCloseTo(20);
+    expect(row.size).toBe(28);
+    const revision = manager.getBandLayout().revision;
+    manager.setScrollOffset(0);
+    expect(row.location).toBeCloseTo(96.5);
+    expect(manager.getBandLayout().revision).toBeGreaterThan(revision);
+});
+
+test("fixed summaries survive exhausted fitted space and closeup can open from it", async () => {
+    const manager = createManager({ height: 10, summaryHeight: 8 });
+    expect(
+        manager.getLocations().samples.every((row) => row.locSize.size === 0)
+    ).toBe(true);
+    expect(
+        manager.getLocations().summaries.map((group) => group.locSize)
+    ).toEqual([
+        { location: 0, size: 8 },
+        { location: 13, size: 8 },
+    ]);
+    await manager.togglePeek(true, 5, "s1");
+    expect(manager.getLocations().samples[0].locSize.size).toBe(28);
+});
+
+test("unavailable layouts retain no background geometry", () => {
+    const manager = createManager({ height: 0 });
+    expect(manager.getLocations()).toBeUndefined();
+    expect(
+        manager.getGroupBackgroundRects(Rectangle.create(0, 0, 100, 0))
+    ).toEqual([]);
+});
+
 test("disposal cancels and settles an active peek transition", async () => {
-    const root = createRootGroup();
-    root.groups = [createSampleGroup("A", ["s1", "s2", "s3"])];
     /** @type {Set<(timestamp: number) => void>} */
     const frames = new Set();
     const requestRender = vi.fn();
-    const manager = createLocationManager(root, {
+    const manager = createManager({
         height: 20,
         animator: {
             requestTransition: (callback) => frames.add(callback),
@@ -93,516 +117,89 @@ test("disposal cancels and settles an active peek transition", async () => {
             requestRender,
         },
     });
+    const source = manager.getPlacementSource();
     const finished = manager.togglePeek(true);
     const pendingFrame = frames.values().next().value;
-
     manager.dispose();
     await finished;
-
     expect(frames.size).toBe(0);
-    // A frame taken by the animator before disposal must not update locations.
+    expect(() => source.getSnapshot()).toThrow("disposed");
     pendingFrame(performance.now() + 1000);
     expect(manager.getPeekState()).toBe(0);
     expect(requestRender).not.toHaveBeenCalled();
 });
 
-describe("calculateLocations", () => {
-    test("calculateLocations respects fixed sample height without padding", () => {
-        // Build a minimal flattened hierarchy to control group/sample layout.
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1", "s2"],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupB = {
-            name: "B",
-            title: "Group B",
-            samples: ["s3"],
-        };
-
-        root.groups = [groupA, groupB];
-
-        const flattenedHierarchy = [
-            [root, groupA],
-            [root, groupB],
-        ];
-
-        const summaryHeight = 4;
-        const groupSpacing = 2;
-
-        const { samples, summaries, groups } = calculateLocations(
-            flattenedHierarchy,
-            {
-                sampleHeight: 10,
-                groupSpacing,
-                summaryHeight,
-            }
-        );
-
-        expect(summaries).toHaveLength(2);
-        expect(samples).toHaveLength(3);
-        expect(groups).toHaveLength(3);
-
-        const summaryByName = new Map(
-            summaries.map((summary) => [summary.key.at(-1).name, summary])
-        );
-
-        expect(summaryByName.get("A").locSize.size).toBe(24);
-        expect(summaryByName.get("B").locSize.size).toBe(14);
-
-        expect(summaryByName.get("A").locSize.location).toBe(0);
-        expect(summaryByName.get("B").locSize.location).toBe(26);
-
-        const sampleByKey = new Map(
-            samples.map((sample) => [sample.key, sample])
-        );
-
-        expect(sampleByKey.get("s1").locSize.location).toBe(4);
-        expect(sampleByKey.get("s2").locSize.location).toBe(14);
-        expect(sampleByKey.get("s3").locSize.location).toBe(30);
-
-        for (const sample of samples) {
-            expect(sample.locSize.size).toBe(10);
-        }
-
-        const groupByName = new Map(
-            groups.map((group) => [group.key.group.name, group])
-        );
-
-        expect(groupByName.get("Root").key.n).toBe(3);
-        expect(groupByName.get("A").key.n).toBe(2);
-        expect(groupByName.get("B").key.n).toBe(1);
+test("scroll metrics account for peek progress and sticky summary inset", () => {
+    const metrics = computeScrollMetrics({
+        viewportHeight: 100,
+        summaryHeight: 10,
+        scrollableHeight: 250,
+        scrollOffset: 40,
+        peekState: 0.5,
     });
-
-    test("calculateLocations fills available height in fitted mode", () => {
-        // Use view height to verify grow-based layout fills the viewport.
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1", "s2"],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupB = {
-            name: "B",
-            title: "Group B",
-            samples: ["s3"],
-        };
-
-        root.groups = [groupA, groupB];
-
-        const flattenedHierarchy = [
-            [root, groupA],
-            [root, groupB],
-        ];
-
-        const viewHeight = 100;
-        const summaryHeight = 4;
-        const groupSpacing = 2;
-
-        const { samples, summaries } = calculateLocations(flattenedHierarchy, {
-            viewHeight,
-            groupSpacing,
-            summaryHeight,
-        });
-
-        const totalSummarySize = summaries.reduce(
-            (sum, summary) => sum + summary.locSize.size,
-            0
-        );
-        const totalSpacing = groupSpacing * (summaries.length - 1);
-
-        expect(totalSummarySize + totalSpacing).toBeCloseTo(viewHeight);
-
-        const summaryByName = new Map(
-            summaries.map((summary) => [summary.key.at(-1).name, summary])
-        );
-
-        const samplesByKey = new Map(
-            samples.map((sample) => [sample.key, sample])
-        );
-
-        const groupALoc = summaryByName.get("A").locSize;
-        const groupAStart = groupALoc.location + summaryHeight;
-        const groupAEnd = groupALoc.location + groupALoc.size;
-        const s1Loc = samplesByKey.get("s1").locSize;
-        const s2Loc = samplesByKey.get("s2").locSize;
-
-        expect(s1Loc.location).toBeGreaterThanOrEqual(groupAStart);
-        expect(s2Loc.location + s2Loc.size).toBeLessThanOrEqual(groupAEnd);
-        expect(s1Loc.location + s1Loc.size).toBeLessThanOrEqual(s2Loc.location);
-
-        const groupBSummary = summaryByName.get("B").locSize;
-        const groupBStart = groupBSummary.location + summaryHeight;
-        const groupBEnd = groupBSummary.location + groupBSummary.size;
-        const s3Loc = samplesByKey.get("s3").locSize;
-
-        expect(s3Loc.location).toBeGreaterThanOrEqual(groupBStart);
-        expect(s3Loc.location + s3Loc.size).toBeLessThanOrEqual(groupBEnd);
-
-        const groupASum = s1Loc.size + s2Loc.size;
-        const groupBSum = s3Loc.size;
-
-        expect(groupASum).toBeLessThan(groupALoc.size - summaryHeight);
-        expect(groupBSum).toBeLessThan(groupBSummary.size - summaryHeight);
-    });
-
-    test("calculateLocations applies padding for large sample heights", () => {
-        // Padding activates when sample sizes exceed the smoothstep threshold.
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1", "s2"],
-        };
-
-        root.groups = [groupA];
-
-        const { samples } = calculateLocations([[root, groupA]], {
-            sampleHeight: 30,
-            groupSpacing: 0,
-            summaryHeight: 0,
-        });
-
-        const sampleByKey = new Map(
-            samples.map((sample) => [sample.key, sample])
-        );
-
-        const s1 = sampleByKey.get("s1").locSize;
-        const s2 = sampleByKey.get("s2").locSize;
-
-        expect(s1.location).toBe(3);
-        expect(s1.size).toBe(24);
-        expect(s2.location).toBe(33);
-        expect(s2.size).toBe(24);
-    });
-
-    test("calculateLocations applies configured spacing factor for large sample heights", () => {
-        // Use a large row to keep smoothstep fully active.
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1"],
-        };
-
-        root.groups = [groupA];
-
-        const { samples } = calculateLocations([[root, groupA]], {
-            sampleHeight: 30,
-            sampleSpacingFactor: 0.4,
-            groupSpacing: 0,
-            summaryHeight: 0,
-        });
-
-        expect(samples[0].locSize.location).toBe(6);
-        expect(samples[0].locSize.size).toBe(18);
-    });
-
-    test("calculateLocations skips empty groups", () => {
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1"],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupEmpty = {
-            name: "Empty",
-            title: "Empty",
-            samples: [],
-        };
-
-        root.groups = [groupA, groupEmpty];
-
-        const { summaries, samples, groups } = calculateLocations(
-            [
-                [root, groupA],
-                [root, groupEmpty],
-            ],
-            {
-                sampleHeight: 12,
-                groupSpacing: 0,
-                summaryHeight: 2,
-            }
-        );
-
-        expect(summaries).toHaveLength(1);
-        expect(samples).toHaveLength(1);
-
-        const groupNames = new Set(groups.map((group) => group.key.group.name));
-        expect(groupNames.has("Empty")).toBe(false);
-    });
-
-    test("calculateLocations orders groups by depth and counts samples", () => {
-        // Nested groups verify depth ordering and aggregation counts.
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA1 = {
-            name: "A1",
-            title: "Group A1",
-            samples: ["s1"],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupB = {
-            name: "B",
-            title: "Group B",
-            samples: ["s2"],
-        };
-
-        groupA.groups = [groupA1];
-        root.groups = [groupA, groupB];
-
-        const { groups } = calculateLocations(
-            [
-                [root, groupA, groupA1],
-                [root, groupB],
-            ],
-            {
-                sampleHeight: 10,
-                groupSpacing: 0,
-                summaryHeight: 0,
-            }
-        );
-
-        const depths = groups.map((group) => group.key.depth);
-        for (let i = 1; i < depths.length; i++) {
-            expect(depths[i]).toBeGreaterThanOrEqual(depths[i - 1]);
-        }
-
-        const groupByName = new Map(
-            groups.map((group) => [group.key.group.name, group.key])
-        );
-
-        expect(groupByName.get("Root").n).toBe(2);
-        expect(groupByName.get("A").n).toBe(2);
-        expect(groupByName.get("A1").n).toBe(2);
-        expect(groupByName.has("B")).toBe(false);
-    });
-});
-
-describe("scroll metrics", () => {
-    test("computeScrollMetrics interpolates scroll offset", () => {
-        const metrics = computeScrollMetrics({
+    expect(metrics.effectiveViewportHeight).toBe(90);
+    expect(metrics.contentHeight).toBe(170);
+    expect(metrics.effectiveScrollOffset).toBe(20);
+    expect(
+        computeScrollMetrics({
             viewportHeight: 100,
-            summaryHeight: 10,
             scrollableHeight: 250,
             scrollOffset: 40,
-            peekState: 0.5,
-        });
-
-        expect(metrics.effectiveViewportHeight).toBe(90);
-        expect(metrics.contentHeight).toBe(170);
-        expect(metrics.effectiveScrollOffset).toBe(20);
-    });
-
-    test("computeScrollMetrics disables scrolling when peekState is 0", () => {
-        const metrics = computeScrollMetrics({
-            viewportHeight: 120,
-            summaryHeight: 20,
-            scrollableHeight: 260,
-            scrollOffset: 50,
             peekState: 0,
-        });
-
-        expect(metrics.effectiveViewportHeight).toBe(100);
-        expect(metrics.contentHeight).toBe(100);
-        expect(metrics.effectiveScrollOffset).toBe(0);
-    });
+        }).effectiveScrollOffset
+    ).toBe(0);
 });
 
-describe("sample location lookup", () => {
-    test("getSampleLocationAt returns the enclosing sample", () => {
-        // Keep sampleHeight below padding threshold to avoid size adjustments.
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1", "s2"],
-        };
-
-        root.groups = [groupA];
-
-        const { samples } = calculateLocations([[root, groupA]], {
-            sampleHeight: 10,
-            summaryHeight: 4,
-        });
-
-        expect(getSampleLocationAt(4, samples).key).toBe("s1");
-        expect(getSampleLocationAt(13, samples).key).toBe("s1");
-        expect(getSampleLocationAt(14, samples).key).toBe("s2");
-    });
-
-    test("getSampleLocationAt excludes the end boundary", () => {
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1"],
-        };
-
-        root.groups = [groupA];
-
-        const { samples } = calculateLocations([[root, groupA]], {
-            sampleHeight: 10,
-            summaryHeight: 0,
-        });
-
-        const locSize = samples[0].locSize;
-        expect(getSampleLocationAt(locSize.location, samples).key).toBe("s1");
-        expect(
-            getSampleLocationAt(locSize.location + locSize.size, samples)
-        ).toBe(undefined);
-    });
-
-    test("getClosestSampleLocationAt falls back to the nearest sample row", () => {
-        /** @type {import("./state/sampleState.js").GroupGroup} */
-        const root = {
-            name: "Root",
-            title: "Root",
-            groups: [],
-        };
-
-        /** @type {import("./state/sampleState.js").SampleGroup} */
-        const groupA = {
-            name: "A",
-            title: "Group A",
-            samples: ["s1", "s2"],
-        };
-
-        root.groups = [groupA];
-
-        const { samples } = calculateLocations([[root, groupA]], {
-            viewHeight: 100,
-            summaryHeight: 0,
-            groupSpacing: 0,
-        });
-
-        const first = samples[0].locSize;
-        const second = samples[1].locSize;
-        const nearFirstGapPos = first.location + first.size + 1;
-
-        expect(getSampleLocationAt(nearFirstGapPos, samples)).toBeUndefined();
-        expect(getClosestSampleLocationAt(nearFirstGapPos, samples)?.key).toBe(
-            "s1"
-        );
-        expect(
-            getClosestSampleLocationAt(second.location - 1, samples)?.key
-        ).toBe("s2");
-    });
+test("exact sample hits exclude padding and end boundaries; focus chooses the nearest row", () => {
+    const rows = createManager({
+        height: 100,
+        groups: [["s1", "s2"]],
+    }).getLocations().samples;
+    const first = rows[0].locSize;
+    expect(getSampleLocationAt(first.location, rows)?.key).toBe("s1");
+    expect(
+        getSampleLocationAt(first.location + first.size, rows)
+    ).toBeUndefined();
+    expect(
+        getClosestSampleLocationAt(first.location + first.size + 1, rows)?.key
+    ).toBe("s1");
+    expect(
+        getClosestSampleLocationAt(rows[1].locSize.location - 1, rows)?.key
+    ).toBe("s2");
 });
 
 /**
- * @returns {import("./state/sampleState.js").GroupGroup}
+ * @param {{height: number, summaryHeight?: number, groups?: string[][], sampleLayout?: import("../spec/sampleView.js").SampleLayoutDef,
+ * animator?: Pick<import("@genome-spy/core/utils/animator.js").default, "requestTransition" | "cancelTransition" | "requestRender">}} options
  */
-function createRootGroup() {
-    return {
-        name: "Root",
-        title: "Root",
-        groups: [],
-    };
-}
-
-/**
- * @param {string} name
- * @param {string[]} samples
- * @returns {import("./state/sampleState.js").SampleGroup}
- */
-function createSampleGroup(name, samples) {
-    return {
-        name,
-        title: "Group " + name,
-        samples,
-    };
-}
-
-/**
- * @param {import("./state/sampleState.js").GroupGroup} rootGroup
- * @param {object} options
- * @param {number} options.height
- * @param {import("@genome-spy/app/spec/sampleView.js").SampleLayoutDef} [options.sampleLayout]
- * @param {Pick<import("@genome-spy/core/utils/animator.js").default, "requestTransition" | "cancelTransition" | "requestRender">} [options.animator]
- */
-function createLocationManager(rootGroup, { height, sampleLayout, animator }) {
+function createManager({
+    height,
+    summaryHeight = 0,
+    groups = [["s1", "s2"], ["s3"], []],
+    sampleLayout,
+    animator,
+}) {
+    const hierarchy =
+        /** @type {import("./state/sampleState.js").SampleHierarchy} */ ({
+            rootGroup: {
+                name: "Root",
+                title: "Root",
+                groups: groups.map((samples, index) => ({
+                    name: String.fromCharCode(65 + index),
+                    title: "Group",
+                    samples,
+                })),
+            },
+        });
     return new LocationManager({
-        getSampleHierarchy: () =>
-            /** @type {import("./state/sampleState.js").SampleHierarchy} */ ({
-                rootGroup,
-            }),
+        getSampleHierarchy: () => hierarchy,
         getHeight: () => height,
-        getSummaryHeight: () => 0,
+        getSummaryHeight: () => summaryHeight,
         onLocationUpdate: () => {},
         viewContext: /** @type {any} */ ({
             animator: animator ?? {
-                requestTransition: () => {},
+                requestTransition: (callback) =>
+                    callback(performance.now() + 1000),
                 cancelTransition: () => {},
                 requestRender: () => {},
             },

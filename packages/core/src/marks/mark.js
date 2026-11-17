@@ -192,7 +192,6 @@ export default class Mark {
     getSupportedChannels() {
         return [
             "sample",
-            "facetIndex",
             "x",
             "y",
             "xOffset",

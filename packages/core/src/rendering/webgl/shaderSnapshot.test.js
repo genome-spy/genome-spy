@@ -162,8 +162,13 @@ function findUnitView(root, name) {
 /**
  * @param {import("../../spec/root.js").RootSpec} spec
  * @param {string} [unitName]
+ * @param {boolean} [sampleFacetRendering]
  */
-async function captureShaderSources(spec, unitName) {
+async function captureShaderSources(
+    spec,
+    unitName,
+    sampleFacetRendering = false
+) {
     const root = await createAndInitialize(spec, View);
     try {
         expect(
@@ -172,6 +177,9 @@ async function captureShaderSources(spec, unitName) {
                 .filter((entry) => entry.status !== "complete")
         ).toEqual([]);
         const unitView = findUnitView(root, unitName);
+        if (sampleFacetRendering) {
+            unitView.usesSampleFacetRendering = () => true;
+        }
         const glHelper = createFakeGlHelper();
 
         createWebGLMark(
@@ -220,33 +228,30 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("scale_xOffset");
     });
 
-    test.each(/** @type {const} */ (["rect", "point"]))(
-        "%s culls hidden sample facets before projection",
-        async (type) => {
-            const sources = await captureShaderSources({
-                data: { values: [{ facetIndex: 0 }] },
-                mark: { type, clamp: type === "point" },
+    test("sample facets cull empty placements before projection", async () => {
+        const sources = await captureShaderSources(
+            {
+                data: { values: [{}] },
+                mark: { type: "point", clamp: true },
                 encoding: {
                     x: { value: 0.5 },
-                    facetIndex: { field: "facetIndex" },
                 },
-            });
+            },
+            undefined,
+            true
+        );
 
-            const mainIndex = sources.vertex.indexOf("void main(void)");
-            const cullIndex = sources.vertex.indexOf(
-                "getSampleFacetPos().height == 0.0",
-                mainIndex
-            );
-            const projectionIndex = sources.vertex.indexOf(
-                "getScaled_",
-                mainIndex
-            );
+        const mainIndex = sources.vertex.indexOf("void main(void)");
+        const cullIndex = sources.vertex.indexOf(
+            "getSampleFacetPos().height == 0.0",
+            mainIndex
+        );
+        const projectionIndex = sources.vertex.indexOf("getScaled_", mainIndex);
 
-            expect(sources.vertex).toContain("#define SAMPLE_FACET_TEXTURE");
-            expect(cullIndex).toBeGreaterThan(-1);
-            expect(cullIndex).toBeLessThan(projectionIndex);
-        }
-    );
+        expect(sources.vertex).toContain("#define SAMPLE_FACET_UNIFORM");
+        expect(cullIndex).toBeGreaterThan(-1);
+        expect(cullIndex).toBeLessThan(projectionIndex);
+    });
 
     test("legacy point dx and dy retain their pre-facet direction", async () => {
         const sources = await captureShaderSources({
