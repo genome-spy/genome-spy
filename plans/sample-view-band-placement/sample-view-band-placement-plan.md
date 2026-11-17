@@ -50,6 +50,20 @@ traces against the original PR head and master with profiling disabled for
 timing. Check output and interaction state before interpreting CPU or cadence.
 The existing App patch fragment covers the SampleView fixes in this draft.
 
+The retained-layout regression covers gap entry, reentry and picking. Grouped
+browser runs with 384 samples recorded zero layout computations during peek and
+vertical scrolling on WebGL and WebGPU.
+
+Three warmed, rotated headed runs per renderer and fixture compared the local
+revisions, original PR head `f2e25370` and master `15c1bc96d`. The same native
+peek and wheel input used a fixed sample anchor and matched scroll endpoints.
+Mean main-thread CPU on WebGPU was +0.1% / +2.8% versus the original PR for
+384 / 1,536 samples. Headed WebGL results were +13.6% / +3.3%, with mixed pair
+directions. The moderate headless WebGL repeat had same-code pairs ranging from
+−26.6% to +19.5%, so the incremental WebGL cost remains uncertain. Mean CPU
+against master was +30.3% / +18.5% on WebGPU and +45.9% / +24.7% on WebGL.
+This comparison does not establish CPU parity with master.
+
 ## November 6 remote-master refresh
 
 Rebased the foundation onto remote master `0cd106618`, then replayed all three
@@ -130,12 +144,10 @@ translation. Stable sample/group `locSize` getters consume these scalars; naviga
 does not mutate every row or rebuild topology. Logical row starts are
 `origin + rank*step + leafIndex*gap`, with the common inset applied at both edges.
 
-These scalars remain App layout inputs, not a second raw band scale. Plot rows and
-summary/group chrome consume them directly; metadata and labels use Core's
-completed viewport projection. Do not claim that CPU geometry ownership has fully
-moved to Core. Projecting every CPU row through the categorical mapping would add
-per-row gap searches, while reading completed coefficients back would add feedback
-and fail to recover slope from a gap-only viewport.
+App supplies these inputs to Core's numeric band projection. Plot rows and group
+intervals already have their display and leaf ranks, so they can project directly
+in constant time. The requested geometry remains available even when the fitted
+sidebar viewport contains only a gap.
 
 ### 2. Fixed range and the native categorical viewport
 
@@ -145,20 +157,12 @@ Keep the ordinary reversed range `[1,0]`, complete displayed-ID domain and zero
 band padding during navigation. Disable independent sidebar gesture zooming;
 SampleView remains the interaction owner.
 
-After current IDs, cuts, gap width and inset parameters settle, convert the
-requested camera to exact rank interval and fractional gap-edge ranks with Core's
-existing numeric inverse. For native mapping m, height H, requested step d, gap g
-and origin o:
-
-- Target slope is `-d/H`.
-- Target origin is `1 - (o + m.domainStart*d + m.firstRank*g)/H`.
-- Invert range edges 1 and 0 using that slope, origin and explicit gap width `g/H`.
-- Publish the returned rank values and gap ranks through `scale.viewport()`.
-
-The explicit target gap width matters when the previous mapping is exhausted or
-entirely inside a gap: its fitted gap width is suppressed to zero. The optional
-fourth `invertPoint` argument supplies the complete requested camera without
-adding App gap-search code. Existing inverse callers retain their default behavior.
+Keep numeric versions of the group cuts alongside the sample IDs at topology
+changes. Once the row parameters settle, invert the pane's pixel edges at
+distances `-origin` and `height - origin` from the full row origin. Core uses the
+requested row step and gap width to return exact band coordinates and fractional
+gap ranks. Publish those pairs through `scale.viewport()`. This avoids reading
+coefficients from a previous fitted viewport with exhausted row space.
 
 The imperative `scale.viewport(value)` setter validates, copies and publishes
 exact state through the native domain runtime, symmetric to imperative domain and

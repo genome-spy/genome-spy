@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import scaleBand, { scalePoint } from "./scaleBand.js";
+import { invertBandPosition } from "./bandMapping.js";
 
 /** @param {"band" | "point"} [type] */
 const create = (type = "band") =>
@@ -222,34 +223,29 @@ test("categorical navigation retains pointer anchors and fixed partially visible
     expect(() => scale.viewport({ interval: [2, 1] })).toThrow("viewport");
 });
 
-test("custom camera inversion retains gaps when leaving exhausted or gap-only mappings", () => {
+test("full row projection retains gap progress through exhausted viewports", () => {
     const height = 100;
     const step = 35;
     const gap = 150;
+    const cuts = [6];
     const scale = create()
         .domain(Array.from({ length: 12 }, (_, rank) => rank))
         .range([1, 0])
-        .gapPositions([6])
+        .gapPositions(cuts)
         .gapWidth(gap)
         .axisLength(height);
 
     /** @param {number} rowOrigin */
     function setCamera(rowOrigin) {
-        const mapping = scale.navigationMapping();
-        const slope = -step / height;
-        const origin =
-            1 -
-            (rowOrigin + mapping.domainStart * step + mapping.firstRank * gap) /
-                height;
-        const first = mapping.invertPoint(1, slope, origin, gap / height);
-        const last = mapping.invertPoint(0, slope, origin, gap / height);
+        const first = invertBandPosition(cuts, -rowOrigin, step, gap);
+        const last = invertBandPosition(cuts, height - rowOrigin, step, gap);
         scale.viewport({
             interval: [first.value, last.value],
             gapRanks: [first.rank, last.rank],
         });
     }
 
-    // Neither source can supply its suppressed gap width to the target camera.
+    // The full row geometry remains available even when the visible fit is exhausted.
     expect(scale.gapMapping().fits).toBe(false);
     setCamera(-240);
     expect(scale.viewport().interval).toEqual([6, 6]);

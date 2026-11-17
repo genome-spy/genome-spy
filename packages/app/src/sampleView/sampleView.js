@@ -1,5 +1,6 @@
 import ContainerView from "@genome-spy/core/view/containerView.js";
 import { html } from "lit";
+import { invertBandPosition } from "@genome-spy/core/scales/bandMapping.js";
 import { invertScalePosition } from "@genome-spy/core/scales/scalePosition.js";
 import {
     FlexDimensions,
@@ -1110,18 +1111,19 @@ export default class SampleView extends ContainerView {
                 /** @type {import("@genome-spy/core/scales/scaleBand.js").CategoricalGapScale} */ (
                     this.#rowScaleResolution.getScale()
                 );
-            const mapping = scale.navigationMapping(height);
-            const slope = -frame.step / height;
-            const origin =
-                1 -
-                (frame.origin +
-                    mapping.domainStart * frame.step +
-                    mapping.firstRank * frame.gap) /
-                    height;
-            // Reuse Core's inverse, including fractional progress through gaps.
-            const gapWidth = frame.gap / height;
-            const first = mapping.invertPoint(1, slope, origin, gapWidth);
-            const last = mapping.invertPoint(0, slope, origin, gapWidth);
+            // Invert the pane edges in the full row geometry, including gap fractions.
+            const first = invertBandPosition(
+                frame.cutRanks,
+                -frame.origin,
+                frame.step,
+                frame.gap
+            );
+            const last = invertBandPosition(
+                frame.cutRanks,
+                height - frame.origin,
+                frame.step,
+                frame.gap
+            );
             scale.viewport({
                 interval: [first.value, last.value],
                 gapRanks: [first.rank, last.rank],

@@ -1,4 +1,5 @@
 import PlacementSource from "@genome-spy/core/view/layout/placementSource.js";
+import { projectBandStart } from "@genome-spy/core/scales/bandMapping.js";
 import {
     countPerformance,
     measurePerformance,
@@ -273,17 +274,21 @@ export class LocationManager {
 
         if (this.#peekState == 0) {
             let target;
+            const summary = this.#layoutInputs.summaryHeight;
+            const gap =
+                summary +
+                (this.#locationContext.sampleLayout?.peekGroupSpacing ??
+                    DEFAULT_PEEK_GROUP_SPACING);
             if (sampleId) {
                 const index = this.#topology.sampleIds.indexOf(sampleId);
                 const leaf = this.#topology.sampleLeaves[index];
-                target =
-                    this.#layoutInputs.summaryHeight +
-                    (index + 0.5) * this.#closeupStep +
-                    leaf *
-                        (this.#layoutInputs.summaryHeight +
-                            (this.#locationContext.sampleLayout
-                                ?.peekGroupSpacing ??
-                                DEFAULT_PEEK_GROUP_SPACING));
+                target = projectBandStart(
+                    summary,
+                    this.#closeupStep,
+                    gap,
+                    index + 0.5,
+                    leaf
+                );
             } else {
                 // Match sample summaries
                 const groupInfo = this.getSummaryAt(mouseY);
@@ -291,12 +296,13 @@ export class LocationManager {
                     // TODO: Simplify now that target is available in groupLocations
                     const interval = this.#topology.leaves[groupInfo.index];
                     target =
-                        interval.start * this.#closeupStep +
-                        groupInfo.index *
-                            (this.#layoutInputs.summaryHeight +
-                                (this.#locationContext.sampleLayout
-                                    ?.peekGroupSpacing ??
-                                    DEFAULT_PEEK_GROUP_SPACING)) -
+                        projectBandStart(
+                            0,
+                            this.#closeupStep,
+                            gap,
+                            interval.start,
+                            groupInfo.index
+                        ) -
                         (groupInfo.location.locSize.location - mouseY);
                 }
             }
@@ -532,6 +538,7 @@ export class LocationManager {
         return {
             sampleIds: this.#topology.sampleIds,
             cuts: this.#topology.cuts,
+            cutRanks: this.#topology.cutRanks,
             gap,
             inset,
             step,
@@ -672,6 +679,8 @@ function createSampleTopology(paths, geometry) {
     const sampleLeaves = [];
     /** @type {string[]} */
     const cuts = [];
+    /** @type {number[]} */
+    const cutRanks = [];
     /** @type {SampleInterval[]} */
     const leaves = [];
     /** @type {Map<import("./state/sampleState.js").Group, SampleInterval & { group: import("./state/sampleState.js").Group, depth: number }>} */
@@ -685,7 +694,10 @@ function createSampleTopology(paths, geometry) {
         const firstLeaf = leaves.length;
         const start = sampleIds.length;
         const end = start + samples.length;
-        if (firstLeaf) cuts.push(samples[0]);
+        if (firstLeaf) {
+            cuts.push(samples[0]);
+            cutRanks.push(start);
+        }
         const leaf = createSampleInterval(start, end, firstLeaf, geometry);
         leaves.push(leaf);
         locations.summaries.push({ key: path, locSize: leaf.locSize });
@@ -699,10 +711,13 @@ function createSampleTopology(paths, geometry) {
                 locSize: {
                     get location() {
                         return (
-                            geometry.origin +
-                            rank * geometry.step +
-                            firstLeaf * geometry.gap +
-                            geometry.inset
+                            projectBandStart(
+                                geometry.origin,
+                                geometry.step,
+                                geometry.gap,
+                                rank,
+                                firstLeaf
+                            ) + geometry.inset
                         );
                     },
                     get size() {
@@ -742,6 +757,7 @@ function createSampleTopology(paths, geometry) {
         sampleIds,
         sampleLeaves,
         cuts,
+        cutRanks,
         leaves,
         groupBounds: groups,
     };
@@ -764,17 +780,24 @@ function createSampleInterval(start, end, firstLeaf, geometry) {
         locSize: {
             get location() {
                 return (
-                    geometry.origin +
-                    interval.start * geometry.step +
-                    interval.firstLeaf * geometry.gap -
-                    geometry.summary
+                    projectBandStart(
+                        geometry.origin,
+                        geometry.step,
+                        geometry.gap,
+                        interval.start,
+                        interval.firstLeaf
+                    ) - geometry.summary
                 );
             },
             get size() {
                 return (
-                    (interval.end - interval.start) * geometry.step +
-                    (interval.lastLeaf - interval.firstLeaf) * geometry.gap +
-                    geometry.summary
+                    projectBandStart(
+                        0,
+                        geometry.step,
+                        geometry.gap,
+                        interval.end - interval.start,
+                        interval.lastLeaf - interval.firstLeaf
+                    ) + geometry.summary
                 );
             },
         },

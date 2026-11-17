@@ -1,6 +1,62 @@
 import { gapRank } from "../genome/indexGapMapping.js";
 
 /**
+ * Project a band start when the rank and the number of preceding gaps are known.
+ * @param {number} origin
+ * @param {number} step
+ * @param {number} gap Signed gap width in range units.
+ * @param {number} rank Band rank relative to the origin.
+ * @param {number} precedingGaps Gap rank relative to the origin.
+ */
+export function projectBandStart(origin, step, gap, rank, precedingGaps) {
+    return origin + rank * step + precedingGaps * gap;
+}
+
+/**
+ * Find a band coordinate and the fractional progress through its preceding gap.
+ * Distance, step and gap width are measured in the direction of increasing rank.
+ * @param {readonly number[]} cuts
+ * @param {number} distance Distance from the projection origin, in range units.
+ * @param {number} step
+ * @param {number} gapWidth
+ * @param {number} [domainStart]
+ * @param {number} [firstRank] Gap rank at the origin.
+ */
+export function invertBandPosition(
+    cuts,
+    distance,
+    step,
+    gapWidth,
+    domainStart = 0,
+    firstRank = 0
+) {
+    if (step === 0) return { value: domainStart, rank: firstRank };
+    let lo = 0;
+    let hi = cuts.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        const after =
+            (cuts[mid] - domainStart) * step + gapWidth * (mid + 1 - firstRank);
+        if (after < distance) lo = mid + 1;
+        else hi = mid;
+    }
+    if (lo < cuts.length && gapWidth > 0) {
+        const before =
+            (cuts[lo] - domainStart) * step + gapWidth * (lo - firstRank);
+        if (distance >= before) {
+            return {
+                value: cuts[lo],
+                rank: lo + (distance - before) / gapWidth,
+            };
+        }
+    }
+    return {
+        value: domainStart + (distance - gapWidth * (lo - firstRank)) / step,
+        rank: lo,
+    };
+}
+
+/**
  * A placement-local mapping. Gap width is expressed in the same units as range.
  * Fractional ranks at the domain edges retain partially visible gaps during
  * navigation; they never change the data coordinates returned by invert().
@@ -58,9 +114,13 @@ export function createBandMapping({
         if (!fits) return NaN;
         const index = Math.floor(value);
         return (
-            start +
-            (index - domain[0]) * step +
-            gap * (gapRank(cuts, index, before) - firstRank) +
+            projectBandStart(
+                start,
+                step,
+                gap,
+                index - domain[0],
+                gapRank(cuts, index, before) - firstRank
+            ) +
             direction * bandwidth * band
         );
     }
@@ -69,44 +129,16 @@ export function createBandMapping({
      * @param {number} pixel
      * @param {number} [slope]
      * @param {number} [origin]
-     * @param {number} [pointGapWidth] Target camera gap width, including when the source mapping is exhausted.
      */
-    function invertPoint(
-        pixel,
-        slope = step,
-        origin = start,
-        pointGapWidth = gapWidth
-    ) {
-        const distance = (pixel - origin) * direction;
-        const dataStep = slope * direction;
-        if (dataStep === 0) return { value: domain[0], rank: firstRank };
-        let lo = 0;
-        let hi = cuts.length;
-        while (lo < hi) {
-            const mid = (lo + hi) >>> 1;
-            const after =
-                (cuts[mid] - domain[0]) * dataStep +
-                pointGapWidth * (mid + 1 - firstRank);
-            if (after < distance) lo = mid + 1;
-            else hi = mid;
-        }
-        if (lo < cuts.length && pointGapWidth > 0) {
-            const before =
-                (cuts[lo] - domain[0]) * dataStep +
-                pointGapWidth * (lo - firstRank);
-            if (distance >= before) {
-                return {
-                    value: cuts[lo],
-                    rank: lo + (distance - before) / pointGapWidth,
-                };
-            }
-        }
-        return {
-            value:
-                domain[0] +
-                (distance - pointGapWidth * (lo - firstRank)) / dataStep,
-            rank: lo,
-        };
+    function invertPoint(pixel, slope = step, origin = start) {
+        return invertBandPosition(
+            cuts,
+            (pixel - origin) * direction,
+            slope * direction,
+            gapWidth,
+            domain[0],
+            firstRank
+        );
     }
 
     /**
