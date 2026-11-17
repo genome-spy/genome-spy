@@ -1177,10 +1177,7 @@ function createBandPositionScale(
         readDomain,
         readRange
     );
-    Object.defineProperty(result, "viewport", {
-        enumerable: true,
-        get: readViewport,
-    });
+    retainScaleLeaf(result, "viewport", readViewport);
     return retainBandScaleProperties(result, scale, channel);
 }
 
@@ -1237,6 +1234,7 @@ function createIndexPositionScale(scale, range, band, channel, peer) {
  */
 function retainBandScaleProperties(target, scale, channel, peer) {
     const source = /** @type {any} */ (scale);
+    /** @type {(keyof import("@genome-spy/webgpu-renderer").DefinedChannelScale)[]} */
     const properties =
         scale.type === "band" || scale.type === "index"
             ? ["paddingInner", "paddingOuter"]
@@ -1253,10 +1251,7 @@ function retainBandScaleProperties(target, scale, channel, peer) {
         }
     }
     for (const property of properties) {
-        Object.defineProperty(target, property, {
-            enumerable: true,
-            get: () => source[property](),
-        });
+        retainScaleLeaf(target, property, () => source[property]());
     }
     return target;
 }
@@ -1834,17 +1829,18 @@ function createNumericScale(mark, channel, scale, range, domain) {
  * @param {(() => any)} [readRange]
  */
 function retainScaleLeaves(scale, readDomain, readRange) {
-    if (readDomain)
-        Object.defineProperty(scale, "domain", {
-            enumerable: true,
-            get: readDomain,
-        });
-    if (readRange)
-        Object.defineProperty(scale, "range", {
-            enumerable: true,
-            get: readRange,
-        });
+    if (readDomain) retainScaleLeaf(scale, "domain", readDomain);
+    if (readRange) retainScaleLeaf(scale, "range", readRange);
     return scale;
+}
+
+/**
+ * @param {import("@genome-spy/webgpu-renderer").DefinedChannelScale} scale
+ * @param {keyof import("@genome-spy/webgpu-renderer").DefinedChannelScale} property
+ * @param {() => any} read
+ */
+function retainScaleLeaf(scale, property, read) {
+    Object.defineProperty(scale, property, { enumerable: true, get: read });
 }
 
 /**
