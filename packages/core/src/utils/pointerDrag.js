@@ -9,21 +9,22 @@ const dragEvents = /** @type {const} */ ([
  * Captures a drag on the canvas and separates release from cancellation.
  * Cleanup and hover resumption happen before release effects.
  *
- * @param {MouseEvent} event The pointerdown being dispatched on the canvas.
+ * @param {MouseEvent} event The pointer event being dispatched on the canvas.
  * @param {{
  *     onMove: (event: PointerEvent) => void,
  *     onFinish?: (released: boolean) => void,
  *     onRelease?: (event: PointerEvent) => void,
  *     hoverContext?: Pick<import("../types/viewContext.js").default, "suspendHoverTracking" | "resumeHoverTracking">,
+ *     capture?: boolean,
  * }} options
  * @returns {() => boolean} An idempotent cancellation function.
  */
 export function startPointerDrag(
     event,
-    { onMove, onFinish, onRelease, hoverContext }
+    { onMove, onFinish, onRelease, hoverContext, capture = true }
 ) {
     if (!("pointerId" in event) || typeof event.pointerId !== "number") {
-        throw new Error("Expected a pointerdown event.");
+        throw new Error("Expected a pointer event.");
     }
     const target = /** @type {HTMLCanvasElement} */ (event.currentTarget);
     const { pointerId } = event;
@@ -35,7 +36,7 @@ export function startPointerDrag(
         if (signal.aborted) return false;
 
         controller.abort();
-        if (target.hasPointerCapture(pointerId)) {
+        if (capture && target.hasPointerCapture(pointerId)) {
             target.releasePointerCapture(pointerId);
         }
         onFinish?.(release !== undefined);
@@ -62,7 +63,8 @@ export function startPointerDrag(
         }
     };
 
-    target.setPointerCapture(pointerId);
+    // Touch drags borrow capture held by the canvas interaction controller.
+    if (capture) target.setPointerCapture(pointerId);
     hoverContext?.suspendHoverTracking();
     for (const type of dragEvents) {
         target.addEventListener(type, handlePointer, { signal });

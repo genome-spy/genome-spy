@@ -60,19 +60,19 @@ test("brushes stay defined over gaps and use their visible bounds for translatio
         canvas.dispatch("pointerup", { clientX: end, clientY: 25 });
         return view.paramRuntime.getValue("brush").intervals.x;
     };
-    const clear = () => controller.clear();
+    const state = view.paramRuntime.getIntervalSelectionState("brush");
     try {
         for (const [a, b] of [
             [48, 52],
             [52, 48],
         ]) {
-            clear();
+            state.clear();
             expect(drag(a, b)).toEqual([10, 10]);
             expect(controller.contains(new Point(50, 25))).toBe(false);
         }
-        clear();
+        state.clear();
         expect(drag(20, 50)).toEqual([4, 10]);
-        clear();
+        state.clear();
         expect(drag(50, 20)).toEqual([4, 10]);
         view.paramRuntime.setValue("brush", {
             type: "interval",

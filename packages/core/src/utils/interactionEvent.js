@@ -28,7 +28,20 @@
  */
 
 /**
- * @typedef {UIEvent | WheelLikeEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
+ * @typedef {{ type: "touchtap", pointerEvent: PointerEvent }} TouchTapEvent
+ * @typedef {{
+ *     start: () => () => boolean,
+ *     overridesPan: boolean,
+ * }} TouchDragTool
+ * @typedef {{
+ *     type: "touchdragstart",
+ *     pointerEvent: PointerEvent,
+ *     activeEvent: PointerEvent,
+ *     brush?: TouchDragTool,
+ *     ruler?: TouchDragTool,
+ *     panAvailable?: boolean,
+ * }} TouchDragStartEvent
+ * @typedef {UIEvent | WheelLikeEvent | TouchGestureEvent | WheelClaimProbeEvent | TouchTapEvent | TouchDragStartEvent} InteractionUiEvent
  */
 
 /**

@@ -19,6 +19,9 @@ import {
 /** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
 /** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
 
+const TAP_DISTANCE = 4;
+const markEventTypes = ["click", "dblclick", "contextmenu"];
+
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
     #viewRoot;
@@ -142,7 +145,7 @@ export default class InteractionController {
      * @returns {() => void}
      */
     subscribeMarkEvent(view, type, listener) {
-        if (!["click", "dblclick", "contextmenu"].includes(type)) {
+        if (!markEventTypes.includes(type)) {
             throw new Error(`Unsupported mark event type: ${type}`);
         }
 
@@ -213,9 +216,7 @@ export default class InteractionController {
      */
     subscribeNativeEvent(type, listener) {
         const supported = [
-            "click",
-            "dblclick",
-            "contextmenu",
+            ...markEventTypes,
             "mousedown",
             "mouseup",
             "mousemove",
@@ -261,22 +262,17 @@ export default class InteractionController {
         }
 
         if (mouseEvent) {
-            const point = this.#toCanvasPoint(mouseEvent);
-            this.#lastPointerPoint = point;
-            if (this.#isInsideCanvas(point)) {
-                this.#refreshHoverAndCursor(point);
-                return;
-            }
-
-            this.#interactionDispatcher.handlePointerLeave(mouseEvent);
-        } else if (
-            this.#lastPointerPoint &&
-            this.#isInsideCanvas(this.#lastPointerPoint)
-        ) {
-            this.#refreshHoverAndCursor(this.#lastPointerPoint);
+            this.#lastPointerPoint = this.#toCanvasPoint(mouseEvent);
+        }
+        const point = this.#lastPointerPoint;
+        if (point && this.#isInsideCanvas(point)) {
+            this.#refreshHoverAndCursor(point);
             return;
         }
 
+        if (mouseEvent) {
+            this.#interactionDispatcher.handlePointerLeave(mouseEvent);
+        }
         this.#clearHover();
         this.#cursorManager.clear();
     }
@@ -452,7 +448,7 @@ export default class InteractionController {
                 let markPickPromise;
                 /** @type {InternalMarkHit | null | undefined} */
                 let eventHit;
-                if (["click", "dblclick", "contextmenu"].includes(type)) {
+                if (markEventTypes.includes(type)) {
                     markPickPromise = this.#handlePicking(
                         point.x,
                         point.y,
@@ -474,40 +470,28 @@ export default class InteractionController {
 
                 this.#lastPointerPoint = point;
 
-                let hoverPickHandled = false;
+                if (type === "mousemove") {
+                    if (!wheeling && this.#hoverTrackingSuspensionCount === 0) {
+                        this.#suppressTooltipUntilMouseMove = false;
+                        this.#tooltip.handleMouseMove(event);
+                        this.#tooltipUpdateRequested = false;
 
-                if (
-                    type == "mousemove" &&
-                    !wheeling &&
-                    this.#hoverTrackingSuspensionCount === 0
-                ) {
-                    this.#suppressTooltipUntilMouseMove = false;
-                    this.#tooltip.handleMouseMove(event);
-                    this.#tooltipUpdateRequested = false;
-
-                    // Disable picking during dragging. Also postpone picking until
-                    // the user has stopped zooming as reading pixels from the
-                    // picking buffer is slow and ruins smooth animations.
-                    if (event.buttons == 0 && !isStillZooming()) {
-                        if (activeHoverPick) {
-                            queuedMouseMove = { point, event };
-                        } else {
-                            startHoverPick(point, event);
+                        // Skip picking while dragging or zooming to keep animations smooth.
+                        if (event.buttons === 0 && !isStillZooming()) {
+                            if (activeHoverPick) {
+                                queuedMouseMove = { point, event };
+                            } else {
+                                startHoverPick(point, event);
+                            }
+                            this.#wheelInertia.cancel();
+                            return;
                         }
-                        hoverPickHandled = true;
                     }
-                }
 
-                if (type == "mousemove" && !hoverPickHandled) {
                     // A drag or temporarily suppressed hover supersedes the
                     // pending hover; its eventual result must not replay.
                     activeHoverPick = undefined;
                     queuedMouseMove = undefined;
-                }
-
-                if (hoverPickHandled) {
-                    this.#wheelInertia.cancel();
-                    return;
                 }
 
                 if (type != "wheel") {
@@ -551,33 +535,29 @@ export default class InteractionController {
                                   ? "chart"
                                   : "default",
                         });
-                    const claimed = probe();
+                    const claim = probe();
 
-                    if (claimed.wheelScroll) {
+                    if (claim.wheelScroll || ordinary || !claim.wheelClaimed) {
                         this.#stopWheelInteraction();
-                        wheelEvent.preventDefault();
-                        claimed.wheelScroll();
-                        return;
-                    } else if (ordinary) {
-                        this.#stopWheelInteraction();
-                        return;
-                    }
-
-                    if (!claimed.wheelClaimed) {
-                        this.#stopWheelInteraction();
+                        if (claim.wheelScroll) {
+                            wheelEvent.preventDefault();
+                            claim.wheelScroll();
+                            return;
+                        }
                         if (cooperative) {
                             return;
                         }
                     } else {
-                        stopPanInertia(this.#animator);
-                        if (this.#wheelOwner !== claimed.wheelOwner) {
+                        const owner = claim.wheelOwner;
+                        if (this.#wheelOwner === owner) {
+                            stopPanInertia(this.#animator);
+                        } else {
                             this.#stopWheelInteraction();
                         }
-                        this.#wheelOwner = claimed.wheelOwner;
+                        this.#wheelOwner = owner;
                         wheelEvent.preventDefault();
 
-                        if (!horizontal && claimed.wheelSmooth) {
-                            const owner = claimed.wheelOwner;
+                        if (!horizontal && claim.wheelSmooth) {
                             const template = makeEventTemplate(wheelEvent);
                             this.#wheelInertia.setMomentum(
                                 wheelEvent.deltaY *
@@ -608,66 +588,39 @@ export default class InteractionController {
                             );
                             return;
                         }
+                        // Horizontal panning and selection-only gestures are direct.
+                        this.#wheelInertia.stop();
                     }
 
-                    // Horizontal panning and selection-only gestures are direct.
-                    this.#wheelInertia.stop();
                     if (horizontal) {
                         this.#clearHover();
                     }
                 }
 
-                if (type == "click") {
-                    if (longPressTriggered) {
-                        return;
-                    }
-
-                    const clickWasDrag =
-                        this.#mouseDownCoords?.subtract(
-                            Point.fromMouseEvent(event)
-                        ).length >= 3;
-
-                    const dispatchClick = () => {
-                        // TODO: Should be handled at the view level, not globally
-                        const e = this.#currentHover
-                            ? {
-                                  type,
-                                  viewPath: this.#currentHover.mark.unitView
-                                      .getLayoutAncestors()
-                                      .map(
-                                          /** @param {import("../view/view.js").default} view */
-                                          (view) => view.name
-                                      )
-                                      .reverse(),
-                                  datum: this.#currentHover.datum,
-                              }
-                            : {
-                                  type,
-                                  viewPath: null,
-                                  datum: null,
-                              };
-
-                        this.#emitEvent("click", e);
-
-                        if (!clickWasDrag) {
-                            return dispatchInteraction(point, event, eventHit);
-                        }
-                    };
-
-                    if (markPickPromise) {
-                        dispatchPicked(markPickPromise, dispatchClick);
-                        return;
-                    }
-
-                    return dispatchClick();
+                if (type === "click" && longPressTriggered) {
+                    return;
                 }
+                const clickWasDrag =
+                    type === "click" &&
+                    this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
+                        .length >= 3;
 
                 const dispatch = () => {
-                    const interaction = dispatchInteraction(
-                        point,
-                        event,
-                        eventHit
-                    );
+                    if (type === "click") {
+                        const hover = this.#currentHover;
+                        this.#emitEvent("click", {
+                            type,
+                            viewPath:
+                                hover?.mark.unitView
+                                    .getLayoutAncestors()
+                                    .map((view) => view.name)
+                                    .reverse() ?? null,
+                            datum: hover?.datum ?? null,
+                        });
+                        if (clickWasDrag) return;
+                    }
+
+                    dispatchInteraction(point, event, eventHit);
                     if (
                         type === "dblclick" &&
                         this.#hoverTrackingSuspensionCount === 0 &&
@@ -675,13 +628,12 @@ export default class InteractionController {
                     ) {
                         this.#scheduleHoverRefreshAfterRender();
                     }
-                    return interaction;
                 };
                 if (markPickPromise) {
                     dispatchPicked(markPickPromise, dispatch);
-                    return;
+                } else {
+                    dispatch();
                 }
-                return dispatch();
             }
         };
 
@@ -733,6 +685,42 @@ export default class InteractionController {
         /** @type {ReturnType<typeof readTouchGesture>} */
         let previousTouchGesture;
 
+        /** @type {PointerEvent | undefined} */
+        let touchStart;
+        /** @type {(() => boolean) | undefined} */
+        let cancelTouchDrag;
+
+        /**
+         * @param {PointerEvent} start
+         * @param {PointerEvent} activeEvent
+         */
+        const startTouchTool = (start, activeEvent) => {
+            if (this.#isInteractionFrozen()) return;
+
+            /** @type {import("../utils/interactionEvent.js").TouchDragStartEvent} */
+            const drag = {
+                type: "touchdragstart",
+                pointerEvent: start,
+                activeEvent,
+            };
+            const interaction = dispatchInteraction(
+                this.#toCanvasPoint(start),
+                drag
+            );
+            if (interaction.stopped) return;
+
+            // Brushes need movement to define a range and take precedence over rulers.
+            if (drag.brush && (!drag.panAvailable || drag.brush.overridesPan)) {
+                if (activeEvent.type === "pointermove")
+                    return drag.brush.start();
+            } else if (
+                drag.ruler &&
+                (!drag.panAvailable || drag.ruler.overridesPan)
+            ) {
+                return drag.ruler.start();
+            }
+        };
+
         /**
          * @param {PointerEvent} event
          * @param {boolean} canceled
@@ -743,7 +731,17 @@ export default class InteractionController {
             const moved = type === "pointermove";
             if (!started && !touches.has(pointerId)) return;
 
-            if (started) canvas.setPointerCapture(pointerId);
+            if (started) {
+                canvas.setPointerCapture(pointerId);
+                if (touches.size === 0) {
+                    touchStart = event;
+                    stopPanInertia(this.#animator);
+                } else {
+                    touchStart = undefined;
+                    cancelTouchDrag?.();
+                    cancelTouchDrag = undefined;
+                }
+            }
             if (started || moved) {
                 this.#wheelInertia.cancel();
                 touches.set(pointerId, event);
@@ -754,14 +752,46 @@ export default class InteractionController {
             this.#tooltipUpdateRequested = false;
             const previous = previousTouchGesture;
             const current = readTouchGesture();
+            const start = touchStart;
+            const withinTapDistance =
+                start && getClientDistance(start, event) < TAP_DISTANCE;
+            if (moved && withinTapDistance) return;
+
             previousTouchGesture = current;
-            if (started) return;
+            if (started) {
+                if (start) {
+                    cancelTouchDrag = startTouchTool(start, event);
+                    if (cancelTouchDrag) touchStart = undefined;
+                }
+                return;
+            }
+            touchStart = undefined;
             if (!moved) {
+                if (cancelTouchDrag) {
+                    cancelTouchDrag = undefined;
+                    return;
+                }
+                if (
+                    !canceled &&
+                    withinTapDistance &&
+                    !this.#isInteractionFrozen()
+                ) {
+                    const point = this.#toCanvasPoint(event);
+                    if (this.#isInsideCanvas(point)) {
+                        dispatchInteraction(point, {
+                            type: "touchtap",
+                            pointerEvent: event,
+                        });
+                    }
+                }
                 if (canceled || !current) {
                     dispatchTouchGesture(previous, canceled ? "cancel" : "end");
                 }
                 return;
             }
+
+            if (start) cancelTouchDrag = startTouchTool(start, event);
+            if (cancelTouchDrag) return;
 
             const xDelta = current.centerX - previous.centerX;
             const yDelta = current.centerY - previous.centerY;
@@ -866,7 +896,7 @@ export default class InteractionController {
         }
         canvas.addEventListener("pointercancel", handlePointer, options);
         canvas.addEventListener("lostpointercapture", handlePointer, options);
-        for (const type of ["click", "contextmenu", "dblclick"]) {
+        for (const type of markEventTypes) {
             canvas.addEventListener(type, listener, options);
         }
         canvas.addEventListener("wheel", listener, {
@@ -902,6 +932,7 @@ export default class InteractionController {
         return () => {
             listeners.abort();
             finishPress();
+            cancelTouchDrag?.();
             for (const id of touches.keys()) {
                 if (canvas.hasPointerCapture(id))
                     canvas.releasePointerCapture(id);

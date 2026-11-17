@@ -16,7 +16,7 @@ The top "sunrise" plot shows integer-fit distance over a grid of tumor purity
 logarithmic scale. Blue cells have lower distances, meaning that the included
 allele-specific estimates are closer to integer copy numbers.
 
-Click or drag anywhere on the sunrise plot to choose a fit. The readout below
+Click, tap, or drag anywhere on the sunrise plot to choose a fit. The readout below
 the heatmap evaluates the exact chosen coordinates, and the other panels update
 the allele-specific copy numbers and fitted LogR and BAF overlays. The green
 cross marks the solution selected by the original ASCAT run for the sample; it
