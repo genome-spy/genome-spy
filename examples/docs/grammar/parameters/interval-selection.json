@@ -3,18 +3,9 @@
 
   "params": [
     {
-      "name": "brushMode",
-      "value": false,
-      "bind": { "input": "checkbox", "name": "Brush with touch" }
-    },
-    {
       "name": "brush",
       "value": { "x": [2, 4] },
-      "select": {
-        "type": "interval",
-        "encodings": ["x"],
-        "touchDrag": { "expr": "brushMode" }
-      }
+      "select": { "type": "interval", "encodings": ["x"] }
     }
   ],
 
