@@ -1,11 +1,11 @@
 # SampleView band placement implementation plan
 
-Status: native categorical viewports and scalar group translation are implemented
-and validated. Reusable WebGPU adapter, placement and uniform-writer changes now
-belong to the independent `codex/webgpu-retained-updates` foundation PR; this
-SampleView branch stacks on it. The original split preserved the then-tested
-`a13287481` package tree exactly; subsequent rebases incorporate newer master
-changes. Independent reviews have no outstanding findings.
+Native categorical viewports and scalar group translation are implemented and
+validated. The reusable WebGPU adapter, placement and uniform-writer changes
+landed independently in [#659](https://github.com/genome-spy/genome-spy/pull/659).
+The original split preserved the then-tested `a13287481` package tree exactly.
+Subsequent rebases incorporate newer master changes. Independent reviews have no
+outstanding findings.
 Earlier pane and native timing results below remain historical comparisons with
 their original instrumentation limits.
 
@@ -17,9 +17,16 @@ retirement.
 - Foundation: [#647](https://github.com/genome-spy/genome-spy/issues/647), implemented
   by [#648](https://github.com/genome-spy/genome-spy/pull/648).
 - Original base: `6b495c5578730d555c794c903767810f3b4c875c`.
-- Current PR base: `codex/webgpu-retained-updates`.
+- Current PR base: `master`.
 - Frozen pane comparison: `914e34a9b`.
 - Branch: `codex/sample-view-band-placement`.
+
+## November 17 rebase after the WebGPU foundation merge
+
+Replayed the four SampleView commits onto master at `15c1bc96d`. The SVG test
+resolution preserves master's coverage of faded repeated facets and local opacity
+scopes. The removed fixture exercised the retired texture-indexed placement path.
+Earlier timing comparisons retain their original baselines.
 
 ## November 6 remote-master refresh
 
@@ -498,14 +505,13 @@ correctness/CPU evidence.
 
 ## PR split and delivery
 
-The WebGPU foundation targets remote master and contains scale-only binding
-updates, frozen-domain reuse, static literal slots, live categorical ranges,
-pixel geometry under placement and retained typed uniform writers. It preserves
-legacy metadata facet support so it is independently usable. Its active
-[plan](../webgpu-direct-updates/webgpu-direct-updates-plan.md) records the selected
-implementation, discarded experiments, measurement limits and further WebGPU
-optimization opportunities. The earlier local-master landing above is history;
-the current delivery puts all selected reusable WebGPU work in that PR.
+The WebGPU foundation landed independently on master. It contains scale-only
+binding updates, frozen-domain reuse, static literal slots, live categorical
+ranges, pixel geometry under placement and retained typed uniform writers. It
+preserves legacy metadata facet support. The
+[archived foundation plan](https://github.com/genome-spy/genome-spy/blob/7851bdadf4e646cc3c8eea58eb53d2bb76ea80b3/plans/webgpu-direct-updates/webgpu-direct-updates-plan.md)
+records the selected implementation, discarded experiments, measurement limits
+and further WebGPU optimization opportunities.
 
 This upper PR contains SampleView placement/navigation, the metadata placement
 texture and internal facet removal across backends, exact imperative viewport
@@ -517,8 +523,7 @@ remains on `codex/sample-view-before-webgpu-split`.
 
 Package-tree equality against `a13287481` was the original history-only split
 check. The November 5 rebase and native checks below supersede that delivery
-status. PR #660 remains based on #659; merge the foundation first and then
-retarget the upper PR to master.
+status. PR #660 now targets master after the #659 squash merge.
 
 ## November 5 rebase and native verification
 
@@ -647,7 +652,7 @@ The smaller deletion-only candidate did not establish a consistent benefit
 54 and deletes 46 non-comment production lines, net +8, justified by the larger
 measured reduction beyond controls. Foundation tests pass 52 cases and upper
 stack tests 51; Core types, scoped lint/format and release checks pass. The
-[foundation plan](../webgpu-direct-updates/webgpu-direct-updates-plan.md)
+[archived foundation plan](https://github.com/genome-spy/genome-spy/blob/7851bdadf4e646cc3c8eea58eb53d2bb76ea80b3/plans/webgpu-direct-updates/webgpu-direct-updates-plan.md)
 records all samples, rejected experiments and source hashes. Follow-up artifacts
 use `sampleview-scalar-clip-{cpu,control}-*`; the accepted upper module SHA-256 is
 `273eb7b76ee0174bfc131c7e873d6c1f482517d7aa62c20ef326c64756522247`.
