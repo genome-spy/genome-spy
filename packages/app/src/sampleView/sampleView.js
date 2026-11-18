@@ -109,6 +109,9 @@ export default class SampleView extends ContainerView {
     /** @type {<T>(operation: () => T) => T} App admission boundary; standalone test views execute directly. */
     runCohortOperation = (operation) => operation();
 
+    /** @type {((metadataView: MetadataView) => void) | undefined} */
+    onMetadataViewsChanged;
+
     /**
      * @typedef {import("./state/sampleState.js").Sample} Sample
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize

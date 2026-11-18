@@ -32,6 +32,7 @@ import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
+import DataSource from "../data/sources/dataSource.js";
 import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";
 
@@ -924,10 +925,18 @@ export default class View {
         return isExprRef(this.spec.visible);
     }
 
-    isConfiguredVisible() {
+    /** @type {boolean | undefined} */
+    visibilityOverride;
+
+    isLocallyVisible() {
         return this.visibilityIsExpression
             ? this.isVisibleInSpec()
-            : this.context.isViewConfiguredVisible(this);
+            : (this.visibilityOverride ??
+                  this.context.isViewConfiguredVisible(this));
+    }
+
+    isConfiguredVisible() {
+        return this.isLocallyVisible();
     }
 
     /** @type {import("../paramRuntime/types.js").ParamRef<boolean>} */
@@ -1284,24 +1293,33 @@ export default class View {
         this.#disposers.length = 0;
 
         const handle = this.flowHandle;
+        const { dataFlow } = this.context;
 
+        const dataAncestors = this.dataParent?.getDataAncestors();
+        // Deferred children still need authored inputs. A merged source may also
+        // be an input owned by another branch.
+        /** @param {import("../data/flowNode.js").default} node */
+        const retained = (node) => {
+            /** @param {View} view */
+            const ownsTerminal = (view) =>
+                view !== this && view.flowHandle?.terminals?.has(node);
+            if (dataAncestors?.some(ownsTerminal)) return true;
+            if (!(node instanceof DataSource) || !node.shareKey) return false;
+            const root = this.getLayoutAncestors().at(-1);
+            return root.getDescendants().some(ownsTerminal);
+        };
         for (const terminal of handle?.terminals ?? []) {
             // Descendants may still use this endpoint, including merged sources.
-            if (terminal.children.length === 0) {
-                this.context.dataFlow.pruneBranch(terminal);
-            }
+            if (!terminal.children.length)
+                dataFlow.pruneBranch(terminal, retained);
         }
 
         if (handle?.collector) {
-            this.context.dataFlow.pruneBranch(handle.collector);
+            dataFlow.pruneBranch(handle.collector, retained);
         }
 
-        if (
-            handle?.dataSource &&
-            handle.dataSource.view === this &&
-            !handle.dataSource.shareKey
-        ) {
-            this.context.dataFlow.removeDataSource(handle.dataSource);
+        if (handle?.dataSource?.view === this && !handle.dataSource.shareKey) {
+            dataFlow.removeDataSource(handle.dataSource);
         }
 
         this.paramRuntime.dispose();
@@ -1313,7 +1331,7 @@ export default class View {
         this.flowOutputs.clear();
 
         this.flowHandle = undefined;
-        this.context.dataFlow.loadingStatusRegistry.delete(this);
+        dataFlow.loadingStatusRegistry.delete(this);
     }
 
     /**

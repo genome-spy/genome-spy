@@ -28,13 +28,8 @@ import {
     collectScaleDomains,
     shouldSerializeScaleDomain,
 } from "./bookmark/scaleDomainUtils.js";
-import { viewSettingsSlice } from "./viewSettingsSlice.js";
-import {
-    buildViewSettingsPayload,
-    getViewVisibilityOverride,
-    normalizeViewSettingsPayload,
-    resolveRadioVisibilityConflicts,
-} from "./viewSettingsUtils.js";
+import { buildViewSettingsPayload } from "./viewSettingsUtils.js";
+import ViewVisibilitySettings from "./viewVisibilitySettings.js";
 import { subscribeTo } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "./sampleView/specGuards.js";
@@ -46,7 +41,6 @@ import {
     resolveParamSelector,
     resolveViewSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { getViewVisibilityKey } from "./viewSettingsUtils.js";
 import ConcatView from "@genome-spy/core/view/concatView.js";
 import { getDefaultParamValue } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import IntentPipeline from "./state/intentPipeline.js";
@@ -223,7 +217,11 @@ export default class App {
                     )
             )
         );
-        this.#setupViewVisibilityHandling();
+        this.viewVisibility = new ViewVisibilitySettings(this.store);
+        const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
+        this.genomeSpy.viewVisibilityPredicate = (view) =>
+            this.viewVisibility.getEffectiveOverride(view) ??
+            originalPredicate(view);
     }
 
     /**
@@ -277,6 +275,12 @@ export default class App {
         view.runCohortOperation = (operation) => {
             if (view.disposed) throw new Error("SampleView has been disposed.");
             return this.runCohortOperation(operation);
+        };
+        view.onMetadataViewsChanged = (metadataView) => {
+            this.viewVisibility.updateHierarchy(
+                this.genomeSpy.viewRoot,
+                metadataView
+            );
         };
         view.registerDisposer(() => {
             if (this.#sampleViewCandidate === view)
@@ -367,14 +371,11 @@ export default class App {
                 return !subtree.has(owner?.view) && !removedOrigin;
             })
         );
-        const removedVisibilityKeys = new Set(
-            Array.from(subtree).flatMap((view) =>
-                [getViewVisibilityKey(view), view.explicitName].filter(Boolean)
-            )
-        );
         try {
             return await operation();
         } finally {
+            if (!this.#finalized)
+                this.viewVisibility.updateHierarchy(this.genomeSpy.viewRoot);
             if (
                 !this.getSampleView() &&
                 (removing ||
@@ -390,14 +391,6 @@ export default class App {
                 }
                 this.store.dispatch(resetCohort(retainedEntries));
                 if (removing) await this.#replacePersistenceContext(null);
-                const visibilities = Object.fromEntries(
-                    Object.entries(
-                        this.store.getState().viewSettings.visibilities
-                    ).filter(([key]) => !removedVisibilityKeys.has(key))
-                );
-                this.store.dispatch(
-                    viewSettingsSlice.actions.setViewSettings({ visibilities })
-                );
             }
         }
     }
@@ -598,58 +591,6 @@ export default class App {
         }
     }
 
-    #setupViewVisibilityHandling() {
-        /** @type {Record<string, boolean>} */
-        const EMPTY_VISIBILITIES = {};
-        const visibilitiesSelector = (
-            /** @type {ReturnType<typeof this.store.getState>} */ state
-        ) => state.viewSettings?.visibilities ?? EMPTY_VISIBILITIES;
-
-        /** @type {Record<string, boolean>} */
-        let cachedInput = EMPTY_VISIBILITIES;
-        /** @type {import("@genome-spy/core/view/view.js").default | undefined} */
-        let cachedRoot;
-        let cachedRevision = -1;
-        /** @type {Record<string, boolean>} */
-        let cachedResolved = EMPTY_VISIBILITIES;
-
-        const getResolvedVisibilities = () => {
-            const input = visibilitiesSelector(this.store.getState());
-            const root = this.genomeSpy.viewRoot;
-
-            const revision = this.store.getState().lifecycle.hierarchyRevision;
-            if (
-                input === cachedInput &&
-                root === cachedRoot &&
-                revision === cachedRevision
-            ) {
-                return cachedResolved;
-            }
-
-            cachedInput = input;
-            cachedRoot = root;
-            cachedRevision = revision;
-            cachedResolved = root
-                ? resolveRadioVisibilityConflicts(root, input)
-                : input;
-
-            return cachedResolved;
-        };
-
-        const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
-        this.genomeSpy.viewVisibilityPredicate = (view) => {
-            const override = getViewVisibilityOverride(
-                getResolvedVisibilities(),
-                view
-            );
-            if (override !== undefined) {
-                return override;
-            }
-
-            return originalPredicate(view);
-        };
-    }
-
     #showSelectorConstraintWarnings() {
         const viewRoot = this.genomeSpy.viewRoot;
         if (!viewRoot) {
@@ -733,11 +674,21 @@ export default class App {
          */
         const remoteBookmarkPromise = this.#loadRemoteBookmarks();
 
-        // Restore view visibility early so initial data/scale init honors bookmarks.
-        // This avoids lazy-init races where in-flight loads miss newly visible branches.
-        if (!this.isEmbedded()) {
-            await this.#restoreViewSettingsFromUrlHash(remoteBookmarkPromise);
-        }
+        const startupBookmark = this.isEmbedded()
+            ? undefined
+            : await this.#getStartupUrlBookmark(remoteBookmarkPromise);
+        this.genomeSpy.initializeViewVisibility = () => {
+            this.viewVisibility.updateHierarchy(this.genomeSpy.viewRoot);
+            if (startupBookmark) {
+                this.viewVisibility.restoreChoices(
+                    startupBookmark.viewSettings
+                );
+            } else if (this.options.initialVisibilityOverrides?.length) {
+                this.viewVisibility.seedChoices(
+                    this.options.initialVisibilityOverrides
+                );
+            }
+        };
 
         const result = await this.genomeSpy.launch();
         if (!result) {
@@ -746,7 +697,8 @@ export default class App {
         this.views = createViewMutationApi(
             this.genomeSpy,
             () => !this.#finalized,
-            this.#runViewMutation.bind(this)
+            this.#runViewMutation.bind(this),
+            this.viewVisibility
         );
         this.datumSearch = createDatumSearch(this.views);
         this.#showSelectorConstraintWarnings();
@@ -862,28 +814,16 @@ export default class App {
     /**
      * @param {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>} remoteBookmarkPromise
      */
-    async #restoreViewSettingsFromUrlHash(remoteBookmarkPromise) {
+    async #getStartupUrlBookmark(remoteBookmarkPromise) {
         const hash = window.location.hash;
         if (!hash) {
             return;
         }
-        // Apply viewSettings before the initial dataflow build so views that are
-        // visible in a bookmark are initialized eagerly. Otherwise lazy-init
-        // can attach new branches while a shared data source is already loading,
-        // causing missing data until a manual toggle forces a reload.
         try {
-            const entry = await this.#resolveBookmarkFromHash(
+            return await this.#resolveBookmarkFromHash(
                 hash,
                 remoteBookmarkPromise
             );
-            if (entry?.viewSettings) {
-                const normalized = normalizeViewSettingsPayload(
-                    entry.viewSettings
-                );
-                this.store.dispatch(
-                    viewSettingsSlice.actions.setViewSettings(normalized)
-                );
-            }
         } catch {
             // Ignore invalid hashes here; _restoreStateFromUrl handles reporting.
         }
@@ -1044,7 +984,10 @@ export default class App {
         }
 
         /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
-        return decompressFromUrlHash(hash);
+        const entry = decompressFromUrlHash(hash);
+        return entry && typeof entry === "object" && !Array.isArray(entry)
+            ? entry
+            : undefined;
     }
 
     /**

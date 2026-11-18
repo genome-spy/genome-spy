@@ -53,6 +53,13 @@ export interface FontCatalogEntry {
 
 export interface EmbedOptions {
     /**
+     * Saved manual choices to apply once before initial layout and data loading.
+     * Entries for missing, ambiguous, or expression-controlled views are skipped.
+     * The last eligible entry for a view wins.
+     */
+    initialVisibilityOverrides?: readonly ViewVisibilityOverride[];
+
+    /**
      * In cooperative mode, ordinary wheel input scrolls an overflowing vertical
      * viewport or the page. Ctrl+wheel retains chart navigation and authored
      * wheel selections. The embedding application provides any Ctrl-zoom hint.
@@ -765,8 +772,39 @@ export interface ViewHandle {
     /** Parameters and selections resolved from this view's lexical scope. */
     readonly params: ParamNamespace;
 
+    /** Live visibility controls. This object is stable for the handle's lifetime. */
+    readonly visibility: ViewVisibilityApi;
+
     /** Mark interaction and picking scoped to this view's subtree. */
     readonly marks: MarksApi;
+}
+
+/** A saved manual visibility choice for a uniquely named view. */
+export type ViewVisibilityOverride = ViewSelector & { visible: boolean };
+
+/**
+ * Visibility of a live view. After view removal or embed finalization, reads
+ * throw and writes reject.
+ */
+export interface ViewVisibilityApi {
+    /** The view's own visibility choice before ancestor and layout rules. */
+    readonly locallyVisible: boolean;
+
+    /** The authored boolean, `true` when omitted, or `undefined` for an expression. */
+    readonly staticDefault: boolean | undefined;
+
+    /** The explicit choice to save, even when it equals the authored default. */
+    readonly override: boolean | undefined;
+
+    /**
+     * Stores an explicit choice or clears it with `undefined`. Writes reject
+     * for expression-controlled views. Writes run in order with structural
+     * mutations and can be awaited inside `views.transaction()`.
+     *
+     * Resolves after required first-show initialization and any reflow request.
+     * Layout and viewport-dependent lazy data may settle later.
+     */
+    setOverride(value: boolean | undefined): Promise<void>;
 }
 
 /**

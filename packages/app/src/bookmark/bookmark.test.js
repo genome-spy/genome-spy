@@ -20,6 +20,7 @@ function createBookmarkRestoreApp(overrides = {}) {
                 dispatch: vi.fn(),
                 getState: () => overrides.storeState ?? {},
             },
+            viewVisibility: { restoreChoices: vi.fn() },
             intentPipeline: {
                 submit: vi.fn(overrides.submit ?? (() => Promise.resolve())),
             },
@@ -172,7 +173,9 @@ describe("bookmark restore", () => {
 
         const results = await restoreBookmark(entry, app);
 
-        expect(app.store.dispatch).toHaveBeenCalled();
+        expect(app.viewVisibility.restoreChoices).toHaveBeenCalledWith(
+            entry.viewSettings
+        );
         expect(results.plots).toHaveLength(1);
         expect(results.plots[0]).toMatchObject({
             error: "No such attribute: missing",

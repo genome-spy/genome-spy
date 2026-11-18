@@ -186,6 +186,7 @@ export function prepareViewHierarchy(viewRoot) {
  * @param {{
  *   context?: ViewContext,
  *   contextOptions?: Parameters<typeof createHeadlessViewContext>[0],
+ *   onViewHierarchyCreated?: (view: import("../view/view.js").default) => void,
  *   onDataFlowBuilt?: (dataFlow: DataFlow) => void,
  * }} [options]
  * @returns {Promise<{ view: import("../view/view.js").default, context: ViewContext }>}
@@ -201,6 +202,7 @@ export async function createHeadlessEngine(spec, options = {}) {
         VIEW_ROOT_NAME
     );
 
+    options.onViewHierarchyCreated?.(view);
     await initializeViewGuides(view);
     prepareViewHierarchy(view);
 

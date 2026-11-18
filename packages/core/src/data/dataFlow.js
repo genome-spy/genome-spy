@@ -82,34 +82,30 @@ export default class DataFlow {
     /**
      * Remove an owned endpoint and orphaned ancestors, preserving shared inputs.
      * @param {import("./flowNode.js").default} endpoint
+     * @param {(node: import("./flowNode.js").default) => boolean} [retained]
      */
-    pruneBranch(endpoint) {
-        if (endpoint instanceof DataSource) {
-            this.removeDataSource(endpoint);
-            return;
-        }
-        let parent = endpoint.parent;
-        if (endpoint instanceof Collector) {
-            this.removeCollector(endpoint);
-        } else {
-            parent?.removeChild(endpoint);
-            endpoint.disposeSubtree();
-        }
-
-        while (parent && parent.children.length === 0) {
-            // Registered collectors belong to their view, even without readers.
-            if (parent instanceof Collector && this.#collectors.has(parent))
-                break;
-            const current = parent;
-            parent = current.parent;
-            if (parent) {
-                parent.removeChild(current);
-                current.dispose();
-            } else if (current instanceof DataSource) {
-                this.removeDataSource(current);
-            } else {
-                current.dispose();
+    pruneBranch(endpoint, retained) {
+        let node = endpoint;
+        while (!retained?.(node)) {
+            const parent = node.parent;
+            if (node instanceof DataSource && (node === endpoint || !parent)) {
+                this.removeDataSource(node);
+                return;
             }
+
+            if (node === endpoint && node instanceof Collector) {
+                this.removeCollector(node);
+            } else {
+                parent?.removeChild(node);
+                node.disposeSubtree();
+            }
+
+            if (!parent || parent.children.length) return;
+            // Registered collectors belong to their view, even without readers.
+            if (parent instanceof Collector && this.#collectors.has(parent)) {
+                return;
+            }
+            node = parent;
         }
     }
 

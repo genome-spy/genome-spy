@@ -112,6 +112,14 @@ Parameters and selections resolved from this view's lexical scope.
 
 ***
 
+### visibility
+
+> `readonly` **visibility**: [`ViewVisibilityApi`](ViewVisibilityApi.md)
+
+Live visibility controls. This object is stable for the handle's lifetime.
+
+***
+
 ### marks
 
 > `readonly` **marks**: [`MarksApi`](MarksApi.md)

@@ -7,6 +7,7 @@ import AppUiRegistry from "../../appUiRegistry.js";
 import { lifecycleSlice } from "../../lifecycleSlice.js";
 import setupStore from "../../state/setupStore.js";
 import { dismissDropdownMenu } from "../../utils/ui/contextMenu.js";
+import ViewVisibilitySettings from "../../viewVisibilitySettings.js";
 import Toolbar from "./toolbar.js";
 
 it("refreshes controls after insertion and closes stale settings during replacement", async () => {
@@ -16,10 +17,13 @@ it("refreshes controls after insertion and closes stale settings during replacem
         { contextOptions: { highlightView } }
     );
     const store = setupStore();
+    const viewVisibility = new ViewVisibilitySettings(store);
+    viewVisibility.updateHierarchy(root);
     store.dispatch(lifecycleSlice.actions.setInitialized());
     const container = document.createElement("div");
     const app = {
         store,
+        viewVisibility,
         genomeSpy: { viewRoot: root },
         datumSearch: createDatumSearch(views),
         provenance: { isEnabled: () => false },
@@ -79,6 +83,7 @@ it("refreshes controls after insertion and closes stale settings during replacem
         },
     };
     let child = await views.insert(views.root(), trackSpec);
+    viewVisibility.updateHierarchy(root);
     store.dispatch(lifecycleSlice.actions.hierarchyChanged());
     await toolbar.updateComplete;
     await settings.updateComplete;
@@ -119,6 +124,7 @@ it("refreshes controls after insertion and closes stale settings during replacem
             name: "Replacement",
         });
     });
+    viewVisibility.updateHierarchy(root);
     store.dispatch(lifecycleSlice.actions.hierarchyChanged());
     store.dispatch(lifecycleSlice.actions.setCohortTransitioning(false));
     await toolbar.updateComplete;
@@ -135,6 +141,7 @@ it("refreshes controls after insertion and closes stale settings during replacem
     ).toEqual([20, 31]);
 
     await views.remove(child);
+    viewVisibility.updateHierarchy(root);
     store.dispatch(lifecycleSlice.actions.hierarchyChanged());
     store.dispatch(lifecycleSlice.actions.setCohortTransitioning(false));
     await toolbar.updateComplete;
