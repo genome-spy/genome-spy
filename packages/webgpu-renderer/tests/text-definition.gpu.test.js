@@ -533,7 +533,7 @@ test("outline text applies fill gamma without a zero-width stroke", async ({
     expect(result.whiteAlpha).toBeGreaterThan(result.blackAlpha);
 });
 
-test("TrueType atlases grow across marks and accept new replacement glyphs", async ({
+test("TrueType atlas growth preserves text shadows and selection", async ({
     page,
 }) => {
     await ensureWebGPU(page);
@@ -558,18 +558,51 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         canvas.width = 256;
         canvas.height = 128;
         document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas);
-        renderer.updateGlobals({ width: 128, height: 64, dpr: 2 });
+        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
+        renderer.context.configure({
+            device: renderer.device,
+            format: renderer.format,
+            alphaMode: "premultiplied",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        renderer.updateGlobals({ width: 256, height: 128, dpr: 1 });
+        const readback = renderer.device.createBuffer({
+            size: canvas.width * canvas.height * 4,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        /** @param {import("../src/index.js").MarkHandle} mark */
+        async function capture(mark) {
+            renderer.render({ draws: [{ mark }] });
+            const encoder = renderer.device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                { texture: renderer.context.getCurrentTexture() },
+                { buffer: readback, bytesPerRow: canvas.width * 4 },
+                { width: canvas.width, height: canvas.height }
+            );
+            renderer.device.queue.submit([encoder.finish()]);
+            await readback.mapAsync(GPUMapMode.READ);
+            const pixels = new Uint8Array(readback.getMappedRange()).slice();
+            readback.unmap();
+            return pixels;
+        }
         renderer.device.pushErrorScope("validation");
         const first = renderer.createMark(textMark, {
             font,
             fontSize: 32,
             channels: {
                 uniqueId: { value: 81, type: "u32" },
-                text: { value: "A" },
-                x: { value: 24, scale: identityScale() },
-                y: { value: 32, scale: identityScale() },
+                text: { value: "AV" },
+                x: { value: 96.25, scale: identityScale() },
+                y: { value: 72.25, scale: identityScale() },
                 size: { value: 32 },
+                fill: { value: [0.5, 0.5, 0.5, 1] },
+                stroke: { value: [0, 0, 1, 1] },
+                strokeOpacity: { value: 0.6 },
+                strokeWidth: { value: 4 },
+                shadowColor: { value: [1, 0, 0, 1] },
+                shadowOpacity: { value: 0.5 },
+                shadowBlur: { value: 4 },
+                shadowOffsetX: { value: 3 },
             },
         });
         const firstProgram = renderer._marks.get(first.markId);
@@ -579,6 +612,8 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         const aGlyph = font.getGlyph("A");
         const initialEntry = { ...atlas.ensure([aGlyph])[0] };
 
+        // At normal pixel density, supersampling could read past a glyph tile.
+        const beforeGrowth = await capture(first);
         const ascii = Array.from({ length: 95 }, (_, index) =>
             String.fromCodePoint(index + 32)
         ).join("");
@@ -606,11 +641,15 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
             )
         );
 
-        renderer.render({ draws: [{ mark: first }] });
-        await renderer.device.queue.onSubmittedWorkDone();
+        const afterGrowth = await capture(first);
+        const pixelDifference = beforeGrowth.reduce(
+            (maximum, value, index) =>
+                Math.max(maximum, Math.abs(value - afterGrowth[index])),
+            0
+        );
         let preservedHit = null;
-        for (let y = 16; y <= 48 && preservedHit === null; y += 2) {
-            for (let x = 8; x <= 48 && preservedHit === null; x += 2) {
+        for (let y = 56; y <= 88 && preservedHit === null; y += 2) {
+            for (let x = 72; x <= 120 && preservedHit === null; x += 2) {
                 preservedHit = await renderer.pick(x, y);
             }
         }
@@ -619,13 +658,20 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         renderer.render({ draws: [{ mark: first }] });
         await renderer.device.queue.onSubmittedWorkDone();
         let hit = null;
-        for (let y = 16; y <= 48 && hit === null; y += 2) {
-            for (let x = 8; x <= 48 && hit === null; x += 2) {
+        for (let y = 56; y <= 88 && hit === null; y += 2) {
+            for (let x = 72; x <= 120 && hit === null; x += 2) {
                 hit = await renderer.pick(x, y);
             }
         }
         const validationError = await renderer.device.popErrorScope();
         const value = {
+            pixelDifference,
+            visibleShadow: beforeGrowth.some(
+                (red, index) =>
+                    index % 4 === 0 &&
+                    red > beforeGrowth[index + 1] + 2 &&
+                    red > beforeGrowth[index + 2] + 2
+            ),
             sharedAtlas: secondProgram._outlineAtlas === atlas,
             grew: atlas.version > initialVersion,
             replacedTexture: atlas.texture !== initialTexture,
@@ -638,12 +684,14 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
             hit,
             validationError: validationError?.message ?? null,
         };
+        readback.destroy();
         renderer.destroy();
         canvas.remove();
         return value;
     });
 
     expect(result).toMatchObject({
+        visibleShadow: true,
         sharedAtlas: true,
         grew: true,
         replacedTexture: true,
@@ -653,6 +701,7 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         hit: 81,
         validationError: null,
     });
+    expect(result.pixelDifference).toBeLessThanOrEqual(2);
     expect(result.secondAtlasScale[0]).toBeCloseTo(
         1 / result.atlasDimensions[0]
     );

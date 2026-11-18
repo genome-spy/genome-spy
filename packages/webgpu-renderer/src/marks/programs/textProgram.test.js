@@ -95,7 +95,6 @@ describe("TextProgram series replacement", () => {
             TextProgram.prototype.getExtraResourceDefs.call(context);
 
         expect(shaderBody).toContain("let renderItem = renderItems[i];");
-        expect(shaderBody).toContain("sampleTrueDistance(uv)");
         expect(shaderBody).toContain("in.layer == TEXT_LAYER_SHADOW");
         expect(
             resourceDefs.map(

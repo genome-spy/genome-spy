@@ -774,7 +774,12 @@ fn sampleSuperOutline(
 }
 
 fn shadowCoverageAt(in: VSOut, uv: vec2<f32>) -> f32 {
-    let distance = sampleTrueDistance(uv) * in.devicePixelsPerAtlas +
+    // Supersampling must stay inside this glyph as the shared atlas grows.
+    let tileSize = in.shapeBounds.zw + vec2<f32>(params.uSpread);
+    let uvSize = (tileSize - vec2<f32>(1.0)) * params.uAtlasScale;
+    let uvMin = in.uv + (vec2<f32>(0.5) - in.tilePosition) * params.uAtlasScale;
+    let glyphUv = clamp(uv, uvMin, uvMin + uvSize);
+    let distance = sampleTrueDistance(glyphUv) * in.devicePixelsPerAtlas +
         in.stemDarkening;
     let maxBlur = max(
         (params.uSpread - 1.0) * in.devicePixelsPerAtlas,
