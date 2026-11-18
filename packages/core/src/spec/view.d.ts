@@ -388,13 +388,13 @@ export interface ViewSpecBase extends ResolveSpec {
     baseUrl?: string;
 
     /**
-     * The default visibility of the view. An invisible view is removed from the
-     * layout and not rendered. For context, see [toggleable view
-     * visibility](https://genomespy.app/docs/sample-collections/visualizing/#toggleable-view-visibility).
+     * A hidden view leaves the layout and retains its data and selections.
+     * A boolean sets the default. A parameter expression controls visibility
+     * exclusively and must return a boolean without reading scales or layout.
      *
      * **Default:** `true`
      */
-    visible?: boolean;
+    visible?: boolean | ExprRef;
 
     /**
      * [Templates](https://genomespy.app/docs/grammar/import/#repeating-with-named-templates)
@@ -703,7 +703,7 @@ export interface ImportSpec {
      *
      * If not specified, the imported specification's `visible` property is used.
      */
-    visible?: boolean;
+    visible?: boolean | ExprRef;
 
     /**
      * Configures defaults for the imported subtree at the import site.

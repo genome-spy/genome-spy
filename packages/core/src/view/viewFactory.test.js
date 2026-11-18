@@ -1,3 +1,4 @@
+import { createTestEmbed } from "./embedTestUtils.js";
 import { expect, test, vi } from "vitest";
 import {
     getTopLevelSpecView,
@@ -178,42 +179,36 @@ test("Throws if importing is not allowed", async () => {
     ).rejects.toThrow();
 });
 
-test("ImportSpec.visible overrides imported view visibility", async () => {
-    const context = createTestViewContext({
-        allowImport: true,
-        wrapRoot: false,
-    });
-
-    /** @type {import("../spec/view.js").VConcatSpec} */
-    const spec = {
+test("inserted import resolves visibility in its own scope on a live shared scale", async () => {
+    const { root, views } = await createTestEmbed({
+        params: [{ name: "show", value: true }],
         templates: {
             panel: {
-                name: "panel",
                 mark: "point",
+                params: [{ name: "show", value: true }],
                 visible: true,
+                data: { values: [{ x: 1 }] },
+                encoding: { x: { field: "x", type: "quantitative" } },
             },
         },
-        vconcat: [
-            {
-                import: { template: "panel" },
-                name: "panelHidden",
-                visible: false,
-            },
-            {
-                import: { template: "panel" },
-                name: "panelVisible",
-            },
-        ],
-    };
+        resolve: { scale: { x: "shared" } },
+        vconcat: [{ import: { template: "panel" }, name: "original" }],
+    });
+    root.getScaleResolution("x").getScale();
 
-    const root = /** @type {import("./containerView.js").default} */ (
-        await context.createOrImportView(spec, null, null, "root")
+    await views.insert(views.root(), {
+        import: { template: "panel" },
+        name: "detail",
+        visible: { expr: "show" },
+        params: { show: false },
+    });
+    const detail = root.getDescendants().find((view) => view.name === "detail");
+    expect(detail.isConfiguredVisible()).toBe(false);
+    expect(detail.flowHandle).toBeUndefined();
+    detail.paramRuntime.setValue("show", true);
+    await vi.waitFor(() =>
+        expect(detail.flowHandle?.collector?.getItemCount()).toBe(1)
     );
-    const hidden = root.findDescendantByName("panelHidden");
-    const visible = root.findDescendantByName("panelVisible");
-
-    expect(hidden.spec.visible).toBe(false);
-    expect(visible.spec.visible).toBe(true);
 });
 
 test("ImportSpec.zindex overrides imported view zindex", async () => {

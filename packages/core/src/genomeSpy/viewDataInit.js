@@ -24,6 +24,16 @@ export async function initializeViewData(
     textMetrics,
     onDataFlowBuilt
 ) {
+    // During initial loading a parameter can change after we selected the sources.
+    const context = viewRoot.context;
+    let changed = false;
+    context.requestVisibilityRefresh = () => {
+        changed = true;
+    };
+    viewRoot.registerDisposer(() => {
+        context.requestVisibilityRefresh = undefined;
+    });
+
     const { predicate: visibilityPredicate } =
         getInitializationDependencies(viewRoot);
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
@@ -49,7 +59,48 @@ export async function initializeViewData(
         visibilityPredicate
     );
 
+    while (changed && context.requestVisibilityRefresh) {
+        changed = false;
+        await initializeVisibleViewData(viewRoot, dataFlow, textMetrics);
+    }
+
+    if (context.requestVisibilityRefresh) {
+        context.requestVisibilityRefresh = () => {
+            if (changed) return;
+            changed = true;
+            queueMicrotask(() => {
+                changed = false;
+                if (context.requestVisibilityRefresh) {
+                    void refreshVisibility(viewRoot).catch(context.reportError);
+                }
+            });
+        };
+    }
     return builtDataFlow;
+}
+
+/**
+ * A hide takes effect while an earlier first-show load may still be pending.
+ * @param {import("../view/view.js").default} root
+ */
+export async function refreshVisibility(root) {
+    const context = root.context;
+    root._invalidateCacheByPrefix("size", "progeny");
+    root.visit((view) => {
+        if (!view.isVisible()) view.facetCoords.clear();
+    });
+    context.highlightView(null);
+    context.requestLayoutReflow();
+
+    await initializeVisibleViewData(
+        root,
+        context.dataFlow,
+        context.textMetrics
+    );
+    if (context.requestVisibilityRefresh) {
+        root._invalidateCacheByPrefix("size", "progeny");
+        context.requestLayoutReflow();
+    }
 }
 
 /**
@@ -185,9 +236,11 @@ export async function initializeViewDataForViews(
  * @param {import("../view/view.js").default} root
  */
 function getInitializationDependencies(root) {
-    const visible = collectVisibleViews(root, (view) =>
-        view.isConfiguredVisible()
-    );
+    // A mutation may start this traversal below a hidden layout ancestor.
+    const visible =
+        root.layoutParent && !root.layoutParent.isVisible()
+            ? []
+            : collectVisibleViews(root, (view) => view.isConfiguredVisible());
     const required = new Set(visible);
     const producerPaths = new Set();
     /** @param {import("../view/view.js").default | undefined} view */

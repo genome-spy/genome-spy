@@ -6,7 +6,10 @@ import NamedSource from "../data/sources/namedSource.js";
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
 import MockLazySource from "../data/sources/lazy/mockLazySource.js";
 
-import { createTestViewContext } from "../view/testUtils.js";
+import {
+    createHeadlessEngine,
+    createTestViewContext,
+} from "../view/testUtils.js";
 import {
     initializeViewData,
     initializeVisibleViewData,
@@ -16,9 +19,63 @@ import Transform from "../data/transforms/transform.js";
 import { loadViewSubtreeData } from "../data/flowInit.js";
 
 describe("viewDataInit", () => {
+    test.each(["datum == null", "threshold > 0", "fromScale > 0", "42"])(
+        "rejects unsupported view visibility: %s",
+        async (expr) => {
+            await expect(
+                createHeadlessEngine({
+                    params: [
+                        { name: "threshold", expr: "width / 2" },
+                        { name: "fromScale", expr: "domain('x')[0]" },
+                    ],
+                    visible: { expr },
+                    mark: "point",
+                    encoding: { x: { datum: 0, type: "quantitative" } },
+                })
+            ).rejects.toThrow(/datum|visible.expr/);
+        }
+    );
+    test("reconciles visibility changed while startup awaits fonts", async () => {
+        const context = createTestViewContext();
+        const root = await context.createOrImportView(
+            {
+                params: [{ name: "showDetail", value: false }],
+                vconcat: [
+                    {
+                        name: "detail",
+                        visible: { expr: "showDetail" },
+                        data: { values: [{ value: 1 }] },
+                        mark: "point",
+                    },
+                ],
+            },
+            null,
+            null,
+            "root"
+        );
+        const fonts = Promise.withResolvers();
+        vi.spyOn(context.textMetrics, "waitUntilReady").mockReturnValueOnce(
+            fonts.promise
+        );
+        const launch = initializeViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics,
+            () => {}
+        );
+        root.paramRuntime.setValue("showDetail", true);
+        await root.paramRuntime.whenPropagated();
+        fonts.resolve();
+        await launch;
+        const detail = root
+            .getDescendants()
+            .find((view) => view.name === "detail");
+        expect(detail.flowHandle.collector.getItemCount()).toBe(1);
+        root.disposeSubtree();
+    });
+
     test("skips hidden subtrees during initial data initialization", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -69,7 +126,6 @@ describe("viewDataInit", () => {
 
     test("initializes newly visible views without rebuilding existing collectors", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -139,8 +195,6 @@ describe("viewDataInit", () => {
 
         try {
             const context = createTestViewContext();
-            context.isViewConfiguredVisible = (view) =>
-                view.spec.visible ?? true;
 
             /** @type {import("../spec/root.js").RootSpec} */
             const spec = {
@@ -227,7 +281,6 @@ describe("viewDataInit", () => {
     test("shared sources do not add duplicate observers for existing views", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
@@ -441,7 +494,6 @@ describe("viewDataInit", () => {
 
     test("new views join side inputs while replaying completed parent data", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         // Build a minimal concat tree so we can dynamically append a view.
         /** @type {import("../spec/view.js").VConcatSpec} */
@@ -549,7 +601,6 @@ describe("viewDataInit", () => {
 
     test("new views load side inputs before reloading an uncached inherited source", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
         const fetch = vi
             .spyOn(globalThis, "fetch")
             .mockResolvedValue(
@@ -606,7 +657,6 @@ describe("viewDataInit", () => {
 
     test("a branch attached during a load receives all rows after the font wait", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
         const root = /** @type {ConcatView} */ (
             await context.createOrImportView(
                 {
@@ -668,7 +718,6 @@ describe("viewDataInit", () => {
     test("lazy init does not reinitialize existing flow nodes", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         let initCalls = 0;
 

@@ -145,7 +145,9 @@ export default class LayerView extends ContainerView {
      * @returns {(LayerView | import("./unitView.js").default)[]}
      */
     #getChildrenInRenderOrder() {
-        return this.#children.toSorted((a, b) => a.getZindex() - b.getZindex());
+        return this.#children
+            .filter((child) => child.isConfiguredVisible())
+            .sort((a, b) => a.getZindex() - b.getZindex());
     }
 
     /**

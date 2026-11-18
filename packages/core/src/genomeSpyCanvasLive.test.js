@@ -590,11 +590,11 @@ test("falls back automatically, picks data, updates live state, and exports", as
     const container = document.createElement("div");
     document.body.appendChild(container);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    let showHidden = false;
     const genomeSpy = new GenomeSpy(container, {
         width: 80,
         height: 40,
         padding: 0,
+        params: [{ name: "showDetail", value: false }],
         datasets: { values: [{ x: 0.2, x2: 0.4 }] },
         layer: [
             {
@@ -616,7 +616,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
             },
             {
                 name: "initially-hidden",
-                visible: false,
+                visible: { expr: "showDetail" },
                 data: { values: [{}] },
                 mark: "rect",
                 encoding: {
@@ -629,8 +629,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
             },
         ],
     });
-    genomeSpy.viewVisibilityPredicate = (view) =>
-        showHidden || view.isVisibleInSpec();
+    genomeSpy.viewVisibilityPredicate = () => true; // Expressions own their visibility.
 
     expect(await genomeSpy.launch()).toBe(true);
     genomeSpy.renderAll();
@@ -734,8 +733,15 @@ test("falls back automatically, picks data, updates live state, and exports", as
     ]);
 
     contexts[0].fillRect.mockClear();
-    showHidden = true;
-    await genomeSpy.initializeVisibleViewData();
+    const detail = genomeSpy.viewRoot
+        .getDescendants()
+        .find((view) => view.name === "initially-hidden");
+    expect(detail.flowHandle).toBeUndefined();
+    const toggle = genomeSpy.getParam("showDetail");
+    toggle.setValue(true);
+    await vi.waitFor(() =>
+        expect(detail.flowHandle?.collector?.completed).toBe(true)
+    );
     flushAnimationFrames(2);
     expect(contexts[0].fillRect.mock.calls).toContainEqual([
         expect.closeTo(39.9),
@@ -783,6 +789,11 @@ test("falls back automatically, picks data, updates live state, and exports", as
         gpuContextRequests
     );
 
+    toggle.setValue(false);
+    await genomeSpy.viewRoot.paramRuntime.whenPropagated();
+    flushAnimationFrames(2);
+    expect(detail.coords).toBeUndefined();
+    expect(detail.flowHandle.collector.getItemCount()).toBe(1);
     genomeSpy.destroy();
     warn.mockRestore();
 });

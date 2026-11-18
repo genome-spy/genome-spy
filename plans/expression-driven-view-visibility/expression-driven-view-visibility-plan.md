@@ -7,6 +7,9 @@ Core already uses for view visibility. This plan covers the first PR in
 
 ## Core
 
+Implemented and verified in the Core milestone, including startup changes and
+import insertion into a live shared scale.
+
 **Resolve the local choice on the view.** Extend `visible` to
 `boolean | ExprRef` on views and import sites in `spec/view.d.ts`. Keep the
 import-site precedence in `viewFactory.js`. For an omitted value or boolean,

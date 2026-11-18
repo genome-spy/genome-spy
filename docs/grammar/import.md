@@ -67,8 +67,9 @@ unique `name` so that descendants with the same internal names remain
 unambiguous.
 
 Import specs can also override the imported view's default visibility using
-`visible`. This is useful when importing the same template multiple times with
-different parameters and choosing which instance is shown by default.
+`visible`. For example, `"visible": { "expr": "mode === 'detail'" }` shows the
+imported track only in detail mode and reclaims its row otherwise. The
+expression can read parameters on the imported view or its ancestors.
 
 EXAMPLE examples/docs/grammar/import/named-template-repeat.json height=250
 

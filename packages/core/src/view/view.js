@@ -914,12 +914,47 @@ export default class View {
         return reader;
     }
 
-    isConfiguredVisible() {
-        return this.context.isViewConfiguredVisible(this);
+    get visibilityIsExpression() {
+        return isExprRef(this.spec.visible);
     }
 
+    isConfiguredVisible() {
+        return this.visibilityIsExpression
+            ? this.isVisibleInSpec()
+            : this.context.isViewConfiguredVisible(this);
+    }
+
+    /** @type {import("../paramRuntime/types.js").ParamRef<boolean>} */
+    #visibility;
+
     isVisibleInSpec() {
-        return this.spec.visible ?? true;
+        const visible = this.spec.visible ?? true;
+        if (!isExprRef(visible)) return visible;
+
+        if (!this.#visibility) {
+            const runtime = this.paramRuntime;
+            const location = runtime.getSpecLocation(visible, ["expr"]);
+            validateVisibilityInputs(visible.expr, runtime, location);
+            const expression = runtime.createExpression(visible);
+            this.#visibility = runtime.computed(
+                "visible",
+                expression.dependencies,
+                () => {
+                    const value = expression();
+                    if (typeof value !== "boolean") {
+                        throw new ViewError(
+                            "visible.expr must return a boolean.",
+                            this
+                        ).withSpecLocation(visible, ["expr"]);
+                    }
+                    return value;
+                }
+            );
+            runtime.effect([this.#visibility], () =>
+                this.context.requestVisibilityRefresh?.()
+            );
+        }
+        return this.#visibility.get();
     }
 
     /**
@@ -1906,4 +1941,50 @@ export const isStepSize = (size) =>
  */
 function isFiniteNumber(value) {
     return typeof value == "number" && Number.isFinite(value);
+}
+
+/**
+ * Inspect declarations before binding: looking up a deferred scale parameter
+ * can itself initialize a scale that is currently asking for visibility.
+ * @param {string} expr
+ * @param {ViewParamRuntime} runtime
+ * @param {import("../types/embedApi.js").SpecLocation | undefined} location
+ * @param {Set<object>} [checked]
+ */
+function validateVisibilityInputs(
+    expr,
+    runtime,
+    location,
+    checked = new Set()
+) {
+    const { usesScaleHelper, globals } = analyzeExpression(
+        expr,
+        location,
+        false
+    );
+    if (usesScaleHelper) {
+        throw annotateSpecError(
+            new Error("visible.expr cannot depend on a scale."),
+            location
+        );
+    }
+    for (const name of globals) {
+        const owner = runtime.findRuntimeForParam(name);
+        const param = owner?.paramConfigs.get(name);
+        if (
+            !param &&
+            (name === "width" || name === "height" || name === "zoomLevel")
+        ) {
+            throw annotateSpecError(
+                new Error(
+                    "visible.expr cannot depend on automatic " + name + "."
+                ),
+                location
+            );
+        }
+        if (param && "expr" in param && !checked.has(param)) {
+            checked.add(param);
+            validateVisibilityInputs(param.expr, owner, location, checked);
+        }
+    }
 }

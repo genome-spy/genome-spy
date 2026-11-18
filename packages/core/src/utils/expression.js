@@ -142,15 +142,17 @@ const functionContext = {
  *
  * @param {string} expr
  * @param {import("../types/embedApi.js").SpecLocation} [specLocation]
+ * @param {boolean} [allowDatum]
  * @returns {{ usesScaleHelper: boolean, globals: string[] }}
  */
-export function analyzeExpression(expr, specLocation) {
+export function analyzeExpression(expr, specLocation, allowDatum = true) {
     let usesScaleHelper = false;
     const fn = createFunction(
         expr,
         {},
         {
             specLocation,
+            allowDatum,
             resolveScaleResolution: () => {
                 usesScaleHelper = true;
                 // The compiler only captures this object in helper closures. The
@@ -215,6 +217,7 @@ function buildFunctions(codegen, context) {
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
  * @typedef {object} ExpressionCompileContext
+ * @prop {boolean} [allowDatum]
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
@@ -505,7 +508,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         };
 
         const cg = codegenExpression({
-            forbidden: [],
+            forbidden: context.allowDatum === false ? ["datum"] : [],
             allowed: ["datum", "undefined"],
             globalvar: "globalObject",
             fieldvar: "datum",
