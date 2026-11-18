@@ -1,6 +1,7 @@
 import {
     getImportScopeInfo,
     getViewSelector,
+    resolveViewSelector,
     visitAddressableViews,
 } from "@genome-spy/core/view/viewSelectors.js";
 import {
@@ -68,10 +69,14 @@ export function getViewVisibilityKey(view) {
 /**
  * @param {Record<string, boolean>} visibilities
  * @param {import("@genome-spy/core/view/view.js").default} view
+ * @param {string} [selectorKey]
  * @returns {boolean | undefined}
  */
-export function getViewVisibilityOverride(visibilities, view) {
-    const selectorKey = getViewVisibilityKey(view);
+export function getViewVisibilityOverride(
+    visibilities,
+    view,
+    selectorKey = getViewVisibilityKey(view)
+) {
     if (selectorKey && Object.hasOwn(visibilities, selectorKey)) {
         return visibilities[selectorKey];
     }
@@ -171,44 +176,34 @@ export function buildViewSettingsPayload(viewRoot, viewSettings) {
 
 /**
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- * @returns {Set<string>}
  */
-export function getUniqueViewSelectorKeys(viewRoot) {
-    /** @type {Map<string, number>} */
-    const counts = new Map();
-
+export function getViewVisibilityKeys(viewRoot) {
+    /** @type {Map<import("@genome-spy/core/view/view.js").default, string>} */
+    const keys = new Map();
     visitAddressableViews(viewRoot, (view) => {
-        const selectorKey = getViewVisibilityKey(view);
-        if (!selectorKey) {
-            return;
-        }
-
-        counts.set(selectorKey, (counts.get(selectorKey) ?? 0) + 1);
+        if (!view.explicitName || view.visibilityIsExpression) return;
+        const selector = getViewSelector(view);
+        if (resolveViewSelector(viewRoot, selector, true) === view)
+            keys.set(view, makeViewSelectorKey(selector));
     });
-
-    /** @type {Set<string>} */
-    const uniqueKeys = new Set();
-
-    for (const [key, count] of counts) {
-        if (count === 1) {
-            uniqueKeys.add(key);
-        }
-    }
-
-    return uniqueKeys;
+    return keys;
 }
 
 /**
  * Returns radio-group membership information by selector key.
  *
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
+ * @param {ReturnType<typeof getViewVisibilityKeys>} [viewKeys]
  * @returns {Map<string, { groupKey: string, memberKeys: string[] }>}
  */
-export function getRadioVisibilityGroupsBySelector(viewRoot) {
+export function getRadioVisibilityGroupsBySelector(
+    viewRoot,
+    viewKeys = getViewVisibilityKeys(viewRoot)
+) {
     /** @type {Map<string, { groupKey: string, memberKeys: string[] }>} */
     const bySelector = new Map();
 
-    for (const [groupKey, members] of collectRadioVisibilityGroups(viewRoot)) {
+    for (const [groupKey, members] of collectRadioVisibilityGroups(viewKeys)) {
         const memberKeys = members.map((member) => member.selectorKey);
         for (const member of members) {
             bySelector.set(member.selectorKey, {
@@ -227,17 +222,23 @@ export function getRadioVisibilityGroupsBySelector(viewRoot) {
  *
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
  * @param {Record<string, boolean>} visibilities
+ * @param {ReturnType<typeof getViewVisibilityKeys>} [viewKeys]
  * @returns {Record<string, boolean>}
  */
-export function resolveRadioVisibilityConflicts(viewRoot, visibilities) {
+export function resolveRadioVisibilityConflicts(
+    viewRoot,
+    visibilities,
+    viewKeys = getViewVisibilityKeys(viewRoot)
+) {
     /** @type {Record<string, boolean>} */
     const resolved = { ...visibilities };
 
-    for (const members of collectRadioVisibilityGroups(viewRoot).values()) {
+    for (const members of collectRadioVisibilityGroups(viewKeys).values()) {
         const visibleMembers = members.filter((member) => {
             const override = getViewVisibilityOverride(
                 visibilities,
-                member.view
+                member.view,
+                member.selectorKey
             );
             if (override !== undefined) {
                 return override;
@@ -265,31 +266,21 @@ export function resolveRadioVisibilityConflicts(viewRoot, visibilities) {
 }
 
 /**
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
+ * @param {ReturnType<typeof getViewVisibilityKeys>} viewKeys
  * @returns {Map<string, { view: import("@genome-spy/core/view/view.js").default, selectorKey: string }[]>}
  */
-function collectRadioVisibilityGroups(viewRoot) {
+function collectRadioVisibilityGroups(viewKeys) {
     /**
      * @type {Map<string, { view: import("@genome-spy/core/view/view.js").default, selectorKey: string }[]>}
      */
     const groups = new Map();
 
-    visitAddressableViews(viewRoot, (view) => {
-        if (!isVisibilityConfigurable(view)) {
-            return;
-        }
-
-        if (!view.explicitName) {
-            return;
-        }
-
+    for (const [view, selectorKey] of viewKeys) {
+        if (!isVisibilityConfigurable(view)) continue;
         const group = getVisibilityGroup(view);
-        if (!group) {
-            return;
-        }
+        if (!group) continue;
 
         const selector = getViewSelector(view);
-        const selectorKey = makeViewSelectorKey(selector);
         const groupScope =
             getImportScopeInfo(view)?.name && selector.scope.length
                 ? selector.scope.slice(0, selector.scope.length - 1)
@@ -305,7 +296,7 @@ function collectRadioVisibilityGroups(viewRoot) {
         } else {
             groups.set(groupKey, [{ view, selectorKey }]);
         }
-    });
+    }
 
     return groups;
 }

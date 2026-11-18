@@ -116,6 +116,11 @@ Showing a track for the first time may load data. Await `setOverride()` for
 that initialization and [subscribe to layout](#reading-layout-bounds) for
 updated bounds.
 
+In GenomeSpy App, an addressable view's handle shares its choice with View
+settings. Selecting a radio-group member with `setOverride(true)` also hides
+its peers. A standalone App URL bookmark replaces the host's startup choices,
+including when the bookmark has no saved visibility choices.
+
 ## Reading transformed records
 
 Each handle exposes `data` for reading and analyzing its current transformed

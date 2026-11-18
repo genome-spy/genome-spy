@@ -98,9 +98,13 @@ beforeEach(() => {
             context.isViewSpec = (spec) => this.viewFactory.isViewSpec(spec);
             this.animator = context.animator;
             this.genomeStore = context.genomeStore;
-            this.viewRoot = (
-                await createHeadlessEngine(this.spec, { context })
-            ).view;
+            await createHeadlessEngine(this.spec, {
+                context,
+                onViewHierarchyCreated: (view) => {
+                    this.viewRoot = view;
+                    this.initializeViewVisibility();
+                },
+            });
             this.container.append(document.createElement("canvas"));
             return true;
         }
@@ -237,7 +241,13 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
     const load = vi.spyOn(InlineSource.prototype, "load");
     const app = await createApp(
         [{ name: "mode", value: "overview" }],
-        { embedMode: "standalone" },
+        {
+            embedMode: "standalone",
+            initialVisibilityOverrides: [
+                { ...coverageSelector, visible: true },
+                { scope: [], view: "hostOnly", visible: false },
+            ],
+        },
         {
             vconcat: [
                 {
@@ -265,6 +275,7 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
                     data: { values: [{ value: 1 }] },
                     mark: "point",
                 },
+                { name: "hostOnly", data: { values: [{}] }, mark: "point" },
             ],
             scales: {},
         }
@@ -279,6 +290,9 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
     expect(coverage.coords).toBeUndefined();
     expect(coverage.flowHandle).toBeUndefined();
     expect(detail.flowHandle).toBeUndefined();
+    expect(
+        root.findDescendantByName("hostOnly").flowHandle.collector.completed
+    ).toBe(true);
     const api = createAgentApi(app);
     expect(() => api.setViewVisibility(detailSelector, true)).toThrow(
         /expression/
@@ -287,15 +301,13 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
         createBookmarkWithCurrentState(app).viewSettings.visibilities
     ).toEqual([hiddenCoverage]);
     const handle = app.views.resolve(coverageSelector);
-    api.setViewVisibility(coverageSelector, true);
-    await vi.waitFor(() =>
-        expect(coverage.flowHandle?.collector.completed).toBe(true)
-    );
+    expect(handle.visibility.override).toBe(false);
+    await handle.visibility.setOverride(true);
+    expect(coverage.flowHandle.collector.completed).toBe(true);
     const source = findAncestorDataSource(coverage.flowHandle.collector);
     const brush = intervalSelection({ x: [2, 5] });
     handle.params.get("brush").setValue(brush);
-    api.setViewVisibility(coverageSelector, false);
-    await Promise.resolve();
+    await handle.visibility.setOverride(false);
     // Hide Detail again while its first independent data load is in flight.
     const started = Promise.withResolvers();
     const finish = Promise.withResolvers();
@@ -318,14 +330,86 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
     await root.paramRuntime.whenPropagated();
     expect(svg().querySelector('[data-name="detail"]')).toBeTruthy();
     expect(coverage.isVisible()).toBe(false);
-    api.setViewVisibility(coverageSelector, true);
-    await Promise.resolve();
+    await handle.visibility.setOverride(true);
     expect(coverage.isVisible()).toBe(true);
     expect(app.views.resolve(coverageSelector)).toBe(handle);
     expect(handle.params.get("brush").getValue()).toEqual(brush);
     expect(
         load.mock.contexts.filter((context) => context === source)
     ).toHaveLength(1);
+});
+
+test.each([false, true])(
+    "seeds host choices only in the absence of a URL bookmark (bookmark %s)",
+    async (hasBookmark) => {
+        const track = {
+            scope: /** @type {string[]} */ ([]),
+            view: "annotation",
+        };
+        if (hasBookmark) {
+            window.history.replaceState(
+                null,
+                "",
+                compressToUrlHash({ scaleDomains: { locus: [20, 80] } })
+            );
+        }
+        const app = await createApp([], {
+            embedMode: "standalone",
+            initialVisibilityOverrides: [{ ...track, visible: false }],
+        });
+        const handle = app.views.get(track);
+        const unit = app.genomeSpy.viewRoot.findDescendantByName(track.view);
+        expect(!!unit.flowHandle?.collector.completed).toBe(hasBookmark);
+        expect(handle.visibility.locallyVisible).toBe(hasBookmark);
+        expect(handle.visibility.override).toBe(
+            hasBookmark ? undefined : false
+        );
+        if (!hasBookmark) {
+            await restoreBookmark({ name: "Defaults" }, app);
+            expect(handle.visibility.locallyVisible).toBe(true);
+        }
+    }
+);
+
+test("an App visibility choice follows its view when a selector becomes ambiguous", async () => {
+    const selector = {
+        scope: /** @type {string[]} */ ([]),
+        view: "annotation",
+    };
+    const app = await createApp([], {
+        initialVisibilityOverrides: [{ ...selector, visible: false }],
+    });
+    const track = app.views.get(selector);
+    const tracks = track.parent();
+    const duplicate = await app.views.insert(tracks, {
+        name: selector.view,
+        data: { values: [{}] },
+        mark: "point",
+    });
+    expect(track.visibility.override).toBe(false);
+    expect(duplicate.visibility.override).toBeUndefined();
+    expect(duplicate.visibility.locallyVisible).toBe(true);
+    await app.views.remove(duplicate);
+    expect(track.visibility.override).toBe(false);
+    expect(
+        createBookmarkWithCurrentState(app).viewSettings.visibilities
+    ).toEqual([{ ...selector, visible: false }]);
+
+    await app.views.remove(track);
+    const replacement = await app.views.insert(tracks, {
+        name: selector.view,
+        data: { values: [{}] },
+        mark: "point",
+    });
+    expect(replacement.visibility.override).toBeUndefined();
+    expect(replacement.visibility.locallyVisible).toBe(true);
+    const unnamed = await app.views.insert(tracks, {
+        data: { values: [{}] },
+        mark: "point",
+    });
+    await unnamed.visibility.setOverride(false);
+    await restoreBookmark({ name: "Defaults" }, app);
+    expect(unnamed.visibility.locallyVisible).toBe(true);
 });
 
 test("View settings keeps parameter controls and manual children of a hidden expression view", async () => {
@@ -381,7 +465,14 @@ test("View settings keeps parameter controls and manual children of a hidden exp
         expect(document.querySelector("input[type=range]")).toBeTruthy()
     );
     expect(createBookmarkWithCurrentState(app).viewSettings).toBeUndefined();
-    menu.querySelectorAll("input[type=radio]")[1].click();
+    const raw = app.views.get({ scope: [], view: "raw" }).visibility;
+    const smoothed = app.views.get({ scope: [], view: "smoothed" }).visibility;
+    expect(raw.locallyVisible).toBe(true);
+    expect(smoothed.locallyVisible).toBe(false);
+    expect(smoothed.override).toBeUndefined();
+    await smoothed.setOverride(true);
+    expect(raw.locallyVisible).toBe(false);
+    expect(smoothed.locallyVisible).toBe(true);
     expect(
         createBookmarkWithCurrentState(app).viewSettings.visibilities
     ).toEqual([
@@ -389,6 +480,76 @@ test("View settings keeps parameter controls and manual children of a hidden exp
         { scope: [], view: "smoothed", visible: true },
     ]);
     opener.click();
+    opener.click();
+    const [rawInput, smoothedInput] =
+        document.querySelectorAll("input[type=radio]");
+    expect(/** @type {HTMLInputElement} */ (smoothedInput).checked).toBe(true);
+    /** @type {HTMLInputElement} */ (rawInput).click();
+    expect(raw.override).toBe(true);
+    expect(smoothed.override).toBe(false);
+    opener.click();
+});
+
+test("clearing a radio choice awaits a peer's pending first show", async () => {
+    const raw = { scope: /** @type {string[]} */ ([]), view: "raw" };
+    const app = await createApp(
+        [],
+        {
+            initialVisibilityOverrides: [{ ...raw, visible: true }],
+        },
+        {
+            vconcat: [
+                {
+                    name: "raw",
+                    visible: false,
+                    configurableVisibility: { group: "tracks" },
+                    data: { values: [{}] },
+                    mark: "point",
+                },
+                {
+                    name: "smoothed",
+                    configurableVisibility: { group: "tracks" },
+                    data: { values: [{ x: 2 }] },
+                    mark: "point",
+                },
+            ],
+        }
+    );
+    const api = createAgentApi(app);
+    const started = Promise.withResolvers();
+    const finish = Promise.withResolvers();
+    const load = InlineSource.prototype.load;
+    const loading = vi
+        .spyOn(InlineSource.prototype, "load")
+        .mockImplementationOnce(async function () {
+            started.resolve();
+            await finish.promise;
+            await load.call(this);
+        });
+    try {
+        api.setViewVisibility(raw, false);
+        await started.promise;
+        api.setViewVisibility(raw, true);
+        const smoothed = app.views.get({ scope: [], view: "smoothed" });
+        expect(smoothed.visibility.locallyVisible).toBe(false);
+        const completed = vi.fn();
+        const reveal = app.views
+            .get(raw)
+            .visibility.setOverride(undefined)
+            .then(completed);
+        await vi.waitFor(() =>
+            expect(smoothed.visibility.locallyVisible).toBe(true)
+        );
+        expect(completed).not.toHaveBeenCalled();
+        finish.resolve();
+        await reveal;
+        expect(
+            smoothed.data.read({ scope: "all", limit: 1 }).rows
+        ).toHaveLength(1);
+        expect(loading).toHaveBeenCalledOnce();
+    } finally {
+        finish.resolve();
+    }
 });
 
 const statusAttribute = { type: "SAMPLE_ATTRIBUTE", specifier: "status" };

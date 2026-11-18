@@ -226,6 +226,10 @@ function updateNamedDataBinding(view, binding, data) {
  *   restoreLayoutReflow: () => void
  * }} TransactionState
  * @typedef {<T>(operation: () => Promise<T>, removalRoot?: import("./view.js").default) => Promise<T>} RunViewMutation
+ * @typedef {{
+ *   getOverride: (view: import("./view.js").default) => boolean | undefined,
+ *   setOverride: (view: import("./view.js").default, value: boolean | undefined) => void,
+ * }} ViewVisibilityStore
  */
 
 /**
@@ -234,12 +238,14 @@ function updateNamedDataBinding(view, binding, data) {
  * @param {{ viewRoot: import("./view.js").default } & Partial<import("../types/interactionApi.d.ts").InteractionApi>} genomeSpy
  * @param {() => boolean} [isActive]
  * @param {RunViewMutation} [runMutation] Internal host lifecycle boundary; receives the subtree root for removals and runs inside the mutation queue.
+ * @param {ViewVisibilityStore} [visibilityStore] Internal host owner of manual choices.
  * @returns {import("../types/embedApi.js").ViewApi}
  */
 export function createViewMutationApi(
     genomeSpy,
     isActive = () => true,
-    runMutation = (operation) => operation()
+    runMutation = (operation) => operation(),
+    visibilityStore
 ) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
@@ -453,7 +459,9 @@ export function createViewMutationApi(
             },
             get override() {
                 ensureLive();
-                return view.visibilityOverride;
+                return visibilityStore
+                    ? visibilityStore.getOverride(view)
+                    : view.visibilityOverride;
             },
             setOverride: (value) =>
                 enqueue(async () => {
@@ -470,7 +478,11 @@ export function createViewMutationApi(
                         );
                     }
                     await applyVisibilityUpdate(getRootView(), view, () => {
-                        view.visibilityOverride = value;
+                        if (visibilityStore) {
+                            visibilityStore.setOverride(view, value);
+                        } else {
+                            view.visibilityOverride = value;
+                        }
                     });
                 }),
         };
