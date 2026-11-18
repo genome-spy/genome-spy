@@ -978,7 +978,10 @@ export default class App {
         }
 
         /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
-        return decompressFromUrlHash(hash);
+        const entry = decompressFromUrlHash(hash);
+        return entry && typeof entry === "object" && !Array.isArray(entry)
+            ? entry
+            : undefined;
     }
 
     /**

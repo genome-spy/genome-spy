@@ -1,12 +1,10 @@
-import { resolveVisibilityOverrides } from "@genome-spy/core/view/viewVisibility.js";
+import { resolveVisibilityOverrides } from "@genome-spy/core/view/viewSelectors.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import {
     getRadioVisibilityGroupsBySelector,
+    getRadioHiddenViews,
     getViewVisibilityKeys,
-    getViewVisibilityOverride,
     normalizeViewSettingsPayload,
-    parseViewSelectorKey,
-    resolveRadioVisibilityConflicts,
 } from "./viewSettingsUtils.js";
 
 /** @typedef {import("@genome-spy/core/view/view.js").default} View */
@@ -22,8 +20,8 @@ export default class ViewVisibilitySettings {
     /** @type {View} */
     #root;
 
-    /** @type {{ raw: Choices, resolved: Choices } | undefined} */
-    #effective;
+    /** @type {{ raw: Choices, hidden: Set<View> } | undefined} */
+    #radioVisibility;
 
     /** @param {ReturnType<typeof import("./state/setupStore.js").default>} store */
     constructor(store) {
@@ -37,17 +35,17 @@ export default class ViewVisibilitySettings {
     /** @param {View} root */
     updateHierarchy(root) {
         const keys = getViewVisibilityKeys(root);
+        const hiddenBefore = this.#getRadioHiddenViews();
         const previous = this.choices;
-        const next = { ...previous };
+        const next = normalizeViewSettingsPayload(
+            { visibilities: previous },
+            root
+        ).visibilities;
         const live = new Set(root.getDescendants());
         for (const [view, key] of this.keys) {
             if (keys.get(view) === key) continue;
             if (live.has(view)) {
-                view.visibilityOverride = getViewVisibilityOverride(
-                    previous,
-                    view,
-                    key
-                );
+                view.visibilityOverride = previous[key];
             }
             delete next[key];
         }
@@ -60,13 +58,21 @@ export default class ViewVisibilitySettings {
 
         this.#root = root;
         this.keys = keys;
-        this.radioGroups = getRadioVisibilityGroupsBySelector(root, keys);
-        this.#effective = undefined;
+        this.radioGroups = getRadioVisibilityGroupsBySelector(keys);
+        this.#radioVisibility = undefined;
         if (
             Object.keys(previous).length !== Object.keys(next).length ||
             Object.keys(next).some((key) => previous[key] !== next[key])
         ) {
             this.#replaceChoices(next);
+        } else {
+            const hidden = this.#getRadioHiddenViews();
+            if (
+                hidden.size !== hiddenBefore.size ||
+                !hidden.isSubsetOf(hiddenBefore)
+            ) {
+                root.context.requestVisibilityRefresh?.();
+            }
         }
     }
 
@@ -75,28 +81,26 @@ export default class ViewVisibilitySettings {
      * @returns {boolean | undefined}
      */
     getEffectiveOverride(view) {
-        const key = this.keys.get(view);
-        if (key === undefined) return;
+        return this.#getRadioHiddenViews().has(view)
+            ? false
+            : this.getOverride(view);
+    }
+
+    #getRadioHiddenViews() {
         const raw = this.choices;
-        if (this.#effective?.raw !== raw) {
-            this.#effective = {
+        if (this.#radioVisibility?.raw !== raw) {
+            this.#radioVisibility = {
                 raw,
-                resolved: resolveRadioVisibilityConflicts(
-                    this.#root,
-                    raw,
-                    this.keys
-                ),
+                hidden: getRadioHiddenViews(this.radioGroups, raw),
             };
         }
-        return getViewVisibilityOverride(this.#effective.resolved, view, key);
+        return this.#radioVisibility.hidden;
     }
 
     /** @param {View} view */
     getOverride(view) {
         const key = this.keys.get(view);
-        return key === undefined
-            ? view.visibilityOverride
-            : getViewVisibilityOverride(this.choices, view, key);
+        return key === undefined ? view.visibilityOverride : this.choices[key];
     }
 
     /**
@@ -113,12 +117,10 @@ export default class ViewVisibilitySettings {
         const choices = { ...this.choices };
         const radio = value === true && this.radioGroups.get(key);
         if (radio) {
-            for (const member of radio.memberKeys)
-                choices[member] = member === key;
+            for (const { selectorKey } of radio.members)
+                choices[selectorKey] = selectorKey === key;
         } else if (value === undefined) {
             delete choices[key];
-            if (!parseViewSelectorKey(view.explicitName))
-                delete choices[view.explicitName];
         } else {
             choices[key] = value;
         }

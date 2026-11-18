@@ -10,6 +10,13 @@ visualization with that choice applied before the first layout or load.
 The optional track chooser and visibility subscriptions belong to follow-up
 work. This milestone uses the existing `visible` grammar and bookmark format.
 
+## Delivery
+
+Core and App landed in separate feature commits. Two independent review rounds
+covered the full change. The follow-up isolates concurrent first-show work,
+retains authored inputs used by deferred views, and converts legacy bookmark
+names to scoped choices when they first match a live view.
+
 ## Public contract and ownership
 
 Add `readonly visibility: ViewVisibilityApi` to `ViewHandle`. Cache it with the

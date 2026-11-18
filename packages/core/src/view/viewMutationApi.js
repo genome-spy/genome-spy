@@ -232,6 +232,14 @@ function updateNamedDataBinding(view, binding, data) {
  * }} ViewVisibilityStore
  */
 
+/** @type {ViewVisibilityStore} */
+const localVisibility = {
+    getOverride: (view) => view.visibilityOverride,
+    setOverride(view, value) {
+        view.visibilityOverride = value;
+    },
+};
+
 /**
  * Creates the public view hierarchy API for a GenomeSpy instance.
  *
@@ -245,7 +253,7 @@ export function createViewMutationApi(
     genomeSpy,
     isActive = () => true,
     runMutation = (operation) => operation(),
-    visibilityStore
+    visibilityStore = localVisibility
 ) {
     /**
      * @typedef {import("../types/embedApi.js").ViewAddress} ViewAddress
@@ -358,8 +366,7 @@ export function createViewMutationApi(
 
             data: {
                 read(options) {
-                    ensureEmbedIsActive(isActive);
-                    ensureViewIsLive(view);
+                    ensureLiveHandle(view);
                     if (
                         !Number.isSafeInteger(options?.limit) ||
                         options.limit < 0
@@ -442,30 +449,24 @@ export function createViewMutationApi(
      * @returns {import("../types/embedApi.js").ViewVisibilityApi}
      */
     function createViewVisibilityApi(view) {
-        const ensureLive = () => {
-            ensureEmbedIsActive(isActive);
-            ensureViewIsLive(view);
-        };
         return {
             get locallyVisible() {
-                ensureLive();
+                ensureLiveHandle(view);
                 return view.isLocallyVisible();
             },
             get staticDefault() {
-                ensureLive();
+                ensureLiveHandle(view);
                 return view.visibilityIsExpression
                     ? undefined
                     : view.isVisibleInSpec();
             },
             get override() {
-                ensureLive();
-                return visibilityStore
-                    ? visibilityStore.getOverride(view)
-                    : view.visibilityOverride;
+                ensureLiveHandle(view);
+                return visibilityStore.getOverride(view);
             },
             setOverride: (value) =>
                 enqueue(async () => {
-                    ensureLive();
+                    ensureLiveHandle(view);
                     if (view.visibilityIsExpression) {
                         throw new ViewMutationError(
                             "expressionControlledVisibility",
@@ -477,13 +478,9 @@ export function createViewMutationApi(
                             "Visibility override must be a boolean or undefined."
                         );
                     }
-                    await applyVisibilityUpdate(getRootView(), view, () => {
-                        if (visibilityStore) {
-                            visibilityStore.setOverride(view, value);
-                        } else {
-                            view.visibilityOverride = value;
-                        }
-                    });
+                    await applyVisibilityUpdate(getRootView(), view, () =>
+                        visibilityStore.setOverride(view, value)
+                    );
                 }),
         };
     }
@@ -495,8 +492,7 @@ export function createViewMutationApi(
     function createViewMarksApi(view) {
         return {
             subscribe(type, listener) {
-                ensureEmbedIsActive(isActive);
-                ensureViewIsLive(view);
+                ensureLiveHandle(view);
                 return bindDisposer(
                     (disposer) => view.registerDisposer(disposer),
                     interactionApi.subscribeMarkEvent(view, type, (event) =>
@@ -510,8 +506,7 @@ export function createViewMutationApi(
             },
 
             observeHover(listener) {
-                ensureEmbedIsActive(isActive);
-                ensureViewIsLive(view);
+                ensureLiveHandle(view);
                 return bindDisposer(
                     (disposer) => view.registerDisposer(disposer),
                     interactionApi.subscribeHover(view, (hit) =>
@@ -521,8 +516,7 @@ export function createViewMutationApi(
             },
 
             pick(point) {
-                ensureEmbedIsActive(isActive);
-                ensureViewIsLive(view);
+                ensureLiveHandle(view);
                 return interactionApi.pick(point, view).then((result) =>
                     result.status === "hit"
                         ? {
@@ -560,8 +554,7 @@ export function createViewMutationApi(
         return Object.freeze({ x: point.x, y: point.y });
     }
 
-    /** @param {() => boolean} isActive */
-    function ensureEmbedIsActive(isActive) {
+    function ensureEmbedIsActive() {
         if (!isActive()) {
             throw new ViewMutationError(
                 "staleEmbed",
@@ -571,7 +564,8 @@ export function createViewMutationApi(
     }
 
     /** @param {import("./view.js").default} view */
-    function ensureViewIsLive(view) {
+    function ensureLiveHandle(view) {
+        ensureEmbedIsActive();
         if (!isLiveView(view, getRootView)) {
             throw new ViewMutationError(
                 "staleHandle",
@@ -1206,7 +1200,7 @@ export function createViewMutationApi(
     };
 
     registerViewRuntime(api, {
-        ensureActive: () => ensureEmbedIsActive(isActive),
+        ensureActive: ensureEmbedIsActive,
         getRoot: getRootView,
         getView,
         getHandle,

@@ -339,9 +339,10 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
     ).toHaveLength(1);
 });
 
-test.each([false, true])(
-    "seeds host choices only in the absence of a URL bookmark (bookmark %s)",
-    async (hasBookmark) => {
+test.each(["missing", "invalid", "valid"])(
+    "seeds host choices unless the URL bookmark is valid (bookmark %s)",
+    async (bookmark) => {
+        const hasBookmark = bookmark === "valid";
         const track = {
             scope: /** @type {string[]} */ ([]),
             view: "annotation",
@@ -351,6 +352,12 @@ test.each([false, true])(
                 null,
                 "",
                 compressToUrlHash({ scaleDomains: { locus: [20, 80] } })
+            );
+        } else if (bookmark === "invalid") {
+            window.history.replaceState(
+                null,
+                "",
+                compressToUrlHash("bad bookmark")
             );
         }
         const app = await createApp([], {
@@ -410,6 +417,23 @@ test("an App visibility choice follows its view when a selector becomes ambiguou
     await unnamed.visibility.setOverride(false);
     await restoreBookmark({ name: "Defaults" }, app);
     expect(unnamed.visibility.locallyVisible).toBe(true);
+});
+
+test("a legacy choice is consumed by the first matching track", async () => {
+    const app = await createApp();
+    await restoreBookmark(
+        { name: "Legacy", viewSettings: { visibilities: { future: false } } },
+        app
+    );
+    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
+    const spec = { name: "future", data: { values: [{}] }, mark: "point" };
+    const root = app.views.root();
+    const first = await app.views.insert(root, spec);
+    expect(first.visibility.override).toBe(false);
+    await app.views.remove(first);
+    const replacement = await app.views.insert(root, spec);
+    expect(replacement.visibility.override).toBeUndefined();
+    expect(replacement.visibility.locallyVisible).toBe(true);
 });
 
 test("View settings keeps parameter controls and manual children of a hidden expression view", async () => {
@@ -488,6 +512,35 @@ test("View settings keeps parameter controls and manual children of a hidden exp
     expect(raw.override).toBe(true);
     expect(smoothed.override).toBe(false);
     opener.click();
+});
+
+test("removing the default radio winner initializes its formerly hidden peer", async () => {
+    const app = await createApp(
+        [],
+        {},
+        {
+            data: { values: [{ x: 1 }] },
+            vconcat: ["raw", "smoothed"].map((name) => ({
+                name,
+                configurableVisibility: { group: "tracks" },
+                mark: "point",
+            })),
+        }
+    );
+    const raw = app.views.get({ scope: [], view: "raw" });
+    const smoothed = app.views.get({ scope: [], view: "smoothed" });
+    expect(smoothed.visibility.locallyVisible).toBe(false);
+    expect(() => smoothed.data.read({ scope: "all", limit: 1 })).toThrow(
+        /not ready/
+    );
+    await app.views.remove(raw);
+    expect(smoothed.visibility.locallyVisible).toBe(true);
+    await vi.waitFor(() =>
+        expect(
+            smoothed.data.read({ scope: "all", limit: 1 }).rows
+        ).toHaveLength(1)
+    );
+    expect(smoothed.visibility.override).toBeUndefined();
 });
 
 test("clearing a radio choice awaits a peer's pending first show", async () => {

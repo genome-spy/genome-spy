@@ -82,8 +82,10 @@ export default class DataFlow {
     /**
      * Remove an owned endpoint and orphaned ancestors, preserving shared inputs.
      * @param {import("./flowNode.js").default} endpoint
+     * @param {(node: import("./flowNode.js").default) => boolean} [retained]
      */
-    pruneBranch(endpoint) {
+    pruneBranch(endpoint, retained) {
+        if (retained?.(endpoint)) return;
         if (endpoint instanceof DataSource) {
             this.removeDataSource(endpoint);
             return;
@@ -96,7 +98,7 @@ export default class DataFlow {
             endpoint.disposeSubtree();
         }
 
-        while (parent && parent.children.length === 0) {
+        while (parent && parent.children.length === 0 && !retained?.(parent)) {
             // Registered collectors belong to their view, even without readers.
             if (parent instanceof Collector && this.#collectors.has(parent))
                 break;

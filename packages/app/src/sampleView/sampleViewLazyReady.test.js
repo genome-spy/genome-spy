@@ -10,7 +10,7 @@ import { registerLazyDataSource } from "@genome-spy/core/data/sources/lazy/lazyD
 import MockLazySource from "@genome-spy/core/data/sources/lazy/mockLazySource.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import { subscribeTo } from "../state/subscribeTo.js";
-import { getViewVisibilityOverride } from "../viewSettingsUtils.js";
+import { getViewVisibilityKey } from "../viewSettingsUtils.js";
 
 describe("SampleView lazy readiness", () => {
     // This test is intentionally headless: it validates the async readiness
@@ -71,10 +71,9 @@ describe("SampleView lazy readiness", () => {
             });
             onTestFinished(() => view.disposeSubtree());
             context.isViewConfiguredVisible = (child) =>
-                getViewVisibilityOverride(
-                    store.getState().viewSettings.visibilities,
-                    child
-                ) ?? child.isVisibleInSpec();
+                store.getState().viewSettings.visibilities[
+                    getViewVisibilityKey(child)
+                ] ?? child.isVisibleInSpec();
             const root = view.getLayoutAncestors().at(-1);
             finalizeViewConfiguration(root);
             await initializeViewData(

@@ -71,10 +71,10 @@ export async function initializeViewData(
     }
 
     if (context.requestVisibilityRefresh) {
-        context.requestVisibilityRefresh = (immediate) => {
-            if (immediate) {
+        context.requestVisibilityRefresh = (affected) => {
+            if (affected) {
                 changed = false;
-                return refreshVisibility(viewRoot);
+                return refreshVisibility(viewRoot, affected);
             }
             if (changed) return;
             changed = true;
@@ -96,31 +96,23 @@ export async function initializeViewData(
  * @param {() => void} write
  */
 export async function applyVisibilityUpdate(root, target, write) {
-    const pending = pendingInitializations.get(root.context);
-    const hidden = new Set(pending?.keys().filter((view) => !view.isVisible()));
-
+    const { required: before } = getInitializationDependencies(root);
     write();
-
-    /** @type {Set<Promise<unknown>>} */
-    const waits = new Set();
-    const refresh = root.context.requestVisibilityRefresh?.(true);
-    waits.add(refresh || refreshVisibility(root));
-    if (pending?.size) {
-        const subtree = new Set(target.getDescendants());
-        for (const [view, completion] of pending) {
-            if ((subtree.has(view) || hidden.has(view)) && view.isVisible()) {
-                waits.add(completion);
-            }
-        }
-    }
-    await Promise.all(waits);
+    const subtree = new Set(target.getDescendants());
+    const { required: affected } = getInitializationDependencies(
+        root,
+        (view) => subtree.has(view) || !before.has(view)
+    );
+    await (root.context.requestVisibilityRefresh?.(affected) ||
+        refreshVisibility(root, affected));
 }
 
 /**
  * A hide takes effect while an earlier first-show load may still be pending.
- * @param {import("../view/view.js").default} root
+ * @param {View} root
+ * @param {ReadonlySet<View>} [affected]
  */
-export async function refreshVisibility(root) {
+export async function refreshVisibility(root, affected) {
     const context = root.context;
     root._invalidateCacheByPrefix("size", "progeny");
     root.visit((view) => {
@@ -134,15 +126,35 @@ export async function refreshVisibility(root) {
     context.highlightView(null);
     context.requestLayoutReflow();
 
-    await initializeVisibleViewData(
-        root,
-        context.dataFlow,
-        context.textMetrics
-    );
-    if (context.requestVisibilityRefresh) {
-        root._invalidateCacheByPrefix("size", "progeny");
-        context.requestLayoutReflow();
+    const { predicate } = getInitializationDependencies(root);
+    const reflowAfterLoading = () => {
+        if (context.requestVisibilityRefresh) {
+            root._invalidateCacheByPrefix("size", "progeny");
+            context.requestLayoutReflow();
+        }
+    };
+    /** @param {(view: View) => boolean} filter */
+    const initialize = (filter) => startVisibleInitialization(root, filter);
+    if (affected) {
+        // Keep unrelated first shows out of this write's batch. Already-wired
+        // views remain available as inputs while either batch attaches.
+        initialize(
+            (view) =>
+                predicate(view) &&
+                (affected.has(view) ||
+                    view.getDataInitializationState() !== "none")
+        );
+        const pending = pendingInitializations.get(context);
+        void initialize(predicate)
+            ?.then(reflowAfterLoading)
+            .catch(context.reportError);
+        await Promise.all(
+            new Set(affected.keys().map((view) => pending?.get(view)))
+        );
+    } else {
+        await initialize(predicate);
     }
+    reflowAfterLoading();
 }
 
 /**
@@ -158,7 +170,7 @@ export async function refreshVisibility(root) {
  * @param {Iterable<import("../view/view.js").default>} [candidateViews]
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
-export async function initializeVisibleViewData(
+export function initializeVisibleViewData(
     viewRoot,
     dataFlow,
     textMetrics,
@@ -167,37 +179,59 @@ export async function initializeVisibleViewData(
     const candidates = candidateViews && new Set(candidateViews);
     const { predicate: visibilityPredicate, producerPaths } =
         getInitializationDependencies(viewRoot);
+    return (
+        startVisibleInitialization(
+            viewRoot,
+            visibilityPredicate,
+            (view) =>
+                !candidates || candidates.has(view) || producerPaths.has(view),
+            dataFlow,
+            textMetrics
+        ) ?? Promise.resolve(dataFlow)
+    );
+}
+
+/**
+ * @param {View} viewRoot
+ * @param {(view: View) => boolean} visibilityPredicate
+ * @param {(view: View) => boolean} [select]
+ * @param {DataFlow} [dataFlow]
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} [textMetrics]
+ */
+function startVisibleInitialization(
+    viewRoot,
+    visibilityPredicate,
+    select,
+    dataFlow = viewRoot.context.dataFlow,
+    textMetrics = viewRoot.context.textMetrics
+) {
     const viewsToInitialize = collectSubtreeViews(
         viewRoot,
         visibilityPredicate
     ).filter(
         (view) =>
-            (!candidates || candidates.has(view) || producerPaths.has(view)) &&
+            (!select || select(view)) &&
             view.getDataInitializationState() === "none"
     );
 
-    if (viewsToInitialize.length === 0) {
-        return dataFlow;
-    }
+    if (!viewsToInitialize.length) return;
 
+    let pending = pendingInitializations.get(viewRoot.context);
+    if (!pending) {
+        pending = new Map();
+        pendingInitializations.set(viewRoot.context, pending);
+    }
     const completion = initializeNewlyVisibleViews(
         viewRoot,
         dataFlow,
         textMetrics,
         visibilityPredicate,
         viewsToInitialize
-    );
-    let pending = pendingInitializations.get(viewRoot.context);
-    if (!pending) {
-        pending = new Map();
-        pendingInitializations.set(viewRoot.context, pending);
-    }
-    for (const view of viewsToInitialize) pending.set(view, completion);
-    try {
-        return await completion;
-    } finally {
+    ).finally(() => {
         for (const view of viewsToInitialize) pending.delete(view);
-    }
+    });
+    for (const view of viewsToInitialize) pending.set(view, completion);
+    return completion;
 }
 
 /**
@@ -289,15 +323,16 @@ export { initializeVisibleViewData as initializeViewDataForViews };
 /**
  * Visible consumers keep their output producers active, including hidden trees.
  * Include traversal/data ancestry without initializing unrelated hidden siblings.
- * @param {import("../view/view.js").default} root
+ * @param {View} root
+ * @param {(view: View) => boolean} [selected]
  */
-function getInitializationDependencies(root) {
+function getInitializationDependencies(root, selected) {
     // A mutation may start this traversal below a hidden layout ancestor.
     const visible =
         root.layoutParent && !root.layoutParent.isVisible()
             ? []
             : collectSubtreeViews(root, (view) => view.isConfiguredVisible());
-    const required = new Set(visible);
+    const required = new Set(selected ? visible.filter(selected) : visible);
     const producerPaths = new Set();
     /** @param {import("../view/view.js").default | undefined} view */
     const include = (view) => {
@@ -315,5 +350,6 @@ function getInitializationDependencies(root) {
         predicate: (/** @type {import("../view/view.js").default} */ view) =>
             required.has(view),
         producerPaths,
+        required,
     };
 }

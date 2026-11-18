@@ -4,8 +4,8 @@ import { createHeadlessViewHierarchy } from "@genome-spy/core/genomeSpy/headless
 import {
     buildViewSettingsPayload,
     getRadioVisibilityGroupsBySelector,
-    getViewVisibilityOverride,
-    resolveRadioVisibilityConflicts,
+    getRadioHiddenViews,
+    getViewVisibilityKeys,
     makeViewSelectorKey,
     normalizeViewSettingsPayload,
 } from "./viewSettingsUtils.js";
@@ -48,6 +48,18 @@ describe("view visibility entries", () => {
         const { view } = await createHeadlessViewHierarchy(spec);
         return view;
     }
+
+    test("a named view inside an empty import scope uses view-local visibility", async () => {
+        const root = await createRoot({
+            templates: { panel: makeTemplate() },
+            vconcat: [{ name: "", import: { template: "panel" } }],
+        });
+        const coverage = root
+            .getDescendants()
+            .find((view) => view.name === "coverage");
+        expect(coverage).toBeDefined();
+        expect(getViewVisibilityKeys(root).has(coverage)).toBe(false);
+    });
 
     test("surround side groups and tracks retain bookmarkable authored selectors", async () => {
         /** @type {import("./spec/view.js").AppSurroundSpec} */
@@ -125,12 +137,14 @@ describe("view visibility entries", () => {
                     coverage: false,
                     [stale]: false,
                     futureTrack: true,
+                    invalidChoice: /** @type {any} */ ("false"),
                 },
             },
             root
         );
         expect(settings.visibilities).not.toHaveProperty(stale);
         expect(settings.visibilities.futureTrack).toBe(true);
+        expect(settings.visibilities).not.toHaveProperty("invalidChoice");
         const entries = buildViewSettingsPayload(root, settings).visibilities;
 
         expect(entries).toHaveLength(2);
@@ -157,15 +171,8 @@ describe("view visibility entries", () => {
         onTestFinished(() => root.disposeSubtree());
         const settings = { visibilities: { [key]: false } };
         const payload = { visibilities: [entry] };
-        const detail = getAddressableViews(root).find(
-            (view) => view.explicitName === key
-        );
-
         expect(normalizeViewSettingsPayload(payload, root)).toEqual(settings);
         expect(buildViewSettingsPayload(root, settings)).toEqual(payload);
-        expect(
-            getViewVisibilityOverride(settings.visibilities, detail)
-        ).toBeUndefined();
     });
 
     test("resolves conflicting radio-group visibilities deterministically", async () => {
@@ -189,8 +196,11 @@ describe("view visibility entries", () => {
 
         const root = await createRoot(spec);
 
-        const bySelector = getRadioVisibilityGroupsBySelector(root);
-        const [{ memberKeys }] = Array.from(bySelector.values());
+        const bySelector = getRadioVisibilityGroupsBySelector(
+            getViewVisibilityKeys(root)
+        );
+        const [{ members }] = bySelector.values();
+        const memberKeys = members.map((member) => member.selectorKey);
 
         expect(memberKeys).toHaveLength(2);
         expect(
@@ -208,10 +218,9 @@ describe("view visibility entries", () => {
             { scope: [], view: "coverageA", visible: false },
             { scope: [], view: "coverageB", visible: true },
         ]);
-        const resolved = resolveRadioVisibilityConflicts(root, {});
-
-        expect(resolved[memberKeys[0]]).toBeUndefined();
-        expect(resolved[memberKeys[1]]).toBe(false);
+        expect(getRadioHiddenViews(bySelector, {})).toEqual(
+            new Set([members[1].view])
+        );
     });
 
     test("keeps radio groups scoped to import instances", async () => {
@@ -244,14 +253,16 @@ describe("view visibility entries", () => {
 
         const root = await createRoot(spec);
 
-        const bySelector = getRadioVisibilityGroupsBySelector(root);
+        const bySelector = getRadioVisibilityGroupsBySelector(
+            getViewVisibilityKeys(root)
+        );
         const groupKeys = new Set(
             Array.from(bySelector.values(), (entry) => entry.groupKey)
         );
 
         expect(groupKeys.size).toBe(2);
         for (const entry of bySelector.values()) {
-            expect(entry.memberKeys.length).toBe(2);
+            expect(entry.members.length).toBe(2);
         }
     });
 
@@ -277,7 +288,9 @@ describe("view visibility entries", () => {
 
         const root = await createRoot(spec);
 
-        const bySelector = getRadioVisibilityGroupsBySelector(root);
+        const bySelector = getRadioVisibilityGroupsBySelector(
+            getViewVisibilityKeys(root)
+        );
         expect(bySelector.size).toBe(2);
 
         const groupKeys = new Set(
@@ -285,13 +298,10 @@ describe("view visibility entries", () => {
         );
         expect(groupKeys.size).toBe(1);
 
-        for (const entry of bySelector.values()) {
-            expect(entry.memberKeys.length).toBe(2);
-        }
-
-        const resolved = resolveRadioVisibilityConflicts(root, {});
-        const entries = Array.from(bySelector.values());
-        expect(resolved[entries[0].memberKeys[0]]).toBeUndefined();
-        expect(resolved[entries[0].memberKeys[1]]).toBe(false);
+        const [{ members }] = bySelector.values();
+        expect(members).toHaveLength(2);
+        expect(getRadioHiddenViews(bySelector, {})).toEqual(
+            new Set([members[1].view])
+        );
     });
 });

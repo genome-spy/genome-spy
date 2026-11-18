@@ -74,7 +74,9 @@ export default interface ViewContext {
     getSpecOrigin?: (fragment: object) => string | undefined;
 
     /** Queues a visibility refresh. Initialized engines can flush it for an API write. */
-    requestVisibilityRefresh?: (immediate?: boolean) => void | Promise<void>;
+    requestVisibilityRefresh?: (
+        affected?: ReadonlySet<View>
+    ) => void | Promise<void>;
 
     requestLayoutReflow: () => void;
 

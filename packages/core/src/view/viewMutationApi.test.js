@@ -791,6 +791,33 @@ describe("ViewMutationApi", () => {
         expect(getCollectorValues(consumerBView)).toEqual([2]);
     });
 
+    test("keeps a merged named source available for a deferred sibling", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: { shared: [{ x: 1 }] },
+            vconcat: [
+                {
+                    name: "first",
+                    data: { name: "shared" },
+                    vconcat: [{ mark: "point" }],
+                },
+                {
+                    data: { name: "shared" },
+                    vconcat: [
+                        { name: "deferred", visible: false, mark: "point" },
+                    ],
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const deferred = api.get({ scope: [], view: "deferred" });
+        await api.remove({ scope: [], view: "first" });
+        await deferred.visibility.setOverride(true);
+        expect(deferred.data.read({ scope: "all", limit: 1 }).rows).toEqual([
+            { x: 1 },
+        ]);
+        view.disposeSubtree();
+    });
+
     test("inserts a direct spec into a concat container", async () => {
         const { view } = await createHeadlessViewHierarchy({
             name: "tracks",
@@ -1579,60 +1606,75 @@ describe("ViewMutationApi", () => {
         ).toEqual([undefined, "trackA", "trackB"]);
     });
 
-    test("joins first-show work in the target subtree without blocking an unrelated hide", async () => {
-        const { view } = await createHeadlessEngine({
-            params: [{ name: "showDetail", value: false }],
-            vconcat: [
-                makeUnitSpec("coverage"),
-                {
-                    name: "branch",
-                    vconcat: [
-                        {
-                            ...makeUnitSpec("detail"),
-                            visible: { expr: "showDetail" },
-                        },
-                    ],
-                },
-            ],
-        });
-        const api = createViewMutationApi({ viewRoot: view });
-        const [coverage, branch] = api.root().children();
-        const started = Promise.withResolvers();
-        const finish = Promise.withResolvers();
-        const load = InlineSource.prototype.load;
-        const loading = vi
-            .spyOn(InlineSource.prototype, "load")
-            .mockImplementationOnce(async function () {
-                started.resolve();
-                await finish.promise;
-                await load.call(this);
+    test.each([false, true])(
+        "joins relevant first-show work when an unrelated track becomes visible in the same turn (show %s)",
+        async (visible) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "showDetail", value: false }],
+                vconcat: [
+                    { ...makeUnitSpec("coverage"), visible: !visible },
+                    {
+                        name: "branch",
+                        vconcat: [
+                            {
+                                ...makeUnitSpec("detail"),
+                                data: { values: [{ x: 3, y: 4 }] },
+                                visible: { expr: "showDetail" },
+                            },
+                        ],
+                    },
+                ],
             });
-        try {
-            view.paramRuntime.setValue("showDetail", true);
-            await started.promise;
-            const hidden = vi.fn();
-            const hide = coverage.visibility.setOverride(false).then(hidden);
-            await vi.waitFor(() => expect(hidden).toHaveBeenCalledOnce());
-            await hide;
+            const api = createViewMutationApi({ viewRoot: view });
+            const [coverage, branch] = api.root().children();
+            const started = Promise.withResolvers();
+            const finish = Promise.withResolvers();
+            const load = InlineSource.prototype.load;
+            const loading = vi
+                .spyOn(InlineSource.prototype, "load")
+                .mockImplementation(async function () {
+                    if (this.view.explicitName === "detail") {
+                        started.resolve();
+                        await finish.promise;
+                    }
+                    await load.call(this);
+                });
+            try {
+                const changed = vi.fn();
+                const change = coverage.visibility
+                    .setOverride(visible)
+                    .then(changed);
+                // This same-turn change can be picked up by the manual refresh.
+                view.paramRuntime.setValue("showDetail", true);
+                await started.promise;
+                await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+                await change;
+                expect(coverage.visibility.locallyVisible).toBe(visible);
+                if (visible)
+                    expect(
+                        coverage.data.read({ scope: "all", limit: 1 }).rows
+                    ).toHaveLength(1);
 
-            const shown = vi.fn();
-            const show = branch.visibility.setOverride(true).then(shown);
-            await vi.waitFor(() =>
-                expect(branch.visibility.override).toBe(true)
-            );
-            expect(shown).not.toHaveBeenCalled();
-            finish.resolve();
-            await show;
-            expect(
-                branch.children()[0].data.read({ scope: "all", limit: 1 }).rows
-            ).toHaveLength(1);
-            expect(loading).toHaveBeenCalledOnce();
-        } finally {
-            finish.resolve();
-            loading.mockRestore();
-            view.disposeSubtree();
+                const shown = vi.fn();
+                const show = branch.visibility.setOverride(true).then(shown);
+                await vi.waitFor(() =>
+                    expect(branch.visibility.override).toBe(true)
+                );
+                expect(shown).not.toHaveBeenCalled();
+                finish.resolve();
+                await show;
+                expect(
+                    branch.children()[0].data.read({ scope: "all", limit: 1 })
+                        .rows
+                ).toHaveLength(1);
+                expect(loading).toHaveBeenCalledTimes(visible ? 2 : 1);
+            } finally {
+                finish.resolve();
+                loading.mockRestore();
+                view.disposeSubtree();
+            }
         }
-    });
+    );
 
     test("serializes concurrently started mutations inside a transaction", async () => {
         const { view } = await createHeadlessEngine({

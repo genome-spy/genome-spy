@@ -180,7 +180,7 @@ class ViewSettingsButton extends LitElement {
             const selectorKey = keys.get(view);
             const radioGroup = radioGroups.get(selectorKey);
             const isRadioGroup = Boolean(
-                radioGroup && radioGroup.memberKeys.length > 1
+                radioGroup && radioGroup.members.length > 1
             );
 
             /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */

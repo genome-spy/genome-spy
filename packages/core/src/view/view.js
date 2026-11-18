@@ -32,6 +32,7 @@ import { getPostScaleParams } from "./postScaleParams.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
+import DataSource from "../data/sources/dataSource.js";
 import { annotateSpecError } from "../utils/specError.js";
 import { warnOnce } from "../utils/warning.js";
 
@@ -1293,15 +1294,36 @@ export default class View {
 
         const handle = this.flowHandle;
 
+        const dataAncestors = this.getDataAncestors()
+            .values()
+            .drop(1)
+            .toArray();
+        // Deferred children still need authored inputs. A merged source may also
+        // be an input owned by another branch.
+        /** @param {import("../data/flowNode.js").default} node */
+        const retained = (node) =>
+            dataAncestors.some((view) =>
+                view.flowHandle?.terminals?.has(node)
+            ) ||
+            (node instanceof DataSource &&
+                !!node.shareKey &&
+                this.getLayoutAncestors()
+                    .at(-1)
+                    .getDescendants()
+                    .some(
+                        (view) =>
+                            view !== this &&
+                            view.flowHandle?.terminals?.has(node)
+                    ));
         for (const terminal of handle?.terminals ?? []) {
             // Descendants may still use this endpoint, including merged sources.
             if (terminal.children.length === 0) {
-                this.context.dataFlow.pruneBranch(terminal);
+                this.context.dataFlow.pruneBranch(terminal, retained);
             }
         }
 
         if (handle?.collector) {
-            this.context.dataFlow.pruneBranch(handle.collector);
+            this.context.dataFlow.pruneBranch(handle.collector, retained);
         }
 
         if (

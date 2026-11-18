@@ -38,8 +38,10 @@ import {
 } from "./rendering/rasterization.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
-import { validateSelectorConstraints } from "./view/viewSelectors.js";
-import { resolveVisibilityOverrides } from "./view/viewVisibility.js";
+import {
+    resolveVisibilityOverrides,
+    validateSelectorConstraints,
+} from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
 import { initializeViewGuides } from "./view/gridView/guideViewSync.js";

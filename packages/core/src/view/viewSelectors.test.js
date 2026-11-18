@@ -11,10 +11,10 @@ import {
     markViewAsChrome,
     resolveParamSelector,
     resolveViewSelector,
+    resolveVisibilityOverrides,
     validateSelectorConstraints,
 } from "./viewSelectors.js";
 import { VISIT_SKIP, VISIT_STOP } from "./view.js";
-import { resolveVisibilityOverrides } from "./viewVisibility.js";
 
 /**
  * @param {string} name
