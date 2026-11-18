@@ -5,13 +5,14 @@ import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSvg } from "./index.js";
 
 describe("SVG view backgrounds", () => {
-    test("exports fill, shadow, and stroke decorations in view z-order", async () => {
+    test.each([0.8, 0])("preserves shadow with fill %s", async (alpha) => {
         const { view } = await createHeadlessEngine(
             {
                 name: "plot",
+                config: { rect: { opacity: 0.25 } },
                 view: {
                     fill: "#f0f4f8",
-                    fillOpacity: 0.8,
+                    fillOpacity: alpha,
                     shadowBlur: 10,
                     shadowColor: "#123456",
                     shadowOffsetX: 2,
@@ -58,7 +59,8 @@ describe("SVG view backgrounds", () => {
 
         expect(fill).not.toBeNull();
         expect(fillMark?.getAttribute("fill")).toBe("#f0f4f8");
-        expect(fillMark?.getAttribute("fill-opacity")).toBe("0.8");
+        expect(fillMark?.getAttribute("fill-opacity")).toBe(String(alpha));
+        expect(fillMark?.querySelector("[opacity]:not([filter])")).toBeNull();
         expect(shadow?.getAttribute("fill")).toBe("#123456");
         expect(shadow?.getAttribute("opacity")).toBe("0.4");
         expect(strokeView?.querySelectorAll("line")).toHaveLength(4);

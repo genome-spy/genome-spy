@@ -69,6 +69,13 @@ export function renderRectSvg(baseMark, options) {
         ) {
             return;
         }
+        const occurrence =
+            instance.opacity == 1
+                ? group
+                : createSvgElement("g", {
+                      opacity: formatSvgUnitless(instance.opacity),
+                  });
+        if (occurrence !== group) group.appendChild(occurrence);
         const {
             datum,
             x,
@@ -126,7 +133,7 @@ export function renderRectSvg(baseMark, options) {
                 fillOpacity * fillAlpha(fill) == 1 &&
                 opacityFactor == 1;
             if (hasOpaqueFill && instance.strokeOutset === 0) {
-                group.appendChild(shadowElement);
+                occurrence.appendChild(shadowElement);
             } else {
                 // Translucent fills would reveal the blurred source inside the
                 // rect. Clip a parent group so the child filter is evaluated
@@ -142,13 +149,13 @@ export function renderRectSvg(baseMark, options) {
                     "clip-path": options.getShadowClipPathUrl(cutoutPath),
                 });
                 shadowGroup.appendChild(shadowElement);
-                group.appendChild(shadowGroup);
+                occurrence.appendChild(shadowGroup);
             }
         }
         const stroke = toPaintString(encoders.stroke(datum));
         const strokeOpacity = encodeNumber(encoders.strokeOpacity, datum);
         if (strokeWidth <= 0 || stroke === "none" || strokeOpacity <= 0) {
-            group.appendChild(
+            occurrence.appendChild(
                 createRectElement(x, y, width, height, radii, styles)
             );
         } else {
@@ -196,7 +203,7 @@ export function renderRectSvg(baseMark, options) {
                     stroke: "none",
                 })
             );
-            group.appendChild(foreground);
+            occurrence.appendChild(foreground);
         }
     });
 }

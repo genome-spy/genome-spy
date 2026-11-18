@@ -16,7 +16,9 @@ export function createBackground(viewBackground) {
         data: { values: [{}] },
         mark: {
             color: viewBackground.fill,
-            opacity: fillOpacity,
+            fillOpacity,
+            // View paints override mark-level opacity configuration.
+            opacity: 1,
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,

@@ -1,5 +1,6 @@
 flat out lowp vec4 vFillColor;
 flat out float vOpacityFactor;
+flat out float vOpacity;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
 flat out float vStrokeOutset;
@@ -107,6 +108,7 @@ void main(void) {
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
     vOpacityFactor = opaFactor;
+    vOpacity = getScaled_opacity();
     size = max(size, normalizedMinSize);
     // Preserve centered zero-area suppression; inside has no area to border.
     if ((size.x == 0.0 || size.y == 0.0) && uStrokeAlign != 2) {

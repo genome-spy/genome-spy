@@ -41,10 +41,12 @@ export default class RectMark extends Mark {
             isNestedDiscreteOffsetDef(encoding.yOffset)
         );
 
+        // Common opacity fades the completed rectangle, independently of its paints.
+        encoding.strokeOpacity ??= { value: 1 };
+        if (this.properties.filled) encoding.fillOpacity ??= { value: 1 };
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);
         delete encoding.color;
-        delete encoding.opacity;
         return encoding;
     }
 }

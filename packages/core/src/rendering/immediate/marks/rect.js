@@ -42,6 +42,7 @@ const RECT_SEAM_PADDING = 0.1;
  * @prop {number} width
  * @prop {number} height
  * @prop {CornerRadii} radii
+ * @prop {number} opacity
  * @prop {number} opacityFactor
  * @prop {number} strokeWidth
  * @prop {number} strokeOutset
@@ -242,6 +243,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         width: 0,
         height: 0,
         radii: { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 },
+        opacity: 1,
         opacityFactor: 1,
         strokeWidth: 0,
         strokeOutset: 0,
@@ -294,10 +296,12 @@ export function visitRectInstances(mark, properties, options, visitor) {
             (fillOpacityIsConstant
                 ? constantFillOpacity
                 : encodeNumber(encoders.fillOpacity, datum)) * viewOpacity;
+        const opacity = encodeNumber(encoders.opacity, datum);
         const seamPadding =
             strokeWidth == 0 &&
             fillOpacity * fillAlpha(fill) == 1 &&
             opacityFactor == 1 &&
+            opacity == 1 &&
             properties.canPadSeams &&
             fill != "none"
                 ? RECT_SEAM_PADDING
@@ -327,6 +331,7 @@ export function visitRectInstances(mark, properties, options, visitor) {
         instance.y = y;
         instance.width = width;
         instance.height = height;
+        instance.opacity = opacity;
         instance.opacityFactor = opacityFactor;
         instance.strokeWidth = strokeWidth;
         instance.strokeOutset = strokeOutset;

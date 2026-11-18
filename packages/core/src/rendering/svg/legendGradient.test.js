@@ -70,7 +70,8 @@ describe("SVG gradient legends", () => {
                 expect(rect.getAttribute("fill")).toBe(
                     `url(#${gradient.getAttribute("id")})`
                 );
-                expect(rect.getAttribute("fill-opacity")).toBe("0.4");
+                expect(rect.getAttribute("fill-opacity")).toBe("1");
+                expect(rect.getAttribute("opacity")).toBe("0.4");
                 expect(gradient.querySelectorAll("stop")).toHaveLength(66);
                 expect(numericAttributes(rect, [thickness])).toEqual([18]);
                 expect(

@@ -523,6 +523,7 @@ function createRectConfig(mark, data, coords) {
             x2Offset: createNumericChannel(mark, "x2Offset", data),
             yOffset: createNumericChannel(mark, "yOffset", data),
             y2Offset: createNumericChannel(mark, "y2Offset", data),
+            opacity: createNumericChannel(mark, "opacity", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
             fillOpacity: createNumericChannel(mark, "fillOpacity", data),
