@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="../style.scss" />
+        <title>View Visibility API</title>
+        <style>
+            #track-visibility {
+                position: relative;
+                inline-size: max-content;
+            }
+
+            #track-visibility summary {
+                padding: 0.6rem 0.85rem;
+                border: 1px solid var(--border);
+                border-radius: 0.3rem;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+            #track-visibility summary:focus-visible {
+                outline: 2px solid var(--link-hover);
+                outline-offset: 2px;
+            }
+
+            #track-choices {
+                position: absolute;
+                z-index: 1;
+                inset-block-start: calc(100% + 0.3rem);
+                inset-inline-start: 0;
+                inline-size: 12rem;
+                max-inline-size: calc(100vw - 2rem);
+                padding: 0.25rem;
+                border: 1px solid var(--border);
+                border-radius: 0.3rem;
+                background: var(--surface);
+                box-shadow: 0 0.25rem 0.9rem #0002;
+            }
+
+            #track-choices label {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                min-block-size: 44px;
+                padding-inline: 0.6rem;
+                border-radius: 0.2rem;
+                cursor: pointer;
+            }
+
+            #track-choices label:hover {
+                background: var(--hero-background);
+            }
+
+            #track-choices input {
+                margin: 0;
+                accent-color: var(--link-hover);
+            }
+        </style>
+    </head>
+
+    <body>
+        <a class="back-link" href="../">← All embedding examples</a>
+        <main>
+            <h1>View Visibility API</h1>
+            <p>
+                Use <strong>Visible tracks</strong> to hide and show views in
+                the running embed with
+                <code>ViewHandle.visibility.setOverride()</code>.
+            </p>
+            <details id="track-visibility" hidden>
+                <summary>Visible tracks</summary>
+                <div id="track-choices"></div>
+            </details>
+            <p id="visibility-error" role="alert"></p>
+            <div id="container" class="visualization-surface"></div>
+        </main>
+        <script type="module" src="./index.js"></script>
+    </body>
+</html>
