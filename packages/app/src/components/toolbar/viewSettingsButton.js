@@ -256,14 +256,10 @@ class ViewSettingsButton extends LitElement {
          */
         const nestedItemToHtml = (/** */ item, depth = -1) => {
             const view = item.item;
-            const visibilityOverride = getViewVisibilityOverride(
-                effectiveVisibilities,
-                view
-            );
             const checked =
-                visibilityOverride !== undefined
-                    ? visibilityOverride
-                    : view.isVisibleInSpec();
+                view.visibilityIsExpression ||
+                (getViewVisibilityOverride(effectiveVisibilities, view) ??
+                    view.isVisibleInSpec());
             const selectorKey = getViewVisibilityKey(view);
             const radioGroup =
                 selectorKey && radioGroupsBySelector.has(selectorKey)
@@ -327,36 +323,38 @@ class ViewSettingsButton extends LitElement {
                     !checked && item.children.length > 0
                         ? title + "..."
                         : title;
-                const template = html` <label
-                    class="checkbox"
-                    @mouseover=${(/** @type {MouseEvent} */ event) =>
-                        this.#handleViewHover(event, view)}
-                    @mouseout=${(/** @type {MouseEvent} */ event) =>
-                        this.#handleViewHover(event, view)}
-                >
-                    <input
-                        data-control-key=${`${selectorKey ?? title}:visibility`}
-                        style=${`margin-left: ${depth * 1.5}em;`}
-                        type=${isRadioGroup ? "radio" : "checkbox"}
-                        name=${isRadioGroup ? radioGroup.groupKey : nothing}
-                        ?disabled=${
-                            !selectorKey ||
-                            !uniqueSelectorKeys.has(selectorKey) ||
-                            !isVisibilityConfigurable(view)
-                        }
-                        .checked=${live(checked)}
-                        @change=${(/** @type {UIEvent} */ event) =>
-                            isRadioGroup
-                                ? this.#handleRadioClick(
-                                      event,
-                                      view,
-                                      /** @type {{ memberKeys: string[] }} */ (
-                                          radioGroup
-                                      ).memberKeys
-                                  )
-                                : this.#handleCheckboxClick(event, view)}
-                    />${label}
-                </label>`;
+                const template = view.visibilityIsExpression
+                    ? undefined
+                    : html` <label
+                          class="checkbox"
+                          @mouseover=${(/** @type {MouseEvent} */ event) =>
+                              this.#handleViewHover(event, view)}
+                          @mouseout=${(/** @type {MouseEvent} */ event) =>
+                              this.#handleViewHover(event, view)}
+                      >
+                          <input
+                              data-control-key=${`${selectorKey ?? title}:visibility`}
+                              style=${`margin-left: ${depth * 1.5}em;`}
+                              type=${isRadioGroup ? "radio" : "checkbox"}
+                              name=${isRadioGroup ? radioGroup.groupKey : nothing}
+                              ?disabled=${
+                                  !selectorKey ||
+                                  !uniqueSelectorKeys.has(selectorKey) ||
+                                  !isVisibilityConfigurable(view)
+                              }
+                              .checked=${live(checked)}
+                              @change=${(/** @type {UIEvent} */ event) =>
+                                  isRadioGroup
+                                      ? this.#handleRadioClick(
+                                            event,
+                                            view,
+                                            /** @type {{ memberKeys: string[] }} */ (
+                                                radioGroup
+                                            ).memberKeys
+                                        )
+                                      : this.#handleCheckboxClick(event, view)}
+                          />${label}
+                      </label>`;
 
                 items.push({
                     label: title,

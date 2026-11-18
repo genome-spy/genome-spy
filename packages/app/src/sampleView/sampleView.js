@@ -360,7 +360,18 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} view
      */
     #ensureViewVisible(view) {
-        for (const ancestor of view.getLayoutAncestors()) {
+        const ancestors = view.getLayoutAncestors();
+        const hidden = ancestors.find(
+            (ancestor) =>
+                ancestor.visibilityIsExpression && !ancestor.isVisibleInSpec()
+        );
+        if (hidden)
+            throw new Error(
+                `Cannot reveal "${view.name}" because "${hidden.name}" is hidden by its visibility expression.`
+            );
+
+        for (const ancestor of ancestors) {
+            if (ancestor.visibilityIsExpression) continue;
             const selectorKey = getViewVisibilityKey(ancestor);
             if (!selectorKey) {
                 continue;

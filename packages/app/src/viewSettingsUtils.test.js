@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { createHeadlessViewHierarchy } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import {
     buildViewVisibilityEntries,
+    buildViewSettingsPayload,
     getRadioVisibilityGroupsBySelector,
     resolveRadioVisibilityConflicts,
     makeViewSelectorKey,
@@ -127,6 +128,11 @@ describe("view visibility entries", () => {
         const spec = {
             vconcat: [
                 {
+                    ...makeUnitSpec("detail"),
+                    visible: { expr: "true" },
+                    configurableVisibility: { group: "mode" },
+                },
+                {
                     ...makeUnitSpec("coverageA"),
                     configurableVisibility: { group: "mode" },
                 },
@@ -142,6 +148,22 @@ describe("view visibility entries", () => {
         const bySelector = getRadioVisibilityGroupsBySelector(root);
         const [{ memberKeys }] = Array.from(bySelector.values());
 
+        expect(memberKeys).toHaveLength(2);
+        expect(
+            buildViewSettingsPayload(root, { visibilities: {} })
+        ).toBeUndefined();
+        const choices = {
+            [memberKeys[0]]: false,
+            [memberKeys[1]]: true,
+            detail: true,
+        };
+        expect(
+            buildViewSettingsPayload(root, { visibilities: choices })
+                .visibilities
+        ).toEqual([
+            { scope: [], view: "coverageA", visible: false },
+            { scope: [], view: "coverageB", visible: true },
+        ]);
         const resolved = resolveRadioVisibilityConflicts(root, {});
 
         expect(resolved[memberKeys[0]]).toBeUndefined();

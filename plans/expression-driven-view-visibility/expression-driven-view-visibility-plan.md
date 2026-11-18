@@ -60,6 +60,9 @@ Update the grammar JSDoc, schema, and import example. Tentative commit
 
 ## App
 
+Implemented in the App milestone. The integration tests exercise startup URL
+restore, manual radio choices, and parameter controls in the View settings menu.
+
 - Keep Redux as the owner of manual choices. Use the same expression-ownership
   check in `configurableVisibilityUtils.js`, scoped radio membership, and direct
   writes. A hidden parent still permits setting a manual child’s choice. A

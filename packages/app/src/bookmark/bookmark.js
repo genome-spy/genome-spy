@@ -69,7 +69,10 @@ export async function restoreBookmark(entry, app) {
             await app.paramProvenanceBridge?.whenApplied();
         }
 
-        const normalized = normalizeViewSettingsPayload(entry.viewSettings);
+        const normalized = normalizeViewSettingsPayload(
+            entry.viewSettings,
+            app.genomeSpy.viewRoot
+        );
         app.store.dispatch(
             viewSettingsSlice.actions.setViewSettings(normalized)
         );

@@ -81,6 +81,10 @@ the app and choose _Share_ from its submenu
 GenomeSpy App can let users toggle visibility of nodes in the view hierarchy.
 The visibility state is included in shareable links and bookmarks.
 
+When a view declares `"visible": { "expr": "mode === 'detail'" }`, changing
+`mode` shows or hides the view. Its parameter controls and eligible child
+tracks remain available in View settings. Bookmarks save manual track choices.
+
 Toggleable views need an explicit unique `name`. GenomeSpy uses the name to
 address visibility state in bookmarks and shared state.
 

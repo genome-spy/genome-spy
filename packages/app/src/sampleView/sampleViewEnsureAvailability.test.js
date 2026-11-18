@@ -21,6 +21,9 @@ describe("SampleView ensureViewAttributeAvailability", () => {
             data: {
                 values: [{ sample: "S1", x: 1 }],
             },
+            name: "cohort",
+            params: [{ name: "show", value: false }],
+            visible: { expr: "show" },
             samples: {},
             spec: {
                 name: "target-view",
@@ -32,7 +35,7 @@ describe("SampleView ensureViewAttributeAvailability", () => {
             },
         };
 
-        const { view } = await createSampleViewForTest({
+        const { view, store } = await createSampleViewForTest({
             spec,
             initializeFlow: false,
         });
@@ -54,6 +57,18 @@ describe("SampleView ensureViewAttributeAvailability", () => {
                 getDomain: () => [0, 10],
                 zoomTo,
             });
+
+        await expect(
+            view.ensureViewAttributeAvailability({
+                view: "target-view",
+                field: "x",
+                locus: 5,
+            })
+        ).rejects.toThrow(/cohort.*hidden/);
+        expect(store.getState().viewSettings.visibilities).toEqual({});
+        expect(zoomTo).not.toHaveBeenCalled();
+        view.paramRuntime.setValue("show", true);
+        await view.paramRuntime.whenPropagated();
 
         let resolved = false;
         const ensurePromise = view
