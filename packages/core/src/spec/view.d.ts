@@ -388,12 +388,9 @@ export interface ViewSpecBase extends ResolveSpec {
     baseUrl?: string;
 
     /**
-     * A hidden view leaves the layout and retains its data and selections.
-     * A boolean sets the default. An expression controls visibility and must
-     * return a boolean. It can read parameters and the current domain of a
-     * typed ancestor scale with a literal domain or a locus assembly extent.
-     * For example, `{ "expr": "span(domain('x')) < 10000" }` reveals a track
-     * when fewer than 10,000 bases are visible.
+     * The default visibility of the view. An invisible view is removed from the
+     * layout and not rendered. For context, see [toggleable view
+     * visibility](https://genomespy.app/docs/sample-collections/visualizing/#toggleable-view-visibility).
      *
      * **Default:** `true`
      */
