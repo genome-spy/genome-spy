@@ -5,10 +5,11 @@
 
 <!-- category: feature -->
 
-Control a live view's visibility through its handle and restore saved choices
-when embedding a visualization.
+Hide and show tracks in an embedded GenomeSpy visualization with
+`ViewHandle.visibility`.
 
-Hidden tracks free layout space and keep their data and selections. Saved
-choices can be applied before the first layout and data load. In GenomeSpy App,
-handles share choices with View settings, and a startup URL bookmark takes
-precedence over the host's saved choices.
+Hiding a track frees up space while keeping its loaded data and selections. Pass
+saved visibility choices to `initialVisibilityOverrides` to apply them before
+GenomeSpy lays out tracks or loads their data. In GenomeSpy App, the API and the
+View settings menu use the same choices, and a URL bookmark takes precedence
+over the host's choices when starting App in standalone mode.
