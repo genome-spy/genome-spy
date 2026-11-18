@@ -13,8 +13,9 @@ replacement append missing glyphs in batches of at most 32; geometric texture
 growth copies old texels at unchanged coordinates and synchronously rebinds
 every borrower. No CPU bitmap, GPU readback, or full-font atlas is involved.
 
-Outline text resolves fill and full-width outside strokes together once per
-label. RGB samples reconstruct sharp nominal fill; the true-distance alpha
+Outline text resolves fill and full-width strokes together once per label.
+Strokes can sit inside, centered on, or outside the original glyph contours;
+outside is the default. RGB samples reconstruct sharp nominal fill; the true-distance alpha
 channel supplies round offsets from each original glyph contour, including
 overlapping glyphs. A zero-width stroke has exactly zero band coverage. Coverage
 uses the same color-dependent gamma compensation before the combined

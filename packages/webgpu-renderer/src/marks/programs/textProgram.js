@@ -59,6 +59,7 @@ export const TEXT_CHANNEL_SPECS = {
     opacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeWidth: { type: "f32", components: 1, default: 0.0 },
+    strokeAlign: { type: "u32", components: 1, default: 2 },
     shadowColor: { type: "f32", components: 4, optional: true },
     shadowOpacity: { type: "f32", components: 1, optional: true },
     shadowOffsetX: { type: "f32", components: 1, optional: true },
@@ -79,7 +80,9 @@ function createTextShaderBody(shadow) {
     var layerColor = getScaled_fill(i);
     layerColor.a *= getScaled_fillOpacity(i);
     var layerOpacityMultiplier = 1.0;
-    var layerExtent = max(getScaled_strokeWidth(i), 0.0) * globals.dpr;
+    let strokeWidth = max(getScaled_strokeWidth(i), 0.0) * globals.dpr;
+    let outset = strokeWidth * f32(getScaled_strokeAlign(i)) * 0.5;
+    var layerExtent = vec2<f32>(strokeWidth - outset, outset);
     var effectOffset = vec2<f32>(0.0);
 ${
     shadow
@@ -87,7 +90,7 @@ ${
     if (layer == TEXT_LAYER_SHADOW) {
         layerColor = getScaled_shadowColor(i);
         layerOpacityMultiplier = getScaled_shadowOpacity(i);
-        layerExtent = max(getScaled_shadowBlur(i), 0.0) * globals.dpr;
+        layerExtent = vec2<f32>(max(getScaled_shadowBlur(i), 0.0) * globals.dpr, 0.0);
         effectOffset = vec2<f32>(getScaled_shadowOffsetX(i), getScaled_shadowOffsetY(i));
     }`
         : ""
@@ -168,8 +171,8 @@ struct VSOut {
     @location(6) localPixel: vec2<f32>,
     @location(7) stroke: vec4<f32>,
     @location(8) strokeOpacity: f32,
-    // Physical-pixel outside stroke width or shadow blur.
-    @location(9) extent: f32,
+    // Physical-pixel inward/outward extents; shadow blur uses x.
+    @location(9) extent: vec2<f32>,
     @location(10) @interpolate(flat) devicePixelsPerAtlas: f32,
     @location(11) localPosition: vec2<f32>,
     @location(12) @interpolate(flat) glyphScales: vec4<f32>,
@@ -191,7 +194,7 @@ fn culledText() -> VSOut {
     out.localPixel = vec2<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
     out.strokeOpacity = 0.0;
-    out.extent = 0.0;
+    out.extent = vec2<f32>(0.0);
     out.devicePixelsPerAtlas = 0.0;
     out.localPosition = vec2<f32>(0.0);
     out.glyphScales = vec4<f32>(0.0);
@@ -620,7 +623,7 @@ fn shadowCoverageAt(in: VSOut, uv: vec2<f32>) -> f32 {
         (params.uSpread - 1.0) * in.devicePixelsPerAtlas,
         0.0
     );
-    let blur = min(in.extent, maxBlur);
+    let blur = min(in.extent.x, maxBlur);
     if (blur <= 0.0) {
         return clamp(distance + 0.5, 0.0, 1.0);
     }
@@ -713,11 +716,12 @@ fn labelPaint(in: VSOut, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
                 (0.5 + in.stemDarkening) / in.devicePixelsPerAtlas + 1.0
             ) * atlasToLocal;
             let reach = max(fillReach,
-                vec2<f32>(in.extent + 1.0) * atlasToLocal / in.devicePixelsPerAtlas);
+                vec2<f32>(in.extent.y + 1.0) * atlasToLocal / in.devicePixelsPerAtlas);
             if (any(pointMax < inkMin - reach) || any(pointMin > inkMax + reach)) {
                 continue;
             }
             var fill = vec4<f32>(0.0);
+            var inner = vec4<f32>(0.0);
             var outer = vec4<f32>(0.0);
             for (var j = 0u; j < 4u; j++) {
                 let local = (points[j] - rect.xy) / rect.zw;
@@ -736,12 +740,14 @@ fn labelPaint(in: VSOut, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
                     && all(localPosition <= m.texRect.zw
                         + vec2<f32>(1.0 - params.uSpread + guard));
                 fill[j] = select(0.0, clamp(distance + 0.5, 0.0, 1.0), fillInside);
-                let expanded = max(fill[j], clamp(trueDistance + in.extent + 0.5, 0.0, 1.0));
-                outer[j] = select(expanded, fill[j], in.extent <= 0.0);
+                let expanded = max(fill[j], clamp(trueDistance + in.extent.y + 0.5, 0.0, 1.0));
+                outer[j] = select(expanded, fill[j], in.extent.y <= 0.0);
+                let contracted = min(fill[j], clamp(trueDistance - in.extent.x + 0.5, 0.0, 1.0));
+                inner[j] = select(contracted, fill[j], in.extent.x <= 0.0);
             }
             cf = max(cf, fill);
             co = max(co, outer);
-            band = max(band, outer - fill);
+            band = max(band, outer - inner);
         }
     }
     // Retain each original contour's band even inside another glyph's fill.
@@ -750,7 +756,7 @@ fn labelPaint(in: VSOut, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
     let fillCoverage = pow(dot(cf, vec4<f32>(0.25)), gamma);
     let fill = premultiplyAlpha(in.color);
     let stroke = premultiplyAlpha(vec4<f32>(in.stroke.rgb, in.stroke.a * in.strokeOpacity));
-    if (in.extent <= 0.0 || stroke.a <= 0.0) {
+    if (all(in.extent <= vec2<f32>(0.0)) || stroke.a <= 0.0) {
         return fill * (fillCoverage * in.opacity);
     }
     let ci = min(cf, max(co - band, vec4<f32>(0.0)));

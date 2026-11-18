@@ -15,6 +15,7 @@ const STRINGS = ["GenomeSpy", "Outlined labels", "SDF glow", "AV M&W 50%"];
  * @prop {number} [opacity]
  * @prop {string} [stroke]
  * @prop {number} [strokeWidth]
+ * @prop {number} [strokeAlign]
  * @prop {number} [strokeOpacity]
  * @prop {string} [shadowColor]
  * @prop {number} [shadowOpacity]
@@ -63,6 +64,7 @@ export default async function runTextEffectsScene(canvas, options = {}) {
         opacity: options.opacity ?? 1,
         stroke: options.stroke ?? "#14213d",
         strokeWidth: options.strokeWidth ?? 4,
+        strokeAlign: options.strokeAlign ?? 2,
         strokeOpacity: options.strokeOpacity ?? 1,
         shadowColor: options.shadowColor ?? "#2457ff",
         shadowOpacity: options.shadowOpacity ?? 0.55,
@@ -112,6 +114,11 @@ export default async function runTextEffectsScene(canvas, options = {}) {
                 dynamic: true,
             },
             strokeWidth: { value: initial.strokeWidth, dynamic: true },
+            strokeAlign: {
+                value: initial.strokeAlign,
+                type: "u32",
+                dynamic: true,
+            },
             strokeOpacity: {
                 value: initial.strokeOpacity,
                 dynamic: true,
@@ -157,6 +164,7 @@ export default async function runTextEffectsScene(canvas, options = {}) {
             values.opacity.set(next.opacity ?? initial.opacity);
             values.stroke.set(parseColor(next.stroke ?? initial.stroke));
             values.strokeWidth.set(next.strokeWidth ?? initial.strokeWidth);
+            values.strokeAlign.set(next.strokeAlign ?? initial.strokeAlign);
             values.strokeOpacity.set(
                 next.strokeOpacity ?? initial.strokeOpacity
             );

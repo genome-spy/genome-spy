@@ -12,6 +12,19 @@ for (const dpr of [1, 2]) {
             );
         }
         expect(result.opaqueMinimum).toBe(255);
+        for (const alignment of result.alignments) {
+            for (const [actual, expected] of alignment.samples)
+                actual.forEach((value, i) =>
+                    expect(Math.abs(value - expected[i])).toBeLessThanOrEqual(1)
+                );
+            expect(alignment.opacityError).toBeLessThanOrEqual(1);
+            expect(alignment.transparentError).toBe(0);
+            expect(alignment.picks).toEqual([17, null]);
+        }
+        expect(result.circle.mismatches).toBe(0);
+        expect(result.circle.fill).toBeGreaterThan(10);
+        expect(result.circle.stroke).toBeGreaterThan(10);
+        expect(result.circle.background).toBeGreaterThan(1000);
         expect(result.opacityError).toBeLessThanOrEqual(1);
         expect(result.transparentError).toBeLessThanOrEqual(1);
         expect(result.orderError).toBeLessThanOrEqual(2);
@@ -134,6 +147,158 @@ async function renderText(dpr) {
                 mark.values[key].set(value);
         });
     try {
+        const alignments = [];
+        // The same public paint contract must hold with and without shadow code.
+        for (const shadow of [false, true]) {
+            const aligned = renderer.createMark(textMark, {
+                count: 1,
+                font,
+                fontSize: 40,
+                letterSpacing: -10,
+                channels: {
+                    text: { data: ["Ā"] },
+                    x: { value: 80, scale: identityScale() },
+                    y: { value: 64, scale: identityScale() },
+                    align: { value: 0, type: "u32" },
+                    size: { value: 40 },
+                    fill: { value: [1, 0, 0, 1] },
+                    fillOpacity: { value: 0.6 },
+                    stroke: { value: [0, 0, 1, 1] },
+                    strokeOpacity: { value: 0.5, dynamic: true },
+                    opacity: { value: 1, dynamic: true },
+                    strokeWidth: { value: 4, dynamic: true },
+                    strokeAlign: { value: 2, type: "u32", dynamic: true },
+                    uniqueId: { value: 17, type: "u32" },
+                    ...(shadow
+                        ? { shadowOpacity: { value: 0, dynamic: true } }
+                        : {}),
+                },
+            });
+            for (const align of [0, 1, 2]) {
+                aligned.series.replace({ text: ["Ā"] });
+                aligned.values.strokeAlign.set(align);
+                aligned.values.strokeWidth.set(4);
+                aligned.values.strokeOpacity.set(0.5);
+                aligned.values.opacity.set(1);
+                const items = [{ mark: aligned }];
+                const frame = await capture(items);
+                const samples = [
+                    [pixel(frame, 90, 64), [153, 0, 0, 153]],
+                    [
+                        pixel(frame, 80, 64),
+                        align === 2 ? [153, 0, 0, 153] : [77, 0, 128, 204],
+                    ],
+                    [
+                        pixel(frame, 99, 64),
+                        align === 2 ? [0, 0, 128, 128] : [0, 0, 0, 0],
+                    ],
+                ];
+                aligned.values.opacity.set(0.5);
+                const opacityError = difference(
+                    await capture(items),
+                    frame,
+                    0.5
+                );
+                aligned.values.opacity.set(1);
+                aligned.values.strokeOpacity.set(0);
+                aligned.values.strokeWidth.set(11);
+                const transparent = await capture(items);
+                aligned.values.strokeWidth.set(0);
+                const transparentError = difference(
+                    await capture(items),
+                    transparent
+                );
+                const picks = [
+                    await renderer.pick(89, 89),
+                    await renderer.pick(89, 90),
+                ];
+                if (align < 2) {
+                    // The 11px inset exceeds the glyph's 8.4px inradius plus AA.
+                    aligned.values.strokeWidth.set(align === 0 ? 11 : 22);
+                    aligned.values.strokeOpacity.set(1);
+                    samples.push([
+                        pixel(await capture(items), 88, 64),
+                        [0, 0, 255, 255],
+                    ]);
+                }
+                aligned.values.strokeWidth.set(4);
+                aligned.values.strokeOpacity.set(0.5);
+                aligned.series.replace({ text: ["ĀĀ"] });
+                // The first glyph's inner/center/outside band crosses the next fill.
+                samples.push([
+                    pixel(await capture(items), [94, 96, 99][align], 64),
+                    [77, 0, 128, 204],
+                ]);
+                alignments.push({
+                    samples,
+                    opacityError,
+                    transparentError,
+                    picks,
+                });
+            }
+            renderer.destroyMark(aligned.markId);
+        }
+
+        // Independent circular geometry checks inward offsets off the straight axes.
+        const roundFont = {
+            ...font,
+            getGlyph() {
+                return {
+                    ...font.getGlyph("Ā"),
+                    advanceWidth: 950,
+                    bounds: { xMin: 0, yMin: 0, xMax: 900, yMax: 900 },
+                    path: "M900 -450C900 -201.47 698.53 0 450 0C201.47 0 0 -201.47 0 -450C0 -698.53 201.47 -900 450 -900C698.53 -900 900 -698.53 900 -450Z",
+                };
+            },
+        };
+        const round = renderer.createMark(textMark, {
+            count: 1,
+            font: roundFont,
+            channels: {
+                text: { value: "Ā" },
+                x: { value: 100, scale: identityScale() },
+                y: { value: 64, scale: identityScale() },
+                align: { value: 0, type: "u32" },
+                size: { value: 40 },
+                fill: { value: [1, 0, 0, 1] },
+                stroke: { value: [0, 0, 1, 1] },
+                strokeWidth: { value: 8 },
+                strokeAlign: { value: 0, type: "u32" },
+            },
+        });
+        const roundFrame = await capture([{ mark: round }]);
+        const circle = { fill: 0, stroke: 0, background: 0, mismatches: 0 };
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const radius = Math.hypot(
+                    (x + 0.5) / dpr - 118,
+                    (y + 0.5) / dpr - 60
+                );
+                // Keep a fixed two-physical-pixel margin around both raw circles.
+                if (
+                    Math.abs(radius - 18) <= 2 / dpr ||
+                    Math.abs(radius - 10) <= 2 / dpr
+                )
+                    continue;
+                const color =
+                    radius > 18
+                        ? [0, 0, 0, 0]
+                        : radius > 10
+                          ? [0, 0, 255, 255]
+                          : [255, 0, 0, 255];
+                circle[
+                    radius > 18 ? "background" : radius > 10 ? "stroke" : "fill"
+                ]++;
+                const i = (y * canvas.width + x) * 4;
+                if (
+                    color.some(
+                        (value, j) => Math.abs(roundFrame[i + j] - value) > 3
+                    )
+                )
+                    circle.mismatches++;
+            }
+        }
+        renderer.destroyMark(round.markId);
         const painted = await capture();
         const samples = [
             [pixel(painted, 95, 64), [153, 0, 0, 153]],
@@ -303,6 +468,8 @@ async function renderText(dpr) {
         renderer.destroyMark(fadeMark.markId);
         return {
             samples,
+            alignments,
+            circle,
             opacityError,
             transparentError,
             opaqueMinimum,
