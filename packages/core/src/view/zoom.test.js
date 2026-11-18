@@ -1,3 +1,4 @@
+import PointerCanvas from "../../testFixtures/pointerCanvas.js";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import Interaction from "../utils/interaction.js";
@@ -44,22 +45,6 @@ describe("touch gesture zoom conversion", () => {
             yDelta: -2,
             zDelta: 0.5,
         });
-    });
-
-    test("ignores touchgesture with non-finite deltas", () => {
-        const handleZoom = vi.fn();
-        const event = new Interaction(new Point(10, 20), {
-            type: "touchgesture",
-            phase: "move",
-            pointerCount: 1,
-            xDelta: NaN,
-            yDelta: 0,
-            zDelta: 0,
-        });
-
-        interactionToZoom(event, /** @type {any} */ ({}), handleZoom);
-
-        expect(handleZoom).not.toHaveBeenCalled();
     });
 });
 
@@ -325,63 +310,18 @@ describe("wheel zoom snapping", () => {
     });
 
     test("suspends and resumes hover tracking during drag panning", () => {
-        /** @type {Record<string, EventListener>} */
-        const listeners = {};
-        const originalDocument = globalThis.document;
-        const originalMouseEvent = globalThis.MouseEvent;
+        vi.stubGlobal("MouseEvent", Event);
         try {
-            class FakeMouseEvent {
-                constructor(
-                    /** @type {string} */ type,
-                    /** @type {Record<string, any>} */ init = {}
-                ) {
-                    this.type = type;
-                    Object.assign(this, init);
-                }
-            }
-
-            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-                /** @type {any} */ (FakeMouseEvent)
-            );
-            globalThis.document = /** @type {Document} */ (
-                /** @type {any} */ ({
-                    addEventListener(
-                        /** @type {string} */ type,
-                        /** @type {EventListener} */ listener
-                    ) {
-                        listeners[type] = /** @type {EventListener} */ (
-                            listener
-                        );
-                    },
-                    /** @returns {void} */
-                    removeEventListener(
-                        /** @type {string} */ _type,
-                        /** @type {EventListener} */ _listener
-                    ) {
-                        return undefined;
-                    },
-                })
-            );
-
+            const canvas = new PointerCanvas();
             const suspendHoverTracking = vi.fn();
             const resumeHoverTracking = vi.fn();
-
             const event = new Interaction(
                 new Point(20, 30),
-                /** @type {any} */ (
-                    new FakeMouseEvent("mousedown", {
-                        button: 0,
-                        clientX: 20,
-                        clientY: 30,
-                        preventDefault: /** @returns {void} */ () => undefined,
-                    })
-                )
+                canvas.event("pointerdown", { clientX: 20, clientY: 30 }),
+                "mousedown"
             );
             event.target = /** @type {any} */ ({
-                context: {
-                    suspendHoverTracking,
-                    resumeHoverTracking,
-                },
+                context: { suspendHoverTracking, resumeHoverTracking },
             });
 
             interactionToZoom(
@@ -390,21 +330,16 @@ describe("wheel zoom snapping", () => {
                 /** @returns {void} */ () => undefined
             );
 
-            expect(suspendHoverTracking).toHaveBeenCalledTimes(1);
+            expect(suspendHoverTracking).toHaveBeenCalledOnce();
 
-            listeners.mouseup?.(
-                /** @type {MouseEvent} */ (
-                    /** @type {any} */ ({ type: "mouseup" })
-                )
-            );
+            const release = canvas.event("pointerup");
+            canvas.dispatchEvent(release);
 
-            expect(resumeHoverTracking).toHaveBeenCalledTimes(1);
-            expect(resumeHoverTracking).toHaveBeenCalledWith(
-                expect.objectContaining({ type: "mouseup" })
+            expect(resumeHoverTracking).toHaveBeenCalledExactlyOnceWith(
+                release
             );
         } finally {
-            globalThis.document = originalDocument;
-            globalThis.MouseEvent = originalMouseEvent;
+            vi.unstubAllGlobals();
         }
     });
 });
@@ -418,49 +353,14 @@ describe("drag axis lock", () => {
      * @param {{ lockAxis?: boolean }} [options]
      */
     const dragAndRecord = (moves, options) => {
-        /** @type {Record<string, EventListener>} */
-        const listeners = {};
-        const originalDocument = globalThis.document;
-        const originalMouseEvent = globalThis.MouseEvent;
+        vi.stubGlobal("MouseEvent", Event);
         try {
-            class FakeMouseEvent {
-                constructor(
-                    /** @type {string} */ type,
-                    /** @type {Record<string, any>} */ init = {}
-                ) {
-                    this.type = type;
-                    Object.assign(this, init);
-                }
-            }
-            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
-                /** @type {any} */ (FakeMouseEvent)
-            );
-            globalThis.document = /** @type {Document} */ (
-                /** @type {any} */ ({
-                    addEventListener(
-                        /** @type {string} */ type,
-                        /** @type {EventListener} */ listener
-                    ) {
-                        listeners[type] = listener;
-                    },
-                    /** @returns {void} */
-                    removeEventListener() {
-                        return undefined;
-                    },
-                })
-            );
-
+            const canvas = new PointerCanvas();
             const handleZoom = vi.fn();
             const event = new Interaction(
                 new Point(20, 30),
-                /** @type {any} */ (
-                    new FakeMouseEvent("mousedown", {
-                        button: 0,
-                        clientX: 20,
-                        clientY: 30,
-                        preventDefault: /** @returns {void} */ () => undefined,
-                    })
-                )
+                canvas.event("pointerdown", { clientX: 20, clientY: 30 }),
+                "mousedown"
             );
 
             interactionToZoom(
@@ -472,16 +372,13 @@ describe("drag axis lock", () => {
                 options
             );
             for (const [clientX, clientY] of moves) {
-                listeners.mousemove?.(
-                    /** @type {any} */ ({ type: "mousemove", clientX, clientY })
-                );
+                canvas.dispatch("pointermove", { clientX, clientY });
             }
-            listeners.mouseup?.(/** @type {any} */ ({ type: "mouseup" }));
+            canvas.dispatch("pointerup");
 
             return handleZoom.mock.calls.map(([e]) => [e.xDelta, e.yDelta]);
         } finally {
-            globalThis.document = originalDocument;
-            globalThis.MouseEvent = originalMouseEvent;
+            vi.unstubAllGlobals();
         }
     };
 

@@ -58,7 +58,7 @@ describe("channelIR", () => {
     it("emits vec4 literals for identity value channels", () => {
         const [ir] = buildChannelIRs({
             fill: {
-                value: [0.1, 0.2, 0.3, 1],
+                value: new Float32Array([0.25, 0.5, 0.75, 1]),
                 type: "f32",
                 components: 4,
                 scale: { type: "identity" },
@@ -67,7 +67,21 @@ describe("channelIR", () => {
 
         expect(ir.inputComponents).toBe(4);
         expect(ir.sourceKind).toBe("literal");
-        expect(ir.rawValueExpr.startsWith("vec4<f32>(")).toBe(true);
+        expect(ir.rawValueExpr).toBe("vec4<f32>(0.25, 0.5, 0.75, 1.0)");
+    });
+
+    it("emits exact packed u32 literals from typed subarrays", () => {
+        const [ir] = buildChannelIRs({
+            x: {
+                value: new Uint32Array([0, 0xfedcba98, 4095, 0]).subarray(1, 3),
+                type: "u32",
+                components: 1,
+                inputComponents: 2,
+                scale: { type: "index", domain: [0, 2 ** 44], range: [0, 1] },
+            },
+        });
+
+        expect(ir.rawValueExpr).toBe("vec2<u32>(u32(4275878552), u32(4095))");
     });
 
     it("routes dynamic values through uniforms", () => {

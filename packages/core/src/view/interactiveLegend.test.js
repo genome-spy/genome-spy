@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import PointerCanvas from "../../testFixtures/pointerCanvas.js";
 import { createTestEmbed } from "./embedTestUtils.js";
 import UnitView from "./unitView.js";
 import LegendView from "./legendView.js";
@@ -480,13 +481,13 @@ test("background reset clears collected legend selections globally and preserves
 });
 
 test("background reset lets brush click bookkeeping finish before the next mark click", async () => {
-    // Exercise native event order, including the document mouseup ending a pan.
+    // Exercise native event order, including the captured pointerup ending a pan.
     vi.stubGlobal(
         "MouseEvent",
         class extends Event {
             /** @param {string} type @param {MouseEventInit} [options] */
-            constructor(type, options = {}) {
-                super(type);
+            constructor(type, { cancelable, ...options } = {}) {
+                super(type, { cancelable });
                 Object.assign(
                     this,
                     { button: 0, shiftKey: false, clientX: 0, clientY: 0 },
@@ -495,7 +496,7 @@ test("background reset lets brush click bookkeeping finish before the next mark 
             }
         }
     );
-    vi.stubGlobal("document", new EventTarget());
+    const canvas = new PointerCanvas();
     const input = panel("source", [
         {
             name: "focus",
@@ -545,10 +546,10 @@ test("background reset lets brush click bookkeeping finish before the next mark 
     /** @param {Point} point @param {import("../types/interactionApi.js").InternalMarkHit | null} hit */
     const click = (point, hit) => {
         const options = { clientX: point.x, clientY: point.y };
-        dispatcher.dispatch(point, new MouseEvent("mousedown", options));
-        const up = new MouseEvent("mouseup", options);
+        dispatcher.dispatch(point, canvas.event("pointerdown", options));
+        const up = canvas.event("pointerup", options);
         dispatcher.dispatch(point, up);
-        document.dispatchEvent(up);
+        canvas.dispatchEvent(up);
         dispatcher.dispatch(point, new MouseEvent("click", options), hit);
     };
     click(pointAt(0.95), null);

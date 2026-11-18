@@ -1,5 +1,6 @@
 import {
     createPrimitiveEventProxy,
+    getInteractionEventType,
     isWheelEvent,
     overrideWheelEventDeltas,
 } from "./interactionEvent.js";
@@ -179,7 +180,7 @@ export default class Interaction {
     }
 
     get type() {
-        return this.#typeOverride ?? this.uiEvent.type;
+        return this.#typeOverride ?? getInteractionEventType(this.uiEvent.type);
     }
 
     set type(value) {
@@ -204,6 +205,9 @@ export default class Interaction {
     }
 
     get mouseEvent() {
+        if ("pointerEvent" in this.uiEvent) {
+            return this.uiEvent.pointerEvent;
+        }
         if ("sourceEvent" in this.uiEvent) {
             return this.uiEvent.sourceEvent;
         }

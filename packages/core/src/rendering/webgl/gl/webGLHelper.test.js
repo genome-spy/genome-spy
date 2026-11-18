@@ -26,11 +26,22 @@ vi.mock("./colorUtils.js", () => ({
 }));
 
 import scale from "../../../scale/scale.js";
+import scaleNull from "../../../utils/scaleNull.js";
 import { getContext } from "twgl.js";
 import WebGLHelper, { createProgram } from "./webGLHelper.js";
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+test("disabled color scales do not allocate a range texture", () => {
+    const helper = Object.create(WebGLHelper.prototype);
+    helper.rangeTextures = new WeakMap();
+    const disabled = scaleNull();
+
+    helper.createRangeTexture({ channel: "fill", getScale: () => disabled });
+
+    expect(helper.rangeTextures.has(disabled)).toBe(false);
 });
 
 test("quantize textures use the scale's resolved color range", () => {

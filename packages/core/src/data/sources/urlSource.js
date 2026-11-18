@@ -29,7 +29,7 @@ const textDecoder = new TextDecoder();
  * payloads before handing them to the registered format reader.
  */
 export default class UrlSource extends DataSource {
-    #loadId = 0;
+    #abortController = new AbortController();
 
     /**
      * @param {import("../../spec/data.js").UrlData} params
@@ -37,6 +37,8 @@ export default class UrlSource extends DataSource {
      */
     constructor(params, view) {
         super(view);
+
+        this.registerDisposer(() => this.#abortController.abort());
 
         this.params = activateExprRefProps(
             view.paramRuntime,
@@ -60,27 +62,36 @@ export default class UrlSource extends DataSource {
     /**
      *
      * @param {import("../../spec/data.js").UrlList} props
+     * @param {AbortSignal} signal
      */
-    async #loadUrlsFromFile(props) {
+    async #loadDescriptorsFromFile(props, signal) {
         const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
         const format = { type: props.type ?? "tsv" };
 
-        const content = await loadResponse(listUrl, responseType(format.type));
+        const content = await loadResponse(
+            listUrl,
+            responseType(format.type),
+            signal
+        );
+        signal.throwIfAborted();
 
-        const files = /** @type {string[] | {url: string}[]} */ (
+        return /** @type {string[] | {url: string}[]} */ (
             read(content, toVegaLoaderFormat(format))
-        )
-            .map((u) => (typeof u === "string" ? u : u.url))
-            .map((u) => concatUrl(listUrl, u));
-
-        return files;
+        ).map((entry) => ({
+            url: concatUrl(
+                listUrl,
+                typeof entry === "string" ? entry : entry.url
+            ),
+        }));
     }
 
     async load() {
         if (this.disposed) return;
 
-        const loadId = ++this.#loadId;
-        const isCurrent = () => !this.disposed && loadId === this.#loadId;
+        this.#abortController.abort();
+        this.#abortController = new AbortController();
+        const signal = this.#abortController.signal;
+        const isCurrent = () => !this.disposed && !signal.aborted;
 
         this.setLoadingStatus("loading");
         this.reset();
@@ -93,9 +104,7 @@ export default class UrlSource extends DataSource {
             /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
             const descriptors =
                 typeof url == "object" && "urlsFromFile" in url
-                    ? (await this.#loadUrlsFromFile(url)).map((url) => ({
-                          url,
-                      }))
+                    ? await this.#loadDescriptorsFromFile(url, signal)
                     : await normalizeUrlDescriptors({
                           url: this.params.url,
                           baseUrl: this.baseUrl,
@@ -104,9 +113,9 @@ export default class UrlSource extends DataSource {
 
             if (!isCurrent()) return;
 
-            const urls = descriptors.map((descriptor) => descriptor.url);
-            if (urls.length > 0 && urls[0]) {
-                const format = getFormat(this.params, urls);
+            const firstUrl = descriptors[0]?.url;
+            if (firstUrl) {
+                const format = getFormat(this.params, firstUrl);
                 const type = responseType(format.type);
 
                 /**
@@ -146,10 +155,18 @@ export default class UrlSource extends DataSource {
 
                 const loaded = await Promise.all(
                     descriptors.map((descriptor) =>
-                        loadUrlDescriptorOrSkip(descriptor, async () => ({
+                        loadUrlDescriptorOrSkip(
                             descriptor,
-                            content: await loadResponse(descriptor.url, type),
-                        }))
+                            async () => ({
+                                descriptor,
+                                content: await loadResponse(
+                                    descriptor.url,
+                                    type,
+                                    signal
+                                ),
+                            }),
+                            signal
+                        )
                     )
                 );
 
@@ -193,11 +210,12 @@ export default class UrlSource extends DataSource {
 /**
  * @param {string} url
  * @param {string} type
+ * @param {AbortSignal} signal
  */
-async function loadResponse(url, type) {
+async function loadResponse(url, type, signal) {
     let result;
     try {
-        result = await fetch(url);
+        result = await fetch(url, { signal });
         if (!result.ok)
             throw new Error(`${result.status} ${result.statusText}`);
     } catch (cause) {
@@ -259,31 +277,22 @@ function hasGzipContentEncoding(contentEncoding) {
 
 /**
  * @param {Uint8Array} bytes
- * @returns {ArrayBuffer}
  */
-function toArrayBuffer(bytes) {
-    return new Uint8Array(bytes).buffer;
-}
-
-/**
- * @param {Uint8Array} bytes
- */
-async function decompressGzip(bytes) {
+function decompressGzip(bytes) {
     if (typeof DecompressionStream != "function") {
         throw new Error(
             "Gzip-compressed URL data requires DecompressionStream support."
         );
     }
 
-    const body = new Response(toArrayBuffer(bytes)).body;
-    if (!body) {
-        throw new Error(
-            "Cannot create a readable stream for gzip decompression."
-        );
-    }
-
-    const stream = body.pipeThrough(new DecompressionStream("gzip"));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    // A byte-array Response body would copy the compressed payload.
+    const stream = new ReadableStream({
+        start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+        },
+    }).pipeThrough(new DecompressionStream("gzip"));
+    return new Response(stream).arrayBuffer();
 }
 
 /**
@@ -301,9 +310,10 @@ async function readResponseBody(response, url, type) {
         return readResponseUsingType(response, type);
     }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const bodyBytes = hasGzipMagic(bytes) ? await decompressGzip(bytes) : bytes;
-    return deserializeBytes(bodyBytes, type);
+    const raw = await response.arrayBuffer();
+    const bytes = new Uint8Array(raw);
+    const buffer = hasGzipMagic(bytes) ? await decompressGzip(bytes) : raw;
+    return type == "arrayBuffer" ? buffer : textDecoder.decode(buffer);
 }
 
 /**
@@ -316,16 +326,4 @@ function readResponseUsingType(response, type) {
         ? // @ts-ignore
           response[type]()
         : response.text();
-}
-
-/**
- * @param {Uint8Array} bytes
- * @param {string} type
- */
-function deserializeBytes(bytes, type) {
-    if (type == "arrayBuffer") {
-        return toArrayBuffer(bytes);
-    } else {
-        return textDecoder.decode(bytes);
-    }
 }

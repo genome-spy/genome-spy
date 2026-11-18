@@ -132,7 +132,11 @@ export function fixCoveragePositional(
         } else if (primary.type != "quantitative") {
             const adjustment = (1 - (primary.band || 1)) / 2;
             primary.band = adjustment;
-            secondary.band = -adjustment;
+            if (primary.type === "nominal" || primary.type === "ordinal") {
+                secondary.band ??= -adjustment;
+            } else {
+                secondary.band = -adjustment;
+            }
         }
     } else {
         // Nothing specified, fill the whole viewport

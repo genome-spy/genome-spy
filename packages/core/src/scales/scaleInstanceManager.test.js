@@ -42,26 +42,22 @@ describe("ScaleInstanceManager", () => {
         runtimes.clear();
     });
 
-    test("creates scale and notifies on range changes", () => {
-        const onRangeChange = vi.fn();
+    test("copies own scale options without activating a prototype option", () => {
         const manager = createManager({
-            onRangeChange,
+            onRangeChange: () => {},
             onDomainChange: () => {},
             getGenomeStore: () => undefined,
         });
-
-        const scale = createScale(manager, {
-            type: "linear",
-            domain: [0, 1],
-            range: [0, 10],
-        });
-
-        expect(scale.range()).toEqual([0, 10]);
-        expect(onRangeChange).toHaveBeenCalled();
-
-        scale.range([0, 5]);
-        expect(scale.range()).toEqual([0, 5]);
-        expect(onRangeChange).toHaveBeenCalledTimes(2);
+        const scale =
+            /** @type {import("d3-scale").ScaleLinear<number, number>} */ (
+                createScale(
+                    manager,
+                    JSON.parse(
+                        '{"type":"linear","domain":[0,1],"__proto__":{"clamp":true}}'
+                    )
+                )
+            );
+        expect(scale.clamp()).toBe(false);
     });
 
     test("preserves the full scheme interpolator when applying mapping properties", () => {
@@ -85,9 +81,10 @@ describe("ScaleInstanceManager", () => {
     test("range expression updates on parameter changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });
+        const onRangeChange = vi.fn();
         const manager = createManager({
             runtime,
-            onRangeChange: () => {},
+            onRangeChange,
             onDomainChange: () => {},
             getGenomeStore: () => undefined,
         });
@@ -102,10 +99,12 @@ describe("ScaleInstanceManager", () => {
         );
 
         expect(scale.range()[0]).toBe(1);
+        onRangeChange.mockClear();
 
         setValue(5);
         runtime.flushNow();
         expect(scale.range()[0]).toBe(5);
+        expect(onRangeChange).toHaveBeenCalledOnce();
     });
 
     test("domain writes delegate to the owner before changing the physical scale", () => {
@@ -342,24 +341,103 @@ describe("ScaleInstanceManager", () => {
 
     test("ignores a pending mapping after reset", () => {
         const runtime = new ViewParamRuntime();
+        const setRangeEnd = runtime.registerParam({
+            name: "rangeEnd",
+            value: 10,
+        });
         const manager = createManager({
             runtime,
             onRangeChange: () => {},
             onDomainChange: () => {},
             getGenomeStore: () => undefined,
         });
-        const scale = createScale(manager, {
+        createScale(manager, {
             type: "linear",
             domain: [0, 1],
-            range: [0, 10],
+            range: [0, { expr: "rangeEnd" }],
         });
 
         runtime.runInTransaction(() => {
-            scale.range([0, 5]);
+            setRangeEnd(5);
             manager.resetScale();
         });
 
         expect(() => runtime.flushNow()).not.toThrow();
+    });
+
+    test("keeps prior setter precedence for literal padding", () => {
+        const manager = createManager({
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale = /** @type {import("d3-scale").ScaleBand<string>} */ (
+            createScale(manager, {
+                type: "band",
+                domain: ["a", "b"],
+                paddingInner: 0.1,
+                padding: 0.5,
+            })
+        );
+        expect(scale.paddingInner()).toBe(0.5);
+    });
+
+    test("ignores overridden padding changes and restores reactive padding on reconfiguration", () => {
+        const runtime = new ViewParamRuntime();
+        const setPadding = runtime.registerParam({
+            name: "padding",
+            value: 0.2,
+        });
+        const changed = vi.fn();
+        const manager = createManager({
+            runtime,
+            onRangeChange: changed,
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const props = /** @type {import("../spec/scale.js").Scale} */ ({
+            type: "band",
+            domain: ["a", "b"],
+            padding: { expr: "padding" },
+            paddingInner: 0.1,
+            paddingOuter: 0.3,
+        });
+        const scale = /** @type {import("d3-scale").ScaleBand<string>} */ (
+            createScale(manager, props)
+        );
+        changed.mockClear();
+
+        // Both explicit values override the changed general padding.
+        setPadding(0.5);
+        runtime.flushNow();
+        expect(changed).not.toHaveBeenCalled();
+        expect(scale.paddingInner()).toBe(0.1);
+
+        delete props.paddingInner;
+        manager.configureMapping(props);
+        expect(scale.paddingInner()).toBe(0.5);
+        expect(changed).toHaveBeenCalledTimes(1);
+
+        delete props.paddingOuter;
+        manager.configureMapping(props);
+        expect(scale.paddingOuter()).toBe(0.5);
+        setPadding(0);
+        runtime.flushNow();
+        expect(scale.paddingInner()).toBe(0);
+        expect(scale.paddingOuter()).toBe(0);
+
+        setPadding(2);
+        runtime.flushNow();
+        expect(scale.paddingInner()).toBe(1);
+        expect(scale.paddingOuter()).toBe(1);
+        manager.configureMapping({ ...props, paddingOuter: 1, align: 0.25 });
+        expect(scale.paddingInner()).toBe(1);
+        expect(scale.paddingOuter()).toBe(1);
+        expect(scale.align()).toBe(0.25);
+        changed.mockClear();
+        setPadding(3);
+        runtime.flushNow();
+        expect(changed).not.toHaveBeenCalled();
     });
 
     test("dispose prevents pending and future range changes", () => {

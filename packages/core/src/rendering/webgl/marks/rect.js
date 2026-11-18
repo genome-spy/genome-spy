@@ -51,7 +51,6 @@ export default class WebGLRectMark extends WebGLMark {
     getAttributes() {
         return [
             "uniqueId",
-            "facetIndex",
             "x",
             "x2",
             "y",
