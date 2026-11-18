@@ -296,9 +296,6 @@ class ViewSettingsButton extends LitElement {
         const viewRoot = this.#app.genomeSpy.viewRoot;
         const visibilityItems = this.#makeToggles();
 
-        const defaultVis = !Object.keys(this.#app.viewVisibility.choices)
-            .length;
-
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
 
@@ -318,9 +315,9 @@ class ViewSettingsButton extends LitElement {
                 { label: "View visibility", type: "header" },
                 {
                     label: "Restore defaults",
-                    callback: defaultVis
-                        ? undefined
-                        : () => this.#handleResetClick(),
+                    callback: this.#app.viewVisibility.hasChoices
+                        ? () => this.#handleResetClick()
+                        : undefined,
                 },
                 { type: "divider" },
                 ...visibilityItems

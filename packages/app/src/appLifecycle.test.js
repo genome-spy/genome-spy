@@ -467,6 +467,50 @@ test("View settings toggles generated metadata columns and keeps choices across 
     expect(findCheckbox("status").checked).toBe(true);
 });
 
+test("a metadata visibility choice survives undo and redo within the cohort", async () => {
+    const app = await createApp([], {}, { vconcat: [cohortSpec("A")] });
+    const metadata = app.getSampleView().metadataView;
+    const selector = { scope: [], view: "attribute-added" };
+
+    await app.intentPipeline.submit(
+        sampleSlice.actions.addMetadata({
+            columnarMetadata: { sample: ["s1", "s2"], added: [1, 2] },
+        })
+    );
+    await metadata.whenMetadataSettled();
+    await app.views.get(selector).visibility.setOverride(false);
+
+    app.provenance.undo();
+    await metadata.whenMetadataSettled();
+    expect(app.views.resolve(selector)).toBeUndefined();
+
+    app.provenance.redo();
+    await metadata.whenMetadataSettled();
+    expect(app.views.get(selector).visibility.locallyVisible).toBe(false);
+
+    app.provenance.undo();
+    await metadata.whenMetadataSettled();
+    await app.views.remove(app.views.get({ scope: [], view: "cohort" }));
+    expect(createBookmarkWithCurrentState(app).viewSettings).toBeUndefined();
+});
+
+test("View settings restores defaults when only an unnamed view has an override", async () => {
+    const app = await createApp();
+    const unnamed = await app.views.insert(app.views.root(), {
+        data: { values: [{}] },
+        mark: "point",
+    });
+    await unnamed.visibility.setOverride(false);
+
+    app.appContainer.querySelector("button[title='View settings']").click();
+    const reset = Array.from(
+        document.querySelectorAll("[aria-label='View settings'] button")
+    ).find((button) => button.textContent.trim() === "Restore defaults");
+    expect(reset).toBeDefined();
+    reset.click();
+    expect(unnamed.visibility.locallyVisible).toBe(true);
+});
+
 test("View settings keeps parameter controls and manual children of a hidden expression view", async () => {
     const app = await createApp(
         [],

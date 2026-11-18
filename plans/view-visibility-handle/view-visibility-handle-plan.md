@@ -17,6 +17,10 @@ covered the full change. The follow-up isolates concurrent first-show work,
 retains authored inputs used by deferred views, and converts legacy bookmark
 names to scoped choices when they first match a live view.
 
+The draft review also simplified dataflow pruning and fixed generated metadata
+controls. Metadata visibility choices survive undo and redo within the same
+cohort, and View settings can clear overrides on unnamed views.
+
 ## Public contract and ownership
 
 Add `readonly visibility: ViewVisibilityApi` to `ViewHandle`. Cache it with the
@@ -154,25 +158,19 @@ Document the App precedence and include one feature changeset for Core and App.
 
 Tentative commit `feat(app): restore and share embed visibility choices`.
 
-## Integration and review gates
+## Integration and review results
 
-- Check whether the existing source promises can cover the awaited first-show
-  boundary. If work can still be pending before a source promise exists, track
-  that completion at the existing initialization boundary in `viewDataInit.js`.
-- Reopen Coverage hidden beside expression-controlled Detail. The first layout
-  has no Coverage row, and its independent source loads once on first show.
-  Brush Coverage, hide it, and show it again. Check retained selection and
-  handle identity, absent hidden bounds and picks after reflow, and
-  corresponding SVG placement. Detail follows its parameter even with a stale
-  bookmark entry.
-- Exercise the existing
-  [interval-selection concat](../../examples/core/selection/interval_concat.json)
-  with handle toggles and the
-  [zoom-driven visibility example](../../examples/core/layout/zoom-driven-visibility.json)
-  across its domain threshold. Review shared scale participation and use the
-  existing live Canvas and App test paths for the lifecycle. The same Core
-  layout placements feed the other renderers and SVG export.
-- Review the Core API, early selector matching, and refresh timing before App
-  wiring. Review final App startup and live restoration together. Run the
-  focused Core and App suites, workspace typing, lint, API-doc generation, and
-  release checks. Retire the plan after recording completed work on the branch.
+- First-show completion is tracked around initialization in `viewDataInit.js`,
+  which covers font waits before source promises exist.
+- The live Canvas round trip tests initial hidden bounds, first-show loading,
+  selection and handle retention, and expression ownership. The shared scale and
+  SVG suites cover visibility-driven domain and output changes. These automated
+  checks supersede the planned manual walkthroughs for interval selection,
+  zoom-driven visibility, picking, and SVG placement.
+- App lifecycle tests exercise bookmark precedence, scoped radio choices,
+  metadata rebuilds with undo and redo, and restoring local visibility overrides
+  from View settings. A browser check on the paper example confirmed that its
+  generated metadata columns can be hidden and shown.
+- The Core and App checks, workspace type checks, lint, API reference
+  verification, and release checks passed. The optional track chooser and
+  visibility subscriptions are follow-ups in #740.

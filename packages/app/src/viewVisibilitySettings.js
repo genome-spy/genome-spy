@@ -23,6 +23,9 @@ export default class ViewVisibilitySettings {
     /** @type {{ raw: Choices, hidden: Set<View> } | undefined} */
     #radioVisibility;
 
+    /** @type {Map<string, View>} Metadata choices waiting for columns to reappear. */
+    #missingMetadataOwners = new Map();
+
     /** @param {ReturnType<typeof import("./state/setupStore.js").default>} store */
     constructor(store) {
         this.store = store;
@@ -32,17 +35,21 @@ export default class ViewVisibilitySettings {
         return this.store.getState().viewSettings.visibilities;
     }
 
+    get hasChoices() {
+        return (
+            Object.keys(this.choices).length > 0 ||
+            this.#root
+                .getDescendants()
+                .some((view) => view.visibilityOverride !== undefined)
+        );
+    }
+
     /**
      * @param {View} root
-     * @param {View} [rebuiltSubtree] Preserve choices for generated views recreated with the same selector.
+     * @param {View} [rebuiltSubtree] Preserve choices for generated metadata views across rebuilds and undo.
      */
     updateHierarchy(root, rebuiltSubtree) {
         const keys = getViewVisibilityKeys(root);
-        const rebuiltKeys =
-            rebuiltSubtree &&
-            new Set(
-                rebuiltSubtree.getDescendants().map((view) => keys.get(view))
-            );
         const hiddenBefore = this.#getRadioHiddenViews();
         const previous = this.choices;
         const next = normalizeViewSettingsPayload(
@@ -54,13 +61,32 @@ export default class ViewVisibilitySettings {
             if (keys.get(view) === key) continue;
             if (live.has(view)) {
                 view.visibilityOverride = previous[key];
+            } else if (
+                rebuiltSubtree &&
+                Object.hasOwn(next, key) &&
+                view.getLayoutAncestors().includes(rebuiltSubtree)
+            ) {
+                this.#missingMetadataOwners.set(key, rebuiltSubtree);
+                continue;
             }
-            if (!rebuiltKeys?.has(key)) delete next[key];
+            delete next[key];
         }
         for (const [view, key] of keys) {
+            const metadata = this.#missingMetadataOwners.get(key);
+            if (metadata) {
+                if (!view.getLayoutAncestors().includes(metadata))
+                    delete next[key];
+                this.#missingMetadataOwners.delete(key);
+            }
             if (view.visibilityOverride !== undefined) {
                 next[key] = view.visibilityOverride;
                 view.visibilityOverride = undefined;
+            }
+        }
+        for (const [key, metadata] of this.#missingMetadataOwners) {
+            if (!live.has(metadata)) {
+                delete next[key];
+                this.#missingMetadataOwners.delete(key);
             }
         }
 
@@ -150,6 +176,7 @@ export default class ViewVisibilitySettings {
 
     /** @param {import("./state.js").ViewSettingsPayload | undefined} payload */
     restoreChoices(payload) {
+        this.#missingMetadataOwners.clear();
         this.#root.visit((view) => {
             view.visibilityOverride = undefined;
         });
