@@ -44,6 +44,15 @@ describe("text render items", () => {
         ).toBe(false);
     });
 
+    it("omits transparent shadows supplied as typed colors", () => {
+        expect(
+            hasTextShadow({
+                shadowOpacity: { value: 0.5 },
+                shadowColor: { value: new Float32Array([0, 0, 0, 0]) },
+            })
+        ).toBe(false);
+    });
+
     it("builds glyph offsets for empty and non-empty strings", () => {
         expect(buildGlyphOffsets(createLayout())).toEqual(
             new Uint32Array([0, 2, 2, 3])
