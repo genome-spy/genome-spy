@@ -2,7 +2,6 @@ import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/rendering/webgl.js";
 
 /** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSelectionApi} IntervalSelectionApi */
-/** @typedef {import("@genome-spy/core/types/embedApi.js").IntervalSnapshot} IntervalSnapshot */
 /** @typedef {import("@genome-spy/core/spec/root.js").RootSpec} RootSpec */
 
 const startPos = 134_567_890;
@@ -21,7 +20,12 @@ const spec = {
     params: [
         {
             name: "brush",
-            select: { type: "interval", encodings: ["x"], extent: "container" },
+            select: {
+                type: "interval",
+                encodings: ["x"],
+                extent: "container",
+                touchDrag: true,
+            },
         },
     ],
     datasets: { annotations },
@@ -85,8 +89,11 @@ const spec = {
 };
 
 const container = document.getElementById("annotation-plot");
-const menu = /** @type {HTMLDivElement} */ (
-    document.getElementById("annotation-menu")
+const addAnnotation = /** @type {HTMLButtonElement} */ (
+    document.getElementById("add-annotation")
+);
+const dialog = /** @type {HTMLDialogElement} */ (
+    document.getElementById("annotation-dialog")
 );
 const form = /** @type {HTMLFormElement} */ (
     document.getElementById("annotation-form")
@@ -105,10 +112,6 @@ const api = await embed(container, spec);
 const brush = /** @type {IntervalSelectionApi} */ (
     api.params.getSelection("brush")
 );
-const track = api.views.get({ scope: [], view: "signal-track" });
-
-/** @type {IntervalSnapshot | undefined} */
-let pendingSelection;
 
 function renderRows() {
     rows.replaceChildren(
@@ -140,49 +143,44 @@ function formatCoordinate(value) {
     return String(value);
 }
 
-function closeMenu() {
-    menu.hidden = true;
+function openAnnotationForm() {
+    const selection = brush.getValue();
+    if (!selection.active || !selection.complexIntervals.x) {
+        return;
+    }
+
     form.reset();
-    pendingSelection = undefined;
+    dialog.returnValue = "";
+    addAnnotation.focus({ preventScroll: true });
+    dialog.showModal();
 }
+
+brush.subscribe(
+    ({ active, complexIntervals }) => {
+        addAnnotation.setAttribute(
+            "aria-disabled",
+            String(!active || !complexIntervals.x)
+        );
+    },
+    { delivery: "commit" }
+);
+addAnnotation.addEventListener("click", openAnnotationForm);
 
 api.events.subscribe("contextmenu", (event) => {
     if (!brush.contains(event.point)) {
         return;
     }
 
-    const sourceEvent = /** @type {MouseEvent} */ (event.sourceEvent);
-    sourceEvent.preventDefault();
+    event.sourceEvent.preventDefault();
     event.preventViewDefault();
-    void openContextMenu(sourceEvent, event.point);
+    openAnnotationForm();
 });
-
-/**
- * @param {MouseEvent} sourceEvent
- * @param {{ x: number, y: number }} point
- */
-async function openContextMenu(sourceEvent, point) {
-    const result = await track.marks.pick(point);
-    if (result.status !== "hit") {
-        return;
-    }
-
-    pendingSelection = brush.getValue();
-    if (!pendingSelection.active || !pendingSelection.complexIntervals.x) {
-        return;
-    }
-
-    menu.hidden = false;
-    menu.style.position = "fixed";
-    menu.style.left = `${sourceEvent.clientX}px`;
-    menu.style.top = `${sourceEvent.clientY}px`;
-    form.querySelector("input").focus();
-}
 
 form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const interval = pendingSelection?.complexIntervals.x;
-    if (!interval) {
+    const selection = brush.getValue();
+    const interval = selection.complexIntervals.x;
+    if (!selection.active || !interval) {
         return;
     }
     const [start, end] = interval;
@@ -207,13 +205,15 @@ form.addEventListener("submit", (event) => {
     api.datasets.set("annotations", annotations);
     brush.clear();
     renderRows();
-    status.textContent = "Annotation saved.";
-    closeMenu();
+    dialog.close("saved");
 });
 
-cancel.addEventListener("click", () => {
-    closeMenu();
-    status.textContent = "Annotation canceled.";
+cancel.addEventListener("click", () => dialog.close());
+dialog.addEventListener("close", () => {
+    status.textContent =
+        dialog.returnValue === "saved"
+            ? "Annotation saved."
+            : "Annotation canceled.";
 });
 
 renderRows();

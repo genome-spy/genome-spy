@@ -14,7 +14,7 @@ export default defineConfig({
     build: {
         outDir: "../dist",
         emptyOutDir: true,
-        rollupOptions: {
+        rolldownOptions: {
             // Build every example page so refactors break CI instead of the examples site.
             input: {
                 index: "index.html",

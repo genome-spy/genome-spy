@@ -2,6 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="stylesheet" href="../style.scss" />
         <link rel="stylesheet" href="./style.scss" />
         <title>Annotation editor</title>
@@ -11,29 +12,26 @@
         <a class="back-link" href="../">← All embedding examples</a>
         <h1>Annotation editor</h1>
         <p>
-            Hold Shift while dragging to brush a region, then right-click inside
-            it to add an annotation. The form and table belong to the embedding
-            page.
+            Hold Shift while dragging, or drag on a touchscreen, to brush a
+            region. Choose Add annotation or right-click inside the brush.
         </p>
         <p>
             The named <code>brush</code> selection provides the interval, and
             saving publishes the updated rows to the named
             <code>annotations</code> dataset.
         </p>
-        <p>
-            The browser context menu is canceled synchronously, then the signal
-            track is picked asynchronously before the form is shown.
-        </p>
-
         <div id="annotation-plot" class="visualization-surface"></div>
+        <button id="add-annotation" type="button" aria-disabled="true">
+            Add annotation
+        </button>
         <p id="annotation-status" role="status"></p>
 
-        <div id="annotation-menu" hidden>
-            <strong>Add annotation</strong>
+        <dialog id="annotation-dialog" aria-labelledby="annotation-title">
+            <h2 id="annotation-title">Add annotation</h2>
             <form id="annotation-form">
                 <label>
                     Name
-                    <input name="name" required />
+                    <input name="name" required autofocus />
                 </label>
                 <label>
                     Description
@@ -44,7 +42,7 @@
                     <button type="button" id="annotation-cancel">Cancel</button>
                 </div>
             </form>
-        </div>
+        </dialog>
 
         <table>
             <thead>

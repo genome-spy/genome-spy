@@ -89,4 +89,8 @@ document.querySelector("#search").addEventListener("submit", (event) => {
         }
     }
 });
-window.addEventListener("pagehide", () => api.finalize(), { once: true });
+window.addEventListener("pagehide", (event) => {
+    if (!event.persisted) {
+        api.finalize();
+    }
+});
