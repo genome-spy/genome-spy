@@ -131,7 +131,10 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
             this.#preparedViews.add(view);
         }
 
-        const opacity = view.getOpacity();
+        const opacity =
+            this.globalOptions.applyViewOpacity === false
+                ? 1
+                : view.getOpacity();
         if (this.paint && opacity > 0 && opacity !== 1) {
             const clip = getViewClipFlags(view);
             const bounds = normalizeOffscreenBounds(
@@ -214,7 +217,10 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
 
         let effectiveOpacity = this.#effectiveViewOpacities.get(mark.unitView);
         if (effectiveOpacity === undefined) {
-            effectiveOpacity = mark.unitView.getEffectiveOpacity();
+            effectiveOpacity =
+                this.globalOptions.applyViewOpacity === false
+                    ? 1
+                    : mark.unitView.getEffectiveOpacity();
             this.#effectiveViewOpacities.set(mark.unitView, effectiveOpacity);
         }
         if (effectiveOpacity <= 0) {
@@ -226,7 +232,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
         mark.initializeRenderingRevisions(Object.keys(mark.properties));
 
         const sampleFacet = options.sampleFacetRenderingOptions;
-        if (sampleFacet && !mark.encoders.facetIndex) {
+        if (sampleFacet) {
             this.#profiler?.addCount("canvasSampleFacetOccurrences");
             if (!isSampleFacetVisible(sampleFacet)) {
                 this.#profiler?.addCount("canvasCulledSampleFacetOccurrences");
@@ -340,11 +346,7 @@ export default class Canvas2DViewRenderingContext extends ViewRenderingContext {
                         }
                     }
                     return count;
-                },
-                (facetIndex) =>
-                    warnOnce(
-                        `Canvas2D could not resolve sample facet index ${facetIndex}. View: ${mark.unitView.getPathString()}`
-                    )
+                }
             );
         } finally {
             context.restore();

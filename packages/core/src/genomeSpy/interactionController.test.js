@@ -5,6 +5,11 @@ import UnitView from "../view/unitView.js";
 import ContainerView from "../view/containerView.js";
 import Rectangle from "../view/layout/rectangle.js";
 import InteractionController from "./interactionController.js";
+import { isTouchGestureEvent } from "../utils/interactionEvent.js";
+import {
+    createPointerEvent,
+    installPointerCapture,
+} from "../../testFixtures/pointerCanvas.js";
 
 const readPickingId = vi.fn();
 const OriginalDocument = globalThis.document;
@@ -48,6 +53,7 @@ function installEventTargetDocument() {
  * @param {Partial<import("../utils/ui/tooltip.js").default>} [options.tooltip]
  * @param {(error: unknown) => void} [options.reportError]
  * @param {() => boolean} [options.canPick]
+ * @param {(event: import("../utils/interaction.js").default) => void} [options.propagateInteraction]
  * @returns {{ controller: InteractionController, tooltip: any }}
  */
 function createMinimalInteractionController({
@@ -55,6 +61,7 @@ function createMinimalInteractionController({
     tooltip = {},
     reportError,
     canPick,
+    propagateInteraction = () => {},
 } = {}) {
     const actualTooltip = {
         clear: /** @returns {void} */ () => undefined,
@@ -71,7 +78,7 @@ function createMinimalInteractionController({
     return {
         controller: new InteractionController({
             viewRoot: /** @type {any} */ ({
-                propagateInteraction: /** @returns {void} */ () => undefined,
+                propagateInteraction,
                 visit: /** @returns {void} */ () => undefined,
             }),
             canvas: /** @type {HTMLCanvasElement} */ (
@@ -171,6 +178,112 @@ function createPickingHarness({
 }
 
 describe("InteractionController", () => {
+    it("keeps the spec event name and exposes the original pointer input", () => {
+        installEventTargetDocument();
+        globalThis.MouseEvent = /** @type {any} */ (class extends Event {});
+        const canvas = new CanvasStub();
+        const route = vi.fn();
+        const { controller } = createMinimalInteractionController({
+            canvas,
+            tooltip: { sticky: false, visible: false },
+            propagateInteraction: route,
+        });
+        const subscribe = vi.fn();
+        controller.subscribeNativeEvent("mousedown", subscribe);
+        const dispose = controller.registerInteractionEvents();
+        const event = createPointerEvent("pointerdown", { shiftKey: true });
+
+        canvas.dispatchEvent(event);
+
+        expect(subscribe).toHaveBeenCalledWith(
+            expect.objectContaining({ sourceEvent: event })
+        );
+        const [[interaction]] = route.mock.calls;
+        expect(interaction.type).toBe("mousedown");
+        expect(interaction.proxiedMouseEvent.type).toBe("mousedown");
+        expect(interaction.proxiedMouseEvent.shiftKey).toBe(true);
+        dispose();
+    });
+
+    it("rebases pan and pinch as touches change and distinguishes cancellation", () => {
+        installEventTargetDocument();
+        globalThis.MouseEvent = /** @type {any} */ (class extends Event {});
+        const canvas = new CanvasStub();
+        installPointerCapture(/** @type {any} */ (canvas));
+        /** @type {import("../utils/interactionEvent.js").TouchGestureEvent[]} */
+        const gestures = [];
+        const { controller } = createMinimalInteractionController({
+            canvas,
+            propagateInteraction: ({ uiEvent }) => {
+                if (isTouchGestureEvent(uiEvent)) gestures.push(uiEvent);
+            },
+        });
+        const onClick = vi.fn();
+        controller.subscribeNativeEvent("click", onClick);
+        const dispose = controller.registerInteractionEvents();
+        /** @param {string} type @param {number} pointerId @param {number} clientX */
+        const touch = (type, pointerId, clientX) =>
+            canvas.dispatchEvent(
+                createPointerEvent(type, {
+                    pointerId,
+                    clientX,
+                    pointerType: "touch",
+                })
+            );
+
+        touch("pointerdown", 1, 10);
+        touch("pointermove", 1, 20);
+        touch("pointerdown", 2, 30);
+        touch("pointermove", 2, 40);
+        touch("pointerup", 2, 40);
+        touch("pointermove", 1, 25);
+        touch("lostpointercapture", 1, 25);
+        touch("pointermove", 1, 30);
+        touch("pointerdown", 3, 50);
+        touch("pointerup", 3, 50);
+
+        // Touch taps can generate a compatibility MouseEvent in older Safari.
+        const tap = new MouseEvent("click");
+        Object.defineProperties(tap, {
+            isTrusted: { value: true },
+            detail: { value: 1 },
+            clientX: { value: 50 },
+            clientY: { value: 0 },
+        });
+        canvas.dispatchEvent(tap);
+        touch("click", 3, 50);
+        expect(onClick).not.toHaveBeenCalled();
+
+        expect(gestures).toEqual([
+            expect.objectContaining({
+                phase: "move",
+                pointerCount: 1,
+                xDelta: 10,
+                zDelta: 0,
+            }),
+            expect.objectContaining({
+                phase: "move",
+                pointerCount: 2,
+                xDelta: 5,
+                zDelta: -1,
+            }),
+            expect.objectContaining({
+                phase: "move",
+                pointerCount: 1,
+                xDelta: 5,
+                zDelta: 0,
+            }),
+            expect.objectContaining({ phase: "cancel", pointerCount: 1 }),
+            expect.objectContaining({ phase: "end", pointerCount: 1 }),
+        ]);
+
+        const gestureCount = gestures.length;
+        touch("pointerdown", 4, 50);
+        touch("pointermove", 4, NaN);
+        expect(gestures).toHaveLength(gestureCount);
+        dispose();
+    });
+
     beforeEach(() => {
         readPickingId.mockReset();
         vi.restoreAllMocks();
@@ -355,7 +468,7 @@ describe("InteractionController", () => {
         );
 
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointermove", { clientX: 20, clientY: 30 })
         );
         expect(canvas.style.cursor).toBe("move");
 
@@ -485,19 +598,19 @@ describe("InteractionController", () => {
         const visit = vi.spyOn(viewRoot, "visit");
         controller.registerInteractionEvents();
 
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 10 }));
-        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("pointerdown", { clientX: 10 }));
         canvas.dispatchEvent(new MouseEvent("click", { clientX: 10 }));
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", { clientX: 10, shiftKey: true })
+            new MouseEvent("pointerdown", { clientX: 10, shiftKey: true })
         );
         canvas.dispatchEvent(
             new MouseEvent("click", { clientX: 10, shiftKey: true })
         );
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 15 }));
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 18 }));
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 20 }));
-        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 20 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 15 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 18 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 20 }));
+        canvas.dispatchEvent(new MouseEvent("pointerdown", { clientX: 20 }));
         canvas.dispatchEvent(new MouseEvent("click", { clientX: 20 }));
         expect(pending).toHaveLength(4);
         expect(emitted).toHaveLength(0);
@@ -537,9 +650,9 @@ describe("InteractionController", () => {
             { type: "mousemove", shiftKey: false, hoverId: 2 },
         ]);
 
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 30 }));
-        canvas.dispatchEvent(new MouseEvent("mouseout", { clientX: 30 }));
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 30 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 30 }));
+        canvas.dispatchEvent(new MouseEvent("pointerout", { clientX: 30 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 30 }));
         expect(pending).toHaveLength(7);
 
         pending[5](1);
@@ -553,18 +666,18 @@ describe("InteractionController", () => {
             hoverId: 2,
         });
 
-        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 40 }));
+        canvas.dispatchEvent(new MouseEvent("pointerdown", { clientX: 40 }));
         canvas.dispatchEvent(new MouseEvent("click", { clientX: 40 }));
-        canvas.dispatchEvent(new MouseEvent("mouseout", { clientX: 40 }));
+        canvas.dispatchEvent(new MouseEvent("pointerout", { clientX: 40 }));
         expect(pending).toHaveLength(8);
         pending[7](1);
         await Promise.resolve();
         await Promise.resolve();
         expect(emitted.at(-1)?.event.datum.id).toBe("datum-1");
 
-        canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 50 }));
+        canvas.dispatchEvent(new MouseEvent("pointermove", { clientX: 50 }));
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { buttons: 1, clientX: 60 })
+            new MouseEvent("pointermove", { buttons: 1, clientX: 60 })
         );
         expect(pending).toHaveLength(9);
         const dispatchCount = dispatched.length;
@@ -579,7 +692,7 @@ describe("InteractionController", () => {
             requestAnimationFrame: () => 0,
         });
         const before = dispatched.length;
-        canvas.dispatchEvent(new MouseEvent("mousedown", { clientX: 10 }));
+        canvas.dispatchEvent(new MouseEvent("pointerdown", { clientX: 10 }));
         canvas.dispatchEvent(new MouseEvent("click", { clientX: 10 }));
         canvas.dispatchEvent(new MouseEvent("dblclick", { clientX: 20 }));
         pending[10](2);
@@ -708,7 +821,7 @@ describe("InteractionController", () => {
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointermove", { clientX: 20, clientY: 30 })
         );
         expect(canvas.style.cursor).toBe("move");
 
@@ -724,17 +837,17 @@ describe("InteractionController", () => {
             )
         );
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointerdown", { clientX: 20, clientY: 30 })
         );
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", {
+            new MouseEvent("pointermove", {
                 buttons: 1,
                 clientX: 25,
                 clientY: 35,
             })
         );
         canvas.dispatchEvent(
-            new MouseEvent("mouseup", { clientX: 25, clientY: 35 })
+            new MouseEvent("pointerup", { clientX: 25, clientY: 35 })
         );
 
         expect(interactionTypes).toEqual(
@@ -751,12 +864,12 @@ describe("InteractionController", () => {
         currentTarget = secondTarget;
 
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 25, clientY: 35 })
+            new MouseEvent("pointermove", { clientX: 25, clientY: 35 })
         );
         expect(canvas.style.cursor).toBe("move");
 
         canvas.dispatchEvent(
-            new MouseEvent("mouseout", { clientX: 25, clientY: 35 })
+            new MouseEvent("pointerout", { clientX: 25, clientY: 35 })
         );
         expect(canvas.style.cursor).toBe("move");
     });
@@ -887,19 +1000,19 @@ describe("InteractionController", () => {
         readPickingId.mockReturnValue(1);
 
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointermove", { clientX: 20, clientY: 30 })
         );
         expect(canvas.style.cursor).toBe("grabbing");
 
         controller.suspendHoverTracking();
 
         canvas.dispatchEvent(
-            new MouseEvent("mouseout", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointerout", { clientX: 20, clientY: 30 })
         );
         expect(canvas.style.cursor).toBe("grabbing");
 
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", {
+            new MouseEvent("pointermove", {
                 clientX: 21,
                 clientY: 31,
                 buttons: 1,
@@ -915,7 +1028,7 @@ describe("InteractionController", () => {
             })
         );
         controller.resumeHoverTracking(
-            new MouseEvent("mouseup", { clientX: 21, clientY: 31 })
+            new MouseEvent("pointerup", { clientX: 21, clientY: 31 })
         );
 
         expect(canvas.style.cursor).toBe("grabbing");
@@ -928,7 +1041,7 @@ describe("InteractionController", () => {
 
         readPickingId.mockResolvedValue(0);
         controller.resumeHoverTracking(
-            new MouseEvent("mouseup", { clientX: 21, clientY: 31 })
+            new MouseEvent("pointerup", { clientX: 21, clientY: 31 })
         );
         await Promise.resolve();
 
@@ -936,13 +1049,13 @@ describe("InteractionController", () => {
 
         readPickingId.mockReturnValue(1);
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 21, clientY: 31 })
+            new MouseEvent("pointermove", { clientX: 21, clientY: 31 })
         );
         expect(canvas.style.cursor).toBe("grabbing");
 
         controller.suspendHoverTracking();
         controller.resumeHoverTracking(
-            new MouseEvent("mouseup", { clientX: 101, clientY: 31 })
+            new MouseEvent("pointerup", { clientX: 101, clientY: 31 })
         );
         expect(canvas.style.cursor).toBe("");
     });
@@ -1045,7 +1158,7 @@ describe("InteractionController", () => {
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointerdown", { clientX: 20, clientY: 30 })
         );
 
         expect(clear).not.toHaveBeenCalled();
@@ -1149,7 +1262,7 @@ describe("InteractionController", () => {
         controller.registerInteractionEvents();
 
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", {
+            new MouseEvent("pointerdown", {
                 clientX: 20,
                 clientY: 30,
                 shiftKey: true,
@@ -1302,18 +1415,18 @@ describe("InteractionController", () => {
         readPickingId.mockReturnValue(1);
 
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointerdown", { clientX: 20, clientY: 30 })
         );
 
         controller.suspendHoverTracking();
         controller.resumeHoverTracking(
-            new MouseEvent("mouseup", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointerup", { clientX: 20, clientY: 30 })
         );
 
         expect(updateWithDatum).not.toHaveBeenCalled();
 
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+            new MouseEvent("pointermove", { clientX: 20, clientY: 30 })
         );
 
         expect(updateWithDatum).toHaveBeenCalledTimes(1);
@@ -1328,7 +1441,7 @@ describe("InteractionController", () => {
 
         controller.registerInteractionEvents();
 
-        document.dispatchEvent(new Event("mousedown"));
+        document.dispatchEvent(new Event("pointerdown"));
 
         expect(tooltip.sticky).toBe(false);
         expect(clear).toHaveBeenCalledTimes(1);
@@ -1348,7 +1461,7 @@ describe("InteractionController", () => {
 
         controller.registerInteractionEvents();
 
-        const event = new Event("mousedown");
+        const event = new Event("pointerdown");
         event.composedPath = () => [tooltipElement, document];
         document.dispatchEvent(event);
 
@@ -1366,7 +1479,7 @@ describe("InteractionController", () => {
         const cleanup = controller.registerInteractionEvents();
         cleanup();
 
-        document.dispatchEvent(new Event("mousedown"));
+        document.dispatchEvent(new Event("pointerdown"));
 
         expect(tooltip.sticky).toBe(true);
         expect(clear).not.toHaveBeenCalled();
@@ -1627,16 +1740,16 @@ describe("InteractionController", () => {
         controller.subscribeHover(scope, (hit) => hoverChanges.push(hit));
         controller.registerInteractionEvents();
 
-        canvas.dispatchEvent(new MouseEvent("mousemove"));
-        canvas.dispatchEvent(new MouseEvent("mousemove"));
+        canvas.dispatchEvent(new MouseEvent("pointermove"));
+        canvas.dispatchEvent(new MouseEvent("pointermove"));
         expect(hoverChanges).toHaveLength(2);
         expect(hoverChanges[1]?.datum).toBe(datum);
 
-        canvas.dispatchEvent(new MouseEvent("mouseout"));
+        canvas.dispatchEvent(new MouseEvent("pointerout"));
         expect(hoverChanges).toHaveLength(3);
         expect(hoverChanges.at(-1)).toBeUndefined();
 
-        canvas.dispatchEvent(new MouseEvent("mousemove"));
+        canvas.dispatchEvent(new MouseEvent("pointermove"));
         expect(hoverChanges).toHaveLength(4);
         controller.suspendHoverTracking();
         expect(hoverChanges).toHaveLength(5);
@@ -1733,9 +1846,9 @@ describe("InteractionController", () => {
 
         canvas.dispatchEvent(new MouseEvent("click", { clientX: 20 }));
         canvas.dispatchEvent(
-            new MouseEvent("mousemove", { clientX: 30, buttons: 1 })
+            new MouseEvent("pointermove", { clientX: 30, buttons: 1 })
         );
-        canvas.dispatchEvent(new MouseEvent("mouseout"));
+        canvas.dispatchEvent(new MouseEvent("pointerout"));
 
         expect(pending).toHaveLength(1);
         pending[0](1);

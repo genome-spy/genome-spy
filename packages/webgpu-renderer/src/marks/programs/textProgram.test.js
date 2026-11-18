@@ -216,11 +216,20 @@ describe("TextProgram series replacement", () => {
             [-5, -6, -7, -8]
         );
 
-        properties.viewportEdgeFadeWidth.set([4, 3, 2, 1]);
+        const scratch = [4, 3, 2, 1];
+        program.getSlotHandles().batchUpdates(() => {
+            properties.viewportEdgeFadeWidth.set(scratch);
+            scratch.fill(-10);
+            properties.viewportEdgeFadeDistance.set(scratch);
+            scratch.fill(0);
+        });
 
         expect(readUniformVector(program, "uViewportEdgeFadeWidth")).toEqual([
             4, 3, 2, 1,
         ]);
+        expect(readUniformVector(program, "uViewportEdgeFadeDistance")).toEqual(
+            [-10, -10, -10, -10]
+        );
     });
 
     it("rebuilds glyph layout from logical strings without recreating the pipeline", () => {

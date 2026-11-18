@@ -9,11 +9,12 @@ The data flow is a forest of data sources and subsequent transformations, which 
 form trees. For instance, a layer view might have a data source, which is then
 filtered and mutated in a different way for each child layer.
 
-The [`"branch"`](branch.md) declaration adds a side pipeline within a view.
-It can prepare a summary without changing the main rows. The
+The [`"branch"`](branch.md) declaration adds a side pipeline within a view. It
+can prepare a summary without changing the main rows. The
 [`"values"`](values.md) transform publishes a field as a read-only array
 parameter, for example to derive scale gaps from metadata or publish counts
-calculated with [`"aggregate"`](aggregate.md).
+calculated with [`"aggregate"`](aggregate.md). The [`"publish"`](publish.md)
+transform makes a table available to other pipelines as named data.
 
 !!! warning "Departure from Vega-Lite"
 

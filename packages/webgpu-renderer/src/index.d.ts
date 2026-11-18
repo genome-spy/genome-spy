@@ -19,6 +19,10 @@ export type TypedArray =
     | Int8Array
     | Uint8Array;
 
+/** A numeric scalar or vector for value-backed inputs. */
+export type NumericValue =
+    number | readonly number[] | TypedArray | Uint8ClampedArray;
+
 export type SelectionType = "single" | "multi" | "interval";
 
 export type IntervalSelectionProjection = Readonly<{
@@ -134,7 +138,7 @@ export type ChannelCondition =
           /** Selection predicate that guards the conditional branch. */
           when: SelectionPredicate;
           /** Range-space value to use when the predicate passes. */
-          value: number | number[];
+          value: NumericValue;
           /** Conditional channel config is not used for literal values. */
           channel?: never;
           /**
@@ -163,6 +167,8 @@ export type ChannelCondition =
       };
 
 export type ScaleSlotHandle = {
+    /** Update band/index inner and outer padding without rebuilding geometry. */
+    setPadding(inner: number, outer: number): void;
     /** Change a band scale's rank window without changing category IDs; null fits all. */
     setViewport(viewport: ScaleViewport | null): void;
     /** Update the domain and optional fractional gap ranks together; omit ranks for ordinary fitting. */
@@ -183,12 +189,20 @@ export interface ScaleViewport {
 }
 
 export type ValueSlotHandle = {
-    /** Update a dynamic value (uniform-backed). */
-    set(value: number | number[]): void;
+    /**
+     * Update a uniform-backed value. Numeric elements are consumed before a
+     * successful return, including inside batchUpdates, so callers may
+     * immediately reuse or mutate the input.
+     */
+    set(value: NumericValue): void;
 };
 
 /** Updates one semantic mark property without exposing its shader uniform. */
 export type PropertySlotHandle<T> = {
+    /**
+     * Built-in uniform-backed properties consume encoded numeric elements
+     * before a successful return, including inside batchUpdates.
+     */
     set(value: T): void;
 };
 
@@ -198,7 +212,7 @@ export type PropertySlotHandles<TProperties extends object> = {
 
 export type DynamicValueConfig = {
     /** Initial value for a custom program's existing extra uniform. */
-    value: number | number[];
+    value: NumericValue;
 };
 
 /** Optional raw-uniform configuration for a custom mark program. */
@@ -254,7 +268,11 @@ export type MarkHandle<
     TProperties extends object = Record<never, never>,
 > = {
     markId: MarkId;
-    /** Apply several retained slot mutations with one uniform upload/rebind. */
+    /**
+     * Apply several retained slot mutations with one uniform upload/rebind.
+     * Value slots and built-in uniform-backed property slots still consume
+     * numeric inputs synchronously; batching defers uploads, not input reads.
+     */
     batchUpdates(update: () => void): void;
     series: SeriesSlotHandle<TSeries>;
     scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
@@ -348,6 +366,9 @@ export type ChannelScale = {
 export type DefinedChannelScale = ChannelScale & {
     definition: ScaleDef;
 };
+
+/** Decode a u32 color series into normalized RGBA, with red in the least significant byte. */
+export const rgba8Unorm: Readonly<DefinedChannelScale>;
 
 export type ConfiguredScale<T extends string> = DefinedChannelScale & {
     type: T;
@@ -665,7 +686,7 @@ export type ChannelConfigCommon = {
     inputComponents?: 1 | 2 | 4;
 
     /** Default if no series data or value is supplied. */
-    default?: number | number[];
+    default?: NumericValue;
 
     /** Conditional overrides applied when selection predicates match. */
     conditions?: ChannelCondition[];
@@ -701,7 +722,7 @@ export type SeriesChannelConfigInput = {
 /** Input shape for value-backed channels; value/type may be supplied later. */
 export type ValueChannelConfigInput = {
     /** Uniform value in range space (used directly). */
-    value?: number | number[];
+    value?: NumericValue;
 
     /** Scalar element type for value data. */
     type?: ScalarType;

@@ -143,7 +143,7 @@ function sameBrushBindings(a, b) {
         /** @type {import("../../spec/parameter.js").IntervalSelectionConfig} */ (
             a.select
         );
-    return Object.values(select.mark ?? {})
+    return [select.touchDrag, ...Object.values(select.mark ?? {})]
         .filter(isExprRef)
         .every((value) => {
             const left = a.runtime.createExpression(value.expr).dependencies;

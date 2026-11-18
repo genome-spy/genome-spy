@@ -5,6 +5,7 @@ import {
     isColorRange,
     isRangeFunction,
     normalizeDiscreteRange,
+    normalizeDiscreteRangeValue,
     normalizeOrdinalRange,
     normalizeRangePositions,
 } from "../../scales/scaleStops.js";
@@ -37,6 +38,13 @@ import {
  * @typedef {object} ChannelResources
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
+ * @typedef {object} GapScaleState
+ * @property {readonly number[]} cuts
+ * @property {readonly number[]} domain
+ * @property {number} width
+ * @property {readonly number[] | undefined} ranks
+ * @property {number[]} geometry Scratch consumed synchronously by writeGeometry.
+ * @property {import("../../../utils/uniformBuffer.js").UniformSetter} writeGeometry
  */
 
 /**
@@ -52,8 +60,8 @@ export class ScaleResourceManager {
     /** @type {(name: string) => [number, number] | undefined} */
     #getDefaultScaleRange;
 
-    /** @type {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} */
-    #setUniformValue;
+    /** @type {(name: string) => import("../../../utils/uniformBuffer.js").UniformSetter} */
+    #getUniformSetter;
 
     /** @type {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} */
     #analysisByChannel;
@@ -64,7 +72,7 @@ export class ScaleResourceManager {
     /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }>} */
     #scaleUpdaters = new Map();
 
-    /** @type {Map<string, {cuts: readonly number[], domain: readonly number[], width: number, ranks: readonly number[] | undefined}>} */
+    /** @type {Map<string, GapScaleState>} */
     #gapScales = new Map();
 
     /** @type {GPUBuffer | null} */
@@ -79,21 +87,29 @@ export class ScaleResourceManager {
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {string} [params.label]
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
-     * @param {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} params.setUniformValue
+     * @param {(name: string) => import("../../../utils/uniformBuffer.js").UniformSetter} params.getUniformSetter
      */
     constructor({
         device,
         analysisByChannel,
         label = "mark",
         getDefaultScaleRange,
-        setUniformValue,
+        getUniformSetter,
     }) {
         this.#device = device;
         this.#label = label;
         this.#getDefaultScaleRange = getDefaultScaleRange;
-        this.#setUniformValue = setUniformValue;
+        this.#getUniformSetter = getUniformSetter;
 
         this.#analysisByChannel = analysisByChannel;
+    }
+
+    /**
+     * @param {string} name
+     * @param {number | ArrayLike<number> | Array<number | number[]>} value
+     */
+    #setUniformValue(name, value) {
+        this.#getUniformSetter(name)(value);
     }
 
     /** The single mark-owned scale/gap storage buffer. */
@@ -306,6 +322,8 @@ export class ScaleResourceManager {
                         : this.#unpackDomain(scale.domain ?? [0, 1]),
                 width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
                 ranks: scale.type === "index" ? scale.gapDomain : undefined,
+                geometry: [0, 0, 0, 0],
+                writeGeometry: this.#getUniformSetter("gapGeometry_" + name),
             });
             this.#updateGapCuts();
             this.updateGapWidth(
@@ -379,6 +397,8 @@ export class ScaleResourceManager {
         const stopInfo = stopKind ? this.#getScaleStopInfo(name) : undefined;
         const domainUniformName = DOMAIN_PREFIX + name;
         const rangeUniformName = RANGE_PREFIX + name;
+        const writeDomain = this.#getUniformSetter(domainUniformName);
+        const writeRange = this.#getUniformSetter(rangeUniformName);
         const defaultRange =
             stopKind === "continuous"
                 ? this.#getDefaultScaleRange(name)
@@ -462,36 +482,30 @@ export class ScaleResourceManager {
         if (stopKind) {
             if (stopKind === "continuous") {
                 const domainLength = stopInfo?.domainLength ?? 2;
-                const normalizeDomain =
-                    scaleDef.normalizeDomain ??
-                    (({ name, domain, domainLength: expectedLength }) => {
-                        const domainValues = coerceArrayLike(
-                            domain,
-                            `Scale on "${name}" expects a domain array.`
-                        );
-                        if (
-                            expectedLength &&
-                            domainValues.length !== expectedLength
-                        ) {
-                            throw new Error(
-                                `Scale domain for "${name}" expects ${expectedLength} entries, got ${domainValues.length}.`
-                            );
-                        }
-                        return domainValues;
-                    });
+                const normalizeDomain = scaleDef.normalizeDomain;
                 const expectedRangeLength = stopInfo?.rangeLength;
-                updateStopDomain = (value) => {
-                    const normalized = normalizeDomain({
-                        name,
-                        scale,
-                        domain: value,
-                        domainLength,
-                    });
-                    if (!normalized) {
-                        return;
-                    }
-                    this.#setUniformValue(domainUniformName, normalized);
-                };
+                updateStopDomain = normalizeDomain
+                    ? (value) => {
+                          const normalized = normalizeDomain({
+                              name,
+                              scale,
+                              domain: value,
+                              domainLength,
+                          });
+                          if (normalized) writeDomain(normalized);
+                      }
+                    : (value) => {
+                          const domain = coerceArrayLike(
+                              value,
+                              `Scale on "${name}" expects a domain array.`
+                          );
+                          if (domainLength && domain.length !== domainLength) {
+                              throw new Error(
+                                  `Scale domain for "${name}" expects ${domainLength} entries, got ${domain.length}.`
+                              );
+                          }
+                          writeDomain(domain);
+                      };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
                         throw new Error(
@@ -506,7 +520,18 @@ export class ScaleResourceManager {
                             `Scale range for "${name}" expects ${expectedRangeLength} entries, got ${value.length}.`
                         );
                     }
-                    this.#setUniformValue(rangeUniformName, value);
+                    writeRange(
+                        outputComponents === 4 && scale.type === "quantize"
+                            ? value.map((entry) =>
+                                  normalizeDiscreteRangeValue(
+                                      name,
+                                      entry,
+                                      outputComponents,
+                                      "Quantize"
+                                  )
+                              )
+                            : value
+                    );
                 };
             } else {
                 if (!stopInfo) {
@@ -528,7 +553,7 @@ export class ScaleResourceManager {
                             `${label} scale on "${name}" expects ${domainLength} domain entries, got ${domain.length}.`
                         );
                     }
-                    this.#setUniformValue(domainUniformName, domain);
+                    writeDomain(domain);
                 };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
@@ -542,7 +567,7 @@ export class ScaleResourceManager {
                         );
                     }
                     if (outputComponents === 1 && isNumericRange(value)) {
-                        this.#setUniformValue(rangeUniformName, value);
+                        writeRange(value);
                         return;
                     }
                     const normalized = normalizeDiscreteRange(
@@ -551,26 +576,29 @@ export class ScaleResourceManager {
                         outputComponents,
                         stopKind
                     );
-                    this.#setUniformValue(rangeUniformName, normalized);
+                    writeRange(normalized);
                 };
             }
         }
 
+        const gaps = this.#gapScales.get(name);
         let viewport = normalizeScaleViewport(scale.viewport ?? null);
         let categoryCount = scale.domain?.length ?? 0;
+        const publishViewport = () => {
+            const interval = viewport?.interval ?? [0, categoryCount];
+            writeDomain(interval);
+            if (gaps) {
+                gaps.domain = interval;
+                gaps.ranks = viewport?.gapRanks;
+                this.#updateGapGeometry(gaps);
+            }
+        };
         /** @param {import("../../../index.d.ts").ScaleViewport | null} value */
         const updateViewport = (value) => {
             if (scale.type !== "band")
                 throw new Error("Scale viewport requires a band scale.");
             viewport = normalizeScaleViewport(value);
-            const interval = viewport?.interval ?? [0, categoryCount];
-            this.#setUniformValue(domainUniformName, interval);
-            const gaps = this.#gapScales.get(name);
-            if (gaps) {
-                gaps.domain = interval;
-                gaps.ranks = viewport?.gapRanks;
-                this.#updateGapGeometry(name);
-            }
+            publishViewport();
         };
         /** @type {(domain: unknown) => boolean} */
         const updateDomain = (domain) => {
@@ -578,10 +606,7 @@ export class ScaleResourceManager {
             if (updateStopDomain) {
                 updateStopDomain(mapUpdate?.domainUniform ?? domain);
             } else if (mapUpdate?.domainUniform) {
-                this.#setUniformValue(
-                    domainUniformName,
-                    mapUpdate.domainUniform
-                );
+                writeDomain(mapUpdate.domainUniform);
             }
             return mapUpdate?.needsRebind ?? false;
         };
@@ -657,27 +682,27 @@ export class ScaleResourceManager {
                   }
                 : () => false;
 
-        return {
-            updateDomain: (domain, ranks) => {
+        /** @type {(domain: unknown, ranks?: readonly number[]) => boolean} */
+        let publishDomain = updateDomain;
+        if (scale.type === "band") {
+            publishDomain = (domain) => {
                 const result = updateDomain(domain);
-                if (scale.type === "band") {
-                    categoryCount = /** @type {number[]} */ (domain).length;
-                    updateViewport(viewport);
-                    return result;
-                }
-                const gaps = this.#gapScales.get(name);
-                if (gaps) {
-                    gaps.domain = this.#unpackDomain(
-                        /** @type {number[]} */ (domain)
-                    );
-                    gaps.ranks = ranks;
-                    this.#updateGapGeometry(name);
-                }
+                categoryCount = /** @type {number[]} */ (domain).length;
+                publishViewport();
                 return result;
-            },
-            updateRange,
-            updateViewport,
-        };
+            };
+        } else if (gaps) {
+            publishDomain = (domain, ranks) => {
+                const result = updateDomain(domain);
+                gaps.domain = this.#unpackDomain(
+                    /** @type {number[]} */ (domain)
+                );
+                gaps.ranks = ranks;
+                this.#updateGapGeometry(gaps);
+                return result;
+            };
+        }
+        return { updateDomain: publishDomain, updateRange, updateViewport };
     }
 
     /** @param {readonly number[]} domain */
@@ -707,7 +732,7 @@ export class ScaleResourceManager {
             return false;
         gaps.cuts = cuts;
         const rebind = this.#updateGapCuts();
-        this.#updateGapGeometry(name);
+        this.#updateGapGeometry(gaps);
         return rebind;
     }
 
@@ -715,19 +740,19 @@ export class ScaleResourceManager {
     updateGapWidth(name, width) {
         if (width != null && (!Number.isFinite(width) || width < 0))
             throw new Error("Gap width must be finite and nonnegative.");
-        this.#getGaps(name).width = width ?? 0;
-        this.#updateGapGeometry(name);
+        const gaps = this.#getGaps(name);
+        gaps.width = width ?? 0;
+        this.#updateGapGeometry(gaps);
     }
 
-    /** @param {string} name */
-    #updateGapGeometry(name) {
-        const { cuts, domain, width, ranks } = this.#getGaps(name);
-        this.#setUniformValue("gapGeometry_" + name, [
-            width,
-            ranks?.[0] ?? cutRank(cuts, domain[0]),
-            ranks?.[1] ?? cutRank(cuts, domain[1], true),
-            ranks ? 1 : 0,
-        ]);
+    /** @param {GapScaleState} gaps */
+    #updateGapGeometry(gaps) {
+        const { cuts, domain, ranks, geometry } = gaps;
+        geometry[0] = gaps.width;
+        geometry[1] = ranks?.[0] ?? cutRank(cuts, domain[0]);
+        geometry[2] = ranks?.[1] ?? cutRank(cuts, domain[1], true);
+        geometry[3] = ranks ? 1 : 0;
+        gaps.writeGeometry(geometry);
     }
 
     #updateGapCuts() {

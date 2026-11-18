@@ -104,6 +104,78 @@ test("fixed circles keep the analytic path without MSDF resources", async ({
     });
 });
 
+test("moves a high-precision index datum through its retained value slot", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [
+            { createRenderer },
+            { pointMark },
+            { indexScale },
+            { identityScale },
+        ] = await Promise.all([
+            import("/src/index.js"),
+            import("/src/marks/point.js"),
+            import("/src/scales/index.js"),
+            import("/src/scales/identity.js"),
+        ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas);
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        renderer.device.pushErrorScope("validation");
+        const start = 2 ** 32;
+        const packed = new Uint32Array([1048576, 16]);
+        const mark = renderer.createMark(pointMark, {
+            shape: "circle",
+            channels: {
+                uniqueId: { value: 42, type: "u32" },
+                x: {
+                    value: packed,
+                    type: "u32",
+                    inputComponents: 2,
+                    dynamic: true,
+                    scale: indexScale({
+                        domain: [start, start + 64],
+                        range: [0, 64],
+                        band: 0,
+                    }),
+                },
+                y: { value: 32, scale: identityScale() },
+                size: { value: 64 },
+                fill: { value: [1, 0, 0, 1] },
+                strokeOpacity: { value: 0 },
+            },
+        });
+        renderer.render({ draws: [{ mark }] });
+        const before = await Promise.all([
+            renderer.pick(16, 32),
+            renderer.pick(48, 32),
+        ]);
+        mark.batchUpdates(() => {
+            packed[1] = 48;
+            mark.values.x.set(packed);
+            packed.fill(0);
+        });
+        renderer.render({ draws: [{ mark }] });
+        const after = await Promise.all([
+            renderer.pick(16, 32),
+            renderer.pick(48, 32),
+        ]);
+        const validation = await renderer.device.popErrorScope();
+        renderer.destroy();
+        canvas.remove();
+        return { before, after, validation: validation?.message };
+    });
+    expect(result).toEqual({
+        before: [42, null],
+        after: [null, 42],
+        validation: undefined,
+    });
+});
+
 test("fixed named and SVG point shapes use the shared path program", async ({
     page,
 }) => {
@@ -391,3 +463,100 @@ test("visibility predicates cull point instances from rendering and picking", as
     });
     expect(visibleFramebuffer).not.toEqual(hiddenFramebuffer);
 });
+
+for (const dpr of [1, 2]) {
+    test(`negative circles cannot steal picks at DPR ${dpr}`, async ({
+        page,
+    }) => {
+        await ensureWebGPU(page);
+        const result = await page.evaluate(async (dpr) => {
+            const [{ createRenderer }, { pointMark }, { identityScale }] =
+                await Promise.all([
+                    import("/src/index.js"),
+                    import("/src/marks/point.js"),
+                    import("/src/scales/identity.js"),
+                ]);
+            const canvas = document.createElement("canvas");
+            canvas.width = canvas.height = 64 * dpr;
+            document.body.append(canvas);
+            const renderer = await createRenderer(canvas);
+            renderer.updateGlobals({ width: 64, height: 64, dpr });
+            renderer.device.pushErrorScope("validation");
+            const config = {
+                shape: "circle",
+                channels: {
+                    x: { value: 32.25, scale: identityScale() },
+                    y: { value: 32.25, scale: identityScale() },
+                    size: { value: 64, dynamic: true },
+                    uniqueId: { value: 17, type: "u32" },
+                    strokeWidth: { value: 2 },
+                    minPickingSize: { value: 2, dynamic: true },
+                },
+            };
+            const visible = renderer.createMark(pointMark, config);
+            // A later invalid occurrence must not replace the valid datum underneath it.
+            const invalid = renderer.createMark(pointMark, {
+                ...config,
+                channels: {
+                    ...config.channels,
+                    size: { value: -1, dynamic: true },
+                    uniqueId: { value: 18, type: "u32" },
+                },
+            });
+            const paint = async (marks) => {
+                renderer.render({ items: marks.map((mark) => ({ mark })) });
+                await renderer.device.queue.onSubmittedWorkDone();
+                return canvas.toDataURL("image/png");
+            };
+            try {
+                const empty = await paint([]);
+                const baseline = await paint([visible]);
+                const alone = await renderer.pick(32.25, 32.25);
+                const negative = await paint([visible, invalid]);
+                const negativePick = await renderer.pick(32.25, 32.25);
+                invalid.values.size.set(0);
+                await paint([visible, invalid]);
+                const zeroPick = await renderer.pick(32.25, 32.25);
+                invalid.values.size.set(16);
+                await paint([visible, invalid]);
+                const positivePick = await renderer.pick(32.25, 32.25);
+                invalid.values.size.set(4);
+                invalid.values.minPickingSize.set(14);
+                await paint([visible, invalid]);
+                const enlargedPick = await renderer.pick(37.25, 32.25);
+                invalid.values.size.set(-1);
+                const restored = await paint([visible, invalid]);
+                const restoredPick = await renderer.pick(32.25, 32.25);
+                await paint([invalid]);
+                const emptyPick = await renderer.pick(32.25, 32.25);
+                return {
+                    alone,
+                    negativePick,
+                    zeroPick,
+                    positivePick,
+                    restoredPick,
+                    enlargedPick,
+                    emptyPick,
+                    visible: baseline !== empty,
+                    unchanged: baseline === negative && baseline === restored,
+                    validation: await renderer.device.popErrorScope(),
+                };
+            } finally {
+                renderer.destroy();
+                canvas.remove();
+            }
+        }, dpr);
+        expect(result).toEqual({
+            alone: 17,
+            negativePick: 17,
+            zeroPick: 18,
+            positivePick: 18,
+            restoredPick: 17,
+            enlargedPick: 18,
+            emptyPick: null,
+            visible: true,
+            unchanged: true,
+            validation: null,
+        });
+    });
+}

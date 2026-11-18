@@ -7,7 +7,7 @@ EXAMPLE examples/docs/grammar/mark/text/text-mark.json height=150
 ## Channels
 
 Text supports primary and secondary [position](./index.md#channels) channels,
-plus `fill`, `color`, `opacity`, `text`, `size`, and `angle`.
+plus `fill`, `color`, `fillOpacity`, `opacity`, `text`, `size`, and `angle`.
 
 The `fill` property or channel controls the text color. `color` remains an alias;
 an explicit `fill` takes precedence.

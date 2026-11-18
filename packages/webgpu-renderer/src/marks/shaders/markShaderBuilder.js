@@ -900,55 +900,9 @@ fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool 
         (logicalPosition.y >= placementClip.y && logicalPosition.y <= placementClip.w));
 }
 
-fn applyPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    let placementIndex = getPlacementIndex(i);
-    if (placementIndex >= globals.placementCount) {
-        return vec2<f32>(0.0);
-    }
-    let rect = placementRectangles[placementIndex];
-    let pixel = vec2<f32>(
-        (clip.x + 1.0) * globals.width * 0.5,
-        (1.0 - clip.y) * globals.height * 0.5
-    );
-    let placed = rect.xy * globals.viewport.zw + pixel * rect.zw;
-    return vec2<f32>(
-        (placed.x / globals.width) * 2.0 - 1.0,
-        1.0 - (placed.y / globals.height) * 2.0
-    );
-}
-
-fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
-    let placementIndex = getPlacementIndex(i);
-    if (placementIndex >= globals.placementCount) {
-        return vec2<f32>(0.0);
-    }
-    let rect = placementRectangles[placementIndex];
-    let pixel = vec2<f32>(
-        (clip.x + 1.0) * globals.width * 0.5,
-        (1.0 - clip.y) * globals.height * 0.5
-    );
-    let anchorPixel = vec2<f32>(
-        (anchor.x + 1.0) * globals.width * 0.5,
-        (1.0 - anchor.y) * globals.height * 0.5
-    );
-    let placed = rect.xy * globals.viewport.zw +
-        anchorPixel * rect.zw + (pixel - anchorPixel);
-    return vec2<f32>(
-        (placed.x / globals.width) * 2.0 - 1.0,
-        1.0 - (placed.y / globals.height) * 2.0
-    );
-}
 #else
-fn applyPlacementClipForPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
-
 fn isPlacementVisible(i: u32) -> bool {
     return true;
-}
-
-fn applyPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
 }
 
 fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {

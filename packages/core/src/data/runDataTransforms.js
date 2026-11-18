@@ -14,6 +14,7 @@ const constructors = {
     sample: SampleTransform,
     aggregate: AggregateTransform,
     window: WindowTransform,
+    joinaggregate: WindowTransform,
 };
 
 /**

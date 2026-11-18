@@ -2,6 +2,7 @@ import { expect, onTestFinished, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { resolveScopedEmbedParam } from "../paramRuntime/embedParamApi.js";
 import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
+import { createViewMutationApi } from "../view/viewMutationApi.js";
 
 /** @returns {import("../spec/root.js").RootSpec} */
 function specification() {
@@ -110,10 +111,9 @@ test("two side producers drive shared bands through outer outputs, including a h
         context.textMetrics
     );
     expect(producer.flowHandle).toBe(handle);
-    context.dataFlow.updateNamedDataBinding(
-        view.namedDataScope.getLocalBinding("samples"),
-        [{ id: "A" }, { id: "B" }]
-    );
+    createViewMutationApi({ viewRoot: view })
+        .root()
+        .datasets.set("samples", [{ id: "A" }, { id: "B" }]);
     await view.paramRuntime.whenPropagated();
     expect(matrix.getScaleResolution("y").getScale().domain()).toEqual([
         "A",
@@ -171,7 +171,7 @@ test("rejects duplicate output writers before loading", async () => {
 });
 
 test("named template instances own independent pushed outputs", async () => {
-    const { view, context } = await createHeadlessEngine({
+    const { view } = await createHeadlessEngine({
         templates: {
             panel: {
                 params: [{ name: "order" }],
@@ -199,10 +199,9 @@ test("named template instances own independent pushed outputs", async () => {
     onTestFinished(() => view.disposeSubtree());
     const [first, second] =
         /** @type {import("../view/concatView.js").default} */ (view).children;
-    context.dataFlow.updateNamedDataBinding(
-        first.namedDataScope.getLocalBinding("rows"),
-        [{ id: "B" }]
-    );
+    createViewMutationApi({ viewRoot: view })
+        .get({ scope: ["first"], view: "first" })
+        .datasets.set("rows", [{ id: "B" }]);
     await view.paramRuntime.whenPropagated();
     expect(first.paramRuntime.getValue("order")).toEqual(["B"]);
     expect(second.paramRuntime.getValue("order")).toEqual(["A"]);

@@ -35,7 +35,6 @@ export default class WebGLLinkMark extends WebGLMark {
     getAttributes() {
         return [
             "uniqueId",
-            "facetIndex",
             "x",
             "x2",
             "y",
