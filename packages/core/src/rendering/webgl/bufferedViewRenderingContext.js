@@ -151,6 +151,11 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
      * changes.
      */
     render() {
+        // Track mutations may dispose guides before the replacement layout commits.
+        // Retain the last image rather than resurrecting marks from the old draw list.
+        for (const entry of this.#entries) {
+            if (entry.ownerDisposed) return;
+        }
         this.finish();
 
         this.#markAdapter.synchronize(this.#entries);
@@ -291,7 +296,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             this.#batch.push(() => {
                 enabled =
                     this.#markAdapter.isEntryDrawable(entry) &&
-                    mark.unitView.getEffectiveOpacity() > 0;
+                    (this.globalOptions.applyViewOpacity === false ||
+                        mark.unitView.getEffectiveOpacity() > 0);
                 viewportVisible = true;
                 orderActive =
                     !!order && !this.globalOptions.picking && order.isActive();

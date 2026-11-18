@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test, vi } from "vitest";
+import PointerCanvas from "../../testFixtures/pointerCanvas.js";
 import Interaction from "../utils/interaction.js";
 import Point from "./layout/point.js";
 import ConcatView from "./concatView.js";
@@ -408,22 +409,19 @@ describe("container annotation contracts", () => {
                 track.coords.y + track.coords.height / 2
             );
             const end = new Point(start.x + 30, start.y);
+            const canvas = new PointerCanvas();
             view.propagateInteraction(
                 new Interaction(
                     start,
-                    new MouseEvent("mousedown", {
+                    canvas.event("pointerdown", {
                         clientX: start.x,
                         clientY: start.y,
                         shiftKey: true,
                     })
                 )
             );
-            document.dispatchEvent(
-                new MouseEvent("mousemove", { clientX: end.x, clientY: end.y })
-            );
-            document.dispatchEvent(
-                new MouseEvent("mouseup", { clientX: end.x, clientY: end.y })
-            );
+            canvas.dispatch("pointermove", { clientX: end.x, clientY: end.y });
+            canvas.dispatch("pointerup", { clientX: end.x, clientY: end.y });
             expect(
                 view.paramRuntime.findValue("region").intervals.x
             ).toBeNull();

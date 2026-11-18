@@ -118,6 +118,7 @@ export const TEXT_MARK_DEFAULTS = {
     x2: undefined,
     y2: undefined,
     text: "",
+    fillOpacity: 1,
     size: 11.0,
     font: undefined,
     fontStyle: undefined,

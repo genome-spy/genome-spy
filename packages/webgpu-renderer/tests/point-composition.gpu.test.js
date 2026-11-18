@@ -82,6 +82,8 @@ for (const dpr of [1, 2]) {
                             strokeWidth: dynamic(0.25 / dpr),
                             fill: { value: [1, 0, 0, 1] },
                             stroke: dynamic([0, 0, 1, 1]),
+                            opacity: dynamic(1),
+                            gradientStrength: dynamic(0),
                             fillOpacity: dynamic(1),
                             strokeOpacity: dynamic(1),
                             strokeAlign: { ...dynamic(1), type: "u32" },
@@ -99,7 +101,29 @@ for (const dpr of [1, 2]) {
                     );
                     set(mark, { fillOpacity: 0.8, strokeOpacity: 0.5 });
                     const translucent = pixel(await capture(mark));
-                    set(mark, { fillOpacity: 0 });
+                    set(mark, { gradientStrength: 0.1 });
+                    const commonBase = await capture(mark);
+                    set(mark, { opacity: 0.5 });
+                    const commonHalf = await capture(mark);
+                    set(mark, { opacity: 0 });
+                    const commonZero = await capture(mark);
+                    const commonPick = await renderer.pick(32, 32);
+                    set(mark, { opacity: 1 });
+                    const commonRestored = await capture(mark);
+                    const common = {
+                        visible: commonBase.some(Boolean),
+                        halfError: commonHalf.reduce(
+                            (m, v, i) =>
+                                Math.max(m, Math.abs(v - commonBase[i] * 0.5)),
+                            0
+                        ),
+                        zero: commonZero.some(Boolean),
+                        pick: commonPick,
+                        restored: commonRestored.every(
+                            (v, i) => v === commonBase[i]
+                        ),
+                    };
+                    set(mark, { gradientStrength: 0, fillOpacity: 0 });
                     const emptyFill = pixel(await capture(mark));
                     set(mark, {
                         size: 256,
@@ -166,6 +190,7 @@ for (const dpr of [1, 2]) {
                         centered,
                         scoped,
                         translucent,
+                        common,
                         emptyFill,
                         inwardTranslucent,
                         inward,
@@ -181,6 +206,7 @@ for (const dpr of [1, 2]) {
                 }
                 const x = new Float32Array([8, 24, 40, 56]);
                 const data = {
+                    opacity: new Float32Array(4).fill(1),
                     uniqueId: new Uint32Array([21, 22, 23, 24]),
                     x,
                     shape: new Uint32Array([0, 1, 2, 3]),
@@ -194,6 +220,20 @@ for (const dpr of [1, 2]) {
                     shapes: ["circle", "triangle-up", "x", "+"],
                     count: 4,
                     channels: {
+                        opacity: {
+                            data: data.opacity,
+                            type: "f32",
+                            conditions: [
+                                {
+                                    when: {
+                                        selection: "faded",
+                                        type: "single",
+                                        empty: false,
+                                    },
+                                    value: 0.5,
+                                },
+                            ],
+                        },
                         uniqueId: {
                             data: data.uniqueId,
                             type: "u32",
@@ -220,6 +260,33 @@ for (const dpr of [1, 2]) {
                     before = [];
                 for (const value of x)
                     before.push(await renderer.pick(value, 16));
+                // Retained series and conditions control each datum independently.
+                const opacityErrors = [];
+                data.opacity.set([0.25, 0.5, 0.75, 1]);
+                mixed.series.replace(data, 4);
+                for (const selected of [0, 24]) {
+                    mixed.selections.faded.set(selected);
+                    const frame = await capture(mixed);
+                    for (let index = 0; index < x.length; index++) {
+                        const offset =
+                            (16 * dpr * canvas.width + x[index] * dpr) * 4;
+                        const factor =
+                            selected === 24 && index === 3
+                                ? 0.5
+                                : data.opacity[index];
+                        for (let component = 0; component < 4; component++) {
+                            opacityErrors.push(
+                                Math.abs(
+                                    frame[offset + component] -
+                                        initial[offset + component] * factor
+                                )
+                            );
+                        }
+                    }
+                }
+                mixed.selections.faded.set(0);
+                data.opacity.fill(1);
+                mixed.series.replace(data, 4);
                 const shapePick = [await renderer.pick(40, 11)];
                 data.shape.set([3, 2, 1, 0]);
                 data.stroke.set([
@@ -252,6 +319,7 @@ for (const dpr of [1, 2]) {
                     routes,
                     before,
                     shapePick,
+                    opacityErrors,
                     strokePixel,
                     changed,
                     clipped,
@@ -287,10 +355,16 @@ for (const dpr of [1, 2]) {
             expect(route.outsidePicks).toEqual([17, null]);
             expect(route.clippedOutsidePick).toBeNull();
             expect(route.picks).toEqual([17, null]);
+            expect(route.common.visible).toBe(true);
+            expect(route.common.halfError).toBeLessThanOrEqual(1);
+            expect(route.common.zero).toBe(false);
+            expect(route.common.pick).toBe(17);
+            expect(route.common.restored).toBe(true);
             expect(Math.max(...route.transparentErrors)).toBeLessThanOrEqual(2);
         }
         expect(result.before).toEqual([21, 22, 23, 24]);
         expect(result.changed).toBe(true);
+        expect(Math.max(...result.opacityErrors)).toBeLessThanOrEqual(1);
         expect(result.shapePick).toEqual([null, 23]);
         expect(result.strokePixel[1]).toBeGreaterThan(240);
         expect(

@@ -29,6 +29,8 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  */
 
 /**
+ * Rasterize paints without view opacity; the enclosing SVG groups own it.
+ *
  * @typedef {object} SvgRunRasterizationOptions
  * @property {import("./svg/svgViewRenderingContext.js").SvgRasterRun[]} runs
  * @property {import("../view/view.js").default} viewRoot

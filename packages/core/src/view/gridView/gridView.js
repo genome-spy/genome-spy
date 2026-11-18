@@ -1808,7 +1808,8 @@ export default class GridView extends ContainerView {
                     if (
                         event.type !== "wheel" &&
                         event.type !== "mousedown" &&
-                        event.type !== "touchgesture"
+                        event.type !== "touchgesture" &&
+                        event.type !== "touchdragstart"
                     ) {
                         return;
                     }
@@ -1933,6 +1934,13 @@ export default class GridView extends ContainerView {
         zoomableResolutions,
         pointedChild
     ) {
+        if ("activeEvent" in event.uiEvent) {
+            if (zoomableResolutions.x.size || zoomableResolutions.y.size) {
+                event.uiEvent.panAvailable = true;
+            }
+            return;
+        }
+
         event.target ??= this;
 
         // A mouse drag on an axis without a zoomable scale scrolls the
