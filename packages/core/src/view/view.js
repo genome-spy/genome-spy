@@ -942,28 +942,22 @@ export default class View {
         const inputs = new Set([expression]);
         for (const input of inputs) {
             if (
-                input.usesDatum ||
                 input.dependencies.some((ref) => layoutSizeRefs.has(ref)) ||
                 input.scaleBindings.keys().some((kind) => kind !== "domain")
             ) {
                 throw new ViewError(
-                    "visible.expr can read parameters and domain(), but cannot depend on datum, layout, or other scale helpers.",
+                    "visible.expr supports parameters available before layout and domain().",
                     this
                 ).withSpecLocation(visible, ["expr"]);
             }
             for (const resolution of input.scaleBindings.get("domain") ?? []) {
-                const owner = resolution.getViewLevelScaleProps();
-                const props = owner?.props;
+                const props = resolution.getViewLevelScaleProps()?.props;
                 const fixedExtent = Array.isArray(props?.domain)
                     ? !collectConfiguredDomainExprRefs(props.domain).length
                     : props?.type === "locus" && props.domain === undefined;
-                if (
-                    !fixedExtent ||
-                    !resolution.isExplicitlyOwned() ||
-                    !this.dataParent?.getDataAncestors().includes(owner.view)
-                ) {
+                if (!fixedExtent || !resolution.isExplicitlyOwned()) {
                     throw new ViewError(
-                        `visible.expr requires domain('${resolution.channel}') to have a typed ancestor scale with a literal domain or a locus assembly extent.`,
+                        `visible.expr requires domain('${resolution.channel}') to read a typed view-level scale with a literal domain or a locus assembly extent.`,
                         this
                     ).withSpecLocation(visible, ["expr"]);
                 }
@@ -1018,9 +1012,8 @@ export default class View {
      * @returns {boolean}
      */
     isVisible() {
-        return this.getLayoutAncestors().every((view) =>
-            view.isConfiguredVisible()
-        );
+        if (this.layoutParent && !this.layoutParent.isVisible()) return false;
+        return this.isConfiguredVisible();
     }
 
     /**

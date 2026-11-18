@@ -154,9 +154,7 @@ export function analyzeExpression(expr, specLocation) {
             args.forEach(visit);
             return "0";
         });
-        const globals = generate(parseExpression(expr)).globals.filter(
-            (name) => name !== "datum"
-        );
+        const { globals } = generate(parseExpression(expr));
         return { usesScaleHelper, globals };
     } catch (error) {
         throw invalidExpression(expr, error, specLocation);
@@ -180,9 +178,8 @@ function invalidExpression(expr, cause, location) {
  */
 function createExpressionCodegen(scaleCall) {
     return codegenExpression({
-        allowed: ["undefined"],
-        globalvar: (id) =>
-            id === "datum" ? id : "globalObject[" + JSON.stringify(id) + "]",
+        allowed: ["datum", "undefined"],
+        globalvar: "globalObject",
         fieldvar: "datum",
         functions: (visit) => {
             const fn = /** @type {any} */ (functions(visit));
@@ -216,7 +213,6 @@ function createExpressionCodegen(scaleCall) {
  * @prop { string } code
  * @prop {(globalObject: Record<string, any>) => (datum?: import("../data/flowNode.js").Datum) => any} [createEvaluator] Creates an evaluator over the already compiled expression using an alternate globals object.
  * @prop { import("../paramRuntime/types.js").ParamRef<any>[] } [scaleDependencies]
- * @prop {boolean} usesDatum
  * @prop {Map<ScaleHelperKind, Set<import("../scales/scaleResolution.js").default>>} scaleBindings
  *
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
@@ -515,10 +511,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         // storage without paying another parse/code-generation cost.
         exprFunction.createEvaluator = createEvaluator;
         exprFunction.fields = generatedCode.fields;
-        exprFunction.usesDatum = generatedCode.globals.includes("datum");
-        exprFunction.globals = exprFunction.usesDatum
-            ? generatedCode.globals.filter((name) => name !== "datum")
-            : generatedCode.globals;
+        exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;
         // Reactive bookkeeping lives outside the generated expression body.
         // The expression runtime subscribes to these refs and invalidates the

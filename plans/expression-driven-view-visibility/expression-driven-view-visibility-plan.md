@@ -17,7 +17,10 @@ keep the existing host predicate and its authored default of `visible ?? true`.
 For an expression, its boolean in the resulting view’s lexical parameter scope
 is authoritative even if App has a saved override. Container collapse and
 ancestor visibility continue to use `isConfiguredVisible()` and `isVisible()`.
-Hiding a parent preserves each child’s choice.
+Hiding a parent preserves each child’s choice. Effective visibility checks the
+layout parent first so a refresh can skip expression binding below a hidden
+parent. The data initialization regression covers revealing an unrelated track
+while that branch is hidden.
 
 **Bind only expressions, once, on first read.** In `view/view.js`, have
 `isVisibleInSpec()` return the literal default directly or read a view-owned
@@ -33,11 +36,11 @@ Support parameters available before layout, including ordinary derived and
 selection parameters. Validate the bound expression once, following parameter refs to
 their defining expressions. This preserves lexical shadowing and covers
 debounced and transitioned parameters.
-Report datum, unsupported scale or automatic layout dependencies and non-boolean results
-at `visible.expr`. An authored
-parameter named `width` is an ordinary input. A track whose visibility requires
-its own unloaded data has a circular specification. Document that limit and
-leave data loading under the existing producer rules.
+Report unsupported scale or automatic layout dependencies and non-boolean
+results at `visible.expr`. An authored parameter named `width` is an ordinary
+input. A track whose visibility requires its own unloaded data has a circular
+specification. Document that limit and leave data loading under the existing
+producer rules.
 
 **Give visibility changes one route to layout.** Move the work currently split
 between App’s Redux subscriber and `GenomeSpyBase.initializeVisibleViewData()`
@@ -56,8 +59,9 @@ loading. Skip hidden children during layer arrangement and hit testing so they
 cannot reacquire bounds after reflow. All renderers and SVG export consume the
 resulting placements.
 
-Update the grammar JSDoc, schema, and import example. Tentative commit
-`feat(core): support expression-driven view visibility`.
+The view and import specification types feed the generated schema. The checked-in
+zoom example demonstrates domain-driven visibility. The standalone import
+example and expanded grammar prose were dropped during review.
 
 ## App
 
@@ -67,8 +71,8 @@ restore, manual radio choices, and parameter controls in the View settings menu.
 - Keep Redux as the owner of manual choices. Use the same expression-ownership
   check in `configurableVisibilityUtils.js`, scoped radio membership, and direct
   writes. A hidden parent still permits setting a manual child’s choice. A
-  sample operation that needs the child’s data must check the whole layout path
-  before changing settings, zooming, or waiting for that data.
+  sample operation applies its target viewport, checks expression visibility
+  along the layout path, then applies manual choices and waits for data.
 - In View settings, omit the visibility input for an expression-owned view. If
   it has parameter controls, keep its row. List eligible descendants
   independently of the expression’s current value. This makes the menu usable
@@ -85,8 +89,8 @@ restore, manual radio choices, and parameter controls in the View settings menu.
   parameter-only reveal republishes the current aggregates. Keep its cohort
   subscription for actual grouping changes.
 
-Update the View settings docs and add a feature changeset covering Core and App.
-Tentative commit `feat(app): respect expression-owned view visibility`.
+The feature changeset covers Core and App. The extra View settings prose was
+dropped during review.
 
 ## Verification
 
@@ -103,8 +107,7 @@ Use a `vconcat` with ordinary Coverage and expression-controlled Detail.
 3. Use focused existing tests for the two easy-to-miss paths. Insert an imported
    track into a live shared scale with a shadowed parameter and verify its
    initial visibility. Hide a layer over a visible sibling and verify its bounds
-   and pick target disappear after reflow. `UnitView.arrange()` currently
-   records bounds before checking visibility.
+   and pick target disappear after reflow.
 
 In the existing App sample tests, regroup while a summary is hidden and reveal
 it with a parameter write. Its aggregates should reflect the new groups.
@@ -119,13 +122,15 @@ visible members change.
 ## Domain-driven visibility
 
 Allow `visible: { "expr": "span(domain('x')) < 10000" }` through the existing
-expression compiler. A typed ancestor scale with a literal domain, or a locus
-scale with its assembly extent, owns a viewport independently of track data.
+expression compiler. A typed view-level scale with a literal domain or a locus
+assembly extent owns a viewport independently of track data. The view can
+declare the scale itself or inherit it through the expression's scope.
 Keep domain-dependent branches hidden during scale construction, bind their
 expressions before the first data scan, and use the existing visibility refresh
 when the boolean changes. Validate the domain in the scope where it is read,
-including reads in derived parameters. Verify zoom across the threshold in
-both directions, startup inside it, and rejection of a data-dependent domain.
+including reads in derived parameters. Tests cover zoom across the threshold in
+both directions, startup inside it, first reveal through a scale declared on
+the track, and rejection of a data-dependent domain.
 
 ## Follow-ups in #740
 

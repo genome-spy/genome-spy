@@ -21,7 +21,6 @@ import { loadViewSubtreeData } from "../data/flowInit.js";
 
 describe("viewDataInit", () => {
     test.each([
-        "datum == null",
         "threshold > 0",
         "smoothed > 0",
         "fromScale > 0",
@@ -147,6 +146,59 @@ describe("viewDataInit", () => {
             expect(detail.flowHandle).toBe(handle);
         }
     );
+
+    test("loads a track when zooming its own fixed-domain scale reveals it", async () => {
+        const { view } = await createHeadlessEngine({
+            scales: { x: { type: "linear", domain: [0, 100], zoom: true } },
+            visible: { expr: "span(domain('x')) < 10" },
+            mark: "point",
+            data: { values: [{ x: 2 }] },
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        expect(view.isConfiguredVisible()).toBe(false);
+        expect(view.flowHandle).toBeUndefined();
+
+        await view.getScaleResolution("x").zoomTo([0, 4], 0);
+        await view.paramRuntime.whenPropagated();
+        expect(view.isConfiguredVisible()).toBe(true);
+        await vi.waitFor(() =>
+            expect(view.flowHandle?.collector.getItemCount()).toBe(1)
+        );
+    });
+
+    test("reveals a track without evaluating expressions under a hidden parent", async () => {
+        const context = createTestViewContext();
+        const reportError = vi.fn();
+        context.reportError = reportError;
+        const { view: root } = await createHeadlessEngine(
+            {
+                params: [{ name: "showPeer", value: false }],
+                vconcat: [
+                    {
+                        visible: false,
+                        vconcat: [{ visible: { expr: "42" }, mark: "point" }],
+                    },
+                    {
+                        name: "peer",
+                        visible: { expr: "showPeer" },
+                        mark: "point",
+                        data: { values: [{ x: 1 }] },
+                    },
+                ],
+            },
+            { context }
+        );
+        onTestFinished(() => root.disposeSubtree());
+        const peer = root.getDescendants().find((view) => view.name === "peer");
+        expect(peer.flowHandle).toBeUndefined();
+
+        root.paramRuntime.setValue("showPeer", true);
+        await vi.waitFor(() =>
+            expect(peer.flowHandle?.collector.getItemCount()).toBe(1)
+        );
+        expect(reportError).not.toHaveBeenCalled();
+    });
 
     test("restores loaded tracks to the shared domain and clears hidden root bounds", async () => {
         const { view: root } = await createHeadlessEngine({
