@@ -1001,6 +1001,7 @@ function createArrowConfig(mark, data, coords) {
             y2Offset: createNumericChannel(mark, "y2Offset", data),
             fill: createColorChannel(mark, "fill", data),
             stroke: createColorChannel(mark, "stroke", data),
+            opacity: createNumericChannel(mark, "opacity", data),
             fillOpacity: createNumericChannel(mark, "fillOpacity", data),
             strokeOpacity: createNumericChannel(mark, "strokeOpacity", data),
             strokeWidth: createNumericChannel(mark, "strokeWidth", data),

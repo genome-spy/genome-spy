@@ -3,9 +3,11 @@ import { platform } from "node:os";
 import { expect, test } from "playwright/test";
 
 const core = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
-for (const renderer of ["canvas", "webgl", "webgpu"])
+for (const [renderer, markType] of ["canvas", "webgl", "webgpu"].flatMap(
+    (renderer) => ["rect", "arrow"].map((type) => [renderer, type])
+))
     for (const dpr of [1, 2]) {
-        test(`${renderer} rectangle opacity at DPR ${dpr}`, async ({
+        test(`${renderer} ${markType} opacity at DPR ${dpr}`, async ({
             playwright,
             baseURL,
         }) => {
@@ -48,14 +50,23 @@ for (const renderer of ["canvas", "webgl", "webgpu"])
                 );
                 for (const scene of [
                     "paint",
-                    "shadow",
-                    ...(renderer === "webgl" ? ["conditional"] : []),
+                    ...(markType === "rect"
+                        ? [
+                              "shadow",
+                              ...(renderer === "webgl" ? ["conditional"] : []),
+                          ]
+                        : [
+                              "overlap",
+                              "conditional",
+                              ...(renderer === "canvas" ? ["acute"] : []),
+                          ]),
                 ]) {
                     const results = await page.evaluate(checkOpacity, {
                         core,
                         renderer,
                         dpr,
                         scene,
+                        markType,
                     });
                     for (const r of results) {
                         expect(r.dimensions).toEqual([
@@ -64,16 +75,32 @@ for (const renderer of ["canvas", "webgl", "webgpu"])
                         ]);
                         expect(r.restoreError).toBe(0);
                         expect(r.pick).toBe(
-                            scene === "conditional" ? "front" : "A"
+                            scene === "conditional" || scene === "overlap"
+                                ? "front"
+                                : "A"
                         );
                         if (scene === "conditional") {
                             expect(r.after).toEqual([102, 0, 153, 255]);
                             expect(r.zero).toEqual([0, 0, 255, 255]);
                         } else {
-                            expect(
-                                r.maxError,
-                                JSON.stringify(r)
-                            ).toBeLessThanOrEqual(2);
+                            if (scene !== "overlap")
+                                expect(
+                                    r.maxError,
+                                    JSON.stringify(r)
+                                ).toBeLessThanOrEqual(2);
+                            if (scene === "overlap")
+                                for (const [i, v] of [
+                                    17.05032, 21.42, 54.9576, 93.42792,
+                                ].entries())
+                                    expect(
+                                        Math.abs(
+                                            (i === 3
+                                                ? r.after[i]
+                                                : (r.after[i] * r.after[3]) /
+                                                  255) - v
+                                        ),
+                                        JSON.stringify(r)
+                                    ).toBeLessThanOrEqual(2);
                             expect(r.zeroAlpha).toBe(0);
                             if (scene === "paint")
                                 for (const [i, v] of [
@@ -101,9 +128,9 @@ for (const renderer of ["canvas", "webgl", "webgpu"])
 /**
  * Observe public live/export output. The shadow scene also exercises nested
  * view fading, minimum-size isolation and scratch reuse at zero/restore.
- * @param {{core:string,renderer:string,dpr:number,scene:string}} options
+ * @param {{core:string,renderer:string,dpr:number,scene:string,markType:string}} options
  */
-async function checkOpacity({ core, renderer, dpr, scene }) {
+async function checkOpacity({ core, renderer, dpr, scene, markType }) {
     const { embed } = await import(core + "minimal.js");
     await import(
         core +
@@ -116,6 +143,8 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
     await import(core + "rendering/registerSvg.js");
     const shadow = scene === "shadow",
         conditional = scene === "conditional",
+        overlap = scene === "overlap",
+        arrow = markType === "arrow",
         side = shadow ? 256 : 64;
     const host = globalThis.document.createElement("div");
     host.id = "opacity";
@@ -123,10 +152,10 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
     globalThis.document.body.append(host);
     const row = {
         id: "A",
-        x: shadow ? 0.375 : 0.25,
-        x2: shadow ? 0.625 : 0.75,
-        y: 0.25,
-        y2: 0.75,
+        x: arrow ? 0.125 : shadow ? 0.375 : 0.25,
+        x2: arrow ? 0.875 : shadow ? 0.625 : 0.75,
+        y: arrow ? 0.5 : 0.25,
+        y2: arrow ? 0.5 : 0.75,
         a: 10,
     };
     const rows = conditional
@@ -134,7 +163,12 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
               { ...row, id: "back", color: "blue" },
               { ...row, id: "front", color: "red" },
           ]
-        : [row];
+        : overlap
+          ? [
+                { ...row, id: "back", color: "red" },
+                { ...row, id: "front", color: "green" },
+            ]
+          : [row];
     /** @param {string} field */
     const position = (field) => ({
         field,
@@ -155,7 +189,8 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
         datasets: { rows },
         data: { name: "rows" },
         mark: {
-            type: "rect",
+            type: markType,
+            ...(arrow ? { filled: true, size: 16, headWidth: 2 } : {}),
             fill: "rgba(255,0,0,0.5)",
             stroke: "rgba(0,0,255,0.6)",
             strokeWidth: 8,
@@ -211,6 +246,25 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
                 : {}),
         },
     };
+    if (overlap) {
+        // Constant mark opacity must fade occurrences separately, including SVG paths.
+        delete spec.encoding.opacity;
+        spec.mark.opacity = { expr: "fade" };
+        spec.encoding.fill = {
+            field: "color",
+            type: "nominal",
+            scale: {
+                domain: ["red", "green"],
+                range: ["rgba(255,0,0,0.5)", "rgba(0,255,0,0.5)"],
+            },
+            legend: null,
+        };
+    }
+    if (scene === "acute") {
+        row.y = 0.125;
+        row.y2 = 0.875;
+        Object.assign(spec.mark, { size: 8, headAngle: 12, headWidth: 3 });
+    }
     if (shadow) {
         const { params, datasets, ...child } = spec;
         spec = {
@@ -307,6 +361,25 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
                         (mode === "hybrid")
                 )
                     throw Error("Unexpected SVG export path");
+                if (mode === "vector" && overlap && alpha < 1) {
+                    const svg = new globalThis.DOMParser().parseFromString(
+                        await result.blob.text(),
+                        "image/svg+xml"
+                    );
+                    const paths = Array.from(
+                        svg.querySelectorAll("path[opacity]")
+                    );
+                    if (
+                        paths.length !== 2 ||
+                        paths.some(
+                            (path) =>
+                                Number(path.getAttribute("opacity")) !== alpha
+                        )
+                    )
+                        throw Error(
+                            "Arrow opacity must remain on each occurrence path"
+                        );
+                }
                 return decode(result.blob);
             };
             const before = await capture(1),
@@ -340,7 +413,9 @@ async function checkOpacity({ core, renderer, dpr, scene }) {
                     );
             }
             const offset =
-                ((conditional ? 32 : 17) * dpr + 32 * dpr * side * dpr) * 4;
+                ((conditional || arrow ? 32 : 17) * dpr +
+                    (arrow && !conditional ? 37 : 32) * dpr * side * dpr) *
+                4;
             const canvas = host.querySelector("canvas");
             results.push({
                 mode,

@@ -167,7 +167,7 @@ A discrete field, datum, or expression on an offset channel can create a
 : Stroke color
 
 `opacity`
-: Opacity of the mark. Rules and rectangles fade their combined paints once, including rectangle shadows. Points and arrows use this as a default for `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
+: Opacity of the mark. Rules, rectangles and arrows fade their combined paints once, including rectangle shadows. Points use this as a default for `fillOpacity` or `strokeOpacity`, depending on the `filled` property.
 
 `fillOpacity`
 : Fill opacity
