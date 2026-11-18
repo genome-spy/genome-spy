@@ -11,7 +11,7 @@ import { collectSubtreeViews } from "../view/flowBuilder.js";
 /** @typedef {import("../view/view.js").default} View */
 /** @typedef {import("../data/dataFlow.js").default} DataFlow */
 
-/** @type {WeakMap<import("../types/viewContext.js").default, Map<View, Promise<DataFlow>>>} */
+/** @type {WeakMap<View, Promise<DataFlow>>} */
 const pendingInitializations = new WeakMap();
 
 /**
@@ -40,8 +40,9 @@ export async function initializeViewData(
         context.requestVisibilityRefresh = undefined;
     });
 
-    const { predicate: visibilityPredicate } =
-        getInitializationDependencies(viewRoot);
+    const { required } = getInitializationDependencies(viewRoot);
+    const visibilityPredicate = (/** @type {View} */ view) =>
+        required.has(view);
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
         dataFlow,
@@ -126,33 +127,31 @@ export async function refreshVisibility(root, affected) {
     context.highlightView(null);
     context.requestLayoutReflow();
 
-    const { predicate } = getInitializationDependencies(root);
+    const { required } = getInitializationDependencies(root);
+    const visible = (/** @type {View} */ view) => required.has(view);
     const reflowAfterLoading = () => {
-        if (context.requestVisibilityRefresh) {
-            root._invalidateCacheByPrefix("size", "progeny");
-            context.requestLayoutReflow();
-        }
+        if (!context.requestVisibilityRefresh) return;
+        root._invalidateCacheByPrefix("size", "progeny");
+        context.requestLayoutReflow();
     };
-    /** @param {(view: View) => boolean} filter */
-    const initialize = (filter) => startVisibleInitialization(root, filter);
     if (affected) {
-        // Keep unrelated first shows out of this write's batch. Already-wired
-        // views remain available as inputs while either batch attaches.
-        initialize(
+        // Include existing inputs so the affected views can attach to them.
+        initializeBatch(
+            root,
             (view) =>
-                predicate(view) &&
+                visible(view) &&
                 (affected.has(view) ||
                     view.getDataInitializationState() !== "none")
         );
-        const pending = pendingInitializations.get(context);
-        void initialize(predicate)
+        void initializeBatch(root, visible)
             ?.then(reflowAfterLoading)
             .catch(context.reportError);
-        await Promise.all(
-            new Set(affected.keys().map((view) => pending?.get(view)))
-        );
+        const pending = affected
+            .values()
+            .map((view) => pendingInitializations.get(view));
+        await Promise.all(new Set(pending));
     } else {
-        await initialize(predicate);
+        await initializeBatch(root, visible);
     }
     reflowAfterLoading();
 }
@@ -176,146 +175,119 @@ export function initializeVisibleViewData(
     textMetrics,
     candidateViews
 ) {
-    const candidates = candidateViews && new Set(candidateViews);
-    const { predicate: visibilityPredicate, producerPaths } =
-        getInitializationDependencies(viewRoot);
+    const { required, producerPaths } = getInitializationDependencies(viewRoot);
+    const visible = (/** @type {View} */ view) => required.has(view);
+    const candidates =
+        candidateViews && new Set([...candidateViews, ...producerPaths]);
     return (
-        startVisibleInitialization(
-            viewRoot,
-            visibilityPredicate,
-            (view) =>
-                !candidates || candidates.has(view) || producerPaths.has(view),
+        initializeBatch(viewRoot, visible, candidates, {
             dataFlow,
-            textMetrics
-        ) ?? Promise.resolve(dataFlow)
+            textMetrics,
+        }) ?? Promise.resolve(dataFlow)
     );
 }
 
 /**
  * @param {View} viewRoot
  * @param {(view: View) => boolean} visibilityPredicate
- * @param {(view: View) => boolean} [select]
- * @param {DataFlow} [dataFlow]
- * @param {import("../fonts/textMetrics.js").TextMetricsProvider} [textMetrics]
+ * @param {ReadonlySet<View>} [candidates]
+ * @param {Pick<import("../types/viewContext.js").default, "dataFlow" | "textMetrics">} [context]
  */
-function startVisibleInitialization(
+function initializeBatch(
     viewRoot,
     visibilityPredicate,
-    select,
-    dataFlow = viewRoot.context.dataFlow,
-    textMetrics = viewRoot.context.textMetrics
+    candidates,
+    { dataFlow, textMetrics } = viewRoot.context
 ) {
-    const viewsToInitialize = collectSubtreeViews(
-        viewRoot,
-        visibilityPredicate
-    ).filter(
-        (view) =>
-            (!select || select(view)) &&
-            view.getDataInitializationState() === "none"
+    const views = collectSubtreeViews(viewRoot, visibilityPredicate);
+    const viewsToInitialize = new Set(
+        views
+            .values()
+            .filter(
+                (view) =>
+                    (!candidates || candidates.has(view)) &&
+                    view.getDataInitializationState() === "none"
+            )
     );
 
-    if (!viewsToInitialize.length) return;
+    if (!viewsToInitialize.size) return;
 
-    let pending = pendingInitializations.get(viewRoot.context);
-    if (!pending) {
-        pending = new Map();
-        pendingInitializations.set(viewRoot.context, pending);
-    }
-    const completion = initializeNewlyVisibleViews(
-        viewRoot,
-        dataFlow,
-        textMetrics,
-        visibilityPredicate,
-        viewsToInitialize
-    ).finally(() => {
-        for (const view of viewsToInitialize) pending.delete(view);
+    const completion = load().finally(() => {
+        for (const view of viewsToInitialize)
+            pendingInitializations.delete(view);
     });
-    for (const view of viewsToInitialize) pending.set(view, completion);
+    for (const view of viewsToInitialize)
+        pendingInitializations.set(view, completion);
     return completion;
-}
 
-/**
- * @param {View} viewRoot
- * @param {DataFlow} dataFlow
- * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @param {(view: View) => boolean} visibilityPredicate
- * @param {View[]} viewsToInitialize
- */
-async function initializeNewlyVisibleViews(
-    viewRoot,
-    dataFlow,
-    textMetrics,
-    visibilityPredicate,
-    viewsToInitialize
-) {
-    const viewsToInitializeSet = new Set(viewsToInitialize);
-    const viewInitializationPredicate = (
-        /** @type {import("../view/view.js").default} */ view
-    ) => viewsToInitializeSet.has(view);
+    async function load() {
+        // Only pre-existing materializations can provide a complete cache. A new
+        // collector may receive just the tail of an in-flight load while fonts wait.
+        const existingCollectors = new Set(dataFlow.collectors);
 
-    // Only pre-existing materializations can provide a complete cache. A new
-    // collector may receive just the tail of an in-flight load while fonts wait.
-    const existingCollectors = new Set(dataFlow.collectors);
+        const { dataFlow: builtDataFlow } = initializeViewSubtree(
+            viewRoot,
+            dataFlow,
+            visibilityPredicate,
+            (view) => viewsToInitialize.has(view)
+        );
 
-    const { dataFlow: builtDataFlow } = initializeViewSubtree(
-        viewRoot,
-        dataFlow,
-        visibilityPredicate,
-        viewInitializationPredicate
-    );
+        // Newly visible subtrees may introduce text marks or measureText transforms
+        // that request fonts during initializeViewSubtree.
+        await textMetrics.waitUntilReady();
+        viewRoot.invalidateSizeCache();
 
-    // Newly visible subtrees may introduce text marks or measureText transforms
-    // that request fonts during initializeViewSubtree.
-    await textMetrics.waitUntilReady();
-    viewRoot.invalidateSizeCache();
+        /** @type {Set<Collector>} */
+        const replayRoots = new Set();
+        /** @type {Set<DataSource>} */
+        const sourcesToLoad = new Set();
+        for (const view of viewsToInitialize) {
+            for (const endpoint of [
+                view.flowHandle?.node,
+                ...(view.flowHandle?.terminals ?? []),
+                ...(view.flowHandle?.auxiliaryCollectors ?? []),
+            ]) {
+                let ancestor = endpoint;
+                while (ancestor && !(ancestor instanceof DataSource)) {
+                    if (
+                        ancestor instanceof Collector &&
+                        existingCollectors.has(ancestor)
+                    )
+                        break;
+                    ancestor = ancestor.parent;
+                }
 
-    /** @type {Set<Collector>} */
-    const replayRoots = new Set();
-    /** @type {Set<DataSource>} */
-    const sourcesToLoad = new Set();
-    for (const view of viewsToInitialize) {
-        for (const endpoint of [
-            view.flowHandle?.node,
-            ...(view.flowHandle?.terminals ?? []),
-            ...(view.flowHandle?.auxiliaryCollectors ?? []),
-        ]) {
-            let ancestor = endpoint;
-            while (
-                ancestor &&
-                !(ancestor instanceof DataSource) &&
-                !(
-                    ancestor instanceof Collector &&
-                    existingCollectors.has(ancestor)
-                )
-            ) {
-                ancestor = ancestor.parent;
-            }
-
-            if (ancestor instanceof Collector && ancestor.completed) {
-                replayRoots.add(ancestor);
-            } else {
-                const source = findAncestorDataSource(ancestor);
-                if (source) sourcesToLoad.add(source);
+                if (ancestor instanceof Collector && ancestor.completed) {
+                    replayRoots.add(ancestor);
+                } else {
+                    const source = findAncestorDataSource(ancestor);
+                    if (source) sourcesToLoad.add(source);
+                }
             }
         }
-    }
 
-    await loadViewSubtreeData(viewRoot, sourcesToLoad, visibilityPredicate, {
-        // Newly attached paths need a complete publication, including
-        // when an equivalent source is already loading.
-        queueReload: true,
-    });
+        await loadViewSubtreeData(
+            viewRoot,
+            sourcesToLoad,
+            visibilityPredicate,
+            {
+                // Newly attached paths need a complete publication, including
+                // when an equivalent source is already loading.
+                queueReload: true,
+            }
+        );
 
-    // Load side inputs before replaying a cached primary. A source load already
-    // covers every replay root downstream of that source.
-    for (const collector of replayRoots) {
-        if (!sourcesToLoad.has(findAncestorDataSource(collector))) {
-            collector.repropagate();
+        // Load side inputs before replaying a cached primary. A source load already
+        // covers every replay root downstream of that source.
+        for (const collector of replayRoots) {
+            if (!sourcesToLoad.has(findAncestorDataSource(collector))) {
+                collector.repropagate();
+            }
         }
-    }
-    broadcastSubtreeDataReady(viewRoot);
+        broadcastSubtreeDataReady(viewRoot);
 
-    return builtDataFlow;
+        return builtDataFlow;
+    }
 }
 
 export { initializeVisibleViewData as initializeViewDataForViews };
@@ -346,10 +318,5 @@ function getInitializationDependencies(root, selected) {
         for (const output of view.paramRuntime.outputs)
             include(output.producerView);
     }
-    return {
-        predicate: (/** @type {import("../view/view.js").default} */ view) =>
-            required.has(view),
-        producerPaths,
-        required,
-    };
+    return { required, producerPaths };
 }

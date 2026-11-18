@@ -1293,45 +1293,33 @@ export default class View {
         this.#disposers.length = 0;
 
         const handle = this.flowHandle;
+        const { dataFlow } = this.context;
 
-        const dataAncestors = this.getDataAncestors()
-            .values()
-            .drop(1)
-            .toArray();
+        const dataAncestors = this.dataParent?.getDataAncestors();
         // Deferred children still need authored inputs. A merged source may also
         // be an input owned by another branch.
         /** @param {import("../data/flowNode.js").default} node */
-        const retained = (node) =>
-            dataAncestors.some((view) =>
-                view.flowHandle?.terminals?.has(node)
-            ) ||
-            (node instanceof DataSource &&
-                !!node.shareKey &&
-                this.getLayoutAncestors()
-                    .at(-1)
-                    .getDescendants()
-                    .some(
-                        (view) =>
-                            view !== this &&
-                            view.flowHandle?.terminals?.has(node)
-                    ));
+        const retained = (node) => {
+            /** @param {View} view */
+            const ownsTerminal = (view) =>
+                view !== this && view.flowHandle?.terminals?.has(node);
+            if (dataAncestors?.some(ownsTerminal)) return true;
+            if (!(node instanceof DataSource) || !node.shareKey) return false;
+            const root = this.getLayoutAncestors().at(-1);
+            return root.getDescendants().some(ownsTerminal);
+        };
         for (const terminal of handle?.terminals ?? []) {
             // Descendants may still use this endpoint, including merged sources.
-            if (terminal.children.length === 0) {
-                this.context.dataFlow.pruneBranch(terminal, retained);
-            }
+            if (!terminal.children.length)
+                dataFlow.pruneBranch(terminal, retained);
         }
 
         if (handle?.collector) {
-            this.context.dataFlow.pruneBranch(handle.collector, retained);
+            dataFlow.pruneBranch(handle.collector, retained);
         }
 
-        if (
-            handle?.dataSource &&
-            handle.dataSource.view === this &&
-            !handle.dataSource.shareKey
-        ) {
-            this.context.dataFlow.removeDataSource(handle.dataSource);
+        if (handle?.dataSource?.view === this && !handle.dataSource.shareKey) {
+            dataFlow.removeDataSource(handle.dataSource);
         }
 
         this.paramRuntime.dispose();
@@ -1343,7 +1331,7 @@ export default class View {
         this.flowOutputs.clear();
 
         this.flowHandle = undefined;
-        this.context.dataFlow.loadingStatusRegistry.delete(this);
+        dataFlow.loadingStatusRegistry.delete(this);
     }
 
     /**
