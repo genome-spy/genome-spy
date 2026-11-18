@@ -47,7 +47,6 @@ export default class WebGLTextMark extends WebGLMark {
     getAttributes() {
         return [
             "uniqueId",
-            "facetIndex",
             "x",
             "x2",
             "y",
@@ -60,9 +59,10 @@ export default class WebGLTextMark extends WebGLMark {
             /** @type {import("../../../spec/channel.js").Channel} */ (
                 "y2Offset"
             ),
-            "color",
+            "fill",
             "size",
             "opacity",
+            "fillOpacity",
             "angle",
         ];
     }

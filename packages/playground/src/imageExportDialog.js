@@ -320,14 +320,19 @@ export default class ImageExportDialog extends LitElement {
 
     render() {
         return html`
-            <dialog @cancel=${() => (this.exportError = "")}>
+            <dialog
+                aria-labelledby="image-export-title"
+                @cancel=${() => (this.exportError = "")}
+            >
                 <form
                     @submit=${(/** @type {SubmitEvent} */ event) => {
                         event.preventDefault();
                         void this.#exportImage();
                     }}
                 >
-                    <header><h2>Export image</h2></header>
+                    <header>
+                        <h2 id="image-export-title">Export image</h2>
+                    </header>
                     <main>
                         <fieldset>
                             <legend>Format</legend>

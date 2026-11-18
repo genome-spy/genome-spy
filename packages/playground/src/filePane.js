@@ -5,7 +5,7 @@ import { read } from "vega-loader";
 
 /**
  * @typedef {Record<string, any>} Datum
- * @typedef {{ metadata: File, data: any }} FileEntry
+ * @typedef {{ metadata: File, data: any[] }} FileEntry
  */
 
 /** Dataset tabs, previews, and local file upload. */
@@ -17,6 +17,9 @@ export default class FilePane extends LitElement {
 
     /** @type {string | undefined} */
     #currentTab;
+
+    /** @type {string[]} */
+    #uploadErrors = [];
 
     static styles = [
         playgroundComponentStyles,
@@ -179,6 +182,9 @@ export default class FilePane extends LitElement {
                 aria-labelledby=${"tab-" + selectedIndex}
                 tabindex="0"
             >
+                <div role="status" class="error">
+                    ${this.#uploadErrors.map((error) => html`<p>${error}</p>`)}
+                </div>
                 ${
                     this.#currentTab === undefined
                         ? html` ${
@@ -272,32 +278,49 @@ export default class FilePane extends LitElement {
         `;
     }
 
-    /**
-     *
-     * @param {InputEvent} event
-     */
+    /** @param {Event} event */
     async _handleFiles(event) {
         const target = /** @type {HTMLInputElement} */ (event.target);
-        const fileList = target.files;
+        const selected = Array.from(target.files);
+        target.value = "";
 
-        for (const file of fileList) {
-            const textContent = await readFileAsync(file);
+        this.#uploadErrors = [];
+        this.requestUpdate();
 
-            const data = read(textContent, {
-                type: inferFileType(textContent, file.name),
-                parse: "auto",
-            });
+        /** @type {FileEntry[]} */
+        const uploaded = [];
+        const errors = [];
+        for (const file of selected) {
+            try {
+                const textContent = await readFileAsync(file);
+                const data = read(textContent, {
+                    type: inferFileType(textContent, file.name),
+                    parse: "auto",
+                });
+                if (!Array.isArray(data)) {
+                    throw new Error("A dataset must contain an array of rows.");
+                }
 
-            this.files[file.name] = {
-                metadata: file,
-                data,
-            };
-
-            this.#currentTab = file.name;
+                uploaded.push({ metadata: file, data });
+            } catch (error) {
+                const reason =
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to read the file.";
+                errors.push(`Could not add ${file.name}. ${reason}`);
+            }
         }
 
+        for (const entry of uploaded) {
+            const name = entry.metadata.name;
+            this.files[name] = entry;
+            this.#currentTab = name;
+        }
+        this.#uploadErrors = errors;
         this.requestUpdate();
-        this.dispatchEvent(new CustomEvent("upload", { detail: {} }));
+        if (uploaded.length) {
+            this.dispatchEvent(new CustomEvent("upload", { detail: {} }));
+        }
     }
 }
 
@@ -308,6 +331,10 @@ customElements.define("file-pane", FilePane);
  * @param {Datum[]} data
  */
 function makeDataTable(data) {
+    if (!data.length) {
+        return html`<p class="muted">This dataset has no rows.</p>`;
+    }
+
     const cols = Object.keys(data[0]);
     const rows = data.slice(0, 30);
 
@@ -356,9 +383,9 @@ function makeDataTable(data) {
  */
 function readFileAsync(file) {
     return new Promise((resolve, reject) => {
-        let reader = new FileReader();
+        const reader = new FileReader();
         reader.onload = () => resolve(/** @type {string} */ (reader.result));
-        reader.onerror = reject;
+        reader.onerror = () => reject(reader.error);
         reader.readAsText(file);
     });
 }

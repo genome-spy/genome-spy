@@ -32,7 +32,7 @@
 import { clampRange } from "vega-util";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { bandSpace } from "vega-scale";
-import clamp from "../utils/clamp.js";
+import { installBandScaleProperties } from "./bandScaleProperties.js";
 import { installGroupingGapProperties } from "../genome/indexGapMapping.js";
 import { createBandMapping, normalizeBandInterval } from "./bandMapping.js";
 
@@ -50,7 +50,6 @@ export default function scaleBand() {
     let round = false;
     /** @type {import("./scaleBand.js").CategoricalViewport | null} */
     let viewport = null;
-    const padding = { paddingInner: 0, paddingOuter: 0, align: 0.5 };
 
     /** @type {Map<number, ReturnType<typeof createMapping>>} */
     const mappings = new Map();
@@ -59,6 +58,7 @@ export default function scaleBand() {
             getMapping().position(value)
     );
     const gaps = installGroupingGapProperties(scale, invalidate);
+    const padding = installBandScaleProperties(scale, "band", invalidate);
 
     function invalidate() {
         mappings.clear();
@@ -101,26 +101,6 @@ export default function scaleBand() {
                 "Categorical scale viewports do not support round: true."
             );
         round = !!value;
-        return invalidate();
-    };
-    for (const key of /** @type {const} */ ([
-        "paddingInner",
-        "paddingOuter",
-        "align",
-    ])) {
-        /** @param {number} value */
-        const property = function (value) {
-            if (!arguments.length) return padding[key];
-            padding[key] = clamp(value);
-            return invalidate();
-        };
-        // @ts-expect-error Getter/setter overloads.
-        scale[key] = property;
-    }
-    // @ts-expect-error Getter/setter overloads.
-    scale.padding = function (value) {
-        if (!arguments.length) return padding.paddingInner;
-        padding.paddingInner = padding.paddingOuter = clamp(value);
         return invalidate();
     };
 

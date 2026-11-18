@@ -11,7 +11,8 @@ import { getRulerProjectionCoords } from "../view/scaleProjection.js";
 import { ViewInteractionListenerTracker } from "../view/viewInteractionListenerTracker.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
-import { startDocumentDrag } from "../utils/documentDrag.js";
+import { startPointerDrag } from "../utils/pointerDrag.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * Handles pointer-driven ruler updates for a single rendered view.
@@ -118,6 +119,42 @@ export class RulerMouseEventController {
         } else {
             this.#addMousedownListeners();
         }
+
+        if (this.clear !== "mouseup" && !this.eventConfig.filter) {
+            this.#addViewInteractionListener("touchtap", (event) =>
+                this.#setValue(this.#pointToRulerValue(event.point))
+            );
+        }
+
+        const { touchDrag } = this.config;
+        const implicit =
+            touchDrag === undefined &&
+            this.eventConfig.type === "mousedown" &&
+            !this.eventConfig.filter;
+        if (touchDrag || implicit) {
+            const enabled = isExprRef(touchDrag)
+                ? this.paramRuntime.createExpression(touchDrag)
+                : () => touchDrag;
+            this.#addViewInteractionListener("touchdragstart", (event) => {
+                const drag = event.uiEvent;
+                if (
+                    "activeEvent" in drag &&
+                    !event.stopped &&
+                    (implicit || enabled())
+                ) {
+                    if (
+                        !drag.ruler ||
+                        (!implicit && !drag.ruler.overridesPan)
+                    ) {
+                        drag.ruler = {
+                            start: () =>
+                                this.#startDrag(event, drag.activeEvent),
+                            overridesPan: !implicit,
+                        };
+                    }
+                }
+            });
+        }
     }
 
     #addMousemoveListeners() {
@@ -149,40 +186,7 @@ export class RulerMouseEventController {
                 return;
             }
 
-            event.stopPropagation();
-            this.dragging = true;
-            // Keep a document drag anchored to its initiating facet cell.
-            const projectionCoords = getRulerProjectionCoords(
-                this.gridChild,
-                this.channels,
-                event.point
-            );
-            this.#setValue(
-                this.#pointToRulerValue(event.point, projectionCoords)
-            );
-
-            const viewOffset = Point.fromMouseEvent(event.mouseEvent).subtract(
-                new Point(event.point.x, event.point.y)
-            );
-
-            const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
-                const point = Point.fromMouseEvent(event).subtract(viewOffset);
-                this.#setValue(
-                    this.#pointToRulerValue(point, projectionCoords)
-                );
-            };
-
-            this.#cancelActiveDrag = startDocumentDrag({
-                onMove: mouseMoveListener,
-                onFinish: () => {
-                    this.dragging = false;
-                },
-                onRelease: () => {
-                    if (this.clear === "mouseup") {
-                        this.#clearValue();
-                    }
-                },
-            });
+            this.#startDrag(event);
         });
 
         if (this.clear === "mouseleave") {
@@ -199,6 +203,45 @@ export class RulerMouseEventController {
                 `Ruler param "${this.paramName}" currently supports only "mouseleave", "mouseup", or false in "clear" for mousedown rulers.`
             );
         }
+    }
+
+    /**
+     * @param {import("../utils/interaction.js").default} event
+     * @param {PointerEvent} [touchEvent]
+     */
+    #startDrag(event, touchEvent) {
+        event.stopPropagation();
+        this.#cancelActiveDrag();
+        this.dragging = true;
+        // Keep the drag anchored to its initiating facet cell.
+        const projectionCoords = getRulerProjectionCoords(
+            this.gridChild,
+            this.channels,
+            event.point
+        );
+        const viewOffset = Point.fromMouseEvent(event.mouseEvent).subtract(
+            new Point(event.point.x, event.point.y)
+        );
+        const onMove = (/** @type {MouseEvent} */ pointer) => {
+            const point = Point.fromMouseEvent(pointer).subtract(viewOffset);
+            this.#setValue(this.#pointToRulerValue(point, projectionCoords));
+        };
+
+        this.#cancelActiveDrag = startPointerDrag(
+            touchEvent ?? event.mouseEvent,
+            {
+                onMove,
+                capture: !touchEvent,
+                onFinish: (released) => {
+                    this.dragging = false;
+                    if ((released || touchEvent) && this.clear === "mouseup") {
+                        this.#clearValue();
+                    }
+                },
+            }
+        );
+        onMove(touchEvent ?? event.mouseEvent);
+        return this.#cancelActiveDrag;
     }
 
     /**

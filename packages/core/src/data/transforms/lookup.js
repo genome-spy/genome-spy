@@ -1,6 +1,8 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import createCloner from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
+import DerivedCollector from "../derivedCollector.js";
+import { isDataReady } from "../dataReadiness.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
@@ -98,7 +100,6 @@ export default class LookupTransform extends Transform {
         let bufferedFiles = [];
         /** @type {FlowBatch | undefined} */
         let bufferedBatch;
-        let hasBufferedBatch = false;
 
         /** @type {(datum: Datum) => Datum} */
         let clone;
@@ -108,8 +109,11 @@ export default class LookupTransform extends Transform {
         let writeValues;
 
         const firstAccessor = primaryAccessors[0];
-        const isForeignDataReady = options.isForeignDataReady ?? (() => true);
-        if (options.isForeignDataReady)
+        const derived = foreignCollector instanceof DerivedCollector;
+        const isForeignDataReady = derived
+            ? () => isDataReady(foreignCollector)
+            : (options.isForeignDataReady ?? (() => true));
+        if (derived || options.isForeignDataReady)
             this.areDataDependenciesAvailable = () =>
                 foreignCollector.completed &&
                 !foreignCollector.disposed &&
@@ -250,6 +254,18 @@ export default class LookupTransform extends Transform {
             propagate(datum);
         };
 
+        const clearBufferedBatch = () => {
+            bufferedData = [];
+            bufferedFiles = [];
+            bufferedBatch = undefined;
+            index = null;
+            if (implicitValues) {
+                valueAccessors = [];
+                outputFields = [];
+            }
+            this.handle = bufferDatum;
+        };
+
         /**
          * Builds one batch-local index and replays the batch in input order.
          */
@@ -257,9 +273,9 @@ export default class LookupTransform extends Transform {
             ensureIndex(bufferedData);
             this.handle = specializeAndPropagate;
             clone = undefined;
-            if (hasBufferedBatch) {
+            if (bufferedBatch) {
                 // Forward the delayed boundary immediately before its rows.
-                beginBatch(/** @type {FlowBatch} */ (bufferedBatch));
+                beginBatch(bufferedBatch);
             }
             const propagate = createFileBatchPropagator(
                 createFileBatchAccessor(bufferedData, bufferedFiles),
@@ -274,16 +290,7 @@ export default class LookupTransform extends Transform {
                 propagate(datum);
             }
 
-            bufferedData = [];
-            bufferedFiles = [];
-            bufferedBatch = undefined;
-            hasBufferedBatch = false;
-            index = null;
-            if (implicitValues) {
-                valueAccessors = [];
-                outputFields = [];
-            }
-            this.handle = bufferDatum;
+            clearBufferedBatch();
         };
 
         /** @param {Datum} datum */
@@ -297,16 +304,7 @@ export default class LookupTransform extends Transform {
             pendingInput = false;
             clone = undefined;
             if (selfInput) {
-                bufferedData = [];
-                bufferedFiles = [];
-                bufferedBatch = undefined;
-                hasBufferedBatch = false;
-                index = null;
-                if (implicitValues) {
-                    valueAccessors = [];
-                    outputFields = [];
-                }
-                this.handle = bufferDatum;
+                clearBufferedBatch();
             } else {
                 // The cached table index remains valid until the foreign collector updates.
                 this.handle = specializeAndPropagate;
@@ -328,11 +326,10 @@ export default class LookupTransform extends Transform {
                     return;
                 }
                 // A new boundary proves that the preceding group is complete.
-                if (hasBufferedBatch || bufferedData.length > 0) {
+                if (bufferedBatch || bufferedData.length > 0) {
                     flushBufferedBatch();
                 }
                 bufferedBatch = flowBatch;
-                hasBufferedBatch = true;
             } else {
                 if (!isForeignDataReady()) {
                     requestForeignData();
@@ -351,8 +348,15 @@ export default class LookupTransform extends Transform {
 
         const complete = this.complete.bind(this);
         this.complete = () => {
+            if (derived && (pendingInput || !isForeignDataReady())) {
+                // The side binding can replay this lookup once its table arrives.
+                // Downstream transforms must not see the skipped batch as empty input.
+                this.completed = true;
+                if (isForeignDataReady()) this.requestRepropagate();
+                return;
+            }
             // No later boundary exists to flush the final group.
-            if (selfInput && (hasBufferedBatch || bufferedData.length > 0)) {
+            if (selfInput && (bufferedBatch || bufferedData.length > 0)) {
                 flushBufferedBatch();
             }
             if (foreignCollector && !pendingInput && !isForeignDataReady()) {

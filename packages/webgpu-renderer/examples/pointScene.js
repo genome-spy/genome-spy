@@ -5,9 +5,10 @@ import { ordinalScale } from "../src/scales/ordinal.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @returns {Promise<() => void>}
+ * @param {{ opacity?: number, strokeAlign?: number, strokeOpacity?: number }} [options]
+ * @returns {Promise<{cleanup: () => void, update: (options: {opacity?: number, strokeAlign?: number, strokeOpacity?: number}) => void}>}
  */
-export default async function runPointScene(canvas) {
+export default async function runPointScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
 
     const count = 160;
@@ -48,9 +49,10 @@ export default async function runPointScene(canvas) {
         fill[i] = xField % palette.length;
     }
 
-    const { series, scales } = renderer.createMark(pointMark, {
+    const mark = renderer.createMark(pointMark, {
         count,
         channels: {
+            opacity: { value: options.opacity ?? 1, dynamic: true },
             x: {
                 data: x,
                 type: "u32",
@@ -86,9 +88,13 @@ export default async function runPointScene(canvas) {
             },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },
             strokeWidth: { value: 1.0 },
+            strokeOpacity: { value: 1, dynamic: true },
+            strokeAlign: { value: 1, type: "u32", dynamic: true },
             angle: { data: angle, type: "f32" },
         },
     });
+
+    const { series, scales, values } = mark;
 
     const updateRanges = ({ width, height }) => {
         scales.x.setRange([0, width]);
@@ -109,10 +115,22 @@ export default async function runPointScene(canvas) {
         count
     );
 
-    renderer.render();
+    /** @param {{opacity?: number, strokeAlign?: number, strokeOpacity?: number}} next */
+    const update = (next) => {
+        mark.batchUpdates(() => {
+            values.opacity.set(next.opacity ?? 1);
+            values.strokeAlign.set(next.strokeAlign ?? 1);
+            values.strokeOpacity.set(next.strokeOpacity ?? 1);
+        });
+        renderer.render();
+    };
+    update(options);
 
-    return () => {
-        cleanupResize();
-        renderer.destroy();
+    return {
+        update,
+        cleanup() {
+            cleanupResize();
+            renderer.destroy();
+        },
     };
 }

@@ -3,8 +3,8 @@ export const TEXT_LAYER_FOREGROUND = 1;
 
 /**
  * @param {import("../../index.js").ChannelConfigInput | import("../../index.js").ConditionalChannelConfigInput | undefined} channel
- * @param {number | number[]} fallback
- * @param {(value: number | number[]) => boolean} predicate
+ * @param {import("../../index.d.ts").NumericValue} fallback
+ * @param {(value: import("../../index.d.ts").NumericValue) => boolean} predicate
  * @returns {boolean}
  */
 function channelMayMatch(channel, fallback, predicate) {
@@ -37,14 +37,14 @@ function channelMayMatch(channel, fallback, predicate) {
     return false;
 }
 
-/** @param {number | number[]} value */
+/** @param {import("../../index.d.ts").NumericValue} value */
 function isPositive(value) {
     return typeof value !== "number" || value > 0;
 }
 
-/** @param {number | number[]} value */
+/** @param {import("../../index.d.ts").NumericValue} value */
 function hasPositiveAlpha(value) {
-    return !Array.isArray(value) || value.length < 4 || value[3] > 0;
+    return typeof value === "number" || value.length < 4 || value[3] > 0;
 }
 
 /**

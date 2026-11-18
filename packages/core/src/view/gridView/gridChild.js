@@ -855,12 +855,20 @@ export default class GridChild {
      */
     arrangeTitle(context, viewportCoords, options, axes = this.axes) {
         if (this.title) {
+            const { titleSpec } = this.title;
+            const plotCoords =
+                titleSpec.frame === "bounds"
+                    ? viewportCoords
+                    : this.view.getTitlePlotCoords(
+                          viewportCoords,
+                          context.getDevicePixelRatio()
+                      );
             this.title.arrange(
                 context,
                 getTitleCoords(
-                    viewportCoords,
+                    plotCoords,
                     viewportCoords.expand(getGuideOverhang(axes, this.legends)),
-                    this.title.titleSpec
+                    titleSpec
                 ),
                 options
             );

@@ -92,7 +92,7 @@ function createViewStub(initialWindowSize = 300) {
     );
     const setWindowSize = paramRuntime.allocateSetter(
         "windowSize",
-        initialWindowSize
+        /** @type {number | undefined} */ (initialWindowSize)
     );
     const setUrl = paramRuntime.allocateSetter("bamUrl", "reads.bam");
     const setIndexUrl = paramRuntime.allocateSetter("baiUrl", "reads.bai");
@@ -189,6 +189,81 @@ describe("BamSource", () => {
             { chrom: "chr1", start: 0, end: 300 },
         ]);
     });
+
+    test.each([undefined, NaN])(
+        "skips a queued BAM read when the window size evaluates to %s",
+        async (windowSize) => {
+            vi.useFakeTimers();
+            const view = createViewStub();
+            const source = new BamSource(
+                {
+                    type: "bam",
+                    url: "reads.bam",
+                    debounceMode: "window",
+                    windowSize: { expr: "windowSize" },
+                },
+                /** @type {any} */ (view)
+            );
+
+            source.onDomainChanged([0, 200]);
+            view.setWindowSize(windowSize);
+            await view.paramRuntime.whenPropagated();
+            await vi.runAllTimersAsync();
+
+            expect(openedFiles).toEqual([]);
+            source.dispose();
+        }
+    );
+
+    test.each(
+        /** @type {[string, "domain" | "window", number[]][]} */ ([
+            ["zooming out during domain debounce", "domain", [0, 500]],
+            ["zooming out during window debounce", "window", [0, 500]],
+            ["panning past the genome", "window", [1050, 1100]],
+        ])
+    )(
+        "clears the URL reload status after %s",
+        async (_, debounceMode, domain) => {
+            vi.useFakeTimers();
+            const view = createViewStub();
+            const report = vi.spyOn(
+                view.context.dataFlow.loadingStatusRegistry,
+                "setSource"
+            );
+            const source = new BamSource(
+                {
+                    type: "bam",
+                    url: { expr: "bamUrl" },
+                    debounceMode,
+                    windowSize: 300,
+                },
+                /** @type {any} */ (view)
+            );
+
+            view.setUrl("other.bam");
+            await view.paramRuntime.whenPropagated();
+            expect(report).toHaveBeenLastCalledWith(
+                source,
+                "loading",
+                undefined,
+                undefined,
+                undefined
+            );
+
+            source.onDomainChanged(domain);
+            await vi.runAllTimersAsync();
+
+            expect(openedFiles).toEqual([]);
+            expect(report).toHaveBeenLastCalledWith(
+                source,
+                "complete",
+                undefined,
+                undefined,
+                undefined
+            );
+            source.dispose();
+        }
+    );
 
     test("replaces the handle once with a grouped URL pair", async () => {
         const view = createViewStub();

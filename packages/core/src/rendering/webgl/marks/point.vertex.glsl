@@ -2,6 +2,7 @@ flat out float vRadius;
 flat out float vRadiusWithPadding;
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
+flat out lowp float vOpacityFactor;
 flat out lowp float vShape;
 flat out lowp float vHalfStrokeWidth;
 flat out mat2 vRotationMatrix;
@@ -106,8 +107,9 @@ void main(void) {
 		}
 	}
 
-	float fillOpa = getScaled_fillOpacity() * opacity;
-	float strokeOpa = strokeOpacity * opacity;
+	float fillOpa = getScaled_fillOpacity();
+	float strokeOpa = strokeOpacity;
+    vOpacityFactor = opacity;
 
 	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
 	bool circle = vShape == 0.0;

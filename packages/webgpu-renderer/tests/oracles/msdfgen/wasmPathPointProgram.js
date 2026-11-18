@@ -7,7 +7,7 @@ import PathPointProgram, {
 
 export const RGBA8_PATH_POINT_SHADER_BODY = PATH_POINT_SHADER_BODY.replace(
     "return median * devicePixelsPerAtlas;",
-    `let atlasDistance = (median * 255.0 - 128.0) / 127.0 * params.uSpread;
+    `let atlasDistance = (median - 0.5) * (2.0 * params.uSpread);
     return atlasDistance * devicePixelsPerAtlas;`
 );
 

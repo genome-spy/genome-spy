@@ -371,3 +371,51 @@ describe("collected legend routing", () => {
         ).toEqual(["First"]);
     });
 });
+
+test("wrapped collected legends discard old indices when visible entries change", async () => {
+    const root = await createAndInitialize(
+        {
+            config: {
+                legend: {
+                    disable: false,
+                    layout: { bottom: { wrap: true, direction: "horizontal" } },
+                },
+            },
+            resolve: {
+                legend: { color: "collected" },
+                scale: { color: "independent" },
+            },
+            vconcat: ["prediction", "pisa", "ism"].map((name) => ({
+                ...makeColorUnit(name, name, "bottom"),
+                encoding: {
+                    x: { field: "value", type: "quantitative" },
+                    color: {
+                        field: "value",
+                        type: "quantitative",
+                        legend: {
+                            orient: "bottom",
+                            title: name,
+                            gradientLength: 180,
+                            direction: "horizontal",
+                        },
+                    },
+                },
+            })),
+        },
+        ConcatView
+    );
+    const [region] = getDirectLegendRegions(root);
+    const legends = getLegendViews(region);
+    expect(legends).toHaveLength(3);
+    region.prepareLayoutSize(200, 100);
+    const before = region.getPerpendicularSize();
+    // A track can become hidden before the next layout pass updates wrapping.
+    legends[1].setActivePredicate(() => false);
+    expect(region.getPerpendicularSize()).toBeGreaterThan(0);
+    region.prepareLayoutSize(200, 100);
+    expect(region.getPerpendicularSize()).toBeLessThan(before);
+    legends[1].setActivePredicate(() => true);
+    expect(region.getPerpendicularSize()).toBeGreaterThan(0);
+    region.prepareLayoutSize(200, 100);
+    expect(region.getPerpendicularSize()).toBe(before);
+});

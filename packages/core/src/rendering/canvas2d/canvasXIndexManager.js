@@ -2,6 +2,7 @@ import { countPerformance } from "../../debug/performanceProfiler.js";
 import {
     buildMarkXIndex,
     createMarkXIndexSpec,
+    getMarkXIndexScaleResolution,
     resolveMarkXIndexQuery,
 } from "../xIndex/markXIndex.js";
 
@@ -26,12 +27,8 @@ export default class CanvasXIndexManager {
      */
     prepare(mark) {
         this.#preparedEntry = undefined;
-        if (mark.encoders.facetIndex) {
-            return this.#fallback();
-        }
-
         const collector = mark.unitView.getCollector();
-        const xScaleResolution = mark.unitView.getScaleResolution("x");
+        const xScaleResolution = getMarkXIndexScaleResolution(mark);
         const xIndexDomain = xScaleResolution?.zoomExtent;
         let markEntry = this.#marks.get(mark);
         if (

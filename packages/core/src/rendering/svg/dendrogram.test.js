@@ -11,6 +11,7 @@ import {
     resolveThemeSelection,
 } from "../../config/themes.js";
 import UnitView from "../../view/unitView.js";
+import { createTopLevelDatasetApi } from "../../view/viewMutationApi.js";
 import { createSvg } from "./index.js";
 
 const baseConfig = resolveBaseConfig({
@@ -39,7 +40,7 @@ test.each([false, true])(
         const rows = spec.surround.left[0].data.values;
         spec.datasets = { samples: rows };
         sampleTree.data = { name: "samples" };
-        const { view, context } = await createHeadlessEngine(spec, {
+        const { view } = await createHeadlessEngine(spec, {
             contextOptions: {
                 baseConfig,
                 isViewConfiguredVisible: (view) => view.isVisibleInSpec(),
@@ -57,8 +58,8 @@ test.each([false, true])(
                 for (const row of rows)
                     if (row.parent === "sCA")
                         row.childOrder = 1 - row.childOrder;
-                context.dataFlow.updateNamedDataBinding(
-                    view.namedDataScope.getLocalBinding("samples"),
+                createTopLevelDatasetApi({ viewRoot: view }).set(
+                    "samples",
                     rows
                 );
                 await view.paramRuntime.whenPropagated();
