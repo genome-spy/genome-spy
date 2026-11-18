@@ -47,8 +47,6 @@
         }
       },
 
-      "transform": [{ "type": "filter", "expr": "datum.score > 0" }],
-
       "encoding": {
         "x": {
           "chrom": "chrom",
@@ -59,7 +57,7 @@
         "y": {
           "field": "score",
           "type": "quantitative",
-          "scale": { "nice": true, "zero": false },
+          "scale": { "nice": true, "zero": true },
           "title": "Coverage"
         }
       },

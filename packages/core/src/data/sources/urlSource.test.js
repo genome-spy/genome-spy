@@ -27,10 +27,10 @@ afterEach(() => {
  * Uses the platform gzip stream so the test covers the same byte shape that
  * UrlSource sees in browsers.
  *
- * @param {string} text
+ * @param {BlobPart} data
  */
-async function gzipText(text) {
-    const stream = new Blob([text])
+async function gzip(data) {
+    const stream = new Blob([data])
         .stream()
         .pipeThrough(new CompressionStream("gzip"));
 
@@ -159,37 +159,38 @@ test("UrlSource infers and reads WIG data", async () => {
     ]);
 });
 
-test("UrlSource infers and reads Arrow IPC data", async () => {
-    const bytes = tableToIPC(
-        tableFromArrays({
-            sample: ["S1", "S2"],
-            value: [10, 20],
-        }),
-        { format: "file" }
-    );
+test.each([
+    ["example.arrow", false],
+    ["example.arrow.gz", true],
+    ["example.arrow.gz", false],
+])(
+    "UrlSource reads Arrow IPC from %s (compressed: %s)",
+    async (url, compressed) => {
+        const bytes = tableToIPC(
+            tableFromArrays({
+                sample: ["S1", "S2"],
+                value: [10, 20],
+            }),
+            { format: "file" }
+        );
+        const buffer = new Uint8Array(bytes).buffer;
+        const body = compressed ? await gzip(buffer) : buffer;
 
-    global.fetch = /** @type {any} */ (
-        vi.fn(
-            async () =>
-                new Response(new Uint8Array(bytes).buffer, { status: 200 })
-        )
-    );
+        global.fetch = /** @type {any} */ (
+            vi.fn(async () => new Response(body, { status: 200 }))
+        );
 
-    const source = new UrlSource(
-        {
-            url: "example.arrow",
-        },
-        createViewStub()
-    );
+        const source = new UrlSource({ url }, createViewStub());
 
-    expect(await collectSource(source)).toEqual([
-        { sample: "S1", value: 10 },
-        { sample: "S2", value: 20 },
-    ]);
-});
+        expect(await collectSource(source)).toEqual([
+            { sample: "S1", value: 10 },
+            { sample: "S2", value: 20 },
+        ]);
+    }
+);
 
 test("UrlSource reads gzip-compressed TSV content transparently", async () => {
-    const compressed = await gzipText("chrom\tstart\nchr1\t10\n");
+    const compressed = await gzip("chrom\tstart\nchr1\t10\n");
 
     global.fetch = /** @type {any} */ (
         vi.fn(
@@ -222,7 +223,7 @@ test("UrlSource infers and reads a gzip-compressed VCF", async () => {
     const text = `##fileformat=VCFv4.3
 #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO
 chr1\t101\trs1\tA\tT\t50\tPASS\t.`;
-    const compressed = await gzipText(text);
+    const compressed = await gzip(text);
 
     global.fetch = /** @type {any} */ (
         vi.fn(
@@ -284,7 +285,7 @@ test("UrlSource accepts already-decoded content behind a .gz URL", async () => {
 });
 
 test("UrlSource reads bgzip-compressed TSV content transparently", async () => {
-    const compressed = await gzipText("chrom\tstart\nchr2\t20\n");
+    const compressed = await gzip("chrom\tstart\nchr2\t20\n");
 
     global.fetch = /** @type {any} */ (
         vi.fn(
@@ -339,9 +340,9 @@ test("UrlSource accepts explicit columns for headerless TSV", async () => {
 });
 
 test("UrlSource reads gzip-compressed URL lists transparently", async () => {
-    const list = await gzipText("url\npart-1.tsv\npart-2.tsv\n");
-    const part1 = await gzipText("sample\tvalue\nA\t1\n");
-    const part2 = await gzipText("sample\tvalue\nB\t2\n");
+    const list = await gzip("url\npart-1.tsv\npart-2.tsv\n");
+    const part1 = await gzip("sample\tvalue\nA\t1\n");
+    const part2 = await gzip("sample\tvalue\nB\t2\n");
 
     global.fetch = /** @type {any} */ (
         vi.fn(async (url) => {
@@ -375,7 +376,6 @@ test("UrlSource reads gzip-compressed URL lists transparently", async () => {
     const source = new UrlSource(
         {
             url: { urlsFromFile: "/data/variants.tsv.gz", type: "tsv" },
-            format: { type: "tsv" },
         },
         createViewStub()
     );
@@ -625,6 +625,33 @@ test.each([false, true])(
         expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
     }
 );
+
+test("replacing a pending URL list skips the superseded manifest entries", async () => {
+    const manifest = Promise.withResolvers();
+    global.fetch = vi.fn(async (url) =>
+        url === "parts.tsv" ? manifest.promise : new Response('[{"value":"B"}]')
+    );
+    const source = new UrlSource(
+        { url: { urlsFromFile: "parts.tsv" } },
+        createViewStub()
+    );
+    const collector = new Collector();
+    source.addChild(collector);
+
+    const pending = source.load();
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
+
+    source.params.url = "b.json";
+    await source.load();
+    manifest.resolve(new Response("url\na.json\n"));
+    await pending;
+
+    expect(global.fetch).toHaveBeenCalledWith("parts.tsv", {
+        signal: expect.objectContaining({ aborted: true }),
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(Array.from(collector.getData())).toEqual([{ value: "B" }]);
+});
 
 test("disposal aborts a pending URL list and prevents future loading", async () => {
     const response = Promise.withResolvers();

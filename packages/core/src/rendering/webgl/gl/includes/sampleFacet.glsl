@@ -7,13 +7,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -25,22 +25,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 

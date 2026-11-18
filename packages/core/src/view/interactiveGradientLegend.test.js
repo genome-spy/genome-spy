@@ -543,35 +543,43 @@ test("shared quantitative color/secondary-position fields retain missing values 
     );
 });
 
-test("collected brush expressions must resolve the same bindings", async () => {
-    const children = [0.2, 0.8].map((opacity, index) => {
-        const child = /** @type {any} */ (spec());
-        child.name = "source" + index;
-        child.params[0].push = "outer";
-        child.params[0].select.mark = { fillOpacity: { expr: "localOpacity" } };
-        child.params.push({ name: "localOpacity", value: opacity });
-        return child;
-    });
-    const input = {
-        params: [{ name: "scores" }],
-        resolve: { scale: { color: "shared" }, legend: { color: "shared" } },
-        hconcat: children,
-    };
-    await expect(
-        createTestEmbed(/** @type {any} */ (input), {
-            contextOptions: { baseConfig },
-        })
-    ).rejects.toThrow(/conflicting interaction settings/);
-    // Equal source text is compatible when both aliases actually read the same outer ref.
-    for (const child of children) child.params.pop();
-    await createTestEmbed(
-        /** @type {any} */ ({
-            ...input,
-            params: [...input.params, { name: "localOpacity", value: 0.5 }],
-        }),
-        { contextOptions: { baseConfig } }
-    );
-});
+test.each(["mark", "touchDrag"])(
+    "collected brush %s expressions must resolve the same bindings",
+    async (property) => {
+        const children = [0.2, 0.8].map((opacity, index) => {
+            const child = /** @type {any} */ (spec());
+            child.name = "source" + index;
+            child.params[0].push = "outer";
+            const expr = { expr: "localSetting" };
+            child.params[0].select[property] =
+                property === "mark" ? { fillOpacity: expr } : expr;
+            child.params.push({ name: "localSetting", value: opacity });
+            return child;
+        });
+        const input = {
+            params: [{ name: "scores" }],
+            resolve: {
+                scale: { color: "shared" },
+                legend: { color: "shared" },
+            },
+            hconcat: children,
+        };
+        await expect(
+            createTestEmbed(/** @type {any} */ (input), {
+                contextOptions: { baseConfig },
+            })
+        ).rejects.toThrow(/conflicting interaction settings/);
+        // Equal source text is compatible when both aliases actually read the same outer ref.
+        for (const child of children) child.params.pop();
+        await createTestEmbed(
+            /** @type {any} */ ({
+                ...input,
+                params: [...input.params, { name: "localSetting", value: 0.5 }],
+            }),
+            { contextOptions: { baseConfig } }
+        );
+    }
+);
 
 test("rect appearance overrides update reactively and cleared feedback keeps its space", async () => {
     const input = spec();

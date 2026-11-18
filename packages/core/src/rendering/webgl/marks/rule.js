@@ -35,7 +35,6 @@ export default class WebGLRuleMark extends WebGLMark {
     getAttributes() {
         return [
             "uniqueId",
-            "facetIndex",
             "x",
             "x2",
             "y",

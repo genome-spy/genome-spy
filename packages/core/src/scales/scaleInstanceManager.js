@@ -4,12 +4,13 @@ import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { normalizeBandScaleProperty } from "./bandScaleProperties.js";
 import { isScalar } from "../utils/variableTools.js";
 
 import createScale, {
     configureScaleProperties,
     configureScaleRange,
-    configureDomain,
+    applyScaleDomain,
     getScalePropertyDefaults,
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -19,16 +20,24 @@ import {
     normalizeGapPositions,
 } from "../genome/indexGapMapping.js";
 
+const MANAGED_SCALE_PROPERTIES = /** @type {const} */ ([
+    "assembly",
+    "domainIndexer",
+    "gapPositions",
+    "gapWidth",
+    "viewport",
+]);
+
 /**
  * @typedef {{
  *   scale: import("../types/encoder.js").VegaScale,
  *   props: import("../spec/scale.js").Scale,
+ *   padding: [number, number] | undefined,
  *   domain: readonly any[],
  *   gapDomain: readonly number[] | undefined,
  *   viewport: import("./scaleBand.js").CategoricalViewport | null | undefined,
  *   gapPositions: readonly number[],
  *   gapWidth: number | null,
- *   configuredRange: any[] | undefined,
  *   range: any[] | undefined,
  *   prepared: (import("../types/encoder.js").VegaScale & {props: import("../spec/scale.js").Scale}) | undefined
  * }} MappingConfiguration
@@ -58,20 +67,8 @@ export default class ScaleInstanceManager {
     /** @type {import("../paramRuntime/types.js").OperationRef<MappingConfiguration | null>} */
     mapping;
 
-    /** @type {import("../paramRuntime/types.js").WritableParamRef<{ range: any[], configuredRange: any[] | undefined, props: import("../spec/scale.js").Scale } | null>} */
-    #rangeCommand;
-
-    // A public range command is invalidated by the first reactive range change.
-    #rangeCommandActive = false;
-
-    /** @type {(range: any[]) => void} */
-    #setRange;
-
-    /** @type {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} */
+    /** @type {(expr: import("../spec/parameter.js").ExprRef, layoutProperty?: string) => import("../paramRuntime/types.js").ExprRefFunction} */
     #createExpression;
-
-    /** @type {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} */
-    #validateGapExpression;
 
     /** @type {() => void} */
     #onRangeChange;
@@ -105,13 +102,12 @@ export default class ScaleInstanceManager {
     /**
      * @param {object} options
      * @param {() => ViewParamRuntime} options.getRuntime
-     * @param {(expr: import("../spec/parameter.js").ExprRef) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+     * @param {(expr: import("../spec/parameter.js").ExprRef, layoutProperty?: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
      * @param {(domain: any[]) => void} options.onDomainChange
      * @param {(viewport: import("./scaleBand.js").CategoricalViewport | null) => void} [options.onViewportChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} options.getGenomeStore
      * @param {() => number} [options.getAxisLength]
-     * @param {(expression: import("../paramRuntime/types.js").ExprRefFunction) => void} [options.validateGapExpression]
      */
     constructor({
         getRuntime,
@@ -123,7 +119,6 @@ export default class ScaleInstanceManager {
         },
         getGenomeStore,
         getAxisLength = () => 0,
-        validateGapExpression = () => {},
     }) {
         this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
@@ -132,7 +127,6 @@ export default class ScaleInstanceManager {
         this.#onViewportChange = onViewportChange;
         this.#getGenomeStore = getGenomeStore;
         this.#getAxisLength = getAxisLength;
-        this.#validateGapExpression = validateGapExpression;
     }
 
     get scale() {
@@ -144,10 +138,7 @@ export default class ScaleInstanceManager {
     }
 
     resetScale() {
-        this.#rangeCommandActive = false;
-        this.#rangeCommand?.set(null);
         this.#scale = undefined;
-        this.#setRange = undefined;
         this.#mirrorDomain = undefined;
         this.#domainNormalizer = undefined;
         this.#defaultRange = undefined;
@@ -208,10 +199,8 @@ export default class ScaleInstanceManager {
         }
         if (scale.type !== "null")
             this.#domainState = initializeDomain(scale.domain());
-        this.#setRange = scale.range;
         if (!this.#runtime) {
             this.#runtime = new ViewParamRuntime(() => this.#getRuntime());
-            this.#rangeCommand = this.#runtime.signal("range command", null);
             this.mapping = this.#runtime.operation(
                 "scale mapping",
                 [],
@@ -320,7 +309,7 @@ export default class ScaleInstanceManager {
         const working = this.#scale.copy();
         working.type = this.#scale.type;
         configureScaleProperties(working, this.#withPropertyDefaults(props));
-        return configureDomain(working, props);
+        return applyScaleDomain(working, props);
     }
 
     /** @param {import("../spec/scale.js").Scale} props */
@@ -333,15 +322,11 @@ export default class ScaleInstanceManager {
     /** @param {import("../spec/scale.js").Scale} props */
     configureMapping(props) {
         const scale = this.#scale;
-        const dependencies =
-            scale.type === "null"
-                ? []
-                : [this.#domainState, this.#rangeCommand];
-        /** @param {any} value @param {boolean} [gapInput] */
-        const bind = (value, gapInput = false) => {
+        const dependencies = scale.type === "null" ? [] : [this.#domainState];
+        /** @param {any} value @param {string} [layoutProperty] */
+        const bind = (value, layoutProperty) => {
             if (!isExprRef(value)) return () => value;
-            const expression = this.#createExpression(value);
-            if (gapInput) this.#validateGapExpression(expression);
+            const expression = this.#createExpression(value, layoutProperty);
             dependencies.push(...expression.dependencies);
             return expression;
         };
@@ -358,8 +343,32 @@ export default class ScaleInstanceManager {
             throw new Error(
                 "Grouping gaps on band/point scales do not support round: true."
             );
-        const positions = bind(gaps ? props.gapPositions : null, true);
-        const width = bind(gaps ? (props.gapWidth ?? 6) : 0, true);
+        const positions = bind(
+            gaps ? props.gapPositions : null,
+            "Grouping gaps"
+        );
+        const width = bind(gaps ? (props.gapWidth ?? 6) : 0, "Grouping gaps");
+        const paddingInputs = PADDING_KEYS.some((key) => isExprRef(props[key]))
+            ? PADDING_KEYS.map((key) => bind(props[key], "Reactive padding"))
+            : undefined;
+        const bandKind = scale.type === "band" ? "band" : "index";
+        /** @param {number} index @param {number} [fallback] */
+        const readPadding = (index, fallback = 0) => {
+            const key = PADDING_KEYS[index];
+            const value = paddingInputs[index](null);
+            const max = index === 0 ? Infinity : 1;
+            if (
+                isExprRef(props[key]) &&
+                !(Number.isFinite(value) && value >= 0 && value <= max)
+            )
+                throw new Error(
+                    `${key} expression must resolve to a finite number from 0 to ${max}.`
+                );
+            const effective = value ?? fallback;
+            return key === "padding"
+                ? effective
+                : normalizeBandScaleProperty(bandKind, key, effective);
+        };
         /** @type {import("../spec/scale.js").Scale["gapPositions"]} */
         let previousPositions;
         let gapPositions = normalizeGapPositions(null);
@@ -381,36 +390,31 @@ export default class ScaleInstanceManager {
                 gapPositions = this.#resolveGapPositions(rawPositions, domain);
                 previousPositions = rawPositions;
             }
-            const configuredRange = expressions?.map((expression) =>
-                expression(null)
-            );
-            if (props.reverse) configuredRange?.reverse();
-            const command = this.#rangeCommand.get();
-            const canUseCommand =
-                this.#rangeCommandActive &&
-                command !== null &&
-                command.props === props &&
-                equalRange(command.configuredRange, configuredRange);
-            if (command && !canUseCommand) this.#rangeCommandActive = false;
-            const range =
-                command && canUseCommand ? command.range : configuredRange;
-            // Interpolating schemes and rangeStep depend on domain cardinality.
+            const range = expressions?.map((expression) => expression(null));
+            if (props.reverse) range?.reverse();
+            /** @type {[number, number] | undefined} */
+            let padding;
+            if (paddingInputs) {
+                const common = readPadding(0);
+                padding = [readPadding(1, common), readPadding(2, common)];
+            }
+            // Interpolating schemes depend on domain cardinality.
             const prepared =
                 scale.type === "null" ||
                 (previous?.scale === scale &&
-                    previous?.props === props &&
+                    previous.props === props &&
                     previous.domain.length === domain.length)
                     ? undefined
                     : this.#prepareMapping(props);
             return {
                 scale,
                 props,
+                padding,
                 domain,
                 gapDomain: state?.gapDomain,
                 viewport: state?.viewport,
                 gapPositions,
                 gapWidth: width(null),
-                configuredRange,
                 range,
                 prepared,
             };
@@ -449,6 +453,7 @@ export default class ScaleInstanceManager {
     /** @param {MappingConfiguration} configuration */
     #applyMapping({
         props,
+        padding,
         range,
         prepared,
         gapPositions,
@@ -456,33 +461,32 @@ export default class ScaleInstanceManager {
         viewport,
     }) {
         // Reset can leave a queued update behind while scale recreation fails.
-        if (!this.#scale || this.#scale.type === "null") return;
+        const scale = this.#scale;
+        if (!scale || scale.type === "null") return;
         if (prepared) {
-            configureScaleProperties(this.#scale, prepared.props);
-            // Copy through raw setters; public setters submit reactive commands.
+            configureScaleProperties(scale, prepared.props);
             // Restore the interpolator last: range() replaces color schemes.
-            if (this.#setRange) this.#setRange(prepared.range());
-            if ("interpolator" in prepared && "interpolator" in this.#scale)
-                this.#scale.interpolator(prepared.interpolator());
+            if (scale.range) scale.range(prepared.range());
+            if ("interpolator" in prepared && "interpolator" in scale)
+                scale.interpolator(prepared.interpolator());
             if ("bins" in prepared)
-                /** @type {any} */ (this.#scale).bins = prepared.bins;
-            else delete (/** @type {any} */ (this.#scale).bins);
+                /** @type {any} */ (scale).bins = prepared.bins;
+            else delete (/** @type {any} */ (scale).bins);
         }
-        if (viewport !== undefined && "viewport" in this.#scale)
-            this.#mirrorViewport(viewport);
-        if (range) this.#setRange(range);
-        else if (
-            props.scheme === undefined &&
-            !("rangeStep" in props) &&
-            this.#defaultRange
+        // Static preparation can restore literal or default padding.
+        if (
+            padding &&
+            (prepared || !equalRange(this.mapping.get()?.padding, padding))
         ) {
-            this.#setRange(this.#defaultRange);
+            const [paddingInner, paddingOuter] = padding;
+            configureScaleProperties(scale, { paddingInner, paddingOuter });
         }
-        if ("gapPositions" in this.#scale) {
-            const scale =
-                /** @type {import("../genome/scaleIndex.js").ScaleIndex} */ (
-                    this.#scale
-                );
+        if (viewport !== undefined && "viewport" in scale)
+            this.#mirrorViewport(viewport);
+        const nextRange =
+            range ?? (props.scheme === undefined && this.#defaultRange);
+        if (nextRange) scale.range(nextRange);
+        if ("gapPositions" in scale) {
             if (!shallowArrayEquals(scale.gapPositions(), gapPositions))
                 scale.gapPositions(gapPositions);
             if (scale.gapWidth() !== (gapWidth ?? 0)) scale.gapWidth(gapWidth);
@@ -553,28 +557,22 @@ export default class ScaleInstanceManager {
      * @returns {import("../spec/scale.js").Scale}
      */
     #stripNonScaleProps(props) {
-        // Avoid sending non-scale properties into vega-scale.
-        // Strip internal runtime-only props before passing into vega-scale.
-        const propsAny = /** @type {any} */ (props);
-        const {
-            assembly: _assembly,
-            domainIndexer: _domainIndexer,
-            gapPositions: _gapPositions,
-            gapWidth: _gapWidth,
-            viewport: _viewport,
-            ...rest
-        } = propsAny;
-        void _assembly;
-        void _domainIndexer;
-        void _gapPositions;
-        void _gapWidth;
-        void _viewport;
-        return rest;
+        /** @type {import("../spec/scale.js").Scale & { domainIndexer?: ReturnType<typeof createIndexer> }} */
+        const physicalProps = { ...props };
+        for (const key of MANAGED_SCALE_PROPERTIES) delete physicalProps[key];
+        for (const key of PADDING_KEYS) {
+            if (!isExprRef(physicalProps[key])) continue;
+            if (physicalProps.type !== "band" && physicalProps.type !== "index")
+                throw new Error(
+                    key + " expressions require a band or index scale."
+                );
+            delete physicalProps[key];
+        }
+        return physicalProps;
     }
 
     #wrapScaleInterceptors() {
-        // Public mutation compatibility (including App sample layout). Internal
-        // configuration uses the original setters and publishes through mapping.
+        // Route domain and viewport writes through the domain lifecycle.
         const scale = this.#scale;
         if (scale.type === "null") return;
 
@@ -592,17 +590,6 @@ export default class ScaleInstanceManager {
                     return scale;
                 }
             );
-        const setRange = (/** @type {any[]} */ values) => {
-            const configuration = this.mapping.get();
-            this.#rangeCommandActive = true;
-            this.#rangeCommand.set({
-                range: Array.from(values),
-                configuredRange: configuration.configuredRange,
-                props: configuration.props,
-            });
-            this.#runtime.flushNow({ afterTransaction: true });
-        };
-        scale.range = intercept(scale.range, setRange);
         scale.domain = intercept(scale.domain, (values) =>
             this.#onDomainChange(Array.from(values))
         );
@@ -636,12 +623,18 @@ function equalMapping(a, b) {
             !!b &&
             a.scale === b.scale &&
             a.props === b.props &&
+            equalRange(a.padding, b.padding) &&
             (a.domain === b.domain || shallowArrayEquals(a.domain, b.domain)) &&
             shallowArrayEquals(a.gapDomain ?? [], b.gapDomain ?? []) &&
             shallowArrayEquals(a.gapPositions, b.gapPositions) &&
             a.gapWidth === b.gapWidth &&
             deepEqual(a.viewport, b.viewport) &&
-            equalRange(a.configuredRange, b.configuredRange) &&
             equalRange(a.range, b.range))
     );
 }
+
+const PADDING_KEYS = /** @type {const} */ ([
+    "padding",
+    "paddingInner",
+    "paddingOuter",
+]);

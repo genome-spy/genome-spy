@@ -12,6 +12,8 @@ import {
     isDiscreteChannel,
     getPrimaryChannel,
     isFieldDef,
+    isOffsetChannel,
+    isPrimaryPositionalChannel,
 } from "../../../encoder/encoder.js";
 import { asArray, peek } from "../../../utils/arrayUtils.js";
 import { InternMap } from "internmap";
@@ -291,6 +293,14 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     const primary = getPrimaryChannel(channel);
     const domainUniformName = DOMAIN_PREFIX + primary;
     const rangeUniformName = RANGE_PREFIX + primary;
+    const paddingUniformName = "uPadding_" + primary;
+    const hasPaddingUniform = scale.type === "band" || scale.type === "index";
+    const paddingArguments = () =>
+        hasPaddingUniform
+            ? [paddingUniformName + ".x", paddingUniformName + ".y"]
+            : scale.type === "point"
+              ? [1, scale.padding()]
+              : [scale.paddingInner(), scale.paddingOuter()];
 
     const { hp, attributeType, packedColor } = getAttributeAndArrayTypes(
         scale,
@@ -383,8 +393,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
                 gaps ? "scaleGaps_" + primary : "scaleBandHp",
                 "domain",
                 rangeUniformName,
-                scale.paddingInner(),
-                scale.paddingOuter(),
+                ...paddingArguments(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 toDecimal(channelDef.band ?? (gaps && peer ? 0 : 0.5)),
@@ -409,8 +418,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
                 gaps ? "scaleBandGaps_" + primary : "scaleBand",
                 "domain",
                 rangeUniformName,
-                transform === "point" ? 1 : scale.paddingInner(),
-                transform === "point" ? scale.padding() : scale.paddingOuter(),
+                ...paddingArguments(),
                 scale.align(),
                 // @ts-expect-error TODO: fix typing
                 toDecimal(channelDef.band ?? 0.5)
@@ -445,12 +453,19 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
 
     if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
-        // Maybe the scale could be annotated with a "dynamicRange" property or something
-        if (isExprRef(rangeProp) || rangeProp.some(isExprRef)) {
+        // A retained band, point, or index position can get a new declared range.
+        const liveBandRange = isPrimaryPositionalChannel(channel)
+            ? ["band", "point", "index"].includes(scale.type)
+            : isOffsetChannel(channel) && scale.type === "band";
+        if (
+            liveBandRange ||
+            isExprRef(rangeProp) ||
+            rangeProp.some(isExprRef)
+        ) {
             if (range.length < 1 || range.length > 4) {
                 // TODO: Use an array instead of (float|vec[234]). This is likely to be a rare case, however.
                 throw new Error(
-                    `A range with ExprRefs must have 1-4 elements, not ${
+                    `A dynamic range must have 1-4 elements, not ${
                         range.length
                     }! Range: ${JSON.stringify(range)}`
                 );
@@ -594,6 +609,11 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
         domainUniform,
         rangeUniformName,
         rangeUniform,
+        paddingUniformName,
+        paddingUniform:
+            hasPaddingUniform && channel === primary
+                ? `    uniform vec2 ${paddingUniformName};`
+                : undefined,
     };
 }
 

@@ -3,7 +3,6 @@ import ViewRenderingContext from "../../view/renderingContext/viewRenderingConte
 import {
     getViewClipFlags,
     normalizeClipOptions,
-    prepareMarkClipOptionsFromClip,
 } from "../../view/renderingContext/clipOptions.js";
 import { RASTER_COORDINATE_OFFSET } from "../renderingConstants.js";
 import Rectangle from "../../view/layout/rectangle.js";
@@ -145,7 +144,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 packed: undefined,
                 source: undefined,
                 generatedSource: false,
-                facetIndexed: mark.encoders.facetIndex !== undefined,
                 xQueryDomain: [0, 0],
                 xIndexedRange: [0, 0],
                 xQueryEnabled: false,
@@ -168,19 +166,14 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             this.#marks.set(mark, state);
         }
 
-        const inheritedClip = normalizeClipOptions(options);
         /** @type {Occurrence} */
         const occurrence = {
             state,
             options,
             coords,
             markCoords,
-            clip: prepareMarkClipOptionsFromClip(
-                inheritedClip,
-                mark.properties.clip,
-                coords
-            ),
-            cullClip: inheritedClip,
+            clip: normalizeClipOptions(options),
+            markClip: mark.properties.clip,
             cull: mark.properties.cullByVisibleRange,
             range: { firstInstance: 0, instanceCount: 0 },
             placementIndex: state.occurrences.length,
@@ -347,12 +340,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     #compileMarkState(state, canvas) {
         const explicitSources = new Set(
             state.occurrences
-                .map((occurrence) => {
-                    const placement = occurrence.options.placement;
-                    return state.facetIndexed || placement?.index !== undefined
-                        ? placement?.source
-                        : undefined;
-                })
+                .map((occurrence) => occurrence.options.placement?.source)
                 .filter(Boolean)
         );
         if (explicitSources.size > 1) {
@@ -377,13 +365,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         } else {
             state.source = resolvedSource;
             state.ownerCoords = state.occurrences[0].markCoords;
-        }
-
-        if (state.facetIndexed && !state.source) {
-            throw createViewError(
-                state.mark,
-                "Indexed placement requires a placement source."
-            );
         }
 
         if (state.source) {
@@ -427,15 +408,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const packed = getPackedMarkData(
             state.mark,
-            state.facetIndexed || !state.generatedSource
-                ? state.source
-                : undefined
+            state.generatedSource ? undefined : state.source
         );
         if (!packed.data.length) {
             return;
         }
         state.xQueryEnabled =
-            !state.facetIndexed &&
             !!packed.xIndexSpec &&
             resolveMarkXIndexQuery(packed.xIndexSpec, state.xQueryDomain);
         if (!state.xQueryEnabled) {
@@ -482,7 +460,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     state.mark,
                     first.options,
                     configCoords,
-                    1,
                     packed.data,
                     createPlacementIndexConfig(state)
                 )
@@ -561,19 +538,38 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (!draw) {
             throw new Error("Occurrence draw has not been compiled.");
         }
-        refreshOccurrenceDraw(occurrence, state, draw, canvas);
+        const scissor = draw.scissor;
+        if (scissor) {
+            const clip = occurrence.clip;
+            const markClip = occurrence.markClip;
+            scissor.x = clip?.clipX ? clip.rect.x : 0;
+            scissor.y = clip?.clipY ? clip.rect.y : 0;
+            scissor.width = clip?.clipX ? clip.rect.width : canvas.width;
+            scissor.height = clip?.clipY ? clip.rect.height : canvas.height;
+            if (markClip === true || markClip === "x") {
+                const x = occurrence.coords.x;
+                const width = occurrence.coords.width;
+                const left = clip?.clipX ? Math.max(scissor.x, x) : x;
+                scissor.width = clip?.clipX
+                    ? Math.min(scissor.x + scissor.width, x + width) - left
+                    : width;
+                scissor.x = left;
+            }
+            if (markClip === true || markClip === "y") {
+                const y = occurrence.coords.y;
+                const height = occurrence.coords.height;
+                const top = clip?.clipY ? Math.max(scissor.y, y) : y;
+                scissor.height = clip?.clipY
+                    ? Math.min(scissor.y + scissor.height, y + height) - top
+                    : height;
+                scissor.y = top;
+            }
+        }
 
-        const occurrencePlacementIndex = state.generatedSource
+        const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        const placementIndex = state.facetIndexed
-            ? undefined
-            : occurrencePlacementIndex;
-        if (
-            state.source &&
-            !state.facetIndexed &&
-            placementIndex === undefined
-        ) {
+        if (state.source && placementIndex === undefined) {
             throw createViewError(
                 state.mark,
                 "Draw-level placement requires a resolved placement index."
@@ -581,10 +577,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         if (
             state.source &&
-            occurrencePlacementIndex !== undefined &&
+            placementIndex !== undefined &&
             !isPlacementVisible(
                 state.source,
-                occurrencePlacementIndex,
+                placementIndex,
                 state.viewport,
                 draw.scissor,
                 canvas
@@ -613,6 +609,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         } else if (state.xQueryEnabled) {
             countPerformance("webgpuXIndexFallbackQueries");
         }
+
+        refreshVisibleRange(occurrence, state, draw);
 
         let resourceWrites;
         if (!state.updated) {
@@ -780,7 +778,10 @@ function createOccurrenceDraw(occurrence, state) {
     if (state.viewport) {
         draw.viewport = state.viewport;
     }
-    if (occurrence.clip) {
+    if (
+        occurrence.markClip !== "never" &&
+        (occurrence.clip || occurrence.markClip)
+    ) {
         draw.scissor = createDrawRect();
     }
     if (occurrence.cull) {
@@ -814,7 +815,7 @@ function createOccurrenceDraw(occurrence, state) {
  * @returns {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"] | undefined}
  */
 function createPlacementIndexConfig(state) {
-    if (!state.facetIndexed && state.source) {
+    if (state.source) {
         return { source: "draw" };
     }
     return undefined;
@@ -828,43 +829,24 @@ function createPlacementIndexConfig(state) {
  * @param {Occurrence} occurrence
  * @param {MarkState} state
  * @param {import("@genome-spy/webgpu-renderer").DrawCommand} draw
- * @param {{width: number, height: number}} canvas
  */
-function refreshOccurrenceDraw(occurrence, state, draw, canvas) {
-    if (draw.scissor) {
-        const clip = occurrence.clip;
-        draw.scissor.x = clip.clipX ? clip.rect.x : 0;
-        draw.scissor.y = clip.clipY ? clip.rect.y : 0;
-        draw.scissor.width = clip.clipX ? clip.rect.width : canvas.width;
-        draw.scissor.height = clip.clipY ? clip.rect.height : canvas.height;
-    }
+function refreshVisibleRange(occurrence, state, draw) {
     if (draw.visibleRange) {
-        const coords = occurrence.coords;
-        const clip = occurrence.cullClip;
-        const x = coords.x;
-        const y = coords.y;
-        draw.visibleRange.x1 = 0;
-        draw.visibleRange.x2 = x + coords.width;
-        draw.visibleRange.y1 = 0;
-        draw.visibleRange.y2 = y + coords.height;
-        if (draw.visibleRange.cullX) {
-            if (clip?.clipX) {
-                const clipX = clip.rect.x;
-                draw.visibleRange.x1 = clipX;
-                draw.visibleRange.x2 = clipX + clip.rect.width;
-            } else {
-                draw.visibleRange.x1 = x;
-            }
-        }
-        if (draw.visibleRange.cullY) {
-            if (clip?.clipY) {
-                const clipY = clip.rect.y;
-                draw.visibleRange.y1 = clipY;
-                draw.visibleRange.y2 = clipY + clip.rect.height;
-            } else {
-                draw.visibleRange.y1 = y;
-            }
-        }
+        const clip = occurrence.clip;
+        const xCoords =
+            draw.visibleRange.cullX && clip?.clipX
+                ? clip.rect
+                : occurrence.coords;
+        const yCoords =
+            draw.visibleRange.cullY && clip?.clipY
+                ? clip.rect
+                : occurrence.coords;
+        const x = xCoords.x;
+        const y = yCoords.y;
+        draw.visibleRange.x1 = draw.visibleRange.cullX ? x : 0;
+        draw.visibleRange.x2 = x + xCoords.width;
+        draw.visibleRange.y1 = draw.visibleRange.cullY ? y : 0;
+        draw.visibleRange.y2 = y + yCoords.height;
         if (state.viewport) {
             draw.visibleRange.x1 -= state.viewport.x;
             draw.visibleRange.x2 -= state.viewport.x;
@@ -957,8 +939,10 @@ function writeScopeBounds(command, target) {
     }
     command.bounds.x = command.clipX ? x1 : 0;
     command.bounds.y = command.clipY ? y1 : 0;
-    command.bounds.width = command.clipX ? x2 - x1 : target.width;
-    command.bounds.height = command.clipY ? y2 - y1 : target.height;
+    command.bounds.width = command.clipX ? Math.max(0, x2 - x1) : target.width;
+    command.bounds.height = command.clipY
+        ? Math.max(0, y2 - y1)
+        : target.height;
 }
 
 /**
@@ -968,7 +952,6 @@ function writeScopeBounds(command, target) {
  * @property {import("./webGpuMarkData.js").PackedMarkData | undefined} packed
  * @property {import("../../view/layout/placementSource.js").default | undefined} source
  * @property {boolean} generatedSource
- * @property {boolean} facetIndexed
  * @property {[number, number]} xQueryDomain
  * @property {[number, number]} xIndexedRange
  * @property {boolean} xQueryEnabled
@@ -1019,7 +1002,7 @@ function writeScopeBounds(command, target) {
  * @property {Rectangle} coords
  * @property {Rectangle} markCoords
  * @property {import("../../types/rendering.js").ClipOptions | undefined} clip
- * @property {import("../../types/rendering.js").ClipOptions | undefined} cullClip
+ * @property {import("../../spec/mark.js").MarkProps["clip"]} markClip
  * @property {import("../../spec/mark.js").MarkProps["cullByVisibleRange"]} cull
  * @property {import("./webGpuMarkData.js").PackedMarkRange} range
  * @property {number} placementIndex

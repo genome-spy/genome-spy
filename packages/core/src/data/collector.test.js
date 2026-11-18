@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Collector from "./collector.js";
 import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
@@ -171,6 +171,7 @@ test("grouping, sorting, and replay preserve physical row shapes", () => {
         sort: { field: "v" },
     });
     const clone = new CloneTransform();
+    const beginBatch = vi.spyOn(clone, "beginBatch");
     const output = new Collector();
     collector.addChild(clone);
     clone.addChild(output);
@@ -191,7 +192,17 @@ test("grouping, sorting, and replay preserve physical row shapes", () => {
     ];
     expect(output.facetBatches.get(["A"])).toEqual(expected);
     expect(output.facetBatches.get(["B"])).toEqual([{ g: "B", v: 5 }]);
+    beginBatch.mockClear();
     collector.repropagate();
+
+    expect(beginBatch.mock.calls.map(([batch]) => batch)).toEqual([
+        { type: "facet", facetId: ["A"] },
+        { type: "file", url: "second" },
+        { type: "file", url: "first" },
+        { type: "file", url: "second" },
+        { type: "facet", facetId: ["B"] },
+        { type: "file", url: "first" },
+    ]);
     expect(output.facetBatches.get(["A"])).toEqual(expected);
 });
 

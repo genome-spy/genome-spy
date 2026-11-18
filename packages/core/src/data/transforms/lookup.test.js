@@ -279,6 +279,14 @@ test("handles empty self input", () => {
     });
 
     expect(processData(lookup, [])).toEqual([]);
+
+    const output = new Collector({ type: "collect" });
+    lookup.addChild(output);
+    lookup.reset();
+    lookup.beginBatch({ type: "facet", facetId: ["empty"] });
+    lookup.complete();
+
+    expect(output.facetBatches.get(["empty"])).toEqual([]);
 });
 
 test("clears buffered self input and indexes on reset", () => {
