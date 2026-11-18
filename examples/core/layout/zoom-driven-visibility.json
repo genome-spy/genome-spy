@@ -1,0 +1,39 @@
+{
+  "description": [
+    "Zoom to reveal the sequence track",
+    "Zoom in until fewer than 8 positions are visible to show the bases above the coverage track."
+  ],
+
+  "scales": { "x": { "type": "index", "domain": [0, 16] } },
+  "resolve": { "axis": { "x": "shared" } },
+
+  "encoding": { "x": { "field": "pos", "type": "index", "axis": null } },
+
+  "vconcat": [
+    {
+      "name": "sequence",
+      "height": 20,
+      "view": { "fill": "#f0f0f0" },
+      "visible": { "expr": "span(domain('x')) < 8" },
+
+      "data": { "values": [{ "sequence": "ACGTGCAATTCGAGTA" }] },
+      "transform": [{ "type": "flattenSequence", "as": ["pos", "base"] }],
+      "mark": "text",
+      "encoding": { "text": { "field": "base" } }
+    },
+    {
+      "name": "coverage",
+      "data": {
+        "values": [
+          { "depth": [4, 5, 7, 6, 9, 8, 6, 5, 4, 7, 8, 9, 7, 6, 5, 3] }
+        ]
+      },
+      "transform": [{ "type": "flatten", "fields": ["depth"], "index": "pos" }],
+      "mark": "rect",
+      "encoding": {
+        "y": { "field": "depth", "type": "quantitative" },
+        "y2": { "datum": 0 }
+      }
+    }
+  ]
+}
