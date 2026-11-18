@@ -1,0 +1,44 @@
+{
+  "description": "Seattle weather types ordered by frequency",
+
+  "params": [
+    {
+      "name": "selectedYear",
+      "value": "2012",
+      "bind": {
+        "name": "Year",
+        "input": "select",
+        "options": ["2012", "2013", "2014", "2015"]
+      }
+    }
+  ],
+
+  "data": { "url": "vega-datasets/seattle-weather.csv" },
+  "transform": [
+    {
+      "type": "filter",
+      "expr": "utcyear(datum.date) === parseInt(selectedYear, 10)"
+    },
+    { "type": "aggregate", "groupby": ["weather"] },
+    { "type": "collect", "sort": { "field": "count", "order": "descending" } },
+    { "type": "values", "field": "weather", "param": "weatherOrder" }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "weather",
+      "type": "nominal",
+      "title": "Weather type",
+      "scale": {
+        "type": "band",
+        "domain": { "expr": "weatherOrder" },
+        "padding": 0.2
+      },
+      "axis": { "labelAngle": 0 }
+    },
+    "y": { "field": "count", "type": "quantitative", "title": "Days" },
+    "y2": { "datum": 0 }
+  }
+}

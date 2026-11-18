@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import PointerCanvas from "../../../testFixtures/pointerCanvas.js";
 import ConcatView from "../concatView.js";
 import Interaction from "../../utils/interaction.js";
 import Rectangle from "../layout/rectangle.js";
@@ -89,51 +90,21 @@ class InspectRenderingContext extends ViewRenderingContext {
 class FakeMouseEvent extends Event {
     constructor(
         /** @type {string} */ type,
-        /** @type {Record<string, any>} */ init = {}
+        /** @type {Record<string, any>} */ { cancelable, ...init } = {}
     ) {
-        super(type);
+        super(type, { cancelable });
         Object.assign(this, init);
     }
 }
 
-/**
- * @returns {{ installDocument: () => Record<string, EventListener | undefined>, restore: () => void }}
- */
-function installDocumentDragTestEnvironment() {
-    const originalDocument = globalThis.document;
+function installPointerDragTestEnvironment() {
     const originalMouseEvent = globalThis.MouseEvent;
     globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
         /** @type {any} */ (FakeMouseEvent)
     );
 
-    const installDocument = () => {
-        /** @type {Record<string, EventListener | undefined>} */
-        const listeners = {};
-        globalThis.document = /** @type {Document} */ (
-            /** @type {any} */ ({
-                addEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    listeners[type] = listener;
-                },
-                removeEventListener(
-                    /** @type {string} */ type,
-                    /** @type {EventListener} */ listener
-                ) {
-                    if (listeners[type] === listener) {
-                        listeners[type] = undefined;
-                    }
-                },
-            })
-        );
-        return listeners;
-    };
-
     return {
-        installDocument,
         restore() {
-            globalThis.document = originalDocument;
             globalThis.MouseEvent = originalMouseEvent;
         },
     };
@@ -811,9 +782,9 @@ describe("GridView separators", () => {
         expect(contentBottom).toBe(scrollableChild.coords.y2);
     });
 
-    test("disposing a scrollbar cancels its active document drag", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+    test("disposing a scrollbar releases its active pointer capture", async () => {
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
 
         try {
             const view = await createAndInitialize(
@@ -849,22 +820,19 @@ describe("GridView separators", () => {
             scrollbar.propagateInteraction(
                 new Interaction(
                     point,
-                    /** @type {any} */ (
-                        new FakeMouseEvent("mousedown", {
-                            button: 0,
-                            clientX: point.x,
-                            clientY: point.y,
-                            preventDefault: () => {},
-                        })
-                    )
+                    canvas.event("pointerdown", {
+                        button: 0,
+                        clientX: point.x,
+                        clientY: point.y,
+                    }),
+                    "mousedown"
                 )
             );
-            expect(listeners.mousemove).toBeDefined();
+            expect(canvas.hasPointerCapture(1)).toBe(true);
 
             scrollbar.dispose();
 
-            expect(listeners.mousemove).toBeUndefined();
-            expect(listeners.mouseup).toBeUndefined();
+            expect(canvas.hasPointerCapture(1)).toBe(false);
             expect(resumeHoverTracking).toHaveBeenCalledWith(undefined);
         } finally {
             environment.restore();
@@ -2491,7 +2459,7 @@ describe("GridView wheel zoom", () => {
     });
 
     test("vconcat gap drag pan uses the shared x resolution and matches child pan", async () => {
-        const environment = installDocumentDragTestEnvironment();
+        const environment = installPointerDragTestEnvironment();
 
         try {
             const dispatchPan = (
@@ -2499,31 +2467,24 @@ describe("GridView wheel zoom", () => {
                 /** @type {Point} */ startPoint,
                 /** @type {number} */ deltaX
             ) => {
-                const listeners = environment.installDocument();
+                const canvas = new PointerCanvas();
                 concatView.propagateInteraction(
                     new Interaction(
                         startPoint,
-                        /** @type {any} */ (
-                            new FakeMouseEvent("mousedown", {
-                                button: 0,
-                                clientX: startPoint.x,
-                                clientY: startPoint.y,
-                                preventDefault: /** @returns {void} */ () =>
-                                    undefined,
-                            })
-                        )
+                        canvas.event("pointerdown", {
+                            button: 0,
+                            clientX: startPoint.x,
+                            clientY: startPoint.y,
+                        }),
+                        "mousedown"
                     )
                 );
 
-                listeners.mousemove?.(
-                    /** @type {MouseEvent} */ (
-                        /** @type {any} */ ({
-                            type: "mousemove",
-                            clientX: startPoint.x + deltaX,
-                            clientY: startPoint.y,
-                        })
-                    )
-                );
+                canvas.dispatch("pointermove", {
+                    clientX: startPoint.x + deltaX,
+                    clientY: startPoint.y,
+                });
+                canvas.dispatch("pointerup");
             };
 
             const gapHarness = await createGapHarness("vconcat");
@@ -2566,8 +2527,8 @@ describe("GridView wheel zoom", () => {
     )(
         "%s container interval selection starts from %s",
         async (direction, fromGap) => {
-            const environment = installDocumentDragTestEnvironment();
-            const listeners = environment.installDocument();
+            const environment = installPointerDragTestEnvironment();
+            const canvas = new PointerCanvas();
             const channel = direction === "vconcat" ? "x" : "y";
 
             try {
@@ -2587,7 +2548,7 @@ describe("GridView wheel zoom", () => {
                 const startPoint = fromGap ? point : childPoint;
                 const delta =
                     direction === "vconcat" ? { x: 20, y: 0 } : { x: 0, y: 20 };
-                const mousedown = new FakeMouseEvent("mousedown", {
+                const pointerdown = canvas.event("pointerdown", {
                     button: 0,
                     shiftKey: true,
                     clientX: startPoint.x,
@@ -2595,7 +2556,8 @@ describe("GridView wheel zoom", () => {
                 });
                 const interaction = new Interaction(
                     startPoint,
-                    /** @type {any} */ (mousedown)
+                    pointerdown,
+                    "mousedown"
                 );
 
                 concatView.propagateInteraction(interaction);
@@ -2604,12 +2566,10 @@ describe("GridView wheel zoom", () => {
                 const before = concatView
                     .getScaleResolution(channel)
                     ?.getDomain();
-                listeners.mousemove?.(
-                    new FakeMouseEvent("mousemove", {
-                        clientX: startPoint.x + delta.x,
-                        clientY: startPoint.y + delta.y,
-                    })
-                );
+                canvas.dispatch("pointermove", {
+                    clientX: startPoint.x + delta.x,
+                    clientY: startPoint.y + delta.y,
+                });
 
                 const selection = concatView.paramRuntime.findValue("brush");
                 expect(selection.intervals[channel]).toHaveLength(2);
@@ -2647,8 +2607,8 @@ describe("GridView wheel zoom", () => {
     test.each(/** @type {const} */ (["index", "locus"]))(
         "%s brushing uses viewport coordinates without a center correction",
         async (type) => {
-            const environment = installDocumentDragTestEnvironment();
-            const listeners = environment.installDocument();
+            const environment = installPointerDragTestEnvironment();
+            const canvas = new PointerCanvas();
             try {
                 const view = /** @type {ConcatView} */ (
                     await createAndInitialize(
@@ -2693,27 +2653,24 @@ describe("GridView wheel zoom", () => {
                 view.propagateInteraction(
                     new Interaction(
                         start,
-                        /** @type {any} */ (
-                            new FakeMouseEvent("mousedown", {
-                                button: 0,
-                                shiftKey: true,
-                                clientX: start.x,
-                                clientY: start.y,
-                            })
-                        )
+                        canvas.event("pointerdown", {
+                            button: 0,
+                            shiftKey: true,
+                            clientX: start.x,
+                            clientY: start.y,
+                        }),
+                        "mousedown"
                     )
                 );
-                listeners.mousemove(
-                    new FakeMouseEvent("mousemove", {
-                        clientX: x + width * 0.72,
-                        clientY: start.y,
-                    })
-                );
+                canvas.dispatch("pointermove", {
+                    clientX: x + width * 0.72,
+                    clientY: start.y,
+                });
 
                 const interval =
                     view.paramRuntime.findValue("brush").intervals.x;
                 expect(interval).toEqual([2, 7]);
-                listeners.mouseup(new FakeMouseEvent("mouseup"));
+                canvas.dispatch("pointerup");
                 view.disposeSubtree();
             } finally {
                 environment.restore();
@@ -2721,9 +2678,9 @@ describe("GridView wheel zoom", () => {
         }
     );
 
-    test("disposing a container brush releases an active document drag", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+    test("disposing a container brush releases active pointer capture", async () => {
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
 
         try {
             const { concatView, point } = await createGapHarness("vconcat", {
@@ -2750,22 +2707,20 @@ describe("GridView wheel zoom", () => {
             concatView.propagateInteraction(
                 new Interaction(
                     point,
-                    /** @type {any} */ (
-                        new FakeMouseEvent("mousedown", {
-                            button: 0,
-                            shiftKey: true,
-                            clientX: point.x,
-                            clientY: point.y,
-                        })
-                    )
+                    canvas.event("pointerdown", {
+                        button: 0,
+                        shiftKey: true,
+                        clientX: point.x,
+                        clientY: point.y,
+                    }),
+                    "mousedown"
                 )
             );
-            expect(listeners.mousemove).toBeDefined();
+            expect(canvas.hasPointerCapture(1)).toBe(true);
 
             concatView.dispose();
 
-            expect(listeners.mousemove).toBeUndefined();
-            expect(listeners.mouseup).toBeUndefined();
+            expect(canvas.hasPointerCapture(1)).toBe(false);
             expect(resumeHoverTracking).toHaveBeenCalledTimes(1);
             expect(commit).not.toHaveBeenCalled();
         } finally {
@@ -2774,8 +2729,8 @@ describe("GridView wheel zoom", () => {
     });
 
     test("disposing the routing grid cancels an active pan", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
 
         try {
             const { concatView, point } = await createGapHarness("vconcat");
@@ -2787,22 +2742,19 @@ describe("GridView wheel zoom", () => {
             concatView.propagateInteraction(
                 new Interaction(
                     point,
-                    /** @type {any} */ (
-                        new FakeMouseEvent("mousedown", {
-                            button: 0,
-                            clientX: point.x,
-                            clientY: point.y,
-                            preventDefault: () => {},
-                        })
-                    )
+                    canvas.event("pointerdown", {
+                        button: 0,
+                        clientX: point.x,
+                        clientY: point.y,
+                    }),
+                    "mousedown"
                 )
             );
-            expect(listeners.mousemove).toBeDefined();
+            expect(canvas.hasPointerCapture(1)).toBe(true);
 
             concatView.dispose();
 
-            expect(listeners.mousemove).toBeUndefined();
-            expect(listeners.mouseup).toBeUndefined();
+            expect(canvas.hasPointerCapture(1)).toBe(false);
             expect(resumeHoverTracking).toHaveBeenCalledOnce();
             expect(resumeHoverTracking).toHaveBeenCalledWith(undefined);
         } finally {
@@ -2826,8 +2778,8 @@ describe("GridView wheel zoom", () => {
     ])(
         "$direction brush translates without pointer warmup within $extent",
         async ({ direction, extent, expected }) => {
-            const environment = installDocumentDragTestEnvironment();
-            const listeners = environment.installDocument();
+            const environment = installPointerDragTestEnvironment();
+            const canvas = new PointerCanvas();
 
             try {
                 const channel = direction === "vconcat" ? "x" : "y";
@@ -2865,24 +2817,21 @@ describe("GridView wheel zoom", () => {
                 concatView.propagateInteraction(
                     new Interaction(
                         point,
-                        /** @type {any} */ (
-                            new FakeMouseEvent("mousedown", {
-                                button: 0,
-                                clientX: point.x,
-                                clientY: point.y,
-                            })
-                        )
+                        canvas.event("pointerdown", {
+                            button: 0,
+                            clientX: point.x,
+                            clientY: point.y,
+                        }),
+                        "mousedown"
                     )
                 );
                 const delta =
                     direction === "vconcat" ? (expected ? 1000 : 15) : 0;
                 const deltaY = direction === "hconcat" ? 15 : 0;
-                listeners.mousemove?.(
-                    new FakeMouseEvent("mousemove", {
-                        clientX: point.x + delta,
-                        clientY: point.y + deltaY,
-                    })
-                );
+                canvas.dispatch("pointermove", {
+                    clientX: point.x + delta,
+                    clientY: point.y + deltaY,
+                });
 
                 const after = concatView.paramRuntime.findValue("brush");
                 expect(after.intervals[channel]).not.toEqual(
@@ -3246,12 +3195,12 @@ describe("drag scrolling of scrollable viewports", () => {
      * and moves it.
      *
      * @param {import("../concatView.js").default} view
-     * @param {Record<string, EventListener | undefined>} listeners
+     * @param {PointerCanvas} canvas
      * @param {number} dx
      * @param {number} dy
      * @param {Point} [startPoint]
      */
-    const drag = (view, listeners, dx, dy, startPoint) => {
+    const drag = (view, canvas, dx, dy, startPoint) => {
         const scrollable = /** @type {import("../concatView.js").default} */ (
             view.children[0]
         );
@@ -3265,25 +3214,19 @@ describe("drag scrolling of scrollable viewports", () => {
         view.propagateInteraction(
             new Interaction(
                 point,
-                /** @type {any} */ (
-                    new FakeMouseEvent("mousedown", {
-                        button: 0,
-                        clientX: point.x,
-                        clientY: point.y,
-                        preventDefault: () => {},
-                    })
-                )
+                canvas.event("pointerdown", {
+                    button: 0,
+                    clientX: point.x,
+                    clientY: point.y,
+                }),
+                "mousedown"
             )
         );
-        listeners.mousemove?.(
-            /** @type {any} */ (
-                new FakeMouseEvent("mousemove", {
-                    clientX: point.x + dx,
-                    clientY: point.y + dy,
-                })
-            )
-        );
-        listeners.mouseup?.(/** @type {any} */ (new FakeMouseEvent("mouseup")));
+        canvas.dispatch("pointermove", {
+            clientX: point.x + dx,
+            clientY: point.y + dy,
+        });
+        canvas.dispatch("pointerup");
     };
 
     /** @param {import("../concatView.js").default} view */
@@ -3301,8 +3244,8 @@ describe("drag scrolling of scrollable viewports", () => {
     };
 
     test("vertical drag scrolls the enclosing viewport when y isn't zoomable", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             const view = await createAndInitialize(
                 makeScrollableSpec(),
@@ -3313,7 +3256,7 @@ describe("drag scrolling of scrollable viewports", () => {
             expect(scrollbar.viewportOffset).toBe(0);
 
             // Dragging up pulls the content up, revealing what is below
-            drag(view, listeners, 0, -20);
+            drag(view, canvas, 0, -20);
             expect(scrollbar.viewportOffset).toBe(20);
         } finally {
             environment.restore();
@@ -3321,8 +3264,8 @@ describe("drag scrolling of scrollable viewports", () => {
     });
 
     test("horizontal drag locks to x and leaves the scroll position alone", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             const view = await createAndInitialize(
                 makeScrollableSpec(),
@@ -3332,7 +3275,7 @@ describe("drag scrolling of scrollable viewports", () => {
             const scrollbar = getVerticalScrollbar(view);
 
             // Mostly horizontal: locks to x, so the small vertical part is ignored
-            drag(view, listeners, 30, -4);
+            drag(view, canvas, 30, -4);
             expect(scrollbar.viewportOffset).toBe(0);
         } finally {
             environment.restore();
@@ -3340,8 +3283,8 @@ describe("drag scrolling of scrollable viewports", () => {
     });
 
     test("horizontal drag scrolls a horizontally scrollable viewport when x isn't zoomable", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             const view = await createAndInitialize(
                 /** @type {any} */ ({
@@ -3370,7 +3313,7 @@ describe("drag scrolling of scrollable viewports", () => {
             expect(scrollbar.viewportOffset).toBe(0);
 
             // Dragging left pulls the content left, revealing what is to the right
-            drag(view, listeners, -20, 0);
+            drag(view, canvas, -20, 0);
             expect(scrollbar.viewportOffset).toBe(20);
         } finally {
             environment.restore();
@@ -3378,8 +3321,8 @@ describe("drag scrolling of scrollable viewports", () => {
     });
 
     test("a content drag cancels a scrollbar-thumb animation still in progress", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             const view = await createAndInitialize(
                 makeScrollableSpec(),
@@ -3412,7 +3355,7 @@ describe("drag scrolling of scrollable viewports", () => {
 
             // A thumb drag towards 40 px, still animating, then a content drag
             scrollbar.interpolateViewportOffset({ x: 40 });
-            drag(view, listeners, 0, -10);
+            drag(view, canvas, 0, -10);
             const afterDrag = scrollbar.viewportOffset;
 
             // Replaying the remaining frames must not move it
@@ -3427,8 +3370,8 @@ describe("drag scrolling of scrollable viewports", () => {
     });
 
     test("a nested viewport without overflow passes the drag to its overflowing parent", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             // 30 px of content in a 50 px inner viewport, inside an overflowing
             // 70 px outer viewport
@@ -3470,7 +3413,7 @@ describe("drag scrolling of scrollable viewports", () => {
                 );
             }
 
-            drag(view, listeners, 0, -20);
+            drag(view, canvas, 0, -20);
             expect(inner.viewportOffset).toBe(0);
             expect(outer.viewportOffset).toBe(20);
         } finally {
@@ -3479,8 +3422,8 @@ describe("drag scrolling of scrollable viewports", () => {
     });
 
     test("a drag started in the gap between tracks scrolls the viewport", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             // Three 40 px tracks with 20 px spacing in an 80 px viewport
             const view = await createAndInitialize(
@@ -3512,7 +3455,7 @@ describe("drag scrolling of scrollable viewports", () => {
                 (first.coords.y2 + second.coords.y) / 2
             );
 
-            drag(view, listeners, 0, -20, gapPoint);
+            drag(view, canvas, 0, -20, gapPoint);
             expect(scrollbar.viewportOffset).toBe(20);
         } finally {
             environment.restore();
@@ -3520,8 +3463,8 @@ describe("drag scrolling of scrollable viewports", () => {
     });
 
     test("a zoomable y scale keeps priority over scrolling", async () => {
-        const environment = installDocumentDragTestEnvironment();
-        const listeners = environment.installDocument();
+        const environment = installPointerDragTestEnvironment();
+        const canvas = new PointerCanvas();
         try {
             const view = await createAndInitialize(
                 makeScrollableSpec({ zoom: true }),
@@ -3530,7 +3473,7 @@ describe("drag scrolling of scrollable viewports", () => {
             render(view);
             const scrollbar = getVerticalScrollbar(view);
 
-            drag(view, listeners, 0, -20);
+            drag(view, canvas, 0, -20);
             expect(scrollbar.viewportOffset).toBe(0);
         } finally {
             environment.restore();

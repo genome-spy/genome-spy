@@ -43,7 +43,7 @@ for (const dpr of [1, 2]) {
                 size: dynamic(400),
                 strokeWidth: dynamic(2),
                 angle: dynamic(0),
-                inwardStroke: { ...dynamic(0), type: "u32" },
+                strokeAlign: { ...dynamic(1), type: "u32" },
                 stroke: dynamic([0, 0, 1, 0.5]),
                 strokeOpacity: dynamic(1),
                 fill: { value: [1, 0, 0, 0.6] },
@@ -135,7 +135,7 @@ for (const dpr of [1, 2]) {
                         size,
                         strokeWidth: width,
                         angle,
-                        inwardStroke: inward,
+                        strokeAlign: inward ? 0 : 1,
                         stroke,
                         strokeOpacity: opacity,
                     });
@@ -227,7 +227,7 @@ for (const dpr of [1, 2]) {
                     size: 0.01,
                     strokeWidth: 2,
                     angle: 0,
-                    inwardStroke: 0,
+                    strokeAlign: 1,
                     minPickingSize: 14,
                 });
                 await capture(mark);

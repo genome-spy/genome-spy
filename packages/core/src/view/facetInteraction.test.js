@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, expect, onTestFinished, test, vi } from "vitest";
+import PointerCanvas, {
+    createPointerEvent,
+} from "../../testFixtures/pointerCanvas.js";
 import { createAndInitialize, renderToLayout } from "./testUtils.js";
 import ConcatView from "./concatView.js";
 import FacetView from "./facetView.js";
@@ -69,6 +72,7 @@ async function createFacet(overrides = {}, enclosingViewport = false) {
         facet,
         child: facet.child,
         dispatcher: new InteractionDispatcher({ viewRoot: root }),
+        pointerCanvas: new PointerCanvas(),
     };
 }
 
@@ -79,13 +83,25 @@ const pointIn = (rect, x = 0.5, y = 0.5) =>
 const mouse = (type, point) =>
     new MouseEvent(type, { clientX: point.x, clientY: point.y });
 
+/** @param {PointerCanvas} canvas @param {Point} point */
+function pointerDown(canvas, point) {
+    return canvas.event("pointerdown", { clientX: point.x, clientY: point.y });
+}
+
+/** @param {PointerCanvas} canvas @param {Point} point */
+function movePointer(canvas, point) {
+    canvas.dispatch("pointermove", { clientX: point.x, clientY: point.y });
+}
+
 test("explicit domains keep initially empty and replaced windows navigable", async () => {
-    const { root, facet, child, dispatcher } = await createFacet({
-        data: { values: [] },
-        params: [{ name: "samples", value: ["B", "A"] }],
-        facet: { row: { field: "g", domain: { expr: "samples" } } },
-        columns: undefined,
-    });
+    const { root, facet, child, dispatcher, pointerCanvas } = await createFacet(
+        {
+            data: { values: [] },
+            params: [{ name: "samples", value: ["B", "A"] }],
+            facet: { row: { field: "g", domain: { expr: "samples" } } },
+            columns: undefined,
+        }
+    );
     const source =
         /** @type {import("../data/sources/inlineSource.js").default} */ (
             facet.flowHandle.dataSource
@@ -117,11 +133,9 @@ test("explicit domains keep initially empty and replaced windows navigable", asy
         expect(resolution.getDomain()).not.toEqual(beforeZoom);
         const beforePan = resolution.getDomain().slice();
         const point = pointIn(a);
-        dispatcher.dispatch(point, mouse("mousedown", point));
-        document.dispatchEvent(
-            mouse("mousemove", new Point(point.x - 10, point.y))
-        );
-        document.dispatchEvent(new MouseEvent("mouseup"));
+        dispatcher.dispatch(point, pointerDown(pointerCanvas, point));
+        movePointer(pointerCanvas, new Point(point.x - 10, point.y));
+        pointerCanvas.dispatch("pointerup");
         expect(resolution.getDomain()).not.toEqual(beforePan);
     }
 });
@@ -182,7 +196,13 @@ test.each([false, true])(
                 status: "hit",
                 hit: { datum: { x: datum.x }, facetId: [g] },
             });
-            canvas.dispatchEvent(mouse("mousemove", point));
+            canvas.dispatchEvent(
+                createPointerEvent("pointermove", {
+                    buttons: 0,
+                    clientX: point.x,
+                    clientY: point.y,
+                })
+            );
             await vi.waitFor(() =>
                 expect(container.textContent).toBe(`${g}: ${datum.x}`)
             );
@@ -340,30 +360,31 @@ test("headers, gaps and clipped areas do not target the child", async () => {
 test.each([false, true])(
     "brush uses its starting cell projection and cancels on disposal (remove: %s)",
     async (remove) => {
-        const { root, facet, child, dispatcher } = await createFacet({
-            params: [
-                {
-                    name: "brush",
-                    select: { type: "interval", encodings: ["x"] },
-                },
-            ],
-            spec: { encoding: encoding("x", false) },
-        });
+        const { root, facet, child, dispatcher, pointerCanvas } =
+            await createFacet({
+                params: [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                spec: { encoding: encoding("x", false) },
+            });
         const rect = child.facetCoords.get(["B"]);
         const start = pointIn(rect, 0.2),
             end = pointIn(rect, 0.6);
-        dispatcher.dispatch(start, mouse("mousedown", start));
-        document.dispatchEvent(mouse("mousemove", end));
-        document.dispatchEvent(new MouseEvent("mouseup"));
+        dispatcher.dispatch(start, pointerDown(pointerCanvas, start));
+        movePointer(pointerCanvas, end);
+        pointerCanvas.dispatch("pointerup");
         expect(child.paramRuntime.findValue("brush").intervals.x).toEqual([
             2, 6,
         ]);
         const resume = vi.spyOn(root.context, "resumeHoverTracking");
-        dispatcher.dispatch(start, mouse("mousedown", start));
+        dispatcher.dispatch(start, pointerDown(pointerCanvas, start));
         if (remove) root.removeChildView(facet);
         else root.disposeSubtree();
-        document.dispatchEvent(mouse("mousemove", pointIn(rect, 1.2)));
-        document.dispatchEvent(new MouseEvent("mouseup"));
+        movePointer(pointerCanvas, pointIn(rect, 1.2));
+        pointerCanvas.dispatch("pointerup");
         expect(resume).toHaveBeenCalledOnce();
     }
 );
@@ -393,19 +414,19 @@ test.each([false, true])(
 );
 
 test("a ruler drag remains anchored outside its starting cell", async () => {
-    const { facet, child, dispatcher } = await createFacet({
+    const { facet, child, dispatcher, pointerCanvas } = await createFacet({
         params: [{ name: "cursor", ruler: { on: "mousedown", snap: false } }],
     });
     const rect = child.facetCoords.get(["B"]);
     const start = pointIn(rect, 0.2);
-    dispatcher.dispatch(start, mouse("mousedown", start));
-    document.dispatchEvent(mouse("mousemove", pointIn(rect, 1.2)));
+    dispatcher.dispatch(start, pointerDown(pointerCanvas, start));
+    movePointer(pointerCanvas, pointIn(rect, 1.2));
     expect(facet.paramRuntime.findValue("cursor").values.x).toBeCloseTo(12);
-    document.dispatchEvent(new MouseEvent("mouseup"));
+    pointerCanvas.dispatch("pointerup");
 });
 
 test("layered shared-scale wheel, touch and pan use cell coordinates once and cancel on disposal", async () => {
-    const { root, child, dispatcher } = await createFacet({
+    const { root, child, dispatcher, pointerCanvas } = await createFacet({
         facet: { field: "g", sort: ["C", "B", "A"], header: null },
         spacing: { row: 3, column: 17 },
         spec: { layer: [{ mark: "point" }, { mark: "point" }] },
@@ -448,10 +469,8 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
     ]);
     zoom.mockClear();
     const resume = vi.spyOn(root.context, "resumeHoverTracking");
-    dispatcher.dispatch(point, mouse("mousedown", point));
-    document.dispatchEvent(
-        mouse("mousemove", new Point(point.x - 10, point.y))
-    );
+    dispatcher.dispatch(point, pointerDown(pointerCanvas, point));
+    movePointer(pointerCanvas, new Point(point.x - 10, point.y));
     expect(zoom).toHaveBeenCalledExactlyOnceWith(
         1,
         0.25,
@@ -459,9 +478,7 @@ test("layered shared-scale wheel, touch and pan use cell coordinates once and ca
         100
     );
     root.disposeSubtree();
-    document.dispatchEvent(
-        mouse("mousemove", new Point(point.x - 20, point.y))
-    );
+    movePointer(pointerCanvas, new Point(point.x - 20, point.y));
     expect(zoom).toHaveBeenCalledOnce();
     expect(resume).toHaveBeenCalledOnce();
 });
@@ -470,7 +487,7 @@ test.each(/** @type {const} */ (["row", "column"]))(
     "%s facet gaps support shared-scale navigation without targeting a cell",
     async (dimension) => {
         const channel = dimension === "row" ? "x" : "y";
-        const { facet, child, dispatcher } = await createFacet({
+        const { facet, child, dispatcher, pointerCanvas } = await createFacet({
             facet: { [dimension]: { field: "g", header: null } },
             columns: undefined,
             spacing: 14,
@@ -505,17 +522,15 @@ test.each(/** @type {const} */ (["row", "column"]))(
         );
 
         const zoom = vi.spyOn(resolution, "zoom");
-        dispatcher.dispatch(gap, mouse("mousedown", gap));
-        document.dispatchEvent(
-            mouse("mousemove", new Point(gap.x + 10, gap.y + 6))
-        );
+        dispatcher.dispatch(gap, pointerDown(pointerCanvas, gap));
+        movePointer(pointerCanvas, new Point(gap.x + 10, gap.y + 6));
         expect(zoom).toHaveBeenCalledExactlyOnceWith(
             1,
             channel === "x" ? 0.25 : 0.75,
             expect.closeTo(channel === "x" ? 0.1 : -0.1),
             channel === "x" ? 100 : 60
         );
-        document.dispatchEvent(new MouseEvent("mouseup"));
+        pointerCanvas.dispatch("pointerup");
     }
 );
 
@@ -558,10 +573,11 @@ test("zoom in a partly clipped cell uses its full plot height", async () => {
 test.each([false, true])(
     "scrolling updates cell routing without layout (enclosing viewport: %s)",
     async (enclosing) => {
-        const { root, facet, child, dispatcher } = await createFacet(
-            { columns: 1, ...(enclosing ? {} : { viewportHeight: 55 }) },
-            enclosing
-        );
+        const { root, facet, child, dispatcher, pointerCanvas } =
+            await createFacet(
+                { columns: 1, ...(enclosing ? {} : { viewportHeight: 55 }) },
+                enclosing
+            );
         const scrollbar =
             /** @type {import("./gridView/scrollbar.js").default} */ (
                 root
@@ -580,11 +596,9 @@ test.each([false, true])(
         const titleY = title.layoutCoords.y;
         if (!enclosing) {
             const start = pointIn(child.coords);
-            dispatcher.dispatch(start, mouse("mousedown", start));
-            document.dispatchEvent(
-                mouse("mousemove", new Point(start.x, start.y - 20))
-            );
-            document.dispatchEvent(new MouseEvent("mouseup"));
+            dispatcher.dispatch(start, pointerDown(pointerCanvas, start));
+            movePointer(pointerCanvas, new Point(start.x, start.y - 20));
+            pointerCanvas.dispatch("pointerup");
             expect(scrollbar.viewportOffset).toBe(20);
             expect(child.getScaleResolution("x").getDomain()).toEqual([0, 10]);
         }

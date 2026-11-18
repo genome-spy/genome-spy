@@ -4,6 +4,7 @@ import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import FlowNode from "./flowNode.js";
 import DataSource from "./sources/dataSource.js";
 import { registerLazyDataSource } from "./sources/dataSourceFactory.js";
+import { createTopLevelDatasetApi } from "../view/viewMutationApi.js";
 import {
     resolveEmbedParam,
     resolveScopedEmbedParam,
@@ -151,10 +152,7 @@ test("a root-owned branch updates child scales and is pruned on disposal", async
         ),
     });
     expect(view.paramRuntime.getValue("cuts")).toEqual([2, 4]);
-    context.dataFlow.updateNamedDataBinding(
-        view.namedDataScope.getLocalBinding("metadata"),
-        [{ cut: 3 }]
-    );
+    createTopLevelDatasetApi({ viewRoot: view }).set("metadata", [{ cut: 3 }]);
     await view.paramRuntime.whenPropagated();
     const children = /** @type {import("../view/concatView.js").default} */ (
         view
@@ -171,7 +169,7 @@ test("a root-owned branch updates child scales and is pruned on disposal", async
 });
 
 test("disposing a composition endpoint preserves sibling consumers of a merged source", async () => {
-    const { view, context } = await engine({
+    const { view } = await engine({
         datasets: { shared: [{ x: 1 }] },
         hconcat: [0, 1].map(() => ({
             data: { name: "shared" },
@@ -183,10 +181,7 @@ test("disposing a composition endpoint preserves sibling consumers of a merged s
     const source = right.flowHandle.dataSource;
     left.disposeSubtree();
     expect(source.disposed).toBe(false);
-    context.dataFlow.updateNamedDataBinding(
-        view.namedDataScope.getLocalBinding("shared"),
-        [{ x: 2 }]
-    );
+    createTopLevelDatasetApi({ viewRoot: view }).set("shared", [{ x: 2 }]);
     const unit = /** @type {import("../view/layerView.js").default} */ (right)
         .children[0];
     expect(
@@ -241,7 +236,7 @@ test("custom sources publish successful completion without feature-specific conf
 });
 
 test("a named-data output updates a separate pipeline's filter", async () => {
-    const { view, context } = await engine({
+    const { view } = await engine({
         datasets: {
             thresholds: [{ minimum: 2 }],
             records: [{ x: 1 }, { x: 3 }],
@@ -268,17 +263,12 @@ test("a named-data output updates a separate pipeline's filter", async () => {
     await runtime.whenPropagated();
     expect(rows()).toEqual([3]);
 
-    context.dataFlow.updateNamedDataBinding(
-        view.namedDataScope.getLocalBinding("thresholds"),
-        [{ minimum: 4 }]
-    );
+    const datasets = createTopLevelDatasetApi({ viewRoot: view });
+    datasets.set("thresholds", [{ minimum: 4 }]);
     await runtime.whenPropagated();
     expect(rows()).toEqual([]);
 
-    context.dataFlow.updateNamedDataBinding(
-        view.namedDataScope.getLocalBinding("records"),
-        [{ x: 3 }, { x: 5 }]
-    );
+    datasets.set("records", [{ x: 3 }, { x: 5 }]);
     await runtime.whenPropagated();
     expect(rows()).toEqual([5]);
 });

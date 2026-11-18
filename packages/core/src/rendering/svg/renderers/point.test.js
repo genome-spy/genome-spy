@@ -2,6 +2,7 @@
 
 import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
+import { createLayoutResult } from "../../../view/layout/layoutResult.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
@@ -346,7 +347,7 @@ describe("SVG point renderer", () => {
         const circles = Array.from(pointGroup.querySelectorAll("circle"));
         const line = pointGroup.querySelector("path");
 
-        expect(pointGroup.children).toHaveLength(6);
+        expect(pointGroup.children).toHaveLength(5);
         expect(
             circles
                 .slice(0, 2)
@@ -363,23 +364,95 @@ describe("SVG point renderer", () => {
         expect(circles[2].getAttribute("r")).toBe("10");
         expect(circles[2].getAttribute("stroke")).toBe("none");
 
-        const diamond = Array.from(pointGroup.querySelectorAll("path")).slice(
-            1
+        const diamond = pointGroup.querySelectorAll("path")[1];
+        // The border clips to the nominal rotated silhouette, not a scaled inset.
+        expect(diamond.getAttribute("d")).toBe(
+            "M 30 40 L 40 50 L 30 60 L 20 50 Z"
         );
-        // The full fill and inset stroke must share the encoded rotation.
-        expect(
-            diamond.map((path) => path.getAttribute("d").split(" L")[0])
-        ).toEqual(["M 30 40", "M 30 42"]);
-        expect(diamond[0].getAttribute("stroke")).toBe("none");
-        expect(diamond[1].getAttribute("fill")).toBe("none");
-        expect(diamond.map((path) => path.getAttribute("transform"))).toEqual([
-            "rotate(30 30 50)",
-            "rotate(30 30 50)",
-        ]);
+        expect(diamond.getAttribute("stroke-width")).toBe("8");
+        expect(diamond.getAttribute("stroke-linejoin")).toBe("round");
+        expect(diamond.getAttribute("clip-path")).toMatch(/^url\(#point-clip-/);
+        expect(diamond.getAttribute("transform")).toBe("rotate(30 30 50)");
         expect(warnings).toEqual([]);
     });
 
-    test("preserves inward fill when constant stroke opacity inherits view opacity", async () => {
+    test("shares nominal polygon clips across sizes and skips invisible strokes", async () => {
+        const { view } = await createHeadlessEngine({
+            opacity: 0.5,
+            data: {
+                values: [
+                    { x: 0.2, shape: "diamond", size: 400, alpha: 0.5 },
+                    { x: 0.4, shape: "diamond", size: 1600, alpha: 1 },
+                    { x: 0.6, shape: "tick-up", size: 400, alpha: 1 },
+                    { x: 0.8, shape: "cross", size: 400, alpha: 0 },
+                ],
+            },
+            mark: {
+                type: "point",
+                inwardStroke: true,
+                strokeWidth: 4,
+                fill: "red",
+                stroke: "blue",
+                angle: 23,
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative", scale: null },
+                y: { value: 0.5 },
+                shape: { field: "shape", type: "nominal", scale: null },
+                size: { field: "size", type: "quantitative", scale: null },
+                strokeOpacity: {
+                    field: "alpha",
+                    type: "quantitative",
+                    scale: null,
+                },
+            },
+        });
+        const options = {
+            viewRoot: view,
+            logicalWidth: 200,
+            logicalHeight: 100,
+        };
+        const { svg } = createSvg(options);
+        const paths = svg.querySelectorAll('[data-mark-type="point"] path');
+        const clips = svg.querySelectorAll(
+            'clipPath[clipPathUnits="objectBoundingBox"]'
+        );
+        expect(paths).toHaveLength(4);
+        expect(clips).toHaveLength(2);
+        expect(paths[0].getAttribute("clip-path")).toBe(
+            paths[1].getAttribute("clip-path")
+        );
+        expect(paths[2].getAttribute("clip-path")).not.toBe(
+            paths[0].getAttribute("clip-path")
+        );
+        // The asymmetric tick fills its own bounding box, not [-radius, radius]^2.
+        expect(clips[1].querySelector("path").getAttribute("d")).toBe(
+            "M 0 0 L 1 0 L 1 1 L 0 1 Z"
+        );
+        expect(
+            svg.querySelector('[data-mark-type="point"] [opacity]')
+        ).toBeNull();
+        expect(paths[3].hasAttribute("clip-path")).toBe(false);
+        expect(paths[3].getAttribute("stroke")).toBe("none");
+        expect(paths[3].getAttribute("d")).toContain("M 156 40");
+
+        const context = new SvgViewRenderingContext(
+            { picking: false },
+            { width: 200, height: 100 }
+        );
+        context.beginInstanceCounting();
+        createLayoutResult(view, Rectangle.create(0, 0, 200, 100), {
+            renderingOptions: { firstFacet: true },
+        }).collectRenderCommands(context);
+        context.endInstanceCounting();
+        expect(context.getVisibleInstanceCounts().values().next().value).toBe(
+            4
+        );
+        expect(context.getSvg().querySelectorAll("clipPath")).toHaveLength(0);
+        view.disposeSubtree();
+    });
+
+    test("keeps inward paints opaque inside a faded view group", async () => {
         const { view } = await createHeadlessEngine({
             opacity: 0.5,
             data: { values: [{}] },
@@ -401,14 +474,14 @@ describe("SVG point renderer", () => {
         const group = svg.querySelector('[data-mark-type="point"]');
         const circles = Array.from(group.querySelectorAll("circle"));
 
-        expect(group.getAttribute("stroke-opacity")).toBe("0.5");
-        expect(group.getAttribute("fill-opacity")).toBe("0.5");
+        expect(group.parentElement.getAttribute("opacity")).toBe("0.5");
+        expect(group.getAttribute("stroke-opacity")).toBe("1");
+        expect(group.getAttribute("fill-opacity")).toBe("1");
         expect(circles.map((circle) => circle.getAttribute("r"))).toEqual([
-            "10",
             "8",
         ]);
-        expect(circles[0].getAttribute("stroke")).toBe("none");
-        expect(circles[1].getAttribute("fill")).toBe("none");
+        expect(circles[0].getAttribute("stroke")).toBeNull();
+        expect(circles[0].getAttribute("fill")).toBeNull();
     });
 
     test("reports resolved unsupported properties separately", async () => {

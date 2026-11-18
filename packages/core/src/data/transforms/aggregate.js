@@ -1,6 +1,5 @@
-import { group as d3group } from "d3-array";
+import { InternMap } from "internmap";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
-import iterateNestedMaps from "../../utils/iterateNestedMaps.js";
 import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
 
@@ -19,7 +18,7 @@ export default class AggregateTransform extends Transform {
         super(params, paramRuntimeProvider);
         this.params = params;
 
-        /** @type {any[]} */
+        /** @type {Datum[]} */
         this.buffer = [];
 
         /**
@@ -69,43 +68,41 @@ export default class AggregateTransform extends Transform {
      * Propagate the current buffer as one aggregated batch.
      */
     #flushBuffer() {
-        const params = this.params;
-        const groupby = params?.groupby;
+        const groupby = this.params.groupby ?? [];
+        const data = groupby.length
+            ? groupRows(
+                  this.buffer,
+                  this.createFieldAccessors(this.params, "groupby")
+              )
+            : this.buffer;
+        this.#emit(data, groupby);
+    }
 
-        if (groupby?.length > 0) {
-            const groupFieldAccessors = this.createFieldAccessors(
-                params,
-                "groupby"
-            );
-
-            // There's something strange in d3-array's typings
-            const groups = /** @type {Map<any, any>} */ /** @type {any} */ (
-                d3group(this.buffer, ...groupFieldAccessors)
-            );
-
-            for (const [group, data] of iterateNestedMaps(groups)) {
-                /** @type {any} */
-                const datum = {};
-
-                for (let i = 0; i < groupby.length; i++) {
-                    datum[groupby[i]] = group[i];
-                }
-
-                this.ops.forEach((op, i) => {
-                    datum[this.as[i]] = op(data);
-                });
-
-                this._propagate(datum);
+    /**
+     * Traverse groups in first-seen order, reusing the key path at every leaf.
+     * @param {Map<any, any> | Datum[]} data
+     * @param {string[]} groupby
+     * @param {any[]} [path]
+     * @param {number} [depth]
+     */
+    #emit(data, groupby, path = [], depth = 0) {
+        if (data instanceof Map) {
+            for (const [key, group] of data) {
+                path[depth] = key;
+                this.#emit(group, groupby, path, depth + 1);
             }
-        } else {
-            /** @type {Datum} */
-            const datum = {};
-            this.ops.forEach((op, i) => {
-                datum[this.as[i]] = op(this.buffer);
-            });
-
-            this._propagate(datum);
+            return;
         }
+
+        /** @type {Datum} */
+        const datum = {};
+        for (let i = 0; i < depth; i++) {
+            datum[groupby[i]] = path[i];
+        }
+        for (let i = 0; i < this.ops.length; i++) {
+            datum[this.as[i]] = this.ops[i](data);
+        }
+        this._propagate(datum);
     }
 
     /**
@@ -140,4 +137,46 @@ export default class AggregateTransform extends Transform {
 
         super.complete();
     }
+}
+
+/**
+ * Group one level at a time to preserve the first-seen order of nested keys.
+ * @param {Datum[]} rows
+ * @param {((datum: Datum) => any)[]} accessors
+ * @param {number} [depth]
+ * @returns {Map<any, any>}
+ */
+function groupRows(rows, accessors, depth = 0) {
+    let groups = new Map();
+    const accessor = accessors[depth];
+    for (const row of rows) {
+        const key = accessor(row);
+        // Primitive keys can use Map directly. Object keys still use d3's
+        // valueOf interning, including collisions with earlier primitive keys.
+        if (
+            key !== null &&
+            typeof key === "object" &&
+            !(groups instanceof InternMap)
+        ) {
+            groups = new InternMap(Array.from(groups));
+        }
+        const group = groups.get(key);
+        if (group) {
+            group.push(row);
+        } else {
+            groups.set(key, [row]);
+        }
+    }
+
+    const hasChildren = depth + 1 < accessors.length;
+    // InternMap repeats key interning on the final write, even for leaves.
+    if (hasChildren || groups instanceof InternMap) {
+        for (const [key, group] of groups) {
+            groups.set(
+                key,
+                hasChildren ? groupRows(group, accessors, depth + 1) : group
+            );
+        }
+    }
+    return groups;
 }

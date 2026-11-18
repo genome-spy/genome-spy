@@ -336,6 +336,24 @@ describe("BaseProgram channel validation", () => {
         ).toThrow('Ordinal scale on "vec" requires a non-empty range.');
     });
 
+    it("rejects typed vectors where ordinal scales require scalar ids", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 1 },
+                vec: {
+                    value: new Uint32Array([0]),
+                    type: "u32",
+                    inputComponents: 1,
+                    scale: {
+                        type: "ordinal",
+                        domain: [0],
+                        range: [[1, 0, 0, 1]],
+                    },
+                },
+            })
+        ).toThrow('Ordinal scale on "vec" requires scalar integer values.');
+    });
+
     it("copies interval targets without adding hit testing to scalar inputs", () => {
         const projections = Object.freeze([
             Object.freeze({ component: "x", input: "x" }),
@@ -351,13 +369,13 @@ describe("BaseProgram channel validation", () => {
         const program = createProgram({
             x: { value: 0.5, type: "f32" },
             vec: {
-                value: [1, 0, 0, 1],
+                default: new Float32Array([1, 0, 0, 1]),
                 type: "f32",
                 components: 4,
                 conditions: [
                     {
                         when: predicate,
-                        value: [0, 1, 0, 1],
+                        value: new Float32Array([0, 1, 0, 1]),
                     },
                 ],
             },

@@ -28,8 +28,11 @@ The renderer is still exploratory: there are guiding goals but the exact
 implementation is open to iteration. Prioritize a clear, extensible
 architecture while keeping render-time hot paths minimal and optimized.
 
-Keep `README.md` written for a broad audience so external users can understand
-it without GenomeSpy context.
+Keep `README.md` a concise introduction and getting-started guide, not an
+exhaustive API reference. Use `write-genomespy-docs` for package documentation.
+Do not add a paragraph for each mark or repeat shared channel behavior under
+different mark names. API types and examples already cover individual options;
+PRs and Changesets cover verification and delivery notes.
 
 ## Coding style & conventions
 
@@ -87,7 +90,9 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
 - Build Storybook when adding or changing stories:
   `npm -w @genome-spy/webgpu-renderer run build-storybook`.
 
-## Migration plan
+## Work tracking
 
-- Track ongoing work in `packages/webgpu-renderer/MIGRATION_PLAN.md` and update
-  it when new phases start or finish.
+Use issues and PRs for ongoing work, and scoped temporary plans when required by
+`plan-genomespy-change`. Do not recreate `MIGRATION_PLAN.md` or another
+package-wide progress journal; it duplicates those sources and creates unrelated
+conflicts.

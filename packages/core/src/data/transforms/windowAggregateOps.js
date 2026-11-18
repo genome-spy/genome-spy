@@ -17,24 +17,13 @@ import { bisectLeft, quantileSorted } from "d3-array";
 
 /** @typedef {import("../flowNode.js").Datum} Datum */
 
-export const WINDOW_AGGREGATE_OPS = new Set([
-    "count",
-    "valid",
-    "sum",
-    "min",
-    "max",
-    "mean",
-    "q1",
-    "median",
-    "q3",
-    "variance",
-]);
-
 const ORDERED_OPS = new Set(["min", "max", "q1", "median", "q3"]);
 const MOMENT_OPS = new Set(["mean", "variance"]);
 
 /**
- * @typedef {{ op: string, resultIndex: number }} AggregateResult
+ * @typedef {import("../../spec/transform.js").AggregateOp} AggregateOp
+ * @typedef {Exclude<AggregateOp, "count">} FieldAggregateOp
+ * @typedef {{ op: FieldAggregateOp, resultIndex: number }} AggregateResult
  */
 
 /**
@@ -47,9 +36,29 @@ const MOMENT_OPS = new Set(["mean", "variance"]);
 
 /** @typedef {(state: WindowAggregateState) => any} AggregateValueReader */
 
+/** @type {Record<FieldAggregateOp, AggregateValueReader>} */
+const aggregateReaders = {
+    valid: (state) => state.valid,
+    sum: (state) => (state.valid ? state.sum : undefined),
+    min: (state) => (state.valid ? state.values[0] : undefined),
+    max: (state) =>
+        state.valid ? state.values[state.values.length - 1] : undefined,
+    mean: (state) => (state.valid ? state.mean : undefined),
+    q1: (state) => (state.valid ? state.q1() : undefined),
+    median: (state) => (state.valid ? state.median() : undefined),
+    q3: (state) => (state.valid ? state.q3() : undefined),
+    variance: (state) =>
+        state.valid > 1 ? state.m2 / (state.valid - 1) : undefined,
+};
+
+export const WINDOW_AGGREGATE_OPS = new Set([
+    "count",
+    ...Object.keys(aggregateReaders),
+]);
+
 /**
- * Prepares the sliding-state loop once per aggregate field group. Result
- * readers are selected during setup, not for every output value.
+ * Prepares an evaluator for the requested frames of an aggregate field group.
+ * A whole-partition aggregate requests a single frame.
  *
  * @param {(datum: Datum) => any} accessor
  * @param {AggregateResult[]} results
@@ -57,18 +66,54 @@ const MOMENT_OPS = new Set(["mean", "variance"]);
 export function createAggregatePartitionEvaluator(accessor, results) {
     const ops = results.map(({ op }) => op);
     const resultIndices = results.map(({ resultIndex }) => resultIndex);
-    const readers = results.map(({ op }) => createAggregateValueReader(op));
+    const readers = ops.map((op) => {
+        if (!Object.hasOwn(aggregateReaders, op)) {
+            throw new Error(`Unsupported aggregate window operation: ${op}`);
+        }
+        return aggregateReaders[op];
+    });
 
     return /** @type {AggregatePartitionEvaluator} */ (
         (rows, bounds, output) => {
-            const state = new WindowAggregateState(accessor, ops);
             const resultArrays = resultIndices.map((index) => output[index]);
             const starts = bounds.starts;
             const stops = bounds.stops;
+
+            // Frame boundaries are monotonic. These endpoints imply that
+            // every requested frame covers the whole partition.
+            const wholePartition =
+                starts[starts.length - 1] === 0 && stops[0] === rows.length;
+            const state = new WindowAggregateState(
+                accessor,
+                ops,
+                wholePartition
+            );
+            if (wholePartition) {
+                for (const row of rows) {
+                    state.add(row);
+                }
+                if (state.needsOrderedValues) {
+                    // Stable sorting after reversing preserves the tie order
+                    // of left insertion, which is observable for signed zeros.
+                    state.values
+                        .reverse()
+                        .sort(
+                            (a, b) =>
+                                a - b ||
+                                Number(Number.isNaN(a)) -
+                                    Number(Number.isNaN(b))
+                        );
+                }
+                for (let i = 0; i < readers.length; i++) {
+                    resultArrays[i].fill(readers[i](state));
+                }
+                return;
+            }
+
             let start = 0;
             let stop = 0;
 
-            for (let index = 0; index < rows.length; index++) {
+            for (let index = 0; index < starts.length; index++) {
                 const nextStart = starts[index];
                 const nextStop = stops[index];
                 while (start < nextStart) {
@@ -90,37 +135,6 @@ export function createAggregatePartitionEvaluator(accessor, results) {
             }
         }
     );
-}
-
-/**
- * @param {string} op
- * @returns {AggregateValueReader}
- */
-function createAggregateValueReader(op) {
-    switch (op) {
-        case "valid":
-            return (state) => state.valid;
-        case "sum":
-            return (state) => (state.valid ? state.sum : undefined);
-        case "min":
-            return (state) => (state.valid ? state.values[0] : undefined);
-        case "max":
-            return (state) =>
-                state.valid ? state.values[state.values.length - 1] : undefined;
-        case "mean":
-            return (state) => (state.valid ? state.mean : undefined);
-        case "q1":
-            return (state) => (state.valid ? state.q1() : undefined);
-        case "median":
-            return (state) => (state.valid ? state.median() : undefined);
-        case "q3":
-            return (state) => (state.valid ? state.q3() : undefined);
-        case "variance":
-            return (state) =>
-                state.valid > 1 ? state.m2 / (state.valid - 1) : undefined;
-        default:
-            throw new Error(`Unsupported aggregate window operation: ${op}`);
-    }
 }
 
 /**
@@ -161,12 +175,14 @@ export class WindowAggregateState {
     /**
      * @param {(datum: Datum) => any} accessor
      * @param {string[]} ops
+     * @param {boolean} [deferSorting]
      */
-    constructor(accessor, ops) {
+    constructor(accessor, ops, deferSorting = false) {
         this.accessor = accessor;
         this.needsSum = ops.includes("sum");
         this.needsMoments = ops.some((op) => MOMENT_OPS.has(op));
         this.needsOrderedValues = ops.some((op) => ORDERED_OPS.has(op));
+        this.deferSorting = deferSorting;
         this.reset();
     }
 
@@ -200,11 +216,15 @@ export class WindowAggregateState {
             this.m2 += delta * (numericValue - this.mean);
         }
         if (this.needsOrderedValues) {
-            this.values.splice(
-                bisectLeft(this.values, numericValue),
-                0,
-                numericValue
-            );
+            if (this.deferSorting) {
+                this.values.push(numericValue);
+            } else {
+                this.values.splice(
+                    bisectLeft(this.values, numericValue),
+                    0,
+                    numericValue
+                );
+            }
         }
     }
 

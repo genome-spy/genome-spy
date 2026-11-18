@@ -156,6 +156,10 @@ Common checks from the repository root:
 - For GitHub reads and writes, including PRs, reviews, comments, and issues,
   prefer the connected GitHub MCP tools. Use the `gh` CLI only when the
   connector does not support the required operation or context.
+- Before posting or updating agent-authored PR titles, descriptions, reviews,
+  or comments, use [write-clear-pr-text](.agents/skills/write-clear-pr-text/SKILL.md).
+  This includes inline review replies and recording comments. Check the final
+  wording before posting; do not publish a draft first and simplify it afterward.
 - For agent-authored or materially rewritten GitHub issue or PR bodies, reviews,
   and comments, append
   `_Posted by <agent name> (AI agent) at the user's request._`, replacing

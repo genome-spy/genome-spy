@@ -1,8 +1,4 @@
-import {
-    activateExprRefProps,
-    withoutExprRef,
-} from "../../../paramRuntime/paramUtils.js";
-import { getUrlDescriptorExpressions } from "../urlDescriptor.js";
+import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import IntervalUrlSource from "./intervalUrlSource.js";
 
@@ -31,19 +27,9 @@ export default class BamSource extends IntervalUrlSource {
         const channel = withoutExprRef(paramsWithDefaults.channel);
         super(view, channel);
 
-        this.params = activateExprRefProps(
-            view.paramRuntime,
-            paramsWithDefaults,
-            (props) => {
-                if (props.has("url") || props.has("indexUrl")) {
-                    this.reloadUrlDescriptors();
-                } else if (props.has("windowSize")) {
-                    this.reloadLastDomain();
-                }
-            },
-            (disposer) => this.registerDisposer(disposer),
-            getUrlDescriptorExpressions(paramsWithDefaults.url)
-        );
+        this.params = this.activateUrlParams(paramsWithDefaults, {
+            descriptorKeys: ["indexUrl"],
+        });
 
         /** @type {[string, string][]} */
         this.tagFields = createTagFields(paramsWithDefaults.tags);

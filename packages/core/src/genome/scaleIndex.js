@@ -5,6 +5,7 @@ import {
 import { ticks as d3ticks, tickStep, extent } from "d3-array";
 import { format as d3format } from "d3-format";
 import { bandSpace } from "vega-scale";
+import { installBandScaleProperties } from "../scales/bandScaleProperties.js";
 import { gapRank, installGroupingGapProperties } from "./indexGapMapping.js";
 
 /**
@@ -16,10 +17,6 @@ export default function scaleIndex() {
     let range = [0, 1];
 
     let domainSpan = 1;
-
-    let paddingInner = 0;
-    let paddingOuter = 0;
-    let align = 0.5;
 
     /** @type {readonly number[] | undefined} */
     let gapDomain;
@@ -39,9 +36,7 @@ export default function scaleIndex() {
                 cuts: enabled ? gaps.positions : [],
                 width: extent > 0 ? gaps.width / extent : 0,
                 ranks: gapDomain,
-                paddingInner,
-                paddingOuter,
-                align,
+                ...padding,
             });
             gapMappings.set(extent, mapping);
         }
@@ -62,7 +57,9 @@ export default function scaleIndex() {
      * @type {import("./scaleIndex.js").ScaleIndex}
      */
     const scale = /** @type {any} */ (scaleFunction);
-    const gaps = installGroupingGapProperties(scale, () => gapMappings.clear());
+    const invalidate = () => gapMappings.clear();
+    const gaps = installGroupingGapProperties(scale, invalidate);
+    const padding = installBandScaleProperties(scale, "index", invalidate);
 
     scale.invert = (y) => getMapping().invertPoint(y).value;
     scale.navigationMapping = getMapping;
@@ -73,7 +70,14 @@ export default function scaleIndex() {
 
     scale.sizeForStep = (step) => {
         if (!gaps.enabled())
-            return step * bandSpace(domainSpan, paddingInner, paddingOuter);
+            return (
+                step *
+                bandSpace(
+                    domainSpan,
+                    padding.paddingInner,
+                    padding.paddingOuter
+                )
+            );
         if (!domainSpan && !gapDomain) return 0;
         const first = gapDomain?.[0] ?? gapRank(gaps.positions, domain[0]);
         const last = gapDomain?.[1] ?? gapRank(gaps.positions, domain[1], true);
@@ -81,7 +85,7 @@ export default function scaleIndex() {
             step *
                 Math.max(
                     gapDomain ? Number.EPSILON : 1,
-                    domainSpan - paddingInner + 2 * paddingOuter
+                    domainSpan - padding.paddingInner + 2 * padding.paddingOuter
                 ) +
             gaps.width * (last - first)
         );
@@ -126,58 +130,13 @@ export default function scaleIndex() {
         }
     };
 
-    // @ts-expect-error
-    scale.padding = function (_) {
-        if (arguments.length) {
-            gapMappings.clear();
-            paddingOuter = _;
-            paddingInner = Math.min(1, _);
-            return scale;
-        } else {
-            return paddingInner;
-        }
-    };
-
-    // @ts-expect-error
-    scale.paddingInner = function (_) {
-        if (arguments.length) {
-            gapMappings.clear();
-            paddingInner = Math.min(1, _);
-            return scale;
-        } else {
-            return paddingInner;
-        }
-    };
-
-    // @ts-expect-error
-    scale.paddingOuter = function (_) {
-        if (arguments.length) {
-            gapMappings.clear();
-            paddingOuter = _;
-            return scale;
-        } else {
-            return paddingOuter;
-        }
-    };
-
-    // @ts-expect-error
-    scale.align = function (_) {
-        if (arguments.length) {
-            gapMappings.clear();
-            align = Math.max(0, Math.min(1, _));
-            return scale;
-        } else {
-            return align;
-        }
-    };
-
     scale.step = getStep;
 
-    scale.bandwidth = () => Math.abs(getStep() * (1 - paddingInner));
+    scale.bandwidth = () => Math.abs(getStep() * (1 - padding.paddingInner));
 
     scale.ticks = (count) => {
         // Axis ticks are placed at band centers, independently of alignment.
-        const offset = numberingOffset - (1 - paddingInner) / 2;
+        const offset = numberingOffset - (1 - padding.paddingInner) / 2;
         return d3ticks(
             scale.invert(range[0]) + offset,
             scale.invert(range[1]) + offset,
@@ -211,9 +170,9 @@ export default function scaleIndex() {
         const copy = scaleIndex()
             .domain(domain, gapDomain)
             .range(range)
-            .paddingInner(paddingInner)
-            .paddingOuter(paddingOuter)
-            .align(align)
+            .paddingInner(padding.paddingInner)
+            .paddingOuter(padding.paddingOuter)
+            .align(padding.align)
             .numberingOffset(numberingOffset)
             .gapPositions(gaps.positions)
             .gapWidth(gaps.width)

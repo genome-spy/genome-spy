@@ -121,26 +121,27 @@ that ref instead of a synthetic event dependency. Source/selection/zoom inputs
 settle before terminal domain notifications and rendering. Viewport debounce and
 coverage remain explicit input policy, with immediate initial calibration.
 
-`ScaleInstanceManager` binds range and grouping-gap expressions into one mapping
-operation that depends on the displayed domain and mapping configuration. Binding
-uses the effective resolution scope, preserving shared-scale ownership and the
-single-member compatibility lookup. It validates static configuration on a copy,
+`ScaleInstanceManager` binds range, grouping-gap, and band/index padding
+expressions into one mapping operation that depends on the displayed domain and
+mapping configuration. Binding uses the effective resolution scope, preserving
+shared-scale ownership and the single-member compatibility lookup. It validates
+static configuration on a copy,
 applies the live configuration, and publishes a stable mapping ref. Range-array
 and domain equality suppress redundant application. `range()`, `bandwidth()`,
 `scale()` and `invert()` consume this native producer; `linearize()` instead
 consumes the resolution's assembly-configuration ref. Domain-to-range expressions
 remain valid, while mapping feedback is rejected by graph cycle validation.
 
-Marks and retained WebGL range textures observe completed mappings through owned
-graph effects. Compatibility range events are terminal notifications, not producer
-edges. Public `scale.range(value)` calls submit an explicit range command; it
-persists through navigation until the bound range values or configuration change.
+WebGL scale uniforms apply in an owned operation before render effects. Mapping
+publication invalidates retained WebGPU resources and queues step-size updates.
+Retained WebGL range textures observe completed mappings through graph effects.
+Update a managed range by declaring a range expression and changing its inputs.
 The mapping operation and its owner live for the resolution lifetime, including
-identity scales. Replacing the physical scale retains this ref, clears old range
-commands, and uses physical identity in equality so retained consumers are notified
-even when numeric values are unchanged. The domain owner retains navigation state,
-including fractional boundary ranks that keep partially visible gaps moving
-continuously with the domain.
+identity scales. Replacing the physical scale retains this ref. Physical scale
+identity ensures retained consumers are notified even when numeric values are
+unchanged. The domain owner retains navigation state, including fractional
+boundary ranks that keep partially visible gaps moving continuously with the
+domain.
 CPU encoders use owned operations depending on mapping to refresh their captured
 physical scale and metadata before observer effects. Equality skips in-place scale
 updates; per-datum evaluation still calls the captured scale directly. Conditional

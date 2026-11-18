@@ -30,16 +30,18 @@ export function resolveLinkProperties(mark) {
 /**
  * @param {import("../../../marks/link.js").default} mark
  * @param {ReturnType<typeof resolveLinkProperties>} properties
- * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, minPickingSize?: number}} options
+ * @param {{coords: import("../../../view/layout/rectangle.js").default, data: object[], visibleBounds: import("../bounds.js").RenderBounds, minPickingSize?: number, start?: number, end?: number}} options
  * @param {(instance: LinkInstance) => void} visitor
  */
 export function visitLinkInstances(mark, properties, options, visitor) {
     const { coords, data, visibleBounds } = options;
+    const start = options.start ?? 0;
+    const end = options.end ?? data.length;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    if (data.length == 0) {
+    if (start === end) {
         return 0;
     }
     const projectXRange = prepareRangeProjection(
@@ -65,7 +67,8 @@ export function visitLinkInstances(mark, properties, options, visitor) {
     const clamped = isMarkClamped(mark, "x") || isMarkClamped(mark, "y");
     let instanceCount = 0;
 
-    for (const datum of data) {
+    for (let index = start; index < end; index++) {
+        const datum = data[index];
         projectXRange(datum, xRange);
         projectYRange(datum, yRange);
         if (

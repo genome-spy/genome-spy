@@ -10,10 +10,17 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { isFacetSpec } from "../view/viewSpecGuards.js";
 import CursorManager from "./cursorManager.js";
 import EventListenerRegistry from "./eventListenerRegistry.js";
+import {
+    aliasedPointerEventTypes,
+    getInteractionEventType,
+} from "../utils/interactionEvent.js";
 
 /** @typedef {import("../types/interactionApi.d.ts").InternalMarkHit} InternalMarkHit */
 /** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
 /** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
+
+const TAP_DISTANCE = 4;
+const markEventTypes = ["click", "dblclick", "contextmenu"];
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -138,7 +145,7 @@ export default class InteractionController {
      * @returns {() => void}
      */
     subscribeMarkEvent(view, type, listener) {
-        if (!["click", "dblclick", "contextmenu"].includes(type)) {
+        if (!markEventTypes.includes(type)) {
             throw new Error(`Unsupported mark event type: ${type}`);
         }
 
@@ -209,9 +216,7 @@ export default class InteractionController {
      */
     subscribeNativeEvent(type, listener) {
         const supported = [
-            "click",
-            "dblclick",
-            "contextmenu",
+            ...markEventTypes,
             "mousedown",
             "mouseup",
             "mousemove",
@@ -257,22 +262,17 @@ export default class InteractionController {
         }
 
         if (mouseEvent) {
-            const point = this.#toCanvasPoint(mouseEvent);
-            this.#lastPointerPoint = point;
-            if (this.#isInsideCanvas(point)) {
-                this.#refreshHoverAndCursor(point);
-                return;
-            }
-
-            this.#interactionDispatcher.handlePointerLeave(mouseEvent);
-        } else if (
-            this.#lastPointerPoint &&
-            this.#isInsideCanvas(this.#lastPointerPoint)
-        ) {
-            this.#refreshHoverAndCursor(this.#lastPointerPoint);
+            this.#lastPointerPoint = this.#toCanvasPoint(mouseEvent);
+        }
+        const point = this.#lastPointerPoint;
+        if (point && this.#isInsideCanvas(point)) {
+            this.#refreshHoverAndCursor(point);
             return;
         }
 
+        if (mouseEvent) {
+            this.#interactionDispatcher.handlePointerLeave(mouseEvent);
+        }
         this.#clearHover();
         this.#cursorManager.clear();
     }
@@ -282,43 +282,38 @@ export default class InteractionController {
      */
     registerInteractionEvents() {
         const canvas = this.#canvas;
-        /** @type {Array<() => void>} */
-        const removers = [];
-
-        /**
-         * @param {EventTarget} target
-         * @param {string} type
-         * @param {EventListener} listener
-         * @param {AddEventListenerOptions} [options]
-         */
-        const addListener = (target, type, listener, options) => {
-            target.addEventListener(type, listener, options);
-            removers.push(() =>
-                target.removeEventListener(type, listener, options)
-            );
-        };
+        const listeners = new AbortController();
+        const options = { signal: listeners.signal };
 
         let lastWheelEvent = performance.now();
         let longPressTriggered = false;
-        /** @type {{ pointerCount: 1 | 2, centerX: number, centerY: number, distance: number } | undefined} */
-        let previousTouchGesture;
+        let lastPressWasTouch = false;
+        /** @type {{ id: number, button: number, timer?: ReturnType<typeof setTimeout> } | undefined} */
+        let press;
 
-        if (globalThis.document?.addEventListener) {
-            addListener(
-                document,
-                "mousedown",
-                (/** @type {MouseEvent} */ event) => {
-                    if (
-                        this.#tooltip.sticky &&
-                        !event.composedPath().includes(canvas) &&
-                        !this.#tooltip.containsEvent(event)
-                    ) {
-                        this.#dismissStickyTooltip();
-                    }
-                },
-                { capture: true }
-            );
-        }
+        /** @param {PointerEvent} [event] */
+        const finishPress = (event) => {
+            if (!press || (event && press.id !== event.pointerId)) return;
+
+            const moved =
+                event?.type === "pointermove" || event?.type === "pointerleave";
+            if (moved && !this.#longPressPending) return;
+
+            const { button, timer } = press;
+            press = undefined;
+            if (button === 2) {
+                this.#tooltip.popEnabledState();
+                return;
+            }
+
+            clearTimeout(timer);
+            if (!this.#longPressPending) return;
+
+            this.#longPressPending = false;
+            if (moved && this.#hoverTrackingSuspensionCount > 0) {
+                this.#clearTooltip();
+            }
+        };
 
         /**
          * @param {Point} point
@@ -339,7 +334,6 @@ export default class InteractionController {
 
             if (
                 uiEvent instanceof MouseEvent &&
-                uiEvent.type !== "mouseout" &&
                 this.#hoverTrackingSuspensionCount === 0
             ) {
                 this.#updateCursor(interaction.target);
@@ -409,16 +403,31 @@ export default class InteractionController {
             pendingDiscrete = task;
         };
 
-        /** @param {Event} event */
-        const listener = (event) => {
+        /** @param {Event} event @param {Point} [canvasPoint] */
+        const listener = (event, canvasPoint) => {
             const now = performance.now();
             const wheeling = now - lastWheelEvent < 200;
 
             if (event instanceof MouseEvent) {
-                const point = this.#toCanvasPoint(event);
+                const type = getInteractionEventType(event.type);
+                const point = canvasPoint ?? this.#toCanvasPoint(event);
+                if (type === "click" || type === "dblclick") {
+                    const fromPointer = event.isTrusted && event.detail > 0;
+                    // Older Safari delivers touch-generated clicks as MouseEvents.
+                    const touchClick =
+                        "pointerType" in event
+                            ? event.pointerType === "touch"
+                            : lastPressWasTouch && fromPointer;
+                    if (
+                        touchClick ||
+                        (fromPointer && !this.#isInsideCanvas(point))
+                    ) {
+                        return;
+                    }
+                }
                 let viewDefaultPrevented = false;
                 this.#nativeEventListeners.emit(
-                    event.type,
+                    type,
                     {
                         sourceEvent: event,
                         point,
@@ -429,7 +438,7 @@ export default class InteractionController {
                     this.#reportError
                 );
                 if (viewDefaultPrevented) {
-                    if (event.type === "wheel") {
+                    if (type === "wheel") {
                         this.#stopWheelInteraction();
                     }
                     return;
@@ -439,7 +448,7 @@ export default class InteractionController {
                 let markPickPromise;
                 /** @type {InternalMarkHit | null | undefined} */
                 let eventHit;
-                if (["click", "dblclick", "contextmenu"].includes(event.type)) {
+                if (markEventTypes.includes(type)) {
                     markPickPromise = this.#handlePicking(
                         point.x,
                         point.y,
@@ -452,11 +461,8 @@ export default class InteractionController {
                     );
                 }
 
-                if (
-                    event.type !== "contextmenu" &&
-                    this.#isInteractionFrozen()
-                ) {
-                    if (event.type === "wheel") {
+                if (type !== "contextmenu" && this.#isInteractionFrozen()) {
+                    if (type === "wheel") {
                         this.#stopWheelInteraction();
                     }
                     return;
@@ -464,53 +470,41 @@ export default class InteractionController {
 
                 this.#lastPointerPoint = point;
 
-                let hoverPickHandled = false;
+                if (type === "mousemove") {
+                    if (!wheeling && this.#hoverTrackingSuspensionCount === 0) {
+                        this.#suppressTooltipUntilMouseMove = false;
+                        this.#tooltip.handleMouseMove(event);
+                        this.#tooltipUpdateRequested = false;
 
-                if (
-                    event.type == "mousemove" &&
-                    !wheeling &&
-                    this.#hoverTrackingSuspensionCount === 0
-                ) {
-                    this.#suppressTooltipUntilMouseMove = false;
-                    this.#tooltip.handleMouseMove(event);
-                    this.#tooltipUpdateRequested = false;
-
-                    // Disable picking during dragging. Also postpone picking until
-                    // the user has stopped zooming as reading pixels from the
-                    // picking buffer is slow and ruins smooth animations.
-                    if (event.buttons == 0 && !isStillZooming()) {
-                        if (activeHoverPick) {
-                            queuedMouseMove = { point, event };
-                        } else {
-                            startHoverPick(point, event);
+                        // Skip picking while dragging or zooming to keep animations smooth.
+                        if (event.buttons === 0 && !isStillZooming()) {
+                            if (activeHoverPick) {
+                                queuedMouseMove = { point, event };
+                            } else {
+                                startHoverPick(point, event);
+                            }
+                            this.#wheelInertia.cancel();
+                            return;
                         }
-                        hoverPickHandled = true;
                     }
-                }
 
-                if (event.type == "mousemove" && !hoverPickHandled) {
                     // A drag or temporarily suppressed hover supersedes the
                     // pending hover; its eventual result must not replay.
                     activeHoverPick = undefined;
                     queuedMouseMove = undefined;
                 }
 
-                if (hoverPickHandled) {
-                    this.#wheelInertia.cancel();
-                    return;
-                }
-
-                if (event.type != "wheel") {
+                if (type != "wheel") {
                     this.#wheelInertia.cancel();
                 }
 
                 if (
-                    (event.type == "mousedown" || event.type == "mouseup") &&
+                    (type == "mousedown" || type == "mouseup") &&
                     !isStillZooming()
                 ) {
                     // Actually, only needed when clicking on a mark
                     this.#renderPickingFramebuffer();
-                } else if (event.type == "wheel") {
+                } else if (type == "wheel") {
                     lastWheelEvent = now;
                     this.#tooltipUpdateRequested = false;
 
@@ -541,33 +535,29 @@ export default class InteractionController {
                                   ? "chart"
                                   : "default",
                         });
-                    const claimed = probe();
+                    const claim = probe();
 
-                    if (claimed.wheelScroll) {
+                    if (claim.wheelScroll || ordinary || !claim.wheelClaimed) {
                         this.#stopWheelInteraction();
-                        wheelEvent.preventDefault();
-                        claimed.wheelScroll();
-                        return;
-                    } else if (ordinary) {
-                        this.#stopWheelInteraction();
-                        return;
-                    }
-
-                    if (!claimed.wheelClaimed) {
-                        this.#stopWheelInteraction();
+                        if (claim.wheelScroll) {
+                            wheelEvent.preventDefault();
+                            claim.wheelScroll();
+                            return;
+                        }
                         if (cooperative) {
                             return;
                         }
                     } else {
-                        stopPanInertia(this.#animator);
-                        if (this.#wheelOwner !== claimed.wheelOwner) {
+                        const owner = claim.wheelOwner;
+                        if (this.#wheelOwner === owner) {
+                            stopPanInertia(this.#animator);
+                        } else {
                             this.#stopWheelInteraction();
                         }
-                        this.#wheelOwner = claimed.wheelOwner;
+                        this.#wheelOwner = owner;
                         wheelEvent.preventDefault();
 
-                        if (!horizontal && claimed.wheelSmooth) {
-                            const owner = claimed.wheelOwner;
+                        if (!horizontal && claim.wheelSmooth) {
                             const template = makeEventTemplate(wheelEvent);
                             this.#wheelInertia.setMomentum(
                                 wheelEvent.deltaY *
@@ -598,269 +588,217 @@ export default class InteractionController {
                             );
                             return;
                         }
+                        // Horizontal panning and selection-only gestures are direct.
+                        this.#wheelInertia.stop();
                     }
 
-                    // Horizontal panning and selection-only gestures are direct.
-                    this.#wheelInertia.stop();
                     if (horizontal) {
                         this.#clearHover();
                     }
                 }
 
-                if (event.type == "click") {
-                    if (longPressTriggered) {
-                        return;
-                    }
-
-                    const clickWasDrag =
-                        this.#mouseDownCoords?.subtract(
-                            Point.fromMouseEvent(event)
-                        ).length >= 3;
-
-                    const dispatchClick = () => {
-                        // TODO: Should be handled at the view level, not globally
-                        const e = this.#currentHover
-                            ? {
-                                  type: event.type,
-                                  viewPath: this.#currentHover.mark.unitView
-                                      .getLayoutAncestors()
-                                      .map(
-                                          /** @param {import("../view/view.js").default} view */
-                                          (view) => view.name
-                                      )
-                                      .reverse(),
-                                  datum: this.#currentHover.datum,
-                              }
-                            : {
-                                  type: event.type,
-                                  viewPath: null,
-                                  datum: null,
-                              };
-
-                        this.#emitEvent("click", e);
-
-                        if (!clickWasDrag) {
-                            return dispatchInteraction(point, event, eventHit);
-                        }
-                    };
-
-                    if (markPickPromise) {
-                        dispatchPicked(markPickPromise, dispatchClick);
-                        return;
-                    }
-
-                    return dispatchClick();
+                if (type === "click" && longPressTriggered) {
+                    return;
                 }
+                const clickWasDrag =
+                    type === "click" &&
+                    this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
+                        .length >= 3;
 
                 const dispatch = () => {
-                    const interaction = dispatchInteraction(
-                        point,
-                        event,
-                        eventHit
-                    );
+                    if (type === "click") {
+                        const hover = this.#currentHover;
+                        this.#emitEvent("click", {
+                            type,
+                            viewPath:
+                                hover?.mark.unitView
+                                    .getLayoutAncestors()
+                                    .map((view) => view.name)
+                                    .reverse() ?? null,
+                            datum: hover?.datum ?? null,
+                        });
+                        if (clickWasDrag) return;
+                    }
+
+                    dispatchInteraction(point, event, eventHit);
                     if (
-                        event.type === "dblclick" &&
+                        type === "dblclick" &&
                         this.#hoverTrackingSuspensionCount === 0 &&
                         this.#isInsideCanvas(point)
                     ) {
                         this.#scheduleHoverRefreshAfterRender();
                     }
-                    return interaction;
                 };
                 if (markPickPromise) {
                     dispatchPicked(markPickPromise, dispatch);
+                } else {
+                    dispatch();
+                }
+            }
+        };
+
+        /** @type {Map<number, PointerEvent>} */
+        const touches = new Map();
+
+        const readTouchGesture = () => {
+            const points = touches.values();
+            const first = points.next().value;
+            if (!first) return;
+
+            const second = points.next().value;
+            return {
+                pointerCount: /** @type {1 | 2} */ (second ? 2 : 1),
+                centerX: second
+                    ? (first.clientX + second.clientX) / 2
+                    : first.clientX,
+                centerY: second
+                    ? (first.clientY + second.clientY) / 2
+                    : first.clientY,
+                distance: second ? getClientDistance(first, second) : 0,
+            };
+        };
+
+        /**
+         * @param {NonNullable<ReturnType<typeof readTouchGesture>>} gesture
+         * @param {"move" | "end" | "cancel"} phase
+         */
+        const dispatchTouchGesture = (
+            gesture,
+            phase,
+            xDelta = 0,
+            yDelta = 0,
+            zDelta = 0
+        ) => {
+            dispatchInteraction(
+                toCanvasPoint(canvas, gesture.centerX, gesture.centerY),
+                {
+                    type: "touchgesture",
+                    phase,
+                    pointerCount: gesture.pointerCount,
+                    xDelta,
+                    yDelta,
+                    zDelta,
+                }
+            );
+        };
+
+        /** @type {ReturnType<typeof readTouchGesture>} */
+        let previousTouchGesture;
+
+        /** @type {PointerEvent | undefined} */
+        let touchStart;
+        /** @type {(() => boolean) | undefined} */
+        let cancelTouchDrag;
+
+        /**
+         * @param {PointerEvent} start
+         * @param {PointerEvent} activeEvent
+         */
+        const startTouchTool = (start, activeEvent) => {
+            if (this.#isInteractionFrozen()) return;
+
+            /** @type {import("../utils/interactionEvent.js").TouchDragStartEvent} */
+            const drag = {
+                type: "touchdragstart",
+                pointerEvent: start,
+                activeEvent,
+            };
+            const interaction = dispatchInteraction(
+                this.#toCanvasPoint(start),
+                drag
+            );
+            if (interaction.stopped) return;
+
+            // Brushes need movement to define a range and take precedence over rulers.
+            if (drag.brush && (!drag.panAvailable || drag.brush.overridesPan)) {
+                if (activeEvent.type === "pointermove")
+                    return drag.brush.start();
+            } else if (
+                drag.ruler &&
+                (!drag.panAvailable || drag.ruler.overridesPan)
+            ) {
+                return drag.ruler.start();
+            }
+        };
+
+        /**
+         * @param {PointerEvent} event
+         * @param {boolean} canceled
+         */
+        const handleTouch = (event, canceled) => {
+            const { type, pointerId } = event;
+            const started = type === "pointerdown";
+            const moved = type === "pointermove";
+            if (!started && !touches.has(pointerId)) return;
+
+            if (started) {
+                canvas.setPointerCapture(pointerId);
+                if (touches.size === 0) {
+                    touchStart = event;
+                    stopPanInertia(this.#animator);
+                } else {
+                    touchStart = undefined;
+                    cancelTouchDrag?.();
+                    cancelTouchDrag = undefined;
+                }
+            }
+            if (started || moved) {
+                this.#wheelInertia.cancel();
+                touches.set(pointerId, event);
+            } else {
+                touches.delete(pointerId);
+            }
+
+            this.#tooltipUpdateRequested = false;
+            const previous = previousTouchGesture;
+            const current = readTouchGesture();
+            const start = touchStart;
+            const withinTapDistance =
+                start && getClientDistance(start, event) < TAP_DISTANCE;
+            if (moved && withinTapDistance) return;
+
+            previousTouchGesture = current;
+            if (started) {
+                if (start) {
+                    cancelTouchDrag = startTouchTool(start, event);
+                    if (cancelTouchDrag) touchStart = undefined;
+                }
+                return;
+            }
+            touchStart = undefined;
+            if (!moved) {
+                if (cancelTouchDrag) {
+                    cancelTouchDrag = undefined;
                     return;
                 }
-                return dispatch();
-            }
-        };
-
-        addListener(canvas, "mousedown", (/** @type {MouseEvent} */ e) => {
-            this.#mouseDownCoords = Point.fromMouseEvent(e);
-            this.#longPressPending = false;
-            const hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
-
-            if (this.#tooltip.sticky) {
-                this.#dismissStickyTooltip();
-                // Dismiss the sticky tooltip before routing the press so the
-                // click only affects the tooltip state.
-                longPressTriggered = true;
-            } else {
-                longPressTriggered = false;
-            }
-
-            const disableTooltip = () => {
-                document.addEventListener(
-                    "mouseup",
-                    () => this.#tooltip.popEnabledState(),
-                    {
-                        once: true,
-                        capture: true,
+                if (
+                    !canceled &&
+                    withinTapDistance &&
+                    !this.#isInteractionFrozen()
+                ) {
+                    const point = this.#toCanvasPoint(event);
+                    if (this.#isInsideCanvas(point)) {
+                        dispatchInteraction(point, {
+                            type: "touchtap",
+                            pointerEvent: event,
+                        });
                     }
-                );
-                this.#tooltip.pushEnabledState(false);
-            };
-
-            // Right-click opens the context menu and disables tooltips.
-            // Left-button presses keep the current tooltip visible through the
-            // press; plain clicks may still promote it to sticky mode.
-            if (e.button == 2) {
-                disableTooltip();
-            } else if (e.button == 0 && this.#tooltip.visible) {
-                // Preserve the current tooltip through the press. Plain clicks
-                // may also escalate this state into a sticky tooltip.
-                this.#longPressPending = true;
-
-                /** @type {ReturnType<typeof setTimeout> | undefined} */
-                let timeout;
-                if (!hasModifier) {
-                    // Make tooltip sticky if the user long-presses
-                    timeout = setTimeout(() => {
-                        longPressTriggered = true;
-                        this.#longPressPending = false;
-                        this.#tooltip.sticky = true;
-                    }, 400);
                 }
-
-                /**
-                 * @param {boolean} clearTooltipOnMove
-                 */
-                const clear = (clearTooltipOnMove) => {
-                    clearTimeout(timeout);
-                    if (!this.#longPressPending) {
-                        return;
-                    }
-
-                    this.#longPressPending = false;
-                    if (
-                        clearTooltipOnMove &&
-                        this.#hoverTrackingSuspensionCount > 0
-                    ) {
-                        this.#clearTooltip();
-                    }
-                };
-                document.addEventListener("mouseup", () => clear(false), {
-                    once: true,
-                });
-                document.addEventListener("mousemove", () => clear(true), {
-                    once: true,
-                });
-            }
-        });
-
-        [
-            "mousedown",
-            "mouseup",
-            "wheel",
-            "click",
-            "mousemove",
-            "contextmenu",
-            "dblclick",
-            "mouseenter",
-            "mouseleave",
-        ].forEach((type) =>
-            addListener(
-                canvas,
-                type,
-                listener,
-                type === "wheel" ? { passive: false } : undefined
-            )
-        );
-
-        /**
-         * @param {number} clientX
-         * @param {number} clientY
-         */
-        /**
-         * @param {TouchList} touches
-         */
-        const readTouchGesture = (touches) => {
-            if (touches.length <= 0) {
+                if (canceled || !current) {
+                    dispatchTouchGesture(previous, canceled ? "cancel" : "end");
+                }
                 return;
             }
 
-            const first = touches[0];
+            if (start) cancelTouchDrag = startTouchTool(start, event);
+            if (cancelTouchDrag) return;
 
-            if (touches.length === 1) {
-                return {
-                    pointerCount: /** @type {1} */ (1),
-                    centerX: first.clientX,
-                    centerY: first.clientY,
-                    distance: 0,
-                };
-            }
-
-            const second = touches[1];
-            return {
-                pointerCount: /** @type {2} */ (2),
-                centerX: (first.clientX + second.clientX) / 2,
-                centerY: (first.clientY + second.clientY) / 2,
-                distance: getClientDistance(first, second),
-            };
-        };
-
-        /**
-         * @param {number} x
-         * @param {number} y
-         * @param {"move" | "end"} phase
-         * @param {1 | 2} pointerCount
-         * @param {number} xDelta
-         * @param {number} yDelta
-         * @param {number} zDelta
-         */
-        const dispatchTouchGestureEvent = (
-            x,
-            y,
-            phase,
-            pointerCount,
-            xDelta,
-            yDelta,
-            zDelta
-        ) => {
-            const point = toCanvasPoint(canvas, x, y);
-            dispatchInteraction(point, {
-                type: "touchgesture",
-                phase,
-                pointerCount,
-                xDelta,
-                yDelta,
-                zDelta,
-            });
-        };
-
-        /**
-         * @param {TouchEvent} touchEvent
-         */
-        const handleTouchStartOrMove = (touchEvent) => {
-            touchEvent.preventDefault();
-            this.#wheelInertia.cancel();
-            this.#tooltipUpdateRequested = false;
-
-            const currentGesture = readTouchGesture(touchEvent.touches);
-            if (!currentGesture) {
-                previousTouchGesture = undefined;
-                return;
-            }
-
-            if (
-                !previousTouchGesture ||
-                previousTouchGesture.pointerCount !==
-                    currentGesture.pointerCount
-            ) {
-                previousTouchGesture = currentGesture;
-                return;
-            }
-
-            const xDelta =
-                currentGesture.centerX - previousTouchGesture.centerX;
-            const yDelta =
-                currentGesture.centerY - previousTouchGesture.centerY;
+            const xDelta = current.centerX - previous.centerX;
+            const yDelta = current.centerY - previous.centerY;
+            // The zoom handler converts the logarithmic delta to a scale factor.
             const zDelta =
-                currentGesture.pointerCount === 2
-                    ? pinchDistanceToZoomDelta(
-                          previousTouchGesture.distance,
-                          currentGesture.distance
-                      )
+                previous.distance > 0 && current.distance > 0
+                    ? Math.log2(previous.distance / current.distance)
                     : 0;
 
             if (
@@ -869,83 +807,138 @@ export default class InteractionController {
                 Number.isFinite(yDelta) &&
                 Number.isFinite(zDelta)
             ) {
-                dispatchTouchGestureEvent(
-                    previousTouchGesture.centerX,
-                    previousTouchGesture.centerY,
-                    "move",
-                    currentGesture.pointerCount,
-                    xDelta,
-                    yDelta,
-                    zDelta
-                );
+                dispatchTouchGesture(previous, "move", xDelta, yDelta, zDelta);
             }
-
-            previousTouchGesture = currentGesture;
         };
 
-        /**
-         * @param {TouchEvent} touchEvent
-         */
-        const handleTouchEndOrCancel = (touchEvent) => {
-            touchEvent.preventDefault();
-            this.#tooltipUpdateRequested = false;
-            if (previousTouchGesture && touchEvent.touches.length === 0) {
-                dispatchTouchGestureEvent(
-                    previousTouchGesture.centerX,
-                    previousTouchGesture.centerY,
-                    "end",
-                    previousTouchGesture.pointerCount,
-                    0,
-                    0,
-                    0
-                );
-            }
+        /** @param {PointerEvent} event */
+        const startPress = (event) => {
+            finishPress();
+            this.#mouseDownCoords = Point.fromMouseEvent(event);
+            this.#longPressPending = false;
+            longPressTriggered = this.#tooltip.sticky;
+            if (longPressTriggered) this.#dismissStickyTooltip();
 
-            previousTouchGesture = readTouchGesture(touchEvent.touches);
+            if (event.button === 2) {
+                this.#tooltip.pushEnabledState(false);
+                press = { id: event.pointerId, button: event.button };
+            } else if (event.button === 0 && this.#tooltip.visible) {
+                this.#longPressPending = true;
+                const timer =
+                    event.shiftKey || event.ctrlKey || event.metaKey
+                        ? undefined
+                        : setTimeout(() => {
+                              longPressTriggered = true;
+                              this.#longPressPending = false;
+                              this.#tooltip.sticky = true;
+                          }, 400);
+                press = { id: event.pointerId, button: event.button, timer };
+            }
         };
 
-        addListener(canvas, "touchstart", handleTouchStartOrMove, {
-            passive: false,
-        });
-        addListener(canvas, "touchmove", handleTouchStartOrMove, {
-            passive: false,
-        });
-        addListener(canvas, "touchend", handleTouchEndOrCancel, {
-            passive: false,
-        });
-        addListener(canvas, "touchcancel", handleTouchEndOrCancel, {
-            passive: false,
-        });
+        /** @param {PointerEvent} event */
+        const handlePointer = (event) => {
+            const { type, pointerId, pointerType } = event;
+            const touch = pointerType === "touch";
+            const canceled =
+                type === "pointercancel" || type === "lostpointercapture";
+            if (type === "pointerdown") lastPressWasTouch = touch;
+            if (canceled) finishPress(event);
 
-        // Prevent text selections etc while dragging
-        addListener(canvas, "dragstart", (event) => event.stopPropagation());
-
-        addListener(canvas, "mouseout", (event) => {
-            if (this.#isInteractionFrozen()) {
+            if (touch || (canceled && touches.has(pointerId))) {
+                if (
+                    canceled ||
+                    type === "pointerdown" ||
+                    type === "pointermove" ||
+                    type === "pointerup"
+                ) {
+                    handleTouch(event, canceled);
+                }
                 return;
             }
+            if (canceled) return;
 
-            if (this.#hoverTrackingSuspensionCount > 0) {
-                this.#clearTooltip();
-                return;
+            switch (type) {
+                case "pointerdown":
+                    startPress(event);
+                    break;
+                case "pointermove":
+                case "pointerup": {
+                    finishPress(event);
+                    const point = this.#toCanvasPoint(event);
+                    if (this.#isInsideCanvas(point)) listener(event, point);
+                    return;
+                }
+                case "pointerleave":
+                    finishPress(event);
+                    break;
+                case "pointerout":
+                    if (this.#isInteractionFrozen()) return;
+                    if (this.#hoverTrackingSuspensionCount > 0) {
+                        this.#clearTooltip();
+                        return;
+                    }
+
+                    this.#interactionDispatcher.handlePointerLeave(event);
+                    this.#cursorManager.clear();
+                    this.#tooltip.clear();
+                    this.#clearHover();
+                    this.#lastPointerPoint = undefined;
+                    activeHoverPick = undefined;
+                    queuedMouseMove = undefined;
+                    return;
             }
+            listener(event);
+        };
 
-            this.#interactionDispatcher.handlePointerLeave(
-                /** @type {MouseEvent} */ (event)
+        for (const type of aliasedPointerEventTypes) {
+            canvas.addEventListener(type, handlePointer, options);
+        }
+        canvas.addEventListener("pointercancel", handlePointer, options);
+        canvas.addEventListener("lostpointercapture", handlePointer, options);
+        for (const type of markEventTypes) {
+            canvas.addEventListener(type, listener, options);
+        }
+        canvas.addEventListener("wheel", listener, {
+            ...options,
+            passive: false,
+        });
+        canvas.addEventListener(
+            "dragstart",
+            (event) => event.stopPropagation(),
+            options
+        );
+
+        if (globalThis.document?.addEventListener) {
+            // A press can end outside the canvas without an active drag.
+            const capture = { ...options, capture: true };
+            document.addEventListener(
+                "pointerdown",
+                (event) => {
+                    if (
+                        this.#tooltip.sticky &&
+                        !event.composedPath().includes(canvas) &&
+                        !this.#tooltip.containsEvent(event)
+                    ) {
+                        this.#dismissStickyTooltip();
+                    }
+                },
+                capture
             );
-            this.#cursorManager.clear();
-            this.#tooltip.clear();
-            this.#clearHover();
-            this.#lastPointerPoint = undefined;
-            activeHoverPick = undefined;
-            queuedMouseMove = undefined;
-        });
+            document.addEventListener("pointerup", finishPress, capture);
+            document.addEventListener("pointercancel", finishPress, capture);
+        }
 
         return () => {
-            this.#stopWheelInteraction();
-            for (const remove of removers) {
-                remove();
+            listeners.abort();
+            finishPress();
+            cancelTouchDrag?.();
+            for (const id of touches.keys()) {
+                if (canvas.hasPointerCapture(id))
+                    canvas.releasePointerCapture(id);
             }
+            touches.clear();
+            this.#stopWheelInteraction();
             this.#nativeEventListeners.clear();
             this.#markEventListeners.clear();
             this.#hoverListeners.clear();
@@ -1336,19 +1329,4 @@ function toCanvasPoint(canvas, clientX, clientY) {
         clientX - rect.left - canvas.clientLeft,
         clientY - rect.top - canvas.clientTop
     );
-}
-
-/**
- * Converts a pinch distance ratio to a zDelta used by interactionToZoom:
- * scaleFactor = 2 ** zDelta.
- *
- * @param {number} previousDistance
- * @param {number} currentDistance
- */
-function pinchDistanceToZoomDelta(previousDistance, currentDistance) {
-    if (previousDistance <= 0 || currentDistance <= 0) {
-        return 0;
-    }
-
-    return Math.log2(previousDistance / currentDistance);
 }
