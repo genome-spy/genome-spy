@@ -33,13 +33,13 @@ struct VSOut {
 }
 
 class ExtraSlotProgram extends SlotProgram {
-    /** @returns {{ name: string, type: "f32", components: 1 }[]} */
+    /** @returns {{ name: string, type: "f32", components: 2 }[]} */
     getExtraUniformLayout() {
-        return [{ name: "uExtra", type: "f32", components: 1 }];
+        return [{ name: "uExtra", type: "f32", components: 2 }];
     }
 
     _initializeExtraUniforms() {
-        this._setUniformValue("uExtra", 1);
+        this._setUniformValue("uExtra", [1, 2]);
     }
 }
 
@@ -147,7 +147,7 @@ describe("BaseProgram slot handles", () => {
         expect(markPickingDirty).not.toHaveBeenCalled();
     });
 
-    it("updates scale domains through slots", () => {
+    it("keeps default and conditional scale updates independent", () => {
         const renderer = createMockRenderer();
         const program = createSlotProgram(renderer, {
             channels: {
@@ -160,6 +160,20 @@ describe("BaseProgram slot handles", () => {
                         domain: [0, 1],
                         range: [0, 1],
                     },
+                    conditions: [
+                        {
+                            when: { selection: "brush", type: "single" },
+                            channel: {
+                                value: 0.5,
+                                type: "f32",
+                                scale: {
+                                    type: "linear",
+                                    domain: [0, 1],
+                                    range: [0, 1],
+                                },
+                            },
+                        },
+                    ],
                 },
                 size: { value: 1, type: "f32", dynamic: true },
                 fill: {
@@ -171,37 +185,76 @@ describe("BaseProgram slot handles", () => {
             },
         });
 
-        const domainEntry =
-            program._uniformBufferState.entries.get("uDomain_x");
-        program.getSlotHandles().scales.x.setDomain([2, 4]);
+        const slot = program.getSlotHandles().scales.x;
+        slot.setDomain([2, 4]);
+        slot.conditions[0].setDomain([6, 8]);
 
-        expect(domainEntry).toBeTruthy();
-        const stride = domainEntry.stride ?? 16;
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                domainEntry.offset,
-                true
-            )
-        ).toBe(2);
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                domainEntry.offset + stride,
-                true
-            )
-        ).toBe(4);
+        const uniforms = program._uniformBufferState;
+        const view = new DataView(uniforms.data);
+        /** @param {string} name */
+        const readDomain = (name) => {
+            const { offset, stride } = uniforms.entries.get(name);
+            return [
+                view.getFloat32(offset, true),
+                view.getFloat32(offset + stride, true),
+            ];
+        };
+        expect(readDomain("uDomain_x")).toEqual([2, 4]);
+        expect(readDomain("uDomain_x__cond0")).toEqual([6, 8]);
     });
+
+    it.each(/** @type {const} */ (["threshold", "quantize"]))(
+        "packs transparent CSS %s palettes on creation and retained range updates",
+        (scaleType) => {
+            const program = createSlotProgram(createMockRenderer(), {
+                channels: {
+                    uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+                    x: { data: new Float32Array([0, 1]), type: "f32" },
+                    size: { value: 1 },
+                    fill: {
+                        data: new Float32Array([0.25, 0.75]),
+                        type: "f32",
+                        inputComponents: 1,
+                        scale: {
+                            type: scaleType,
+                            domain: scaleType === "threshold" ? [0.5] : [0, 1],
+                            range: ["transparent", "rgba(255, 0, 0, 0.5)"],
+                        },
+                    },
+                },
+            });
+            const entry =
+                program._uniformBufferState.entries.get("uRange_fill");
+            const rgba = new Float32Array(
+                program._uniformBufferState.data,
+                entry.offset,
+                8
+            );
+            expect(Array.from(rgba)).toEqual([0, 0, 0, 0, 1, 0, 0, 0.5]);
+
+            program
+                .getSlotHandles()
+                .scales.fill.setRange(["rgba(0, 255, 0, 0.25)", "transparent"]);
+
+            expect(Array.from(rgba)).toEqual([0, 1, 0, 0.25, 0, 0, 0, 0]);
+        }
+    );
 
     it("updates dynamic values through slots", () => {
         const renderer = createMockRenderer();
+        const packed = new Uint32Array([0, 0xfedcba98, 4, 0]).subarray(1, 3);
+        const start = 0xfedcba98 * 4096;
         const program = createSlotProgram(renderer, {
             channels: {
                 uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
                 x: {
-                    data: new Float32Array([0, 1]),
-                    type: "f32",
+                    value: packed,
+                    type: "u32",
+                    inputComponents: 2,
+                    dynamic: true,
                     scale: {
-                        type: "linear",
-                        domain: [0, 1],
+                        type: "index",
+                        domain: [start, start + 10],
                         range: [0, 1],
                     },
                 },
@@ -228,6 +281,18 @@ describe("BaseProgram slot handles", () => {
                 },
             },
         });
+
+        const xEntry = program._uniformBufferState.entries.get("u_x");
+        const xWords = new Uint32Array(
+            program._uniformBufferState.data,
+            xEntry.offset,
+            2
+        );
+        expect(Array.from(xWords)).toEqual([0xfedcba98, 4]);
+        packed[1] = 9;
+        program.getSlotHandles().values.x.set(packed);
+        packed.fill(0);
+        expect(Array.from(xWords)).toEqual([0xfedcba98, 9]);
 
         const sizeEntry = program._uniformBufferState.entries.get("u_size");
         program.getSlotHandles().values.size.set(5);
@@ -294,21 +359,31 @@ describe("BaseProgram slot handles", () => {
         if (!conditions) {
             throw new Error("Expected conditional value slots.");
         }
-        conditions[0].set([0.2, 0.3, 0.4, 1]);
-        conditions[1].set([0.6, 0.7, 0.8, 1]);
+        const scratch = new Float32Array([0.25, 0.5, 0.75, 1]);
+        const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+        program.getSlotHandles().batchUpdates(() => {
+            conditions[0].set(scratch);
+            scratch.set([0.5, 0.75, 1, 0.25]);
+            conditions[1].set(scratch);
+            scratch.fill(0);
+        });
 
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                program._uniformBufferState.entries.get("u_fill__cond0").offset,
-                true
+        const stored = [0, 1].map((index) =>
+            Array.from(
+                new Float32Array(
+                    program._uniformBufferState.data,
+                    program._uniformBufferState.entries.get(
+                        `u_fill__cond${index}`
+                    ).offset,
+                    4
+                )
             )
-        ).toBeCloseTo(0.2);
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                program._uniformBufferState.entries.get("u_fill__cond1").offset,
-                true
-            )
-        ).toBeCloseTo(0.6);
+        );
+        expect(stored).toEqual([
+            [0.25, 0.5, 0.75, 1],
+            [0.5, 0.75, 1, 0.25],
+        ]);
+        expect(writeBuffer).toHaveBeenCalledOnce();
     });
 
     it("batches retained slot updates into one uniform upload", () => {
@@ -360,19 +435,24 @@ describe("BaseProgram slot handles", () => {
                     components: 4,
                 },
             },
-            dynamicValues: { uExtra: { value: 2 } },
+            dynamicValues: { uExtra: { value: new Float32Array([2, 3]) } },
         });
 
         const entry = program._uniformBufferState.entries.get("uExtra");
         expect(entry).toBeTruthy();
-        program.getSlotHandles().extraValues.uExtra.set(3);
-
-        expect(
-            new DataView(program._uniformBufferState.data).getFloat32(
-                entry.offset,
-                true
-            )
-        ).toBe(3);
+        const stored = new Float32Array(
+            program._uniformBufferState.data,
+            entry.offset,
+            2
+        );
+        expect(Array.from(stored)).toEqual([2, 3]);
+        const scratch = new Float32Array([3, 4]);
+        const slots = program.getSlotHandles();
+        slots.batchUpdates(() => {
+            slots.extraValues.uExtra.set(scratch);
+            scratch.fill(0);
+        });
+        expect(Array.from(stored)).toEqual([3, 4]);
     });
 
     it("replaces a single conditional series through its logical channel", () => {
@@ -513,3 +593,48 @@ function createSlotProgram(renderer, config) {
     attachScaleDefinitions(config.channels);
     return new SlotProgram(renderer, config);
 }
+
+it("retains signed index padding in one uniform upload and invalidates picking", () => {
+    const renderer = createMockRenderer();
+    const program = createSlotProgram(renderer, {
+        channels: {
+            uniqueId: { data: new Uint32Array([0, 1]), type: "u32" },
+            x: {
+                data: new Uint32Array([0, 1]),
+                type: "u32",
+                scale: {
+                    type: "index",
+                    domain: [0, 2],
+                    range: [0, 100],
+                    paddingOuter: -0.2,
+                },
+            },
+            size: { value: 1, type: "f32" },
+            fill: { value: [0, 0, 0, 1], type: "f32", components: 4 },
+        },
+    });
+    const writeBuffer = vi.spyOn(renderer.device.queue, "writeBuffer");
+    const pickingDirty = vi.spyOn(renderer, "markPickingDirty");
+    const slot = program.getSlotHandles().scales.x;
+    slot.setPadding(0.4, -0.2);
+    const uniformData = new DataView(program._uniformBufferState.data);
+    expect(
+        uniformData.getFloat32(
+            program._uniformBufferState.entries.get("uScalePaddingInner_x")
+                .offset,
+            true
+        )
+    ).toBeCloseTo(0.4);
+    expect(
+        uniformData.getFloat32(
+            program._uniformBufferState.entries.get("uScalePaddingOuter_x")
+                .offset,
+            true
+        )
+    ).toBeCloseTo(-0.2);
+    expect(writeBuffer).toHaveBeenCalledOnce();
+    expect(pickingDirty).toHaveBeenCalledOnce();
+    expect(() => slot.setPadding(NaN, 0)).toThrow("Padding requires");
+    program.destroy();
+    expect(() => slot.setPadding(0, 0)).toThrow();
+});

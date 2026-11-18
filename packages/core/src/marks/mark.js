@@ -26,11 +26,12 @@ import { isInChromeSubtree } from "../view/viewChrome.js";
 
 /**
  * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
- * @typedef {"configuration" | "resources"} RenderingRevisionKind
+ * @typedef {"configuration" | "resources" | "resourceExpressions"} RenderingRevisionKind
  * @typedef {object} RenderingRevisionState
  * @prop {number} configuration
  * @prop {number} resources
- * @prop {Set<string>} expressions
+ * @prop {number} resourceExpressions
+ * @prop {Map<string, import("../paramRuntime/types.js").ExprRefFunction>} expressions
  */
 
 /**
@@ -191,7 +192,6 @@ export default class Mark {
     getSupportedChannels() {
         return [
             "sample",
-            "facetIndex",
             "x",
             "y",
             "xOffset",
@@ -506,12 +506,13 @@ export default class Mark {
             (this.#renderingRevisionState = {
                 configuration: 0,
                 resources: 0,
-                expressions: new Set(),
+                resourceExpressions: 0,
+                expressions: new Map(),
             });
 
         /**
          * @param {string | import("../spec/parameter.js").ExprRef} expression
-         * @param {RenderingRevisionKind} kind
+         * @param {"configuration" | "resources"} kind
          */
         const watchExpression = (expression, kind) => {
             const key =
@@ -521,11 +522,15 @@ export default class Mark {
             if (state.expressions.has(key)) {
                 return;
             }
-            this.unitView.paramRuntime.watchExpression(expression, () => {
-                state[kind]++;
-                this.unitView.context.animator.requestRender();
-            });
-            state.expressions.add(key);
+            const evaluate = this.unitView.paramRuntime.watchExpression(
+                expression,
+                () => {
+                    state[kind]++;
+                    if (kind === "resources") state.resourceExpressions++;
+                    this.unitView.context.animator.requestRender();
+                }
+            );
+            state.expressions.set(key, evaluate);
         };
         if (!previousState) {
             const scales = new Set();
@@ -569,7 +574,7 @@ export default class Mark {
                             this.unitView.getScaleResolution(resolutionChannel);
                         if (resolution && !scales.has(resolution)) {
                             this.unitView.registerDisposer(
-                                resolution.observeMapping(
+                                resolution.getMappingRef().subscribe(
                                     () => state.resources++
                                 )
                             );
@@ -602,12 +607,33 @@ export default class Mark {
 
     /**
      * Returns a renderer-facing revision, or zero before tracking is initialized.
+     * Resource expressions exclude mapping-only changes so renderers can retain
+     * unrelated live values during scale navigation.
      *
      * @param {RenderingRevisionKind} kind
      * @returns {number}
      */
     getRenderingRevision(kind) {
         return this.#renderingRevisionState?.[kind] ?? 0;
+    }
+
+    /**
+     * Returns the live property's existing subscribed evaluator for capture.
+     *
+     * @param {import("../spec/parameter.js").ExprRef} expression
+     * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+     */
+    getRenderingExpression(expression) {
+        const evaluate = this.#renderingRevisionState?.expressions.get(
+            "resources:" + expression.expr
+        );
+        if (!evaluate) {
+            throw new Error(
+                "Rendering expression has not been initialized: " +
+                    expression.expr
+            );
+        }
+        return evaluate;
     }
 
     /**

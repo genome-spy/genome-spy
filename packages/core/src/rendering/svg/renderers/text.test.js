@@ -106,9 +106,17 @@ describe("SVG text renderer", () => {
 
     test("explicit reactive fill overrides color without an unused color scale", async () => {
         const { view } = await createHeadlessEngine({
-            params: [{ name: "paint", value: "red" }],
+            params: [
+                { name: "paint", value: "red" },
+                { name: "alpha", value: 0.4 },
+            ],
             data: { values: [{ label: "A", unused: "category" }] },
-            mark: { type: "text", fill: { expr: "paint" }, opacity: 0.5 },
+            mark: {
+                type: "text",
+                fill: { expr: "paint" },
+                fillOpacity: { expr: "alpha" },
+                opacity: 0.5,
+            },
             encoding: {
                 text: { field: "label" },
                 color: { field: "unused", type: "nominal" },
@@ -123,6 +131,9 @@ describe("SVG text renderer", () => {
                     logicalHeight: 50,
                 }).svg.querySelector('[data-mark-type="text"]');
             expect(group().getAttribute("fill")).toBe("red");
+            expect(group().getAttribute("fill-opacity")).toBe("0.2");
+            view.paramRuntime.setValue("alpha", 1);
+            await view.paramRuntime.whenPropagated();
             expect(group().getAttribute("fill-opacity")).toBe("0.5");
             view.paramRuntime.setValue("paint", "green");
             await view.paramRuntime.whenPropagated();
@@ -130,6 +141,61 @@ describe("SVG text renderer", () => {
             view.paramRuntime.setValue("paint", null);
             await view.paramRuntime.whenPropagated();
             expect(group().getAttribute("fill")).toBe("none");
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("keeps conditional fill opacity independent of scalar opacity and its scale", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [
+                { name: "picked", select: "point" },
+                { name: "selectedAlpha", value: 1 },
+            ],
+            data: {
+                values: [
+                    { label: "A", alpha: 0 },
+                    { label: "B", alpha: 0.5 },
+                ],
+            },
+            mark: { type: "text", fill: "black", opacity: 0.5 },
+            encoding: {
+                key: { field: "label" },
+                text: { field: "label" },
+                fillOpacity: {
+                    condition: {
+                        test: { param: "picked", empty: false },
+                        value: { expr: "selectedAlpha" },
+                    },
+                    field: "alpha",
+                    type: "quantitative",
+                    scale: { domain: [0, 1], range: [0, 1] },
+                },
+            },
+        });
+        try {
+            expect(view.getScaleResolution("fillOpacity")).toBeDefined();
+            expect(view.getScaleResolution("opacity")).toBeUndefined();
+            const alphas = () =>
+                Array.from(
+                    createSvg({
+                        viewRoot: view,
+                        logicalWidth: 100,
+                        logicalHeight: 50,
+                    }).svg.querySelectorAll('[data-mark-type="text"] text'),
+                    (text) => text.getAttribute("fill-opacity")
+                );
+            expect(alphas()).toEqual(["0", "0.25"]);
+            const picked =
+                createEmbedParamNamespace(view).getSelection("picked");
+            if (picked.type !== "point")
+                throw new Error("Expected record selection");
+            picked.setValue([["A"]]);
+            await view.paramRuntime.whenPropagated();
+            expect(alphas()).toEqual(["0.5", "0.25"]);
+            view.paramRuntime.setValue("selectedAlpha", 0.4);
+            await view.paramRuntime.whenPropagated();
+            expect(alphas()).toEqual(["0.2", "0.25"]);
         } finally {
             view.disposeSubtree();
         }

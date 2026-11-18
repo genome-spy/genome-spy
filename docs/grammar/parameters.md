@@ -214,8 +214,7 @@ through a single color, fill, or stroke component with `bind: "legend"`.
 The selected range includes its start and excludes its end. For example, an
 index brush spanning `[6, 11)` selects positions 6 through 10.
 
-By default, the start gesture depends on whether the brushed channels are
-zoomable:
+With a mouse, the default brush gesture depends on which channels are zoomable.
 
 - if any brushed channel is zoomable, start brushing with `Shift` + drag
 - otherwise, start brushing with plain drag
@@ -223,6 +222,10 @@ zoomable:
 You can override this behavior with `select.on`, for example `"on": "mousedown"`
 to always start brushing on plain drag. The selection can be cleared by clicking
 outside the selected area.
+
+On touchscreens, the default drag draws or moves a brush on plots without
+zoomable axes when `select.on` has no event filter. On zoomable plots, drag to
+pan and pinch to zoom. Enable `select.touchDrag` to brush there.
 
 Active interval selections can also be resized with the mouse wheel when the
 pointer is over the selection rectangle. This is controlled by `select.zoom`.
@@ -338,15 +341,16 @@ Rulers are not selections. They store a tagged parameter value such as:
 }
 ```
 
-Rulers can be pointer-driven, following the mouse pointer, or viewport-driven,
-following the center of the current scale viewport.
-
-Pointer-driven rulers use `ruler.on`:
+For mouse input, `ruler.on` controls when a pointer-driven ruler updates.
 
 - `"mousemove"` follows the pointer and clears on mouse leave by default.
 - `"mousedown"` updates on press and continues while dragging. Use an event
   filter such as `"mousedown[event.shiftKey]"` when plain drag is used for zoom
   or pan gestures.
+
+On touchscreens, tap to place a ruler by default when `ruler.on` has no event
+filter. A ruler set to plain `"mousedown"` follows your finger from contact on
+plots without zoomable axes. `ruler.touchDrag` overrides this drag behavior.
 
 Viewport-driven rulers use `"source": "viewport"` and track the center of the
 current scale viewport. A viewport ruler must not define `on` and does not clear

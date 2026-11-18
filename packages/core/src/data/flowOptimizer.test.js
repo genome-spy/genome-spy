@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import FlowNode, { BEHAVIOR_CLONES } from "./flowNode.js";
 import {
     removeRedundantCloneTransforms,
@@ -140,7 +140,7 @@ const viewStub = /** @type {any} */ (
     })
 );
 
-describe("Merge indentical data sources", () => {
+describe("Merge identical data sources", () => {
     test("Merges correctly", () => {
         /** @type {DataFlow} */
         const dataFlow = new DataFlow();
@@ -165,19 +165,13 @@ describe("Merge indentical data sources", () => {
         dataFlow.addCollector(bc);
         dataFlow.addCollector(cc);
 
-        combineIdenticalDataSources(dataFlow);
+        const canonicalBySource = combineIdenticalDataSources(dataFlow);
 
-        expect(dataFlow.dataSources.length).toEqual(2);
-
-        const entries = dataFlow.dataSources;
-        const sharedIdentifier = a.identifier;
-        expect(entries).toContain(a);
-        expect(entries).toContain(c);
-        expect(
-            entries.filter((source) => source.identifier == sharedIdentifier)
-        ).toEqual([a]);
-
-        expect(new Set(a.children)).toEqual(new Set([ac, bc]));
+        expect(dataFlow.dataSources).toEqual([a, c]);
+        expect(canonicalBySource.get(a)).toBe(a);
+        expect(canonicalBySource.get(b)).toBe(a);
+        expect(canonicalBySource.get(c)).toBe(c);
+        expect(a.children).toEqual([ac, bc]);
         expect(c.children[0]).toBe(cc);
 
         for (const dataSource of dataFlow.dataSources) {
@@ -205,5 +199,27 @@ describe("Merge indentical data sources", () => {
         const entries = dataFlow.dataSources;
         expect(entries).toContain(a);
         expect(entries).toContain(b);
+    });
+
+    test("Keeps source branches intact when reading a share key fails", () => {
+        const flow = new DataFlow();
+        const params = { url: "http://genomespy.app/" };
+        const source = new UrlSource(params, viewStub);
+        const duplicate = new UrlSource(params, viewStub);
+        const invalid = new UrlSource(params, viewStub);
+        const child = new FlowNode();
+        duplicate.addChild(child);
+        flow.addDataSource(source);
+        flow.addDataSource(duplicate);
+        flow.addDataSource(invalid);
+        vi.spyOn(invalid, "shareKey", "get").mockImplementation(() => {
+            throw new Error("Invalid share key");
+        });
+
+        expect(() => combineIdenticalDataSources(flow)).toThrow(
+            "Invalid share key"
+        );
+        expect(flow.dataSources).toEqual([source, duplicate, invalid]);
+        expect(child.parent).toBe(duplicate);
     });
 });

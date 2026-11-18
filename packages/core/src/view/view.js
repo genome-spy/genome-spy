@@ -285,14 +285,15 @@ export default class View {
             );
         }
 
-        for (const { transform, property, param } of getOutputDeclarations(
+        for (const { transform, property, target } of getOutputDeclarations(
             spec.transform ?? []
         )) {
+            if (transform.type === "publish") continue;
             try {
-                if (typeof param === "string") {
-                    this.paramRuntime.registerOutput(param);
+                if (typeof target === "string") {
+                    this.paramRuntime.registerOutput(target);
                 }
-                const handle = this.paramRuntime.resolveOutput(param);
+                const handle = this.paramRuntime.resolveOutput(target);
                 if (handle.producerView)
                     throw new Error("Duplicate transform output producer.");
                 handle.producerView = this;
@@ -496,6 +497,16 @@ export default class View {
     /** @param {import("../spec/channel.js").PrimaryPositionalChannel} _channel */
     getAlignmentCoords(_channel) {
         return this.coords.shrink(this.getOverhang());
+    }
+
+    /**
+     * Returns the plot frame for a title anchored to the allocated viewport.
+     * Use the view's own insets even when its parent collapses their reservation.
+     * @param {import("./layout/rectangle.js").default} viewportCoords
+     * @param {number} _devicePixelRatio
+     */
+    getTitlePlotCoords(viewportCoords, _devicePixelRatio) {
+        return viewportCoords.shrink(this.getOverhang());
     }
 
     /** @returns {{ view: View, coords: import("./layout/rectangle.js").default, chrome: boolean }[]} */
@@ -784,9 +795,11 @@ export default class View {
     /**
      * Whether the authored or configured size is step-based, without materializing scales.
      * @param {"width" | "height"} dimension
+     * @param {boolean} offset Require the offset scale to contribute to the step size.
      */
-    isStepSized(dimension) {
-        return isStepSize(this.#getDimensionValue(dimension).value);
+    isStepSized(dimension, offset = false) {
+        const { value } = this.#getDimensionValue(dimension);
+        return isStepSize(value) && (!offset || value.for !== "position");
     }
 
     /**
@@ -821,7 +834,9 @@ export default class View {
                 this.context.requestLayoutReflow();
             }
         };
-        this.registerDisposer(resolution.observeMapping(listener));
+        const schedule = () => this.paramRuntime.requestUpdate(listener);
+        this.registerDisposer(resolution.getMappingRef().subscribe(schedule));
+        this.registerDisposer(() => this.paramRuntime.cancelUpdate(listener));
 
         if (value.for != "position") {
             const offsetChannel = dimension == "width" ? "xOffset" : "yOffset";
@@ -831,7 +846,7 @@ export default class View {
                 isDiscrete(offsetResolution.getResolvedScaleType())
             ) {
                 this.registerDisposer(
-                    offsetResolution.observeMapping(listener)
+                    offsetResolution.getMappingRef().subscribe(schedule)
                 );
             }
         }
@@ -1200,7 +1215,6 @@ export default class View {
 
         if (handle?.collector) {
             this.context.dataFlow.pruneBranch(handle.collector);
-            this.context.dataFlow.removeCollector(handle.collector);
         }
 
         if (

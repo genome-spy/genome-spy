@@ -359,15 +359,15 @@ for (const dpr of [1, 2]) {
             close(result.blend, [128, 0, 128, 255]);
             close(result.viewFade, [0, 0, 128, 128]);
             close(result.indexedMinimum, [255, 0, 0, 255]);
-            // PNG stores straight colors; fading blue changes alpha, not its RGB value.
-            for (const { fade, color } of result.pngColors)
-                close(color, [0, 0, 255, Math.round(255 * fade)]);
             const edge = [128, 0, 128, 255],
                 stripe = [0, 0, 255, 255],
                 gap = [255, 0, 0, 255];
             [edge, stripe, gap, edge, stripe, gap, edge, stripe].forEach(
                 (expected, i) => close(result.hatchRepeats[i], expected)
             );
+            // PNG stores straight colors; fading blue changes alpha, not its RGB value.
+            for (const { fade, color } of result.pngColors)
+                close(color, [0, 0, 255, Math.round(255 * fade)]);
             close(result.hatch, [255, 0, 0, 255]);
             for (const fade of result.fades) close(fade, [0, 0, 128, 128]);
             close(result.floor, [0, 0, 191, 191]);

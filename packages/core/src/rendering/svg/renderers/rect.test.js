@@ -326,7 +326,10 @@ describe("SVG rectangle renderer", () => {
         expect(rect?.getAttribute("y")).toBe("47");
         expect(rect?.getAttribute("width")).toBe("5");
         expect(rect?.getAttribute("height")).toBe("4");
-        expect(rect?.getAttribute("opacity")).toBe("0.25");
+        expect(rect?.getAttribute("opacity")).toBe("0.5");
+        expect(rect?.closest("[data-view-path]").getAttribute("opacity")).toBe(
+            "0.5"
+        );
     });
 
     test("exports rectangle shadows and hatches", async () => {
@@ -520,9 +523,13 @@ describe("SVG rectangle renderer", () => {
         expect(
             rects.every((rect) => rect.getAttribute("fill-opacity") == "1")
         ).toBe(true);
+        expect(rects.map((rect) => rect.getAttribute("opacity"))).toEqual([
+            null,
+            null,
+        ]);
         expect(
-            rects.map((rect) => rect.parentElement.getAttribute("opacity"))
-        ).toEqual(["0.5", "0.5"]);
+            rects[0].closest("[data-view-path]").getAttribute("opacity")
+        ).toBe("0.5");
         expect(
             rects[0]
                 .closest('[data-mark-type="rect"]')

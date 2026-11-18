@@ -67,6 +67,7 @@ export function createCanvas2DSvgRasterizer() {
                 devicePixelRatio: options.pixelRatio,
                 background: null,
                 paint: true,
+                applyViewOpacity: false,
                 markPredicate: (mark) => run.marks.has(mark),
                 opacityLayers,
                 textMetrics: options.textMetrics,

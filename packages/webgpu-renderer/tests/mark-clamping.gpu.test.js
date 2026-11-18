@@ -221,6 +221,69 @@ test("clamps placed marks, preserves strokes and diagonal rules, and hides colla
                 { font, squeeze: true, logoLetters }
             );
         }
+        // Expanding an occurrence must not expand its pixel offsets or shapes.
+        placements.replace({
+            rectangles: new Float32Array([0, -1, 1, 3]),
+        });
+        await check(
+            "expandedRect",
+            rectMark,
+            {
+                x: { value: 20 },
+                x2: { value: 80 },
+                y: { value: 40 },
+                y2: { value: 60 },
+                yOffset: { value: 3 },
+                y2Offset: { value: -3 },
+                strokeWidth: { value: 0 },
+            },
+            [
+                [50, 24],
+                [50, 21],
+            ],
+            {},
+            ""
+        );
+        for (const shape of ["circle", "square"]) {
+            await check(
+                "expanded" + shape,
+                pointMark,
+                {
+                    x: { value: 50 },
+                    y: { value: 50 },
+                    yOffset: { value: 4 },
+                    dy: { value: 2 },
+                    size: { value: 36 },
+                    strokeWidth: { value: 0 },
+                },
+                [
+                    [50, 56],
+                    [50, 62],
+                ],
+                { shape },
+                ""
+            );
+        }
+        for (const definition of [linkMark, arrowMark]) {
+            await check(
+                definition === linkMark ? "expandedLink" : "expandedArrow",
+                definition,
+                {
+                    x: { value: 20 },
+                    x2: { value: 80 },
+                    y: { value: 50 },
+                    y2: { value: 50 },
+                    yOffset: { value: 4 },
+                    y2Offset: { value: 4 },
+                },
+                [
+                    [50, 54],
+                    [50, 62],
+                ],
+                definition === linkMark ? { linkShape: "line" } : {},
+                ""
+            );
+        }
         renderer.destroy();
         canvas.remove();
         return hits;
@@ -236,6 +299,11 @@ test("clamps placed marks, preserves strokes and diagonal rules, and hides colla
         link: [7],
         arrow: [7],
         text: [7],
+        expandedRect: [7, null],
+        expandedcircle: [7, null],
+        expandedsquare: [7, null],
+        expandedLink: [7, null],
+        expandedArrow: [7, null],
     });
     for (const logoLetters of [false, true]) {
         expect(result["fitting" + logoLetters]).toContain(7);
