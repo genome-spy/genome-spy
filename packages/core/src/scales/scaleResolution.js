@@ -1,3 +1,4 @@
+import { intersection } from "../utils/setOperations.js";
 import deepEqual from "../utils/deepEqual.js";
 import DomainRuntime from "./domainRuntime.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
@@ -437,7 +438,7 @@ export default class ScaleResolution {
         const active = new Set();
         for (const member of members) {
             const view = member.view;
-            if (!view.isConfiguredVisible()) {
+            if (!view.isVisible()) {
                 continue;
             }
             const domain = member.channelDef?.scale?.domain;
@@ -1068,15 +1069,9 @@ export default class ScaleResolution {
             return;
 
         const members = new Set(
-            this.#members
-                .values()
-                .filter((member) => member.view.isConfiguredVisible())
+            this.#members.values().filter((member) => member.view.isVisible())
         );
-        const dataMembers = new Set(
-            this.#dataDomainMembers
-                .values()
-                .filter((member) => member.view.isConfiguredVisible())
-        );
+        const dataMembers = intersection(members, this.#dataDomainMembers);
 
         const props = this.#getMergedScaleProps();
         const link = this.#getLinkedSelectionInfo();
@@ -1389,6 +1384,19 @@ export default class ScaleResolution {
             domain,
             this.#hasConfiguredDomain()
         );
+    }
+
+    /** A loaded track can leave or rejoin the domain without publishing new data. */
+    refreshVisibility() {
+        const bound = this.#domainInputs?.members;
+        if (
+            bound &&
+            this.#members
+                .values()
+                .some((member) => bound.has(member) !== member.view.isVisible())
+        ) {
+            this.reconfigure();
+        }
     }
 
     /**

@@ -35,7 +35,7 @@ import {
     normalizeViewSettingsPayload,
     resolveRadioVisibilityConflicts,
 } from "./viewSettingsUtils.js";
-import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
+import { subscribeTo } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "./sampleView/specGuards.js";
 import IntentExecutor from "./state/intentExecutor.js";
@@ -810,22 +810,7 @@ export default class App {
             subscribeTo(
                 this.store,
                 (state) => state.viewSettings?.visibilities,
-                withMicrotask(() => {
-                    if (this.#finalized) {
-                        return;
-                    }
-                    // TODO: Optimize: only invalidate the affected views
-                    void this.genomeSpy.initializeVisibleViewData();
-                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
-                        "size",
-                        "progeny"
-                    );
-
-                    const context = this.genomeSpy.viewRoot.context;
-                    clearHiddenViewCoords(this.genomeSpy.viewRoot);
-                    context.highlightView(null);
-                    context.requestLayoutReflow();
-                })
+                () => viewRoot.context.requestVisibilityRefresh()
             )
         );
         this.#registerDisposer(
@@ -1156,20 +1141,4 @@ function setFavicon(favImg) {
     setFavicon.setAttribute("rel", "shortcut icon");
     setFavicon.setAttribute("href", favImg);
     headTitle.appendChild(setFavicon);
-}
-
-/**
- * Clears cached layout coordinates from views that are not effectively visible.
- *
- * Hidden views are skipped during layout/rendering and may otherwise keep stale
- * coordinates from earlier passes.
- *
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- */
-function clearHiddenViewCoords(viewRoot) {
-    viewRoot.visit((view) => {
-        if (!view.isVisible()) {
-            view.facetCoords.clear();
-        }
-    });
 }

@@ -582,11 +582,10 @@ export default class TitleView extends ContainerView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         context.pushView(this, coords);
         for (const child of this.#children) {

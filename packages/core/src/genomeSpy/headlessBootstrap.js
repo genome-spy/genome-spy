@@ -136,7 +136,8 @@ export function createHeadlessViewContext(options = {}) {
             options.removeBroadcastListener ?? (() => undefined),
         highlightView: options.highlightView ?? (() => undefined),
         isViewConfiguredVisible:
-            options.isViewConfiguredVisible ?? (() => true),
+            options.isViewConfiguredVisible ??
+            ((view) => view.isVisibleInSpec()),
         isViewSpec:
             options.isViewSpec ?? viewFactory.isViewSpec.bind(viewFactory),
         getBaseConfig: () => baseConfig,

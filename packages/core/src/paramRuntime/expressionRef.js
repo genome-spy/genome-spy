@@ -63,18 +63,15 @@ export function bindExpression(expr, resolve, options = {}) {
         throw annotateSpecError(error, options.specLocation);
     }
 
+    const dependencies = Array.from(refsForParams.values()).concat(
+        expression.scaleDependencies ?? []
+    );
+
     /** @type {Set<() => void>} */
     const activeSubscriptions = new Set();
 
     expression.subscribe = (listener) => {
-        /** @type {(() => void)[]} */
-        const disposers = [];
-        for (const ref of refsForParams.values()) {
-            disposers.push(ref.subscribe(listener));
-        }
-        for (const ref of expression.scaleDependencies ?? []) {
-            disposers.push(ref.subscribe(listener));
-        }
+        const disposers = dependencies.map((ref) => ref.subscribe(listener));
 
         let active = true;
         const unsubscribe = () => {
@@ -144,15 +141,8 @@ export function bindExpression(expr, resolve, options = {}) {
     // Include dependency identities to avoid collisions between structurally
     // identical expressions in different scopes.
     expression.identifier = () =>
-        expression.code +
-        "|" +
-        Array.from(refsForParams.values())
-            .map((ref) => ref.id)
-            .concat((expression.scaleDependencies ?? []).map((ref) => ref.id))
-            .join(",");
+        expression.code + "|" + dependencies.map((ref) => ref.id).join(",");
 
-    expression.dependencies = Array.from(refsForParams.values()).concat(
-        expression.scaleDependencies ?? []
-    );
-    return { expression, dependencies: expression.dependencies };
+    expression.dependencies = dependencies;
+    return { expression, dependencies };
 }

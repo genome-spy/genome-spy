@@ -23,6 +23,7 @@ const SAMPLE_COUNT_VARIABLE = "sampleCount";
  */
 export default class MergeSampleFacets extends FlowNode {
     #initialUpdate = true;
+    #pending = false;
 
     /** @type {(value: any) => void} */
     #sampleCountSetter;
@@ -46,9 +47,8 @@ export default class MergeSampleFacets extends FlowNode {
         }
 
         const scheduleUpdate = () => {
-            if (!this.#shouldUpdate) {
-                return;
-            }
+            this.#pending = !view.isVisible();
+            if (this.#pending) return;
 
             // Ensure that propagation is complete (albeit without actual data)
             // before the first update. This is necessary to prevent errors in
@@ -73,33 +73,16 @@ export default class MergeSampleFacets extends FlowNode {
         const unsubscribeHierarchy = subscribeTo(
             this.provenance.store,
             (state) => state.provenance.present[SAMPLE_SLICE_NAME],
-            () => {
-                // TODO: Should update only when the structure of the sample hierarchy changes.
-                // i.e., when groups or samples are added or removed. Reordering the
-                // the samples within a group should not trigger an update.
-                // TODO: Also check child visibilities. No need to propagate if
-                // the directly attached view is visible but all its children are
-                // invisible.
-                scheduleUpdate();
-            }
+            scheduleUpdate
         );
         this.view.registerDisposer(unsubscribeHierarchy);
 
-        // A summary that was initialized earlier may stay hidden while the
-        // sample hierarchy changes. Re-showing it must recompute aggregates
-        // even though no new sample-slice action is dispatched at that moment.
-        let previousVisible = this.#shouldUpdate;
-        const unsubscribeVisibility = this.provenance.store.subscribe(() => {
-            const visible = this.#shouldUpdate;
-            if (visible === previousVisible) {
-                return;
-            }
-            previousVisible = visible;
-            if (visible) {
-                scheduleUpdate();
-            }
-        });
-        this.view.registerDisposer(unsubscribeVisibility);
+        // A hidden summary may miss a cohort change or a data publication.
+        view.registerDisposer(
+            view._addBroadcastHandler("layoutComputed", () => {
+                if (this.#pending) scheduleUpdate();
+            })
+        );
     }
 
     get label() {
@@ -132,10 +115,6 @@ export default class MergeSampleFacets extends FlowNode {
         // TODO: Optimize by preventing calling altogether
     }
 
-    get #shouldUpdate() {
-        return this.view.isConfiguredVisible();
-    }
-
     #getCollector() {
         if (this.parent instanceof Collector) {
             // TODO: Ensure that the collector has proper groupbys
@@ -148,15 +127,13 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     complete() {
-        if (this.#shouldUpdate) {
+        this.#pending = !this.view.isVisible();
+        if (!this.#pending) {
             this.#mergeAndPropagate(
                 this.provenance.getPresentState()[SAMPLE_SLICE_NAME]
             );
-
-            super.complete();
-        } else {
-            super.complete();
         }
+        super.complete();
     }
 
     /**
@@ -210,16 +187,6 @@ export default class MergeSampleFacets extends FlowNode {
         for (const child of this.children) {
             child.beginBatch(flowBatch);
         }
-    }
-
-    /**
-     *
-     * @param {FlowNode} parent
-     */
-    setParent(parent) {
-        super.setParent(parent);
-
-        // TODO: Validate that the parent is a collector
     }
 }
 

@@ -220,6 +220,10 @@ describe("expression helpers", () => {
     });
 
     test("supports automatic and channel-specific zoom levels", () => {
+        const noAxes = createFunction("zoomLevel()");
+        expect(noAxes()).toBe(1);
+        expect(noAxes.scaleBindings.has("zoomLevel")).toBe(true);
+
         const x = createFakeScaleResolution([0, 10], (value) => value);
         const y = createFakeScaleResolution([0, 10], (value) => value);
         const resolveScaleResolution = (/** @type {string} */ channel) =>

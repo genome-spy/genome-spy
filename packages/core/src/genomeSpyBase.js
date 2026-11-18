@@ -14,7 +14,7 @@ import InputBindingManager from "./genomeSpy/inputBindingManager.js";
 import { calculateCanvasSize } from "./view/viewUtils.js";
 import {
     initializeViewData,
-    initializeVisibleViewData,
+    refreshVisibility,
 } from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
 
@@ -701,18 +701,9 @@ export default class GenomeSpy {
             return;
         }
 
-        await initializeVisibleViewData(
-            this.viewRoot,
-            this.viewRoot.context.dataFlow,
-            this.viewRoot.context.textMetrics
-        );
-
-        // Visibility toggles can change sizes; ensure layout is recomputed even
-        // when callers don't explicitly request it.
-        this.viewRoot._invalidateCacheByPrefix("size", "progeny");
-        this.#surface.invalidateSize();
-        this.computeLayout();
-        this.animator.requestRender();
+        await refreshVisibility(this.viewRoot);
+        if (this.viewRoot?.context.requestVisibilityRefresh)
+            this.computeLayout();
     }
 
     /**

@@ -1342,11 +1342,10 @@ export default class GridView extends ContainerView {
     arrange(context, coords, options = {}) {
         this._invalidateCacheByPrefix("trackPlotGeometry");
         this._invalidateCacheByPrefix("layoutFootprints");
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         if (!this.layoutParent) {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
@@ -1706,7 +1705,7 @@ export default class GridView extends ContainerView {
         for (const region of Object.values(this.#sharedLegends)) {
             if (region.isActive()) yield region;
         }
-        for (const child of this.#children) {
+        for (const child of this.visibleChildren) {
             for (const region of Object.values(child.legends)) {
                 if (region.isActive()) yield region;
             }

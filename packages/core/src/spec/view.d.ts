@@ -394,7 +394,7 @@ export interface ViewSpecBase extends ResolveSpec {
      *
      * **Default:** `true`
      */
-    visible?: boolean;
+    visible?: boolean | ExprRef;
 
     /**
      * [Templates](https://genomespy.app/docs/grammar/import/#repeating-with-named-templates)
@@ -703,7 +703,7 @@ export interface ImportSpec {
      *
      * If not specified, the imported specification's `visible` property is used.
      */
-    visible?: boolean;
+    visible?: boolean | ExprRef;
 
     /**
      * Configures defaults for the imported subtree at the import site.

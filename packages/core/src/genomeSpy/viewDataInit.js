@@ -6,7 +6,7 @@ import {
 } from "../data/flowInit.js";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
-import { VISIT_SKIP } from "../view/view.js";
+import { collectSubtreeViews } from "../view/flowBuilder.js";
 
 /**
  * Initializes the view data pipeline: builds the flow graph, awaits fonts,
@@ -24,6 +24,16 @@ export async function initializeViewData(
     textMetrics,
     onDataFlowBuilt
 ) {
+    // During initial loading a parameter can change after we selected the sources.
+    const context = viewRoot.context;
+    let changed = false;
+    context.requestVisibilityRefresh = () => {
+        changed = true;
+    };
+    viewRoot.registerDisposer(() => {
+        context.requestVisibilityRefresh = undefined;
+    });
+
     const { predicate: visibilityPredicate } =
         getInitializationDependencies(viewRoot);
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
@@ -49,34 +59,58 @@ export async function initializeViewData(
         visibilityPredicate
     );
 
+    while (changed && context.requestVisibilityRefresh) {
+        changed = false;
+        await refreshVisibility(viewRoot);
+    }
+
+    if (context.requestVisibilityRefresh) {
+        context.requestVisibilityRefresh = () => {
+            if (changed) return;
+            changed = true;
+            queueMicrotask(() => {
+                changed = false;
+                if (context.requestVisibilityRefresh) {
+                    void refreshVisibility(viewRoot).catch(context.reportError);
+                }
+            });
+        };
+    }
     return builtDataFlow;
 }
 
 /**
- * Initializes data flow for visible views that were previously
- * skipped. Intended for view-visibility toggles.
- *
- * @param {import("../view/view.js").default} viewRoot
- * @param {import("../data/dataFlow.js").default} dataFlow
- * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @returns {Promise<import("../data/dataFlow.js").default>}
+ * A hide takes effect while an earlier first-show load may still be pending.
+ * @param {import("../view/view.js").default} root
  */
-export async function initializeVisibleViewData(
-    viewRoot,
-    dataFlow,
-    textMetrics
-) {
-    return initializeViewDataForViews(
-        viewRoot,
-        dataFlow,
-        textMetrics,
-        viewRoot.getDescendants()
+export async function refreshVisibility(root) {
+    const context = root.context;
+    root._invalidateCacheByPrefix("size", "progeny");
+    root.visit((view) => {
+        if (!view.isVisible()) {
+            view.facetCoords.clear();
+            view.layoutCoords = undefined;
+        }
+        for (const scale of Object.values(view.resolutions.scale))
+            scale.refreshVisibility();
+    });
+    context.highlightView(null);
+    context.requestLayoutReflow();
+
+    await initializeVisibleViewData(
+        root,
+        context.dataFlow,
+        context.textMetrics
     );
+    if (context.requestVisibilityRefresh) {
+        root._invalidateCacheByPrefix("size", "progeny");
+        context.requestLayoutReflow();
+    }
 }
 
 /**
- * Initializes dataflow for selected views while avoiding unnecessary
- * data source reloads.
+ * Initializes previously skipped visible views. Mutations can restrict
+ * initialization to candidate views and required producers.
  *
  * If a selected view attaches downstream of an already completed collector,
  * the collector is repropagated instead of reloading the source.
@@ -84,24 +118,24 @@ export async function initializeVisibleViewData(
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
  * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @param {Iterable<import("../view/view.js").default>} candidateViews
+ * @param {Iterable<import("../view/view.js").default>} [candidateViews]
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
-export async function initializeViewDataForViews(
+export async function initializeVisibleViewData(
     viewRoot,
     dataFlow,
     textMetrics,
     candidateViews
 ) {
-    const candidates = new Set(candidateViews);
+    const candidates = candidateViews && new Set(candidateViews);
     const { predicate: visibilityPredicate, producerPaths } =
         getInitializationDependencies(viewRoot);
-    const viewsToInitialize = collectVisibleViews(
+    const viewsToInitialize = collectSubtreeViews(
         viewRoot,
         visibilityPredicate
     ).filter(
         (view) =>
-            (candidates.has(view) || producerPaths.has(view)) &&
+            (!candidates || candidates.has(view) || producerPaths.has(view)) &&
             view.getDataInitializationState() === "none"
     );
 
@@ -179,15 +213,19 @@ export async function initializeViewDataForViews(
     return builtDataFlow;
 }
 
+export { initializeVisibleViewData as initializeViewDataForViews };
+
 /**
  * Visible consumers keep their output producers active, including hidden trees.
  * Include traversal/data ancestry without initializing unrelated hidden siblings.
  * @param {import("../view/view.js").default} root
  */
 function getInitializationDependencies(root) {
-    const visible = collectVisibleViews(root, (view) =>
-        view.isConfiguredVisible()
-    );
+    // A mutation may start this traversal below a hidden layout ancestor.
+    const visible =
+        root.layoutParent && !root.layoutParent.isVisible()
+            ? []
+            : collectSubtreeViews(root, (view) => view.isConfiguredVisible());
     const required = new Set(visible);
     const producerPaths = new Set();
     /** @param {import("../view/view.js").default | undefined} view */
@@ -207,21 +245,4 @@ function getInitializationDependencies(root) {
             required.has(view),
         producerPaths,
     };
-}
-
-/**
- * @param {import("../view/view.js").default} viewRoot
- * @param {(view: import("../view/view.js").default) => boolean} viewFilter
- * @returns {import("../view/view.js").default[]}
- */
-function collectVisibleViews(viewRoot, viewFilter) {
-    /** @type {import("../view/view.js").default[]} */
-    const views = [];
-    viewRoot.visit((view) => {
-        if (!viewFilter(view)) {
-            return VISIT_SKIP;
-        }
-        views.push(view);
-    });
-    return views;
 }

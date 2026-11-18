@@ -2,9 +2,9 @@
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
+import InlineSource from "@genome-spy/core/data/sources/inlineSource.js";
 import GenomeStore from "@genome-spy/core/genome/genomeStore.js";
 import { createHeadlessEngine } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
-import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { findAncestorDataSource } from "@genome-spy/core/data/flowInit.js";
 import { intervalSelection } from "@genome-spy/core/selection/index.js";
@@ -24,7 +24,7 @@ import { sampleSlice } from "./sampleView/state/sampleSlice.js";
 import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
 import { createBookmarkWithCurrentState } from "./bookmark/bookmarkState.js";
 import { restoreBookmark } from "./bookmark/bookmark.js";
-import { decompressFromUrlHash } from "./utils/urlHash.js";
+import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash.js";
 import { createAgentApi } from "./agentApi/index.js";
 import BaseDialog from "./components/generic/baseDialog.js";
 import { ImportMetadataFromSourceDialog } from "./sampleView/metadata/importMetadataFromSourceDialog.js";
@@ -105,17 +105,6 @@ beforeEach(() => {
             return true;
         }
     );
-    vi.spyOn(
-        GenomeSpy.prototype,
-        "initializeVisibleViewData"
-    ).mockImplementation(async function () {
-        const { context } = this.viewRoot;
-        await initializeVisibleViewData(
-            this.viewRoot,
-            context.dataFlow,
-            context.textMetrics
-        );
-    });
 });
 
 afterEach(() => {
@@ -131,9 +120,10 @@ afterEach(() => {
 /**
  * @param {import("@genome-spy/core/spec/parameter.js").Parameter[]} [params]
  * @param {import("./appTypes.js").AppEmbedOptions} [options]
+ * @param {Partial<import("./spec/appSpec.js").AppRootSpec>} [specOverrides]
  * @returns {Promise<App>}
  */
-async function createApp(params = [], options = {}) {
+async function createApp(params = [], options = {}, specOverrides = {}) {
     const container = document.createElement("div");
     document.body.append(container);
     const app = new App(
@@ -160,6 +150,7 @@ async function createApp(params = [], options = {}) {
                     },
                 },
             ],
+            ...specOverrides,
         },
         { embedMode: "embedded", ...options }
     );
@@ -225,6 +216,180 @@ function cohortSpec(dataset) {
         },
     };
 }
+
+test("a URL bookmark defers Coverage and leaves Detail under parameter control", async () => {
+    const coverageSelector = { scope: [], view: "coverage" };
+    const detailSelector = { scope: [], view: "detail" };
+    const hiddenCoverage = { ...coverageSelector, visible: false };
+    window.history.replaceState(
+        null,
+        "",
+        compressToUrlHash({
+            viewSettings: {
+                visibilities: [
+                    hiddenCoverage,
+                    { ...detailSelector, visible: true },
+                ],
+            },
+        })
+    );
+    const loadInline = InlineSource.prototype.load;
+    const load = vi.spyOn(InlineSource.prototype, "load");
+    const app = await createApp(
+        [{ name: "mode", value: "overview" }],
+        { embedMode: "standalone" },
+        {
+            vconcat: [
+                {
+                    name: "coverage",
+                    mark: "point",
+                    data: { values: [{ x: 2 }] },
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { domain: [0, 10] },
+                            axis: null,
+                        },
+                    },
+                    params: [
+                        {
+                            name: "brush",
+                            select: { type: "interval", encodings: ["x"] },
+                        },
+                    ],
+                },
+                {
+                    name: "detail",
+                    visible: { expr: "mode === 'detail'" },
+                    data: { values: [{ value: 1 }] },
+                    mark: "point",
+                },
+            ],
+            scales: {},
+        }
+    );
+    const root = app.genomeSpy.viewRoot;
+    const coverage = root.findDescendantByName("coverage");
+    const detail = root.findDescendantByName("detail");
+    const svg = () =>
+        createSvg({ viewRoot: root, logicalWidth: 200, logicalHeight: 100 })
+            .svg;
+    expect(svg().querySelector('[data-name="coverage"]')).toBeNull();
+    expect(coverage.coords).toBeUndefined();
+    expect(coverage.flowHandle).toBeUndefined();
+    expect(detail.flowHandle).toBeUndefined();
+    const api = createAgentApi(app);
+    expect(() => api.setViewVisibility(detailSelector, true)).toThrow(
+        /expression/
+    );
+    expect(
+        createBookmarkWithCurrentState(app).viewSettings.visibilities
+    ).toEqual([hiddenCoverage]);
+    const handle = app.views.resolve(coverageSelector);
+    api.setViewVisibility(coverageSelector, true);
+    await vi.waitFor(() =>
+        expect(coverage.flowHandle?.collector.completed).toBe(true)
+    );
+    const source = findAncestorDataSource(coverage.flowHandle.collector);
+    const brush = intervalSelection({ x: [2, 5] });
+    handle.params.get("brush").setValue(brush);
+    api.setViewVisibility(coverageSelector, false);
+    await Promise.resolve();
+    // Hide Detail again while its first independent data load is in flight.
+    const started = Promise.withResolvers();
+    const finish = Promise.withResolvers();
+    load.mockImplementationOnce(async function () {
+        started.resolve();
+        await finish.promise;
+        await loadInline.call(this);
+    });
+    root.paramRuntime.setValue("mode", "detail");
+    await started.promise;
+    root.paramRuntime.setValue("mode", "overview");
+    await root.paramRuntime.whenPropagated();
+    expect(svg().querySelector('[data-name="detail"]')).toBeNull();
+    finish.resolve();
+    await vi.waitFor(() =>
+        expect(detail.flowHandle?.collector.completed).toBe(true)
+    );
+    expect(detail.isVisible()).toBe(false);
+    root.paramRuntime.setValue("mode", "detail");
+    await root.paramRuntime.whenPropagated();
+    expect(svg().querySelector('[data-name="detail"]')).toBeTruthy();
+    expect(coverage.isVisible()).toBe(false);
+    api.setViewVisibility(coverageSelector, true);
+    await Promise.resolve();
+    expect(coverage.isVisible()).toBe(true);
+    expect(app.views.resolve(coverageSelector)).toBe(handle);
+    expect(handle.params.get("brush").getValue()).toEqual(brush);
+    expect(
+        load.mock.contexts.filter((context) => context === source)
+    ).toHaveLength(1);
+});
+
+test("View settings keeps parameter controls and manual children of a hidden expression view", async () => {
+    const app = await createApp(
+        [],
+        {},
+        {
+            data: { values: [{}] },
+            vconcat: [
+                {
+                    name: "detail",
+                    visible: { expr: "threshold > 0" },
+                    params: [
+                        {
+                            name: "threshold",
+                            value: 0,
+                            bind: { input: "range", min: 0, max: 10 },
+                        },
+                    ],
+                    configurableVisibility: { group: "tracks" },
+                    vconcat: [{ name: "child", mark: "point" }],
+                },
+                {
+                    name: "raw",
+                    configurableVisibility: { group: "tracks" },
+                    mark: "point",
+                },
+                {
+                    name: "smoothed",
+                    configurableVisibility: { group: "tracks" },
+                    mark: "point",
+                },
+            ],
+        }
+    );
+    const opener = app.appContainer.querySelector(
+        "button[title='View settings']"
+    );
+    opener.click();
+    const menu = document.querySelector(
+        "[role='dialog'][aria-label='View settings']"
+    );
+    expect(
+        Array.from(menu.querySelectorAll("input"), (input) =>
+            input.parentElement.textContent.trim()
+        )
+    ).toEqual(["child", "raw", "smoothed"]);
+    const detailButton = Array.from(menu.querySelectorAll("button")).find(
+        (button) => button.textContent.trim() === "detail"
+    );
+    detailButton.click();
+    await vi.waitFor(() =>
+        expect(document.querySelector("input[type=range]")).toBeTruthy()
+    );
+    expect(createBookmarkWithCurrentState(app).viewSettings).toBeUndefined();
+    menu.querySelectorAll("input[type=radio]")[1].click();
+    expect(
+        createBookmarkWithCurrentState(app).viewSettings.visibilities
+    ).toEqual([
+        { scope: [], view: "raw", visible: false },
+        { scope: [], view: "smoothed", visible: true },
+    ]);
+    opener.click();
+});
 
 const statusAttribute = { type: "SAMPLE_ATTRIBUTE", specifier: "status" };
 

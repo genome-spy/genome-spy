@@ -73,6 +73,9 @@ export default interface ViewContext {
     /** Optional opaque authored-spec context for diagnostics. */
     getSpecOrigin?: (fragment: object) => string | undefined;
 
+    /** Installed by initialized engines to apply changes to view visibility. */
+    requestVisibilityRefresh?: () => void;
+
     requestLayoutReflow: () => void;
 
     /**

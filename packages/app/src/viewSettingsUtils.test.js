@@ -1,9 +1,10 @@
 // @ts-check
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 import { createHeadlessViewHierarchy } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import {
-    buildViewVisibilityEntries,
+    buildViewSettingsPayload,
     getRadioVisibilityGroupsBySelector,
+    getViewVisibilityOverride,
     resolveRadioVisibilityConflicts,
     makeViewSelectorKey,
     normalizeViewSettingsPayload,
@@ -79,17 +80,23 @@ describe("view visibility entries", () => {
         const visibilities = Object.fromEntries(
             expected.map((entry) => [makeViewSelectorKey(entry), entry.visible])
         );
-        const entries = buildViewVisibilityEntries(root, visibilities);
-        expect(entries).toEqual(expected);
-        expect(normalizeViewSettingsPayload({ visibilities: entries })).toEqual(
-            { visibilities }
-        );
+        const payload = buildViewSettingsPayload(root, { visibilities });
+        expect(payload).toEqual({ visibilities: expected });
+        expect(normalizeViewSettingsPayload(payload)).toEqual({ visibilities });
     });
 
-    test("legacy keys apply to all matching views", async () => {
+    test("legacy keys apply to manual matches across import instances", async () => {
         const spec = {
             templates: {
                 panel: makeTemplate(),
+                detail: {
+                    vconcat: [
+                        {
+                            ...makeUnitSpec("coverage"),
+                            visible: { expr: "true" },
+                        },
+                    ],
+                },
             },
             vconcat: [
                 {
@@ -100,6 +107,7 @@ describe("view visibility entries", () => {
                     import: { template: "panel" },
                     name: "panelB",
                 },
+                { import: { template: "detail" }, name: "panelC" },
             ],
         };
 
@@ -107,9 +115,23 @@ describe("view visibility entries", () => {
 
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        const entries = buildViewVisibilityEntries(root, {
-            coverage: false,
+        const stale = makeViewSelectorKey({
+            scope: ["panelC"],
+            view: "coverage",
         });
+        const settings = normalizeViewSettingsPayload(
+            {
+                visibilities: {
+                    coverage: false,
+                    [stale]: false,
+                    futureTrack: true,
+                },
+            },
+            root
+        );
+        expect(settings.visibilities).not.toHaveProperty(stale);
+        expect(settings.visibilities.futureTrack).toBe(true);
+        const entries = buildViewSettingsPayload(root, settings).visibilities;
 
         expect(entries).toHaveLength(2);
         expect(entries).toEqual(
@@ -123,9 +145,37 @@ describe("view visibility entries", () => {
         warn.mockRestore();
     });
 
+    test("keeps scoped choices distinct from view names that look like selectors", async () => {
+        const entry = { scope: [], view: "manual", visible: false };
+        const key = makeViewSelectorKey(entry);
+        const root = await createRoot({
+            vconcat: [
+                makeUnitSpec(entry.view),
+                { ...makeUnitSpec(key), visible: { expr: "true" } },
+            ],
+        });
+        onTestFinished(() => root.disposeSubtree());
+        const settings = { visibilities: { [key]: false } };
+        const payload = { visibilities: [entry] };
+        const detail = getAddressableViews(root).find(
+            (view) => view.explicitName === key
+        );
+
+        expect(normalizeViewSettingsPayload(payload, root)).toEqual(settings);
+        expect(buildViewSettingsPayload(root, settings)).toEqual(payload);
+        expect(
+            getViewVisibilityOverride(settings.visibilities, detail)
+        ).toBeUndefined();
+    });
+
     test("resolves conflicting radio-group visibilities deterministically", async () => {
         const spec = {
             vconcat: [
+                {
+                    ...makeUnitSpec("detail"),
+                    visible: { expr: "true" },
+                    configurableVisibility: { group: "mode" },
+                },
                 {
                     ...makeUnitSpec("coverageA"),
                     configurableVisibility: { group: "mode" },
@@ -142,6 +192,22 @@ describe("view visibility entries", () => {
         const bySelector = getRadioVisibilityGroupsBySelector(root);
         const [{ memberKeys }] = Array.from(bySelector.values());
 
+        expect(memberKeys).toHaveLength(2);
+        expect(
+            buildViewSettingsPayload(root, { visibilities: {} })
+        ).toBeUndefined();
+        const choices = {
+            [memberKeys[0]]: false,
+            [memberKeys[1]]: true,
+            detail: true,
+        };
+        expect(
+            buildViewSettingsPayload(root, { visibilities: choices })
+                .visibilities
+        ).toEqual([
+            { scope: [], view: "coverageA", visible: false },
+            { scope: [], view: "coverageB", visible: true },
+        ]);
         const resolved = resolveRadioVisibilityConflicts(root, {});
 
         expect(resolved[memberKeys[0]]).toBeUndefined();

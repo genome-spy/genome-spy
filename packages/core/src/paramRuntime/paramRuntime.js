@@ -175,6 +175,7 @@ export default class ParamRuntime {
             dependencies,
             () => expression(null)
         );
+        ref.definingExpression = expression;
         return this.#paramStore.register(scope, name, ref);
     }
 

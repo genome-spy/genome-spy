@@ -360,7 +360,18 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} view
      */
     #ensureViewVisible(view) {
-        for (const ancestor of view.getLayoutAncestors()) {
+        const ancestors = view.getLayoutAncestors();
+        const hidden = ancestors.find(
+            (ancestor) =>
+                ancestor.visibilityIsExpression && !ancestor.isVisibleInSpec()
+        );
+        if (hidden)
+            throw new Error(
+                `Cannot reveal "${view.name}" because "${hidden.name}" is hidden by its visibility expression.`
+            );
+
+        for (const ancestor of ancestors) {
+            if (ancestor.visibilityIsExpression) continue;
             const selectorKey = getViewVisibilityKey(ancestor);
             if (!selectorKey) {
                 continue;
@@ -418,24 +429,6 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * Zooms the view's x scale to a target domain.
-     *
-     * @param {import("@genome-spy/core/view/view.js").default} view
-     * @param {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} domain
-     * @returns {Promise<void>}
-     */
-    async #zoomToDomain(view, domain) {
-        const resolution = view.getScaleResolution("x");
-        if (!resolution) {
-            throw new Error(
-                `No x scale resolution found for view: ${view.name}`
-            );
-        }
-
-        await resolution.zoomTo(domain);
-    }
-
-    /**
      * Waits for the view subtree to satisfy the current x-domain readiness after
      * an action. Uses lazy-source readiness checks so it does not depend on
      * subtreeDataReady broadcasts.
@@ -482,12 +475,18 @@ export default class SampleView extends ContainerView {
             );
         }
 
-        this.#ensureViewVisible(view);
-        const scale = resolution.getScale();
-        if (isContinuous(scale.type) && !isDiscrete(scale.type)) {
+        const { type } = resolution.getScale();
+        if (isContinuous(type) && !isDiscrete(type)) {
             const domain = this.#resolveViewAttributeDomain(specifier);
-            await this.#zoomToDomain(view, domain);
+            await resolution.zoomTo(domain);
         }
+
+        // A visibility expression may depend on the action's target viewport.
+        this.#ensureViewVisible(view);
+
+        // Let the queued visibility refresh attach newly visible collectors.
+        await Promise.resolve();
+
         // Assumes the main sample subtree shares the x-scale resolution; if
         // that changes, switch to per-view readiness requests.
         await this.#awaitSubtreeDataReady(
@@ -1336,11 +1335,10 @@ export default class SampleView extends ContainerView {
      * @type {import("@genome-spy/core/types/rendering.js").ArrangeMethod}
      */
     arrange(context, coords, options = {}) {
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         if (!this.layoutParent) {
             // Usually padding is applied by GridView, but if this is the root view, we need to apply it here
@@ -1877,14 +1875,13 @@ export default class SampleView extends ContainerView {
             }
 
             const mainPaneZoomCoords = this.#getMainPaneZoomCoords();
-            const inMainPane = this.childCoords.containsPoint(
-                event.point.x,
-                event.point.y
-            );
-            const inMainPaneZoomSurface = mainPaneZoomCoords.containsPoint(
-                event.point.x,
-                event.point.y
-            );
+            const mainVisible = this.#gridChild.view.isConfiguredVisible();
+            const inMainPane =
+                mainVisible &&
+                this.childCoords.containsPoint(event.point.x, event.point.y);
+            const inMainPaneZoomSurface =
+                mainVisible &&
+                mainPaneZoomCoords.containsPoint(event.point.x, event.point.y);
             const inSidebar = this.sidebarCoords.containsPoint(
                 event.point.x,
                 event.point.y

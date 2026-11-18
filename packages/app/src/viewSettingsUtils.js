@@ -72,139 +72,86 @@ export function getViewVisibilityKey(view) {
  */
 export function getViewVisibilityOverride(visibilities, view) {
     const selectorKey = getViewVisibilityKey(view);
-    if (selectorKey && hasOwn(visibilities, selectorKey)) {
+    if (selectorKey && Object.hasOwn(visibilities, selectorKey)) {
         return visibilities[selectorKey];
     }
 
     const explicitName = view.explicitName;
-    if (explicitName && hasOwn(visibilities, explicitName)) {
+    if (
+        explicitName &&
+        Object.hasOwn(visibilities, explicitName) &&
+        !parseViewSelectorKey(explicitName)
+    ) {
         return visibilities[explicitName];
     }
 }
 
 /**
  * @param {import("./state.js").ViewSettingsPayload | undefined} payload
+ * @param {import("@genome-spy/core/view/view.js").default} [viewRoot]
  * @returns {import("./state.js").ViewSettings}
  */
-export function normalizeViewSettingsPayload(payload) {
-    if (!payload || !payload.visibilities) {
-        return { visibilities: {} };
-    }
-
-    const visibilities = payload.visibilities;
-
-    if (Array.isArray(visibilities)) {
-        /** @type {Record<string, boolean>} */
-        const normalized = {};
-
-        for (const entry of visibilities) {
-            if (
-                !entry ||
-                !Array.isArray(entry.scope) ||
-                typeof entry.view !== "string"
-            ) {
-                continue;
-            }
-
-            if (typeof entry.visible !== "boolean") {
-                continue;
-            }
-
-            normalized[
-                makeViewSelectorKey({
-                    scope: entry.scope,
-                    view: entry.view,
-                })
-            ] = entry.visible;
-        }
-
-        return { visibilities: normalized };
-    }
-
-    if (typeof visibilities === "object") {
-        return { visibilities: { ...visibilities } };
-    }
-
-    return { visibilities: {} };
+export function normalizeViewSettingsPayload(payload, viewRoot) {
+    const { visibilities } = payload ?? {};
+    const choices = Array.isArray(visibilities)
+        ? Object.fromEntries(
+              visibilities
+                  .filter(
+                      (entry) =>
+                          entry &&
+                          Array.isArray(entry.scope) &&
+                          typeof entry.view === "string" &&
+                          typeof entry.visible === "boolean"
+                  )
+                  .map((entry) => [makeViewSelectorKey(entry), entry.visible])
+          )
+        : typeof visibilities === "object"
+          ? { ...visibilities }
+          : {};
+    return {
+        visibilities: viewRoot
+            ? scopedVisibilityChoices(viewRoot, choices)
+            : choices,
+    };
 }
 
 /**
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
  * @param {Record<string, boolean>} visibilities
- * @returns {import("./state.js").ViewVisibilityEntry[]}
  */
-export function buildViewVisibilityEntries(viewRoot, visibilities) {
-    /** @type {Map<string, boolean>} */
-    const selectorEntries = new Map();
-
+function scopedVisibilityChoices(viewRoot, visibilities) {
+    /** @type {Record<string, boolean>} */
+    const scoped = {};
+    /** @type {Set<string>} */
+    const legacyNames = new Set();
     for (const [key, value] of Object.entries(visibilities)) {
         const selector = parseViewSelectorKey(key);
-        if (selector) {
-            selectorEntries.set(makeViewSelectorKey(selector), value);
-        }
+        if (!selector) legacyNames.add(key);
+        scoped[selector ? makeViewSelectorKey(selector) : key] = value;
     }
 
-    const legacyKeys = Object.keys(visibilities).filter(
-        (key) => !parseViewSelectorKey(key)
-    );
-
-    if (legacyKeys.length && viewRoot) {
-        const legacyKeySet = new Set(legacyKeys);
-        /** @type {Map<string, import("@genome-spy/core/view/view.js").default[]>} */
-        const legacyMatches = new Map();
-
+    if (viewRoot && Object.keys(visibilities).length) {
+        const legacyMatches = new Set();
         visitAddressableViews(viewRoot, (view) => {
-            const explicitName = view.explicitName;
-            if (!explicitName || !legacyKeySet.has(explicitName)) {
-                return;
-            }
-
-            const matches = legacyMatches.get(explicitName) ?? [];
-            matches.push(view);
-            legacyMatches.set(explicitName, matches);
-        });
-
-        for (const legacyKey of legacyKeys) {
-            const matches = legacyMatches.get(legacyKey) ?? [];
-            if (!matches.length) {
-                continue;
-            }
-
-            if (matches.length > 1) {
-                console.warn(
-                    'Legacy visibility key "' +
-                        legacyKey +
-                        '" matches multiple views. Applying to all matches.'
-                );
-            }
-
-            for (const view of matches) {
-                const selectorKey = getViewVisibilityKey(view);
-                if (!selectorKey || selectorEntries.has(selectorKey)) {
-                    continue;
+            const name = view.explicitName;
+            const key = getViewVisibilityKey(view);
+            if (!key) return;
+            const hasLegacyChoice = legacyNames.has(name);
+            if (hasLegacyChoice) delete scoped[name];
+            if (view.visibilityIsExpression) {
+                delete scoped[key];
+            } else if (hasLegacyChoice) {
+                if (legacyMatches.has(name)) {
+                    console.warn(
+                        `Legacy visibility key "${name}" matches multiple views. Applying to all matches.`
+                    );
                 }
-                selectorEntries.set(selectorKey, visibilities[legacyKey]);
+                legacyMatches.add(name);
+                scoped[key] ??= visibilities[name];
             }
-        }
-    }
-
-    /** @type {import("./state.js").ViewVisibilityEntry[]} */
-    const entries = [];
-
-    for (const [key, value] of selectorEntries) {
-        const selector = parseViewSelectorKey(key);
-        if (!selector) {
-            continue;
-        }
-
-        entries.push({
-            scope: selector.scope,
-            view: selector.view,
-            visible: value,
         });
     }
-
-    return entries;
+    return scoped;
 }
 
 /**
@@ -213,18 +160,13 @@ export function buildViewVisibilityEntries(viewRoot, visibilities) {
  * @returns {import("./state.js").ViewSettingsPayload | undefined}
  */
 export function buildViewSettingsPayload(viewRoot, viewSettings) {
-    const resolvedVisibilities = resolveRadioVisibilityConflicts(
-        viewRoot,
-        viewSettings.visibilities
-    );
-    const entries = buildViewVisibilityEntries(viewRoot, resolvedVisibilities);
-    if (!entries.length) {
-        return;
-    }
-
-    return {
-        visibilities: entries,
-    };
+    const visibilities = Object.entries(
+        scopedVisibilityChoices(viewRoot, viewSettings.visibilities)
+    ).flatMap(([key, visible]) => {
+        const selector = parseViewSelectorKey(key);
+        return selector ? [{ ...selector, visible }] : [];
+    });
+    return visibilities.length ? { visibilities } : undefined;
 }
 
 /**
@@ -366,13 +308,4 @@ function collectRadioVisibilityGroups(viewRoot) {
     });
 
     return groups;
-}
-
-/**
- * @param {Record<string, boolean>} entries
- * @param {string} key
- * @returns {boolean}
- */
-function hasOwn(entries, key) {
-    return Object.prototype.hasOwnProperty.call(entries, key);
 }

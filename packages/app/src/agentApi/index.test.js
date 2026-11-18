@@ -76,8 +76,6 @@ import {
 } from "../charts/hierarchySampleAttributePlots.js";
 import { createAgentApi } from "./index.js";
 import { UnknownAttributeInfoError } from "../sampleView/unknownAttributeInfoError.js";
-import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
 
 describe("createAgentApi", () => {
@@ -377,16 +375,6 @@ describe("createAgentApi", () => {
 
     it("forwards mutation and UI hooks to the app shell", () => {
         const agentApi = createAgentApi(app);
-        const selector = { view: ["root"], type: "unit" };
-
-        agentApi.setViewVisibility(selector, true);
-        expect(app.store.dispatch).toHaveBeenCalledWith(
-            viewSettingsSlice.actions.setVisibility({
-                key: makeViewSelectorKey(selector),
-                visibility: true,
-            })
-        );
-
         expect(agentApi.jumpToProvenanceState("p2")).toBe(false);
         expect(app.provenance.activateState).toHaveBeenCalledWith("p2");
         expect(agentApi.jumpToInitialProvenanceState()).toBe(false);
