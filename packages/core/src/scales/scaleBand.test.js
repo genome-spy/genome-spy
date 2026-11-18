@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import scaleBand, { scalePoint } from "./scaleBand.js";
+import { invertBandPosition } from "./bandMapping.js";
 
 /** @param {"band" | "point"} [type] */
 const create = (type = "band") =>
@@ -220,4 +221,41 @@ test("categorical navigation retains pointer anchors and fixed partially visible
     ).toBeCloseTo(before.rank);
     expect(scale.domain()).toEqual(["A", "B", "C", "D"]);
     expect(() => scale.viewport({ interval: [2, 1] })).toThrow("viewport");
+});
+
+test("full row projection retains gap progress through exhausted viewports", () => {
+    const height = 100;
+    const step = 35;
+    const gap = 150;
+    const cuts = [6];
+    const scale = create()
+        .domain(Array.from({ length: 12 }, (_, rank) => rank))
+        .range([1, 0])
+        .gapPositions(cuts)
+        .gapWidth(gap)
+        .axisLength(height);
+
+    /** @param {number} rowOrigin */
+    function setCamera(rowOrigin) {
+        const first = invertBandPosition(cuts, -rowOrigin, step, gap);
+        const last = invertBandPosition(cuts, height - rowOrigin, step, gap);
+        scale.viewport({
+            interval: [first.value, last.value],
+            gapRanks: [first.rank, last.rank],
+        });
+    }
+
+    // The full row geometry remains available even when the visible fit is exhausted.
+    expect(scale.gapMapping().fits).toBe(false);
+    setCamera(-240);
+    expect(scale.viewport().interval).toEqual([6, 6]);
+    expect(scale.viewport().gapRanks[0]).toBeCloseTo(0.2);
+    expect(scale.viewport().gapRanks[1]).toBeCloseTo(13 / 15);
+    expect(scale.gapMapping().fits).toBe(false);
+
+    setCamera(-120);
+    expect(scale.gapMapping().fits).toBe(true);
+    expect((1 - scale.gapMapping().position(4, 1)) * height).toBeCloseTo(20);
+    expect((1 - scale.gapMapping().position(5, 1)) * height).toBeCloseTo(55);
+    expect((1 - scale.gapMapping().position(6, 1)) * height).toBeCloseTo(240);
 });

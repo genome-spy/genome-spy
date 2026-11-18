@@ -35,6 +35,8 @@
 
 ## Testing
 
+- Keep Core browser rendering tests in `tests/` and run them with
+  `npm run test:browser`. `packages/playground/tests/` is for Playground UI behavior.
 - Keep tests next to their implementation.
 - Use `packages/core/layout.test.js` and
   `packages/core/src/view/layoutSnapshot.test.js` as layout-snapshot examples.

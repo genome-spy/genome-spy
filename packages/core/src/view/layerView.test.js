@@ -249,8 +249,17 @@ describe("LayerView dynamic children", () => {
 
 test("child removal retains mapping consumers across scale declaration reattachment", async () => {
     const { view } = await createHeadlessEngine({
-        params: [{ name: "mapped", expr: "scale('size', 5)" }],
-        scales: { size: { type: "linear", domain: [0, 10], range: [0, 20] } },
+        params: [
+            { name: "mapped", expr: "scale('size', 5)" },
+            { name: "rangeEnd", value: 20 },
+        ],
+        scales: {
+            size: {
+                type: "linear",
+                domain: [0, 10],
+                range: [0, { expr: "rangeEnd" }],
+            },
+        },
         data: { values: [{ value: 5 }] },
         layer: [0, 1].map(
             () =>
@@ -270,7 +279,7 @@ test("child removal retains mapping consumers across scale declaration reattachm
         const resolution = view.getScaleResolution("size");
         const mapping = resolution.getMappingRef();
         await /** @type {LayerView} */ (view).removeChildAt(0);
-        resolution.scale.range([0, 100]);
+        view.paramRuntime.setValue("rangeEnd", 100);
         expect(resolution.getMappingRef()).toBe(mapping);
         expect(view.paramRuntime.getValue("mapped")).toBe(50);
     } finally {

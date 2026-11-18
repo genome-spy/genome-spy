@@ -13,12 +13,13 @@ export default class NamedSource extends DataSource {
     /**
      * @param {import("../../spec/data.js").NamedData} params
      * @param {import("../../view/view.js").default} view
+     * @param {import("../namedDataScope.js").NamedDataBinding} binding
      */
-    constructor(params, view) {
+    constructor(params, view, binding) {
         super(view);
 
         this.params = params;
-        this.binding = view.namedDataScope.resolve(params.name);
+        this.binding = binding;
     }
 
     /**

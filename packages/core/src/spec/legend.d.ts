@@ -1,5 +1,6 @@
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
+import { TitleAnchor } from "./title.js";
 
 export type LegendOrient =
     | "left"
@@ -251,6 +252,24 @@ export interface Legend {
      * The side of the legend on which to place the title.
      */
     titleOrient?: LegendTitleOrient;
+
+    /**
+     * Position of the title along the legend body. For top and bottom titles,
+     * `"start"`, `"middle"`, and `"end"` place it at the left, center, and right.
+     * For left and right titles, they place it at the top, middle, and bottom.
+     * `null` uses the automatic anchor.
+     *
+     * __Default value:__ `"start"` for top/bottom titles, `"middle"` for side titles.
+     */
+    titleAnchor?: TitleAnchor;
+
+    /**
+     * Horizontal alignment of the title text around its anchor. This overrides
+     * the automatic alignment without moving the anchor.
+     *
+     * __Default value:__ Follows `titleAnchor` for top/bottom titles; `"left"` for side titles.
+     */
+    titleAlign?: Align;
 }
 
 /**

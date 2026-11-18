@@ -4,8 +4,8 @@ import { indexScale } from "../src/scales/index.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {{strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}} [options]
- * @returns {Promise<{cleanup: () => void, update: (options: {strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}) => void}>}
+ * @param {{opacity?: number, strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}} [options]
+ * @returns {Promise<{cleanup: () => void, update: (options: {opacity?: number, strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}) => void}>}
  */
 export default async function runHatchScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
@@ -37,6 +37,7 @@ export default async function runHatchScene(canvas, options = {}) {
     const mark = renderer.createMark(rectMark, {
         count: hatchCount,
         channels: {
+            opacity: { value: options.opacity ?? 1, dynamic: true },
             x: {
                 data: hx,
                 type: "u32",
@@ -120,9 +121,10 @@ export default async function runHatchScene(canvas, options = {}) {
         hatchCount
     );
 
-    /** @param {{strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}} next */
+    /** @param {{opacity?: number, strokeAlign?: number, strokeOpacity?: number, cornerRadius?: number}} next */
     const update = (next) => {
         mark.batchUpdates(() => {
+            values.opacity.set(next.opacity ?? 1);
             values.strokeAlign.set(next.strokeAlign ?? 1);
             values.strokeOpacity.set(next.strokeOpacity ?? 1);
             for (const name of [

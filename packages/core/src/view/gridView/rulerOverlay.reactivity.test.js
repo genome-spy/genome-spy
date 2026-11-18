@@ -127,15 +127,18 @@ for (const extent of /** @type {const} */ (["view", "container"])) {
                         display === "line"
                             ? guide.querySelector("line")
                             : guide;
-                    expect(paint.getAttribute("stroke-opacity")).toBe(
-                        display === "line" ? "0.8" : "1"
-                    );
+                    expect(paint.getAttribute("stroke-opacity")).toBe("1");
+                    expect(
+                        guide
+                            .closest("[data-view-path][opacity]")
+                            .getAttribute("opacity")
+                    ).toBe("0.8");
                     if (display === "band") {
                         expect(guide.getAttribute("fill")).toBe("blue");
                         expect(guide.getAttribute("fill-opacity")).toBe("0.25");
                         expect(
-                            guide.lastElementChild.getAttribute("opacity")
-                        ).toBe("0.8");
+                            guide.lastElementChild.hasAttribute("opacity")
+                        ).toBe(false);
                     }
                 }
                 const requestRender = vi.spyOn(
@@ -151,8 +154,8 @@ for (const extent of /** @type {const} */ (["view", "container"])) {
                         expect(guide.getAttribute("fill")).toBe("yellow");
                         expect(guide.getAttribute("fill-opacity")).toBe("0.5");
                         expect(
-                            guide.lastElementChild.getAttribute("opacity")
-                        ).toBe("0.8");
+                            guide.lastElementChild.hasAttribute("opacity")
+                        ).toBe(false);
                         expect(guide.querySelector("[filter]")).not.toBeNull();
                     }
                 }

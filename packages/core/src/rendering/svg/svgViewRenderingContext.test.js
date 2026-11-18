@@ -4,7 +4,6 @@ import { describe, expect, test, vi } from "vitest";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { createSinglePointSelection } from "../../selection/selection.js";
 import Rectangle from "../../view/layout/rectangle.js";
-import PlacementSource from "../../view/layout/placementSource.js";
 import { markViewAsChrome } from "../../view/viewSelectors.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
 import SvgViewRenderingContext from "./svgViewRenderingContext.js";
@@ -18,6 +17,7 @@ function createView(name, path) {
         /** @type {unknown} */ ({
             name,
             getPathString: () => path,
+            getOpacity: () => 1,
         })
     );
 }
@@ -465,41 +465,115 @@ describe("SvgViewRenderingContext", () => {
         ).toEqual(expectedPaintOrder);
     });
 
-    test("projects texture-indexed sample facets using CPU positions", async () => {
+    test("reuses a faded sample-facet raster run across occurrences", async () => {
         const { view } = await createHeadlessEngine({
-            data: {
-                values: [
-                    { facet: 0, x: 0.25 },
-                    { facet: 1, x: 0.75 },
-                ],
-            },
+            opacity: 0.5,
+            data: { values: [{}] },
             mark: "point",
             encoding: {
-                facetIndex: { field: "facet" },
-                x: { field: "x", type: "quantitative", scale: null },
+                x: { value: 0.5 },
                 y: { value: 0.5 },
-                size: { value: 100 },
-                fill: { value: "#123456" },
+                fill: { value: "red" },
             },
         });
-        const source = new PlacementSource();
-        source.replaceTopology(
-            [[0], [1]],
-            new Float32Array([0, 0, 1, 0.4, 0, 0.6, 1, 0.4])
-        );
-        const context = new SvgViewRenderingContext(
-            { picking: false },
-            { width: 100, height: 100 }
-        );
+        try {
+            const context = new SvgViewRenderingContext(
+                {},
+                {
+                    width: 100,
+                    height: 100,
+                    maxVectorInstances: 0,
+                }
+            );
+            for (const counting of [true, false]) {
+                if (counting) context.beginInstanceCounting();
+                context.beginSampleFacetBatch();
+                for (const y of [10, 40]) {
+                    view.arrange(context, Rectangle.create(0, 0, 100, 100), {
+                        sampleFacetRenderingOptions: {
+                            locSize: { location: y, size: 20 },
+                            pixelToUnit: 0.01,
+                        },
+                    });
+                }
+                context.endSampleFacetBatch();
+                if (counting) context.endInstanceCounting();
+            }
+            const runs = context.getRasterRuns();
+            expect(runs).toHaveLength(1);
+            expect(runs[0].targets).toHaveLength(1);
+            expect(runs[0].targets[0].instanceCount).toBe(2);
+            expect(runs[0].image.closest("[opacity]")).toBe(
+                runs[0].opacityScope
+            );
+            expect(runs[0].opacityScope.getAttribute("opacity")).toBe("0.5");
+        } finally {
+            view.disposeSubtree();
+        }
+    });
 
-        view.arrange(context, Rectangle.create(0, 0, 100, 100), {
-            placement: { source },
+    test("keeps raster runs inside their local opacity scopes", async () => {
+        /** @param {string} name @param {number} opacity @returns {import("../../spec/view.js").UnitSpec} */
+        const dense = (name, opacity) => ({
+            name,
+            opacity,
+            data: { values: [{}, {}] },
+            mark: "rect",
+            encoding: {
+                fill: { value: "black" },
+                x: { value: 0.1 },
+                x2: { value: 0.8 },
+                y: { value: 0.1 },
+                y2: { value: 0.8 },
+            },
         });
-
-        expect(
-            Array.from(context.getSvg().querySelectorAll("circle"), (circle) =>
-                circle.getAttribute("cy")
-            )
-        ).toEqual(["20", "80"]);
+        const { view } = await createHeadlessEngine({
+            name: "outer",
+            opacity: 0.5,
+            layer: [
+                dense("first", 1),
+                dense("second", 1),
+                dense("faded", 0.25),
+                dense("last", 1),
+            ],
+        });
+        try {
+            const context = new SvgViewRenderingContext(
+                {},
+                {
+                    width: 100,
+                    height: 100,
+                    maxVectorInstances: 1,
+                }
+            );
+            const coords = Rectangle.create(0, 0, 100, 100);
+            context.beginInstanceCounting();
+            view.arrange(context, coords);
+            context.endInstanceCounting();
+            view.arrange(context, coords);
+            const runs = context.getRasterRuns();
+            expect(runs.map((run) => run.targets.length)).toEqual([2, 1, 1]);
+            const svg = context.getSvg();
+            const outer = svg.querySelector('[data-name="outer"]');
+            const faded = svg.querySelector('[data-name="faded"]');
+            expect(outer.getAttribute("opacity")).toBe("0.5");
+            expect(faded.getAttribute("opacity")).toBe("0.25");
+            expect(runs.map((run) => run.image.closest("[opacity]"))).toEqual([
+                outer,
+                faded,
+                outer,
+            ]);
+            expect(
+                Array.from(outer.children)
+                    .filter((node) => node.tagName !== "title")
+                    .map((node) =>
+                        node.hasAttribute("data-rasterized")
+                            ? "image"
+                            : node.getAttribute("data-name")
+                    )
+            ).toEqual(["image", "faded", "last"]);
+        } finally {
+            view.disposeSubtree();
+        }
     });
 });

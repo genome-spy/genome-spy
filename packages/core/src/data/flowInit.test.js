@@ -326,7 +326,7 @@ describe("flowInit", () => {
         );
     });
 
-    test("collectNearestViewSubtreeDataSources includes nested lookup tables", async () => {
+    test("loadViewSubtreeData waits for nested lookup tables before loading primary data", async () => {
         const context = createTestViewContext();
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
@@ -358,6 +358,34 @@ describe("flowInit", () => {
 
         const sources = collectNearestViewSubtreeDataSources(root);
         expect(sources).toHaveLength(2);
+        const primary = root.flowHandle.dataSource;
+        const auxiliary = Array.from(sources).find(
+            (source) => source !== primary
+        );
+        const loadAuxiliary = auxiliary.load.bind(auxiliary);
+        const auxiliaryStarted = Promise.withResolvers();
+        const finishAuxiliary = Promise.withResolvers();
+        vi.spyOn(auxiliary, "load").mockImplementation(async () => {
+            auxiliaryStarted.resolve();
+            await finishAuxiliary.promise;
+            return loadAuxiliary();
+        });
+        const loadPrimary = vi.spyOn(primary, "load");
+
+        // The primary load must wait even while the auxiliary load is in flight.
+        const loading = loadViewSubtreeData(root);
+        await auxiliaryStarted.promise;
+        const primaryStartedEarly = loadPrimary.mock.calls.length > 0;
+        finishAuxiliary.resolve();
+        await loading;
+
+        expect(primaryStartedEarly).toBe(false);
+        expect(loadPrimary).toHaveBeenCalledOnce();
+        const layerRoot =
+            /** @type {import("../view/layerView.js").default} */ (root);
+        expect(
+            Array.from(layerRoot.children[0].flowHandle.collector.getData())
+        ).toMatchObject([{ codon: "ATG", aminoAcid: "M" }]);
     });
 
     test("loadViewSubtreeData emits subtree data ready broadcast", async () => {

@@ -74,6 +74,7 @@ export const TEXT_CHANNEL_SPECS = {
     fill: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
     opacity: { type: "f32", components: 1, default: 1.0 },
+    fillOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeOpacity: { type: "f32", components: 1, default: 1.0 },
     strokeWidth: { type: "f32", components: 1, default: 0.0 },
     shadowColor: { type: "f32", components: 4, optional: true },
@@ -100,6 +101,7 @@ function createTextShaderBody(effects) {
     const effectSetup = effects.enabled
         ? /* wgsl */ `
     var layerColor = getScaled_fill(i);
+    layerColor.a *= getScaled_fillOpacity(i);
     var layerOpacityMultiplier = 1.0;
     var layerExtent = 0.0;
     var effectOffset = vec2<f32>(0.0);
@@ -133,7 +135,8 @@ ${
         return culledText();
     }`
         : /* wgsl */ `
-    let layerColor = getScaled_fill(i);
+    var layerColor = getScaled_fill(i);
+    layerColor.a *= getScaled_fillOpacity(i);
     let layerOpacityMultiplier = 1.0;
     let layerExtent = getScaled_strokeWidth(i) * 0.5 * globals.dpr;
     let effectOffset = vec2<f32>(0.0);`;

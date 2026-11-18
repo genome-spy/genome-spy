@@ -308,6 +308,37 @@ export default class FacetView extends ContainerView {
         return this.#gridChild.getOverhangAndPadding(this.#getCellAxes(cell));
     }
 
+    /** @type {ContainerView["getTitlePlotCoords"]} */
+    getTitlePlotCoords(viewportCoords, devicePixelRatio) {
+        const gridCoords = viewportCoords
+            .modify({ x: 0, y: 0 })
+            .shrink(this.#getFieldTitlePadding());
+        const plotBounds = Rectangle.unionAll(
+            this.#getCellLayouts(gridCoords, devicePixelRatio).map(
+                ({ childCoords }) => childCoords
+            )
+        );
+        return plotBounds
+            ? plotBounds.translateBy(viewportCoords).intersect(viewportCoords)
+            : viewportCoords;
+    }
+
+    /**
+     * @param {Rectangle} gridCoords
+     * @param {number} devicePixelRatio
+     */
+    #getCellLayouts(gridCoords, devicePixelRatio) {
+        return getFacetCellLayouts(
+            this.#getFacetGrid(),
+            gridCoords,
+            this.child.getViewportSize(),
+            (cell) => this.#getCellOverhang(cell),
+            this.#getHeaderPadding(),
+            this.#spacing,
+            devicePixelRatio
+        );
+    }
+
     /**
      * @param {import("./renderingContext/viewRenderingContext.js").default} context
      * @param {import("./layout/rectangle.js").default} coords
@@ -336,13 +367,8 @@ export default class FacetView extends ContainerView {
             gridCoords = gridCoords.shrink(title.getOverhang());
             return { title, frame: gridCoords };
         });
-        const layouts = getFacetCellLayouts(
-            this.#getFacetGrid(),
+        const layouts = this.#getCellLayouts(
             gridCoords,
-            this.child.getViewportSize(),
-            (cell) => this.#getCellOverhang(cell),
-            this.#getHeaderPadding(),
-            this.#spacing,
             context.getDevicePixelRatio()
         );
         const parentClip = normalizeClipOptions(options);
