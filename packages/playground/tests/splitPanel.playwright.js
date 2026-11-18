@@ -14,10 +14,20 @@ for (const orientation of ["vertical", "horizontal"]) {
         const panel = page.locator("#main-panel");
         await expect(panel).toHaveAttribute("orientation", orientation);
         const panes = panel.locator(".resizable");
+        const separator = panel.locator(".resizable-handle");
         const dimension = orientation === "vertical" ? "height" : "width";
         const farEdge = orientation === "vertical" ? "bottom" : "right";
+        await expect(separator).toHaveRole("separator");
+        await expect(separator).toHaveAccessibleName(
+            orientation === "vertical" ? "Visualization" : "Workspace"
+        );
+        await expect(separator).toHaveAttribute("aria-valuenow", "50");
+        await expect(separator).toHaveAttribute(
+            "aria-orientation",
+            orientation === "vertical" ? "horizontal" : "vertical"
+        );
         const initialSize = (await panes.first().boundingBox())[dimension];
-        const handle = await panel.locator(".resizable-handle").boundingBox();
+        const handle = await separator.boundingBox();
         const x = handle.x + handle.width / 2;
         const y = handle.y + handle.height / 2;
         await page.mouse.move(x, y);
@@ -62,5 +72,21 @@ for (const orientation of ["vertical", "horizontal"]) {
                 1
             );
         }
+
+        const draggedSize = Number(
+            await separator.getAttribute("aria-valuenow")
+        );
+        await separator.press(
+            orientation === "vertical" ? "ArrowUp" : "ArrowLeft"
+        );
+        await expect
+            .poll(async () =>
+                Number(await separator.getAttribute("aria-valuenow"))
+            )
+            .toBeLessThan(draggedSize);
+        await separator.press("Home");
+        await expect(separator).toHaveAttribute("aria-valuenow", "0");
+        await separator.press("End");
+        await expect(separator).toHaveAttribute("aria-valuenow", "100");
     });
 }

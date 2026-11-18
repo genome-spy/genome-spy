@@ -237,12 +237,16 @@ disappear when their last member is removed.
 
 ## Interaction gesture ownership
 
-Document-level mouse drags use `startDocumentDrag`, which owns temporary DOM
-listeners and balanced hover suspension. The initiating controller or view owns
-the returned cancellation function and invokes it on disposal. Cancellation
-cleans up without applying release-only effects such as selection commits,
-pan inertia, or ruler clearing. Callers retain coordinate mapping and gesture
-state; the routing `GridView` owns pan sessions across child and gap surfaces.
+The canvas interaction controller receives Pointer Events and routes them using
+the event names used by specifications. It tracks touch contacts by pointer ID
+and publishes pan and pinch gestures through the view hierarchy.
+
+`startPointerDrag` owns canvas pointer capture, temporary listeners, and
+balanced hover suspension. The initiating controller or view owns the returned
+cancellation function and invokes it on disposal. Cancellation clears the active
+gesture. Selection commits, pan inertia, and ruler clearing run on release.
+Callers retain coordinate mapping and gesture state. `GridView` owns pan
+sessions across child and gap surfaces.
 
 ## Dynamic view lifecycle
 

@@ -96,7 +96,7 @@ test("captures brushed transformed records before analysis and limits only compl
     stop();
 });
 
-test("runs window/filter and sample pipelines while preserving keys and native selection", async () => {
+test("preserves selection keys through chained transforms and sampling", async () => {
     const { handle } = await setup();
     const selected = handle.params.getSelection("selected");
     if (selected.type !== "point" || selected.membership !== "records")
@@ -111,14 +111,22 @@ test("runs window/filter and sample pipelines while preserving keys and native s
                 ops: ["row_number"],
                 as: ["rank"],
             },
-            { type: "filter", expr: "datum.rank <= 2" },
+            {
+                type: "joinaggregate",
+                groupby: ["group"],
+                ops: ["mean"],
+                fields: ["derived"],
+                as: ["groupMean"],
+            },
+            { type: "filter", expr: "datum.groupMean > 30" },
         ],
     });
-    expect(result.rows.map((row) => row.id)).toEqual(["A3", "B6"]);
-    expect(result.rows.map((row) => row.rank)).toEqual([2, 1]);
+    // Both B records pass because each receives the full group mean of 40.
+    expect(result.rows.map((row) => row.id)).toEqual(["B2", "B6"]);
+    expect(result.rows.map((row) => row.rank)).toEqual([3, 1]);
     expect(selected.getValue().data.map((row) => row.id)).toEqual(["A1"]);
     selected.setValue(result.rows.map((row) => [String(row.id)]));
-    expect(selected.getValue().data.map((row) => row.id)).toEqual(["A3", "B6"]);
+    expect(selected.getValue().data.map((row) => row.id)).toEqual(["B2", "B6"]);
     const sample = handle.data.transform({
         ...viewport,
         transform: [{ type: "sample", size: 2 }],

@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, expect, onTestFinished, test, vi } from "vitest";
+import {
+    createPointerEvent,
+    installPointerCapture,
+} from "../../testFixtures/pointerCanvas.js";
 import { createAndInitialize, renderToLayout } from "../view/testUtils.js";
 import ConcatView from "../view/concatView.js";
 import AxisView from "../view/axisView.js";
@@ -48,7 +52,7 @@ async function harness(spec, wheelBehavior = "cooperative") {
         canvas,
         animator: root.context.animator,
         wheelBehavior,
-        tooltip: /** @type {any} */ ({ clear() {} }),
+        tooltip: /** @type {any} */ ({ clear() {}, handleMouseMove() {} }),
         emitEvent() {},
         tooltipHandlers: {},
     });
@@ -401,25 +405,44 @@ test.each(["page", "scroll", "veto"])(
         let now = 1000;
         vi.spyOn(performance, "now").mockImplementation(() => now);
         const coords = plot.coords;
+        let x = coords.x + 100;
+        const y = coords.y + 20;
+        installPointerCapture(canvas);
+        vi.spyOn(canvas, "clientWidth", "get").mockReturnValue(
+            root.coords.width
+        );
+        vi.spyOn(canvas, "clientHeight", "get").mockReturnValue(
+            root.coords.height
+        );
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", {
+            createPointerEvent("pointerdown", {
                 button: 0,
-                clientX: coords.x + 100,
-                clientY: coords.y + 20,
+                buttons: 1,
+                clientX: x,
+                clientY: y,
             })
         );
         // Pass the drag axis-lock threshold before collecting inertia samples.
         for (let i = 1; i <= 9; i++) {
             now += 16;
-            document.dispatchEvent(
-                new MouseEvent("mousemove", {
+            x -= 2;
+            canvas.dispatchEvent(
+                createPointerEvent("pointermove", {
+                    button: -1,
                     buttons: 1,
-                    clientX: coords.x + 100 - i * 2,
-                    clientY: coords.y + 20,
+                    clientX: x,
+                    clientY: y,
                 })
             );
         }
-        document.dispatchEvent(new MouseEvent("mouseup"));
+        canvas.dispatchEvent(
+            createPointerEvent("pointerup", {
+                button: 0,
+                buttons: 0,
+                clientX: x,
+                clientY: y,
+            })
+        );
         expect(queued.length).toBeGreaterThan(0);
         const before = plot.getScaleResolution("x").getDomain().slice();
         if (handoff === "veto")

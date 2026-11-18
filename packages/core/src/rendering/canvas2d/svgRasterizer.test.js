@@ -203,6 +203,10 @@ function createRun(marks, bounds) {
         marks,
         targets: [],
         viewNodes: new Set(),
+        opacityScope: document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "svg"
+        ),
         anchor: document.createComment("raster-run"),
         bounds,
         image: document.createElementNS("http://www.w3.org/2000/svg", "image"),

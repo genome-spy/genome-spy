@@ -9,6 +9,7 @@ describe("sample facet visibility", () => {
         ["lower partial overlap", facet(-10, 20), true],
         ["wholly above", facet(101, 20), false],
         ["wholly below", facet(-21, 20), false],
+        ["collapsed", facet(50, 0), false],
         ["non-finite position", facet(Number.NaN, 20), true],
     ])("handles %s", (_name, sampleFacet, expected) => {
         expect(isSampleFacetVisible(sampleFacet)).toBe(expected);

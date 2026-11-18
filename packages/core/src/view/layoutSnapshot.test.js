@@ -95,34 +95,88 @@ describe("layout snapshot helper", () => {
         });
     });
 
-    test("renders a title declared on a root grid view", async () => {
-        const layout = await specToLayout(
-            {
-                title: "Main title",
-                vconcat: [
-                    {
-                        data: { values: [{ x: 1, y: 2 }] },
-                        mark: "point",
-                        encoding: {
-                            x: {
-                                field: "x",
-                                type: "quantitative",
-                                axis: null,
-                            },
-                            y: {
-                                field: "y",
-                                type: "quantitative",
-                                axis: null,
-                            },
-                        },
-                    },
-                ],
+    test.each(
+        /** @type {const} */ ([
+            "vconcat",
+            "hconcat",
+            "concat",
+            "surround",
+            "facet",
+        ])
+    )("anchors a group-frame overlay title to the %s plots", async (kind) => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const plot = {
+            name: "plot",
+            width: 100,
+            height: 60,
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: { orient: "top" },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    axis: { orient: "left" },
+                },
             },
-            {},
-            Rectangle.create(0, 0, 200, 120)
-        );
+        };
+        const other = { ...plot, name: "other" };
+        /** @type {Record<typeof kind, import("../spec/root.js").RootSpec>} */
+        const compositions = {
+            vconcat: { vconcat: [plot, other], overhang: { left: false } },
+            hconcat: { hconcat: [plot, other] },
+            concat: {
+                columns: 2,
+                concat: [plot, other, { ...other, name: "third" }],
+            },
+            surround: {
+                spec: { ...plot, layer: [{ mark: "point" }], mark: undefined },
+                surround: { top: [{ height: 30, mark: "point" }] },
+            },
+            facet: {
+                facet: { field: "category", domain: ["A", "B"] },
+                spec: plot,
+            },
+        };
+        const layout = await specToLayout({
+            data: { values: [{ category: "A", x: 1, y: 2 }] },
+            title: { text: "Overlay", style: "overlay-title" },
+            ...compositions[kind],
+        });
+        const title = findLayoutNode(layout, "title0");
+        const firstPlot = findLayoutNode(layout, "plot");
 
-        expect(findLayoutNode(layout, "title0")).toBeDefined();
+        expect(getRectProp(title.coords, "x")).toBe(
+            getRectProp(firstPlot.coords, "x")
+        );
+        expect(getRectProp(title.coords, "y")).toBe(
+            getRectProp(firstPlot.coords, "y")
+        );
+    });
+
+    test("a bounds-frame overlay title retains the composed view's guide bounds", async () => {
+        const layout = await specToLayout({
+            name: "group",
+            title: { text: "Overlay", style: "overlay-title", frame: "bounds" },
+            vconcat: [
+                {
+                    name: "plot",
+                    mark: "point",
+                    encoding: { y: { field: "value", type: "quantitative" } },
+                },
+            ],
+        });
+        const title = findLayoutNode(layout, "title0");
+        const group = findLayoutNode(layout, "group");
+        const plot = findLayoutNode(layout, "plot");
+
+        expect(title.coords).toBe(group.coords);
+        expect(getRectProp(title.coords, "x")).toBeLessThan(
+            getRectProp(plot.coords, "x")
+        );
     });
 
     test("title-styles docs example relies on title bounds instead of padding", async () => {

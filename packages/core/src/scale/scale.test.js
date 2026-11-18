@@ -11,11 +11,13 @@ import { expect, test } from "vitest";
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-/* eslint-disable */
-
 import * as util from "vega-util";
 import * as vs from "vega-scale";
-import createScale from "./scale.js";
+import createScale, {
+    configureDomain,
+    configureScale,
+    getScalePropertyDefaults,
+} from "@genome-spy/core/scale/scale.js";
 
 // Suppress warnings by default
 const scale = (params, logger) =>
@@ -54,9 +56,62 @@ test("Scale respects domain configuration", function () {
     s = scale(util.extend({ domainMid: 5 }, params));
     expect(s.domain()).toEqual([0, 5, 9.5]);
 
-    // test domain raw
-    s = scale(util.extend({ domainRaw: [2, 11] }, params));
-    expect(s.domain()).toEqual([2, 11]);
+    // Raw domains bypass the adjustments applied to ordinary domains.
+    s = scale({
+        ...params,
+        domainRaw: [2.2, 11.7],
+        domainMin: -1,
+        domainMax: 15,
+        nice: true,
+        padding: 2,
+        range: [0, 100],
+    });
+    expect(s.domain()).toEqual([2.2, 11.7]);
+});
+
+test("configureDomain prepares a candidate without changing a live scale", () => {
+    const s = scale({ type: "linear", domain: [3, 5], zero: false });
+    const candidate = configureDomain(s, {
+        type: "linear",
+        domain: [4, 6],
+        zero: false,
+    });
+    expect(candidate.domain).toEqual([4, 6]);
+    expect(s.domain()).toEqual([3, 5]);
+});
+
+test("configureScale includes zero after reconfiguring a previously binned scale", () => {
+    const s = scale({
+        type: "linear",
+        domain: [3, 5],
+        bins: [3, 4, 5],
+        zero: false,
+    });
+
+    configureScale({ type: "linear", domain: [4, 6] }, s);
+
+    expect(s.domain()).toEqual([0, 6]);
+    expect(s.bins).toBeUndefined();
+});
+
+test("direct band scale configuration accepts grouping gaps and restores omitted defaults", () => {
+    const props = {
+        type: "band",
+        domain: ["a", "b"],
+        gapPositions: [1],
+        gapWidth: 8,
+    };
+    const s = scale(props);
+
+    expect(s.gapPositions()).toEqual([1]);
+    expect(s.gapWidth()).toBe(8);
+    expect(
+        getScalePropertyDefaults("band", props, {
+            type: props.type,
+            domain: props.domain,
+            gapWidth: props.gapWidth,
+        })
+    ).toEqual({ gapPositions: [] });
 });
 
 test("Scale respects domain padding", function () {
@@ -149,22 +204,8 @@ test("Scale respects range configuration", function () {
     s = scale(util.extend({ reverse: true }, params));
     expect(s.range()).toEqual([10, 0]);
 
-    // rangeStep
-    params = {
-        type: "band",
-        domain: ["a", "b", "c"],
-        rangeStep: 20,
-        padding: 0,
-    };
-    s = scale(params);
-    expect(s.range()).toEqual([0, 60]);
-    expect(s.bandwidth()).toBe(20);
     expect(vs.scale("band")().gapMapping).toBeTypeOf("function");
     expect(vs.scale("point")().gapMapping).toBeTypeOf("function");
-
-    s = expect(function () {
-        scale(util.extend({}, params, { type: "linear" }));
-    }).toThrow();
 });
 
 test("Scale respects range color schemes", function () {

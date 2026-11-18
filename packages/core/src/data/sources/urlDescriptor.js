@@ -201,13 +201,14 @@ function shouldSkipUrlLoadError(descriptor, error) {
  * @template T
  * @param {UrlDescriptor} descriptor
  * @param {() => Promise<T>} load
+ * @param {AbortSignal} [signal]
  * @returns {Promise<T | undefined>}
  */
-export async function loadUrlDescriptorOrSkip(descriptor, load) {
+export async function loadUrlDescriptorOrSkip(descriptor, load, signal) {
     try {
         return await load();
     } catch (e) {
-        if (shouldSkipUrlLoadError(descriptor, e)) {
+        if (!signal?.aborted && shouldSkipUrlLoadError(descriptor, e)) {
             return undefined;
         }
         throw e;

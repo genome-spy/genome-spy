@@ -31,13 +31,13 @@ export function buildMarkXIndex(spec, data, nativeStart = 0) {
 }
 
 /**
- * Resolves the immutable data-side contract needed to build an x index.
- * Renderer-native ranges and cache state remain adapter-owned.
+ * Checks cheap encoder and geometry prerequisites without reading the live
+ * extent. Cache owners must still observe invalid extents becoming valid.
  *
  * @param {import("../../marks/mark.js").default} mark
- * @returns {MarkXIndexSpec | undefined}
+ * @returns {import("../../scales/scaleResolution.js").default | undefined}
  */
-export function createMarkXIndexSpec(mark) {
+export function getMarkXIndexScaleResolution(mark) {
     const xEncoder = mark.encoders?.x;
     const x2Encoder = mark.encoders?.x2;
     if (
@@ -47,17 +47,54 @@ export function createMarkXIndexSpec(mark) {
         !xEncoder.scale ||
         (!isContinuous(xEncoder.scale.type) &&
             !["index", "locus"].includes(xEncoder.scale.type)) ||
-        xEncoder.branches.length !== 1
+        xEncoder.branches.length !== 1 ||
+        (x2Encoder &&
+            (x2Encoder.scale !== xEncoder.scale ||
+                x2Encoder.branches.length !== 1))
     ) {
         return undefined;
     }
     const markType = mark.getType();
-    if (markType === "point" && isMarkClamped(mark, "x")) {
+    // Clipping spans can hide geometry; clamping anchors can reveal offscreen rows.
+    if (
+        markType !== "rect" &&
+        markType !== "rule" &&
+        markType !== "tick" &&
+        isMarkClamped(mark, "x")
+    ) {
         return undefined;
     }
-    if (markType !== "point" && markType !== "rect") {
+    if (markType === "link") {
+        const shape = /** @type {import("../../spec/mark.js").LinkProps} */ (
+            mark.properties
+        ).linkShape;
+        // Generic arcs can bow past both x endpoints; expression shapes can change.
+        if (
+            shape !== "line" &&
+            shape !== "diagonal" &&
+            shape !== "orthogonal" &&
+            shape !== "dome"
+        ) {
+            return undefined;
+        }
+    }
+    return mark.unitView.getScaleResolution("x");
+}
+
+/**
+ * Resolves the immutable data-side contract needed to build an x index.
+ * Renderer-native ranges and cache state remain adapter-owned.
+ *
+ * @param {import("../../marks/mark.js").default} mark
+ * @returns {MarkXIndexSpec | undefined}
+ */
+export function createMarkXIndexSpec(mark) {
+    const scaleResolution = getMarkXIndexScaleResolution(mark);
+    if (!scaleResolution) {
         return undefined;
     }
+    const xEncoder = mark.encoders.x;
+    const x2Encoder = mark.encoders.x2;
 
     const xAccessor = getEncoderDataAccessor(xEncoder)?.asNumberAccessor();
     if (!xAccessor) {
@@ -66,22 +103,14 @@ export function createMarkXIndexSpec(mark) {
 
     let x2Accessor;
     if (x2Encoder) {
-        if (
-            x2Encoder.scale !== xEncoder.scale ||
-            x2Encoder.branches.length !== 1
-        ) {
-            return undefined;
-        }
         x2Accessor = getEncoderDataAccessor(x2Encoder)?.asNumberAccessor();
         if (!x2Accessor) {
             return undefined;
         }
     }
 
-    const scaleResolution = mark.unitView.getScaleResolution("x");
-    const zoomExtent = scaleResolution?.zoomExtent;
+    const zoomExtent = scaleResolution.zoomExtent;
     if (
-        !scaleResolution ||
         !zoomExtent ||
         !Number.isFinite(zoomExtent[0]) ||
         !Number.isFinite(zoomExtent[1]) ||

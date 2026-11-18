@@ -52,6 +52,9 @@ export default defineConfig({
             fileName: (format) =>
                 format == "umd" ? "index.js" : `index.${format}.js`,
         },
-        rollupOptions: {},
+        rolldownOptions: {
+            // Minify whitespace in the prebuilt ES browser bundle as well.
+            output: { minify: true },
+        },
     },
 });

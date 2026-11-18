@@ -5,6 +5,62 @@ import { createSvg } from "./index.js";
 import { renderToLayout } from "../../view/testUtils.js";
 import Rectangle from "../../view/layout/rectangle.js";
 
+test("group rectangles reach explicit band endpoints on both axes", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { lazy: { type: "scaleGroups", channels: ["x", "y"] } },
+        mark: { type: "rect", fillOpacity: 0, stroke: "black" },
+        encoding: {
+            fill: { value: "black" },
+            x: {
+                field: "xStart",
+                type: "nominal",
+                axis: null,
+                scale: {
+                    type: "band",
+                    domain: ["A", "B", "C"],
+                    gapPositions: ["C"],
+                    gapWidth: 10,
+                },
+            },
+            x2: { field: "xEnd", band: 1 },
+            y: {
+                field: "yStart",
+                type: "nominal",
+                axis: null,
+                scale: {
+                    type: "band",
+                    domain: ["R1", "R2", "R3"],
+                    gapPositions: ["R3"],
+                    gapWidth: 10,
+                    reverse: true,
+                },
+            },
+            y2: { field: "yEnd", band: 1 },
+        },
+    });
+    onTestFinished(() => view.disposeSubtree());
+
+    const { svg } = createSvg({
+        viewRoot: view,
+        logicalWidth: 100,
+        logicalHeight: 100,
+    });
+    const bounds = Array.from(
+        svg.querySelectorAll('[data-mark-type="rect"] rect'),
+        (rect) =>
+            ["x", "y", "width", "height"].map((key) =>
+                Number(rect.getAttribute(key))
+            )
+    );
+    // Three 30 px bands and one 10 px gap per axis, including a one-band group.
+    expect(bounds).toEqual([
+        [0, 0, 60, 60],
+        [0, 70, 60, 30],
+        [70, 0, 30, 60],
+        [70, 70, 30, 30],
+    ]);
+});
+
 test("categorical heat-map cells and real axes retain independent gaps on resize and reversal", async () => {
     const columns = ["A", "B", "C", "D"];
     const rows = ["R1", "R2", "R3", "R4"];
