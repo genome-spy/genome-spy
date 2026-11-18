@@ -17,13 +17,6 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
 
 export const PATH_POINT_SHADER_BODY = /* wgsl */ `
 ${POSITION_CLAMP_WGSL}
-fn placeClampedPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
-    return clip;
-#else
-    return applyPlacementClipForPoint(clip, anchor, i);
-#endif
-}
 
 const PI: f32 = 3.141592653589793;
 const AA_COVERAGE_RADIUS_PIXELS: f32 = 0.5;
@@ -52,6 +45,7 @@ struct VSOut {
     @location(8) @interpolate(flat) strokeAlign: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
+    @location(13) opacity: f32,
     @location(14) @interpolate(flat) atlasBounds: vec4<f32>,
 };
 
@@ -65,6 +59,7 @@ fn culledPoint() -> VSOut {
     out.atlasBounds = vec4<f32>(0.0);
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
+    out.opacity = 0.0;
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
@@ -150,13 +145,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         max(1.0, getScaled_minPickingSize(i) / paddedDiameter), pickingEnabled);
     let screenOffset = rot * localScreen * pickingScale;
     let center = projectClampedPosition(
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
         vec2<f32>(getScaled_x(i), getScaled_y(i)),
         vec2<f32>(getScaled_xOffset(i) + getScaled_dx(i), getScaled_yOffset(i) + getScaled_dy(i)), i);
-#else
-        vec2<f32>(getScaled_x(i) + getScaled_dx(i), getScaled_y(i) + getScaled_dy(i)),
-        vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
-#endif
     let centerX = center.x;
     let centerY = center.y;
 
@@ -168,10 +158,6 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let clip = vec2<f32>(
         (pixel.x / globals.width) * 2.0 - 1.0,
         1.0 - (pixel.y / globals.height) * 2.0
-    );
-    let centerClip = vec2<f32>(
-        (centerX / globals.width) * 2.0 - 1.0,
-        1.0 - (centerY / globals.height) * 2.0
     );
 
     let atlasPixelsPerScreen = params.uShapePixels / max(diameter, 0.001);
@@ -185,15 +171,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(
-        placeClampedPoint(clip, centerClip, i),
-        0.0,
-        1.0
-    );
+    out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.uv = mix(entry.uvBounds.xy, entry.uvBounds.zw, tileUnit);
     out.atlasBounds = entry.uvBounds;
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
+    out.opacity = getScaled_opacity(i);
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = halfStrokeWidth;
@@ -268,7 +251,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shade(in) * select(in.opacity, 1.0, pickingEnabled);
 }
 `;
 

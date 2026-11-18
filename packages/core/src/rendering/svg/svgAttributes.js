@@ -1,3 +1,5 @@
+/** @typedef {((datum: object) => import("../../spec/channel.js").Scalar) & {constant: boolean}} SvgAttributeSource */
+
 /**
  * Moves constant presentation attributes to the mark group and returns an
  * encoder for the remaining data-dependent attributes. SVG presentation
@@ -5,7 +7,7 @@
  *
  * @param {SVGGElement} group
  * @param {Record<string, {
- *     encoder: import("../../types/encoder.js").Encoder,
+ *     encoder: SvgAttributeSource,
  *     transform?: (value: import("../../spec/channel.js").Scalar) => string | number
  * }>} definitions
  */
@@ -35,7 +37,7 @@ export function createSvgAttributeEncoder(group, definitions) {
 
 /**
  * @param {{
- *     encoder: import("../../types/encoder.js").Encoder,
+ *     encoder: SvgAttributeSource,
  *     transform?: (value: import("../../spec/channel.js").Scalar) => string | number
  * }} definition
  * @param {object} datum

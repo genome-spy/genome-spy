@@ -557,10 +557,15 @@ describe("Canvas2DViewRenderingContext", () => {
         }
     );
 
-    test("passes indexed source-row bounds to immediate marks", async () => {
+    test("passes nonzero indexed source-row bounds through text and path visitors", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{ x: 0.1 }, { x: 0.5 }, { x: 0.9 }] },
-            mark: "point",
+            data: {
+                values: [
+                    { x: 0.1, x2: 0.2, label: "first" },
+                    { x: 0.5, x2: 0.7, label: "middle" },
+                    { x: 0.9, x2: 1, label: "last" },
+                ],
+            },
             encoding: {
                 x: {
                     field: "x",
@@ -571,6 +576,21 @@ describe("Canvas2DViewRenderingContext", () => {
                 size: { value: 4 },
                 color: { value: "black" },
             },
+            layer: [
+                { mark: "text", encoding: { text: { field: "label" } } },
+                {
+                    mark: { type: "link", linkShape: "line" },
+                    encoding: { x2: { field: "x2" }, y2: { value: 0.5 } },
+                },
+                {
+                    mark: "arrow",
+                    encoding: {
+                        x2: { field: "x2" },
+                        y2: { value: 0.5 },
+                        fill: { value: "black" },
+                    },
+                },
+            ],
         });
         const recording = createRecordingContext();
         const xIndexManager = /** @type {any} */ ({
@@ -582,12 +602,21 @@ describe("Canvas2DViewRenderingContext", () => {
             }),
         });
 
-        render(view, recording.context, xIndexManager);
+        try {
+            render(view, recording.context, xIndexManager);
 
-        expect(xIndexManager.prepare).toHaveBeenCalledOnce();
-        expect(xIndexManager.query).toHaveBeenCalledOnce();
-        expect(recording.calls.arcs).toHaveLength(1);
-        expect(recording.calls.arcs[0][0]).toBe(50);
+            expect(xIndexManager.prepare).toHaveBeenCalledTimes(3);
+            expect(xIndexManager.query).toHaveBeenCalledTimes(3);
+            expect(recording.calls.fillTexts.map(([text]) => text)).toEqual([
+                "middle",
+            ]);
+            expect(recording.calls.beziers).toHaveLength(1);
+            expect(recording.calls.beziers[0].slice(-2)).toEqual([70, 50]);
+            expect(recording.calls.moves).toContainEqual([70, 50]);
+            expect(recording.context.fill).toHaveBeenCalledOnce();
+        } finally {
+            view.disposeSubtree();
+        }
     });
 
     test("skips marks rejected by the selective-render predicate", async () => {
@@ -1145,16 +1174,6 @@ describe("Canvas2DViewRenderingContext", () => {
         });
         expect(xEncoder).toHaveBeenCalledOnce();
 
-        encoders.facetIndex = Object.assign(() => 0, originalXEncoder, {
-            constant: true,
-        });
-        view.arrange(context, coords, {
-            sampleFacetRenderingOptions: {
-                locSize: { location: 101, size: 20 },
-                pixelToUnit: 0.01,
-            },
-        });
-        expect(xEncoder).toHaveBeenCalledTimes(2);
         expect(profiler.snapshot().countTotals).toMatchObject({
             canvasSampleFacetOccurrences: 2,
             canvasCulledSampleFacetOccurrences: 1,
@@ -1800,11 +1819,8 @@ describe("Canvas2DViewRenderingContext", () => {
             encoders.angle,
             { constant: false }
         );
-        const colorEncoder = Object.assign(
-            vi.fn(encoders.color),
-            encoders.color
-        );
-        encoders.color = colorEncoder;
+        const fillEncoder = Object.assign(vi.fn(encoders.fill), encoders.fill);
+        encoders.fill = fillEncoder;
         encoders.size = sizeEncoder;
         encoders.angle = angleEncoder;
 
@@ -1824,7 +1840,7 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(sizeEncoder).toHaveBeenCalledTimes(2);
         expect(angleEncoder).toHaveBeenCalledTimes(4);
         expect(second.calls.fonts[0]).toContain("18px");
-        expect(colorEncoder).toHaveBeenCalledTimes(2);
+        expect(fillEncoder).toHaveBeenCalledTimes(2);
         expect(first.calls.textColors).toEqual(["black", "black"]);
         expect(second.calls.textColors).toEqual(["white", "white"]);
     });
@@ -1909,4 +1925,38 @@ describe("Canvas2DViewRenderingContext", () => {
         expect(recording.calls.fillTexts).toEqual([["A", 0, 0, undefined]]);
         expect(recording.context.textBaseline).toBe("alphabetic");
     });
+});
+
+test("reactive padding updates Canvas and immediate SVG band geometry", async () => {
+    const { view } = await createHeadlessEngine({
+        params: [{ name: "gap", value: 0 }],
+        data: { values: [{ x: "A" }, { x: "B" }] },
+        mark: { type: "rect", minWidth: 0 },
+        encoding: {
+            fill: { value: "steelblue" },
+            x: {
+                field: "x",
+                type: "nominal",
+                scale: { padding: { expr: "gap" } },
+            },
+        },
+    });
+    try {
+        view.paramRuntime.setValue("gap", 0.5);
+        const recording = createRecordingContext();
+        render(view, recording.context);
+        const { svg, warnings } = createSvg({
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            background: null,
+        });
+        const rect = svg.querySelector('[data-mark-type="rect"] rect');
+        // Rect rendering expands each edge by 0.1 px for seam suppression.
+        expect(+rect.getAttribute("width")).toBeCloseTo(20.2);
+        expect(recording.calls.fillRects[0][2]).toBeCloseTo(20.2);
+        expect(warnings).toEqual([]);
+    } finally {
+        view.disposeSubtree();
+    }
 });

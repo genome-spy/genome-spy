@@ -47,7 +47,7 @@ export function renderTextCanvas(baseMark, options) {
     ) {
         options.warn("Canvas2D ignored unsupported text viewport edge fading.");
     }
-    const constantFill = getDrawConstantPaint(encoders.color, options);
+    const constantFill = getDrawConstantPaint(encoders.fill, options);
     /** @type {string | undefined} */
     let fillStyle;
     /** @type {number | undefined} */
@@ -69,9 +69,10 @@ export function renderTextCanvas(baseMark, options) {
                 );
             }
             const fill =
-                constantFill ?? toPaintString(encoders.color(instance.datum));
+                constantFill ?? toPaintString(encoders.fill(instance.datum));
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
+                encodeNumber(encoders.fillOpacity, instance.datum) *
                 options.viewOpacity *
                 instance.fadeOpacity;
             if (fill == "none" || opacity <= 0) {

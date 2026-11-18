@@ -149,6 +149,47 @@ describe("supported mark channels", () => {
 });
 
 describe("mark rendering revisions", () => {
+    test("invalidates scale resources before an immediate draw in a transaction", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ x: 0 }, { x: 10 }] },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "index",
+                        scale: {
+                            domain: [0, 10],
+                            paddingInner: { expr: "2 / span(domain('x'))" },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+        try {
+            view.mark.initializeRenderingRevisions([]);
+            const before = view.mark.getRenderingRevision("resources");
+            const render = vi
+                .spyOn(view.context, "renderImmediately")
+                .mockImplementation(() => {
+                    expect(
+                        view.mark.getRenderingRevision("resources")
+                    ).toBeGreaterThan(before);
+                });
+            let zoom = Promise.resolve();
+            view.paramRuntime.runInTransaction(() => {
+                zoom = view.getScaleResolution("x").zoomTo([2, 5], {
+                    renderImmediately: true,
+                });
+            });
+            expect(render).toHaveBeenCalledOnce();
+            await zoom;
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test("owns expression-backed configuration and resource revisions", async () => {
         const view = await create(
             {
@@ -176,18 +217,31 @@ describe("mark rendering revisions", () => {
         const watchExpression = vi.spyOn(view.paramRuntime, "watchExpression");
         view.mark.initializeEncoders();
         expect(watchExpression).not.toHaveBeenCalled();
+        expect(() =>
+            view.mark.getRenderingExpression({ expr: "headWidth" })
+        ).toThrow("Rendering expression has not been initialized");
+        view.mark.initializeRenderingRevisions(["headWidth"]);
         view.mark.initializeRenderingRevisions(["headWidth"]);
         expect(watchExpression).toHaveBeenCalledTimes(2);
+        expect(view.mark.getRenderingExpression({ expr: "headWidth" })()).toBe(
+            2
+        );
         expect(view.mark.getRenderingRevision("configuration")).toBe(0);
         expect(view.mark.getRenderingRevision("resources")).toBe(0);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
 
         view.paramRuntime.setValue("offset", 1);
         expect(view.mark.getRenderingRevision("configuration")).toBe(1);
         expect(view.mark.getRenderingRevision("resources")).toBe(0);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
 
         view.paramRuntime.setValue("headWidth", 3);
+        expect(view.mark.getRenderingExpression({ expr: "headWidth" })()).toBe(
+            3
+        );
         expect(view.mark.getRenderingRevision("configuration")).toBe(1);
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
     });
 
     test("tracks selection predicates as resource revisions", async () => {
@@ -216,6 +270,7 @@ describe("mark rendering revisions", () => {
         view.paramRuntime.setValue("selected", { ...selection });
 
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
@@ -245,16 +300,22 @@ describe("mark rendering revisions", () => {
         view.paramRuntime.setValue("picked", { ...selection });
 
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
         expect(requestRender).toHaveBeenCalledOnce();
     });
 
-    test("deduplicates scale dependencies", async () => {
+    test("deduplicates scale dependencies and distinguishes simultaneous style changes", async () => {
         const view = await create(
             {
-                data: { values: [{ start: 8, end: 32 }] },
-                mark: "rule",
+                data: { values: [{ start: "A", end: "C" }] },
+                params: [{ name: "cap", value: "butt" }],
+                mark: { type: "rule", strokeCap: { expr: "cap" } },
                 encoding: {
-                    x: { field: "start", type: "quantitative" },
+                    x: {
+                        field: "start",
+                        type: "nominal",
+                        scale: { type: "band", domain: ["A", "B", "C"] },
+                    },
                     x2: { field: "end" },
                     y: { value: 0.5 },
                 },
@@ -263,14 +324,22 @@ describe("mark rendering revisions", () => {
         );
         const resolution = view.getScaleResolution("x");
         view.mark.initializeEncoders();
-        view.mark.initializeRenderingRevisions([]);
+        view.mark.initializeRenderingRevisions(["strokeCap"]);
 
-        view.paramRuntime.runInTransaction(() => {
-            resolution.scale.domain([0, 20]);
-            resolution.scale.range([0, 2]);
-        });
+        resolution.scale.domain(["A", "B", "C", "D"]);
         view.paramRuntime.flushNow();
         expect(view.mark.getRenderingRevision("resources")).toBe(1);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(0);
+
+        // Coherent publication must retain both kinds of invalidation.
+        view.paramRuntime.runInTransaction(() => {
+            void resolution.zoomToViewport([1, 3]);
+            view.paramRuntime.setValue("cap", "square");
+        });
+        view.paramRuntime.flushNow();
+        expect(resolution.getViewport()).toEqual([1, 3]);
+        expect(view.mark.getRenderingRevision("resources")).toBe(3);
+        expect(view.mark.getRenderingRevision("resourceExpressions")).toBe(1);
         view.disposeSubtree();
     });
 });

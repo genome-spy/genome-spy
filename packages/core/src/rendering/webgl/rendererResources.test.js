@@ -84,11 +84,58 @@ vi.mock("./marks/text.js", () => ({ default: mocks.FakeWebGLMark }));
 
 import WebGLRendererResources from "./rendererResources.js";
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
+import Rectangle from "../../view/layout/rectangle.js";
 
 beforeEach(() => {
     vi.resetAllMocks();
     mocks.events.length = 0;
     mocks.delegates.length = 0;
+});
+
+test("a buffered frame cannot recreate graphics for a disposed view", async () => {
+    const { view } = await createHeadlessEngine({
+        data: { values: [{}] },
+        mark: "point",
+    });
+    const mark = /** @type {import("../../view/unitView.js").default} */ (view)
+        .mark;
+    const glHelper = createGlHelper();
+    const resources = new WebGLRendererResources(glHelper);
+    const context = new BufferedViewRenderingContext(
+        { picking: false },
+        {
+            webGLHelper: glHelper,
+            canvasSize: { width: 100, height: 100 },
+            devicePixelRatio: 1,
+            markAdapter: resources,
+        }
+    );
+    context.pushView(view, Rectangle.create(0, 0, 100, 100));
+    context.renderMark(mark, {});
+    context.finish();
+    expect(mocks.delegates).toHaveLength(1);
+
+    // A shared axis can be disposed before the next full layout is collected.
+    view.disposeSubtree();
+    expect(resources.getMarkEntry(mark)).toBeUndefined();
+
+    // Like an expression-backed text uniform, the shader would bind a scope listener.
+    const finalize = vi
+        .spyOn(mocks.FakeWebGLMark.prototype, "finalizeGraphicsInitialization")
+        .mockImplementation(() => {
+            view.paramRuntime.watchExpression("1", vi.fn());
+        });
+    try {
+        context.render();
+        context.render();
+        expect(finalize).not.toHaveBeenCalled();
+        expect(resources.getMarkEntry(mark)).toBeUndefined();
+        expect(mocks.delegates).toHaveLength(1);
+    } finally {
+        finalize.mockRestore();
+        resources.dispose();
+    }
 });
 
 test("starts every shader before finalizing any mark", () => {
@@ -515,6 +562,7 @@ function createScaleResolution() {
 
 test("range textures keep observing a recreated physical scale", async () => {
     const { view } = await createHeadlessEngine({
+        params: [{ name: "firstColor", value: "black" }],
         data: { values: [{ value: 5 }] },
         mark: "point",
         scales: {
@@ -538,7 +586,7 @@ test("range textures keep observing a recreated physical scale", async () => {
         resolution.attachViewLevelScaleProps(view, {
             type: "linear",
             domain: [0, 10],
-            range: ["black", "white"],
+            range: [{ expr: "firstColor" }, "white"],
         });
         expect(glHelper.createRangeTexture).toHaveBeenCalledWith(
             resolution,
@@ -546,7 +594,7 @@ test("range textures keep observing a recreated physical scale", async () => {
         );
         fixture.dispose();
         glHelper.createRangeTexture.mockClear();
-        resolution.scale.range(["red", "blue"]);
+        view.paramRuntime.setValue("firstColor", "green");
         expect(glHelper.createRangeTexture).not.toHaveBeenCalled();
     } finally {
         fixture.dispose();

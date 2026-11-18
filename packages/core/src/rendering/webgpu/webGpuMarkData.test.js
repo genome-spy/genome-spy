@@ -129,6 +129,43 @@ describe("WebGPU mark data", () => {
         expect(getPackedMarkData(fixture.mark)).toBe(second);
     });
 
+    test("resolves x-index state only when the encoder enables indexing", () => {
+        const data = [{ x: 10 }, { x: 20 }];
+        const fixture = createIndexedMark(new Map([[undefined, data]]));
+        fixture.mark.getType = () => "text";
+        fixture.mark.encoders.x.channelDef.buildIndex = false;
+        fixture.mark.unitView.getScaleResolution = vi.fn(
+            () => fixture.scaleResolution
+        );
+
+        const first = getPackedMarkData(fixture.mark);
+        expect(first.data).toEqual(data);
+        expect(first.xIndexSpec).toBeUndefined();
+        expect(getPackedMarkData(fixture.mark)).toBe(first);
+
+        fixture.collector.dataRevision++;
+        const refreshed = getPackedMarkData(fixture.mark);
+        expect(refreshed).not.toBe(first);
+        expect(fixture.mark.unitView.getScaleResolution).not.toHaveBeenCalled();
+
+        fixture.mark.encoders.x = createXEncoder(fixture.scale);
+        const indexed = getPackedMarkData(fixture.mark);
+        expect(indexed).not.toBe(refreshed);
+        expect(indexed.ranges.get(data)?.xIndex).toBeDefined();
+    });
+
+    test("builds a point index when an initially invalid extent becomes valid", () => {
+        const data = [{ x: 10 }, { x: 20 }];
+        const fixture = createIndexedMark(new Map([[undefined, data]]));
+        fixture.scaleResolution.zoomExtent = [0, 0];
+        expect(getPackedMarkData(fixture.mark).xIndexSpec).toBeUndefined();
+
+        fixture.scaleResolution.zoomExtent = [0, 100];
+        expect(
+            getPackedMarkData(fixture.mark).ranges.get(data)?.xIndex
+        ).toBeDefined();
+    });
+
     test("packs complete topology independently of active occurrences", () => {
         const firstFacet = ["first"];
         const hiddenFacet = ["hidden"];

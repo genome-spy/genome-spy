@@ -12,15 +12,16 @@ const MAX_U32 = 0xffff_ffff;
 
 /**
  * Pack a non-negative integer into hi/lo parts that match the high-precision
- * band helpers (scaleBandHpU). The split uses base 2^12, so the returned pair
+ * band helpers (scaleBandHpU). The split uses base 2^12, so the written pair
  * is [hi, lo] where value = hi * 2^12 + lo.
  *
  * Internal helper: use the pack* functions below for public series data.
  *
  * @param {number} value
- * @returns {[number, number]} [hi, lo] as unsigned 32-bit integers.
+ * @param {Uint32Array} target
+ * @param {number} offset
  */
-function splitHighPrecision(value) {
+function writeHighPrecision(value, target, offset) {
     if (!Number.isSafeInteger(value) || value < 0) {
         throw new Error(
             "High-precision values must be non-negative safe integers."
@@ -35,7 +36,8 @@ function splitHighPrecision(value) {
         );
     }
 
-    return [hi >>> 0, lo >>> 0];
+    target[offset] = hi;
+    target[offset + 1] = lo;
 }
 
 /**
@@ -65,8 +67,9 @@ function splitHighPrecisionFloat(value) {
  * @returns {Uint32Array}
  */
 export function packHighPrecisionU32(value) {
-    const [hi, lo] = splitHighPrecision(value);
-    return new Uint32Array([hi, lo]);
+    const packed = new Uint32Array(2);
+    writeHighPrecision(value, packed, 0);
+    return packed;
 }
 
 /**
@@ -77,14 +80,10 @@ export function packHighPrecisionU32(value) {
  * @returns {Uint32Array}
  */
 export function packHighPrecisionU32Array(values) {
-    const packed = new Uint32Array(values.length * 2);
-    for (let i = 0; i < values.length; i += 1) {
-        const [hi, lo] = splitHighPrecision(values[i]);
-        const offset = i * 2;
-        packed[offset] = hi;
-        packed[offset + 1] = lo;
-    }
-    return packed;
+    return packHighPrecisionU32ArrayInto(
+        values,
+        new Uint32Array(values.length * 2)
+    );
 }
 
 /**
@@ -103,10 +102,7 @@ export function packHighPrecisionU32ArrayInto(values, target) {
         );
     }
     for (let i = 0; i < values.length; i += 1) {
-        const [hi, lo] = splitHighPrecision(values[i]);
-        const offset = i * 2;
-        target[offset] = hi;
-        target[offset + 1] = lo;
+        writeHighPrecision(values[i], target, i * 2);
     }
     return target;
 }

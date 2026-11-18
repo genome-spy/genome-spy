@@ -374,6 +374,21 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     type: "interval";
 
     /**
+     * Enables one-finger dragging to draw or move the brush, including on
+     * plots that support panning. An expression can read a bound parameter
+     * to switch between brushing and panning.
+     *
+     * With double-click clearing and no clear-event filter, a tap outside
+     * the brush also clears it when `touchDrag` is explicitly enabled. If
+     * `touchDrag` is omitted, tap clearing applies when the brushed channels
+     * are non-zoomable and `on` has no event filter.
+     *
+     * __Default value:__ `true` when `on` has no event filter and the plot has
+     * no zoomable axis for panning, otherwise `false`.
+     */
+    touchDrag?: boolean | ExprRef;
+
+    /**
      * An array of encoding channels that define the interval selection.
      */
     encodings?: IntervalSelectionChannel[];
@@ -644,7 +659,21 @@ export interface RulerConfig {
     on?: RulerEventType | RulerEventConfig | string;
 
     /**
+     * Enables one-finger dragging for pointer rulers, including on plots that
+     * support panning. An expression can read a bound parameter to switch
+     * between ruler dragging and panning. A brush takes priority when both
+     * can use the same drag.
+     *
+     * __Default value:__ `true` for `"mousedown"` with no event filter on a
+     * plot without a zoomable axis for panning, otherwise `false`.
+     */
+    touchDrag?: boolean | ExprRef;
+
+    /**
      * Event that clears the ruler, or `false` to keep the current value.
+     *
+     * On touchscreens, `"mouseup"` shows the ruler during a drag and clears
+     * it on release or cancellation.
      *
      * __Default value:__ `"mouseleave"` for `on: "mousemove"`, otherwise `false`.
      */

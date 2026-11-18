@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import {
+    createPointerEvent,
+    installPointerCapture,
+} from "../testFixtures/pointerCanvas.js";
 
 vi.mock("./styles/genome-spy.css.js", () => ({ default: "" }));
 // Real scoped CSS resolution is covered by testDefaultThemeStyles.mjs.
@@ -15,7 +19,6 @@ import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";
 import { createDatumSearch } from "./search.js";
 import { intervalSelection } from "./selection/index.js";
-import { startDocumentDrag } from "./utils/documentDrag.js";
 
 const embed = createEmbed(/** @type {any} */ (GenomeSpy));
 
@@ -513,6 +516,9 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     if (!canvas) {
         throw new Error("Canvas surface was not created.");
     }
+    installPointerCapture(canvas);
+    vi.spyOn(canvas, "clientWidth", "get").mockReturnValue(200);
+    vi.spyOn(canvas, "clientHeight", "get").mockReturnValue(100);
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
         /** @type {DOMRect} */ (
             /** @type {unknown} */ ({
@@ -548,7 +554,7 @@ test("launches, updates expressions, and repaints interactions without a GPU con
     const wheelDomain = xScale.getDomain().slice();
     const wheelPaints = contexts[0].fillRect.mock.calls.length;
     canvas.dispatchEvent(
-        new MouseEvent("mousedown", {
+        createPointerEvent("pointerdown", {
             button: 0,
             buttons: 1,
             clientX: 100,
@@ -556,17 +562,19 @@ test("launches, updates expressions, and repaints interactions without a GPU con
             bubbles: true,
         })
     );
-    document.dispatchEvent(
-        new MouseEvent("mousemove", {
+    canvas.dispatchEvent(
+        createPointerEvent("pointermove", {
+            button: -1,
             buttons: 1,
             clientX: 120,
             clientY: 50,
             bubbles: true,
         })
     );
-    document.dispatchEvent(
-        new MouseEvent("mouseup", {
+    canvas.dispatchEvent(
+        createPointerEvent("pointerup", {
             button: 0,
+            buttons: 0,
             clientX: 120,
             clientY: 50,
             bubbles: true,
@@ -640,6 +648,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
     if (!canvas) {
         throw new Error("Canvas surface was not created.");
     }
+    installPointerCapture(canvas);
+    vi.spyOn(canvas, "clientWidth", "get").mockReturnValue(80);
+    vi.spyOn(canvas, "clientHeight", "get").mockReturnValue(40);
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
         /** @type {DOMRect} */ (
             /** @type {unknown} */ ({
@@ -654,7 +665,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
     genomeSpy.addEventListener("click", click);
 
     canvas.dispatchEvent(
-        new MouseEvent("mousemove", {
+        createPointerEvent("pointermove", {
+            button: -1,
+            buttons: 0,
             clientX: 20,
             clientY: 30,
             bubbles: true,
@@ -663,7 +676,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
     flushAnimationFrames(2);
     expect(() => {
         canvas.dispatchEvent(
-            new MouseEvent("mousedown", {
+            createPointerEvent("pointerdown", {
                 button: 0,
                 buttons: 1,
                 clientX: 20,
@@ -672,8 +685,9 @@ test("falls back automatically, picks data, updates live state, and exports", as
             })
         );
         canvas.dispatchEvent(
-            new MouseEvent("mouseup", {
+            createPointerEvent("pointerup", {
                 button: 0,
+                buttons: 0,
                 clientX: 20,
                 clientY: 30,
                 bubbles: true,
@@ -818,17 +832,15 @@ test("native visibility preserves nested choices, live data and task selections"
         const root = /** @type {import("./view/view.js").default} */ (
             api.debug.getViewRoot()
         );
-        const cancel = startDocumentDrag({
-            hoverContext: root.context,
-            onMove: () => {},
-        });
+        // Native gestures suspend hover tracking while they own the pointer.
+        root.context.suspendHoverTracking();
         await expect(
             api.views.visibility.set(reference, false)
         ).rejects.toThrow("active drag");
         await expect(api.views.visibility.reset()).rejects.toThrow(
             "active drag"
         );
-        cancel();
+        root.context.resumeHoverTracking();
         expect(selection.getValue()).toEqual(before);
 
         await api.views.visibility.set({ scope: [], view: "edited" }, false);

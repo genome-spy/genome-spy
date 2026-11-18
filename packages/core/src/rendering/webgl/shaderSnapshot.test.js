@@ -5,6 +5,19 @@ import UnitView from "../../view/unitView.js";
 import { createAndInitialize } from "../../view/testUtils.js";
 import { createWebGLMark } from "./rendererResources.js";
 import { replaceOrderGuard } from "./marks/webGlMark.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+
+vi.mock("twgl.js", async (importOriginal) => ({
+    ...(await importOriginal()),
+    /** @param {WebGL2RenderingContext} _gl @param {WebGLProgram} program */
+    createProgramInfoFromProgram: (_gl, program) => ({
+        program,
+        uniformSetters: {},
+    }),
+}));
+vi.mock("./gl/uniformBlocks.js", () => ({
+    createUniformBlockInfo: () => ({ buffer: {} }),
+}));
 import { fetchExample } from "../../spec/exampleTestUtils.js";
 
 const VERTEX_SHADER = 0x8b31;
@@ -162,8 +175,13 @@ function findUnitView(root, name) {
 /**
  * @param {import("../../spec/root.js").RootSpec} spec
  * @param {string} [unitName]
+ * @param {boolean} [sampleFacetRendering]
  */
-async function captureShaderSources(spec, unitName) {
+async function captureShaderSources(
+    spec,
+    unitName,
+    sampleFacetRendering = false
+) {
     const root = await createAndInitialize(spec, View);
     try {
         expect(
@@ -172,6 +190,9 @@ async function captureShaderSources(spec, unitName) {
                 .filter((entry) => entry.status !== "complete")
         ).toEqual([]);
         const unitView = findUnitView(root, unitName);
+        if (sampleFacetRendering) {
+            unitView.usesSampleFacetRendering = () => true;
+        }
         const glHelper = createFakeGlHelper();
 
         createWebGLMark(
@@ -220,33 +241,30 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("scale_xOffset");
     });
 
-    test.each(/** @type {const} */ (["rect", "point"]))(
-        "%s culls hidden sample facets before projection",
-        async (type) => {
-            const sources = await captureShaderSources({
-                data: { values: [{ facetIndex: 0 }] },
-                mark: { type, clamp: type === "point" },
+    test("sample facets cull empty placements before projection", async () => {
+        const sources = await captureShaderSources(
+            {
+                data: { values: [{}] },
+                mark: { type: "point", clamp: true },
                 encoding: {
                     x: { value: 0.5 },
-                    facetIndex: { field: "facetIndex" },
                 },
-            });
+            },
+            undefined,
+            true
+        );
 
-            const mainIndex = sources.vertex.indexOf("void main(void)");
-            const cullIndex = sources.vertex.indexOf(
-                "getSampleFacetPos().height == 0.0",
-                mainIndex
-            );
-            const projectionIndex = sources.vertex.indexOf(
-                "getScaled_",
-                mainIndex
-            );
+        const mainIndex = sources.vertex.indexOf("void main(void)");
+        const cullIndex = sources.vertex.indexOf(
+            "getSampleFacetPos().height == 0.0",
+            mainIndex
+        );
+        const projectionIndex = sources.vertex.indexOf("getScaled_", mainIndex);
 
-            expect(sources.vertex).toContain("#define SAMPLE_FACET_TEXTURE");
-            expect(cullIndex).toBeGreaterThan(-1);
-            expect(cullIndex).toBeLessThan(projectionIndex);
-        }
-    );
+        expect(sources.vertex).toContain("#define SAMPLE_FACET_UNIFORM");
+        expect(cullIndex).toBeGreaterThan(-1);
+        expect(cullIndex).toBeLessThan(projectionIndex);
+    });
 
     test("legacy point dx and dy retain their pre-facet direction", async () => {
         const sources = await captureShaderSources({
@@ -673,4 +691,159 @@ describe("generated shader snapshots", () => {
 
         expect(sources).toMatchSnapshot();
     });
+});
+
+test("a retained WebGL program uses newly attached index range and padding on the first immediate draw", async () => {
+    const child = /** @type {import("../../spec/view.js").UnitSpec} */ ({
+        mark: "rect",
+        encoding: { x: { field: "x", type: "index" } },
+    });
+    const { view, context } = await createHeadlessEngine({
+        params: [{ name: "gap", value: 0.4 }],
+        data: { values: [{ x: 0 }, { x: 9 }] },
+        layer: [child],
+    });
+    const layer = /** @type {import("../../view/layerView.js").default} */ (
+        view
+    );
+    const glHelper = createFakeGlHelper();
+    Object.assign(glHelper.gl, {
+        isContextLost: () => false,
+        useProgram() {},
+        deleteBuffer() {},
+    });
+    const delegate = createWebGLMark(
+        findUnitView(view).mark,
+        /** @type {any} */ (glHelper)
+    );
+    const padding = vi.fn();
+    const range = vi.fn();
+    vi.spyOn(
+        /** @type {any} */ (delegate),
+        "createMarkUniformSetter"
+    ).mockImplementation((name) => {
+        if (name === "range_x") return range;
+        return name === "uPadding_x" ? padding : () => {};
+    });
+    try {
+        delegate.initializeGraphics();
+        delegate.finalizeGraphicsInitialization();
+        const { vertex } = glHelper.getCapturedSources();
+        expect(vertex).toContain("uniform vec2 uPadding_x;");
+        expect(vertex.match(/uPadding_x.x, uPadding_x.y/g)).toHaveLength(2);
+        expect(padding).toHaveBeenLastCalledWith([0, 0]);
+        expect(range).toHaveBeenLastCalledWith([0, 1]);
+
+        await layer.addChildSpec({
+            ...child,
+            scales: {
+                x: {
+                    domain: [0, 9],
+                    zoom: true,
+                    reverse: true,
+                    padding: { expr: 'gap / span(domain("x"))' },
+                },
+            },
+        });
+        expect(padding).toHaveBeenLastCalledWith([0.04, 0.04]);
+
+        const resolution = view.getScaleResolution("x");
+        const render = vi
+            .spyOn(context, "renderImmediately")
+            .mockImplementation(() => {
+                expect(padding).toHaveBeenLastCalledWith([0.08, 0.08]);
+                expect(range).toHaveBeenLastCalledWith([1, 0]);
+            });
+        // An immediate render in the transaction must see the applied mapping.
+        let navigation;
+        view.paramRuntime.runInTransaction(() => {
+            navigation = resolution.zoomTo([0, 4], { renderImmediately: true });
+        });
+        await navigation;
+        expect(render).toHaveBeenCalledOnce();
+
+        delegate.dispose();
+        padding.mockClear();
+        view.paramRuntime.setValue("gap", 0.2);
+        await view.paramRuntime.whenPropagated();
+        expect(padding).not.toHaveBeenCalled();
+    } finally {
+        delegate.dispose();
+        view.disposeSubtree();
+    }
+});
+
+test("a retained WebGL band offset uses a newly attached reactive range", async () => {
+    const child = /** @type {import("../../spec/view.js").UnitSpec} */ ({
+        mark: "point",
+        encoding: {
+            // The quantitative primary leaves the offset with a literal default range.
+            x: {
+                field: "x",
+                type: "quantitative",
+                scale: { zoom: true },
+            },
+            xOffset: { field: "group", type: "nominal" },
+        },
+    });
+    const { view, context } = await createHeadlessEngine({
+        params: [{ name: "upper", value: 42 }],
+        data: {
+            values: [
+                { x: 0, group: "a" },
+                { x: 9, group: "b" },
+            ],
+        },
+        layer: [child],
+    });
+    const layer = /** @type {import("../../view/layerView.js").default} */ (
+        view
+    );
+    const glHelper = createFakeGlHelper();
+    Object.assign(glHelper.gl, {
+        isContextLost: () => false,
+        useProgram() {},
+        deleteBuffer() {},
+    });
+    const delegate = createWebGLMark(
+        findUnitView(view).mark,
+        /** @type {any} */ (glHelper)
+    );
+    const range = vi.fn();
+    vi.spyOn(
+        /** @type {any} */ (delegate),
+        "createMarkUniformSetter"
+    ).mockImplementation((name) =>
+        name === "range_xOffset" ? range : () => {}
+    );
+    try {
+        delegate.initializeGraphics();
+        delegate.finalizeGraphicsInitialization();
+        expect(range).toHaveBeenLastCalledWith([0, 1]);
+
+        await layer.addChildSpec({
+            ...child,
+            scales: {
+                xOffset: { type: "band", range: [0, { expr: "upper" }] },
+            },
+        });
+        expect(range).toHaveBeenLastCalledWith([0, 42]);
+
+        const x = view.getScaleResolution("x");
+        const render = vi
+            .spyOn(context, "renderImmediately")
+            .mockImplementation(() => {
+                expect(range).toHaveBeenLastCalledWith([0, 78]);
+            });
+        let navigation;
+        view.paramRuntime.runInTransaction(() => {
+            view.paramRuntime.setValue("upper", 78);
+            navigation = x.zoomTo([0, 4], { renderImmediately: true });
+        });
+        await navigation;
+        expect(render).toHaveBeenCalledOnce();
+    } finally {
+        delegate.dispose();
+        view.disposeSubtree();
+    }
 });

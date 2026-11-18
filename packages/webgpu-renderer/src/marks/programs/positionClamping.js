@@ -22,21 +22,9 @@ fn clampPlacedPosition(position: vec2<f32>, i: u32) -> vec2<f32> {
     return result;
 }
 
-// Clamped geometry is constructed after placement so pixel offsets and strokes
-// keep their size inside smaller occurrences. The ordinary path is unchanged.
+// Project anchors before constructing geometry so pixel offsets and strokes
+// retain their size in both smaller and larger placements.
 fn projectClampedPosition(position: vec2<f32>, offset: vec2<f32>, i: u32) -> vec2<f32> {
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
     return clampPlacedPosition(applyPlacementPixel(position, i) + offset, i);
-#else
-    return position + offset;
-#endif
-}
-
-fn placeClampedGeometry(clip: vec2<f32>, i: u32) -> vec2<f32> {
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
-    return clip;
-#else
-    return applyPlacementClip(clip, i);
-#endif
 }
 `;

@@ -25,6 +25,7 @@ import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
 import { createViewVisibilityApi } from "./viewVisibilityApi.js";
+import { NamedDataBinding } from "../data/namedDataScope.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -180,10 +181,13 @@ function getOwnedNamedDataBinding(view, name, getRootView) {
     }
 
     const local = view.namedDataScope.getLocalBinding(name);
+    if (local instanceof NamedDataBinding) return local;
     if (local) {
-        return local;
+        throw new ViewMutationError(
+            "namedDataReadOnly",
+            `Derived dataset "${name}" is read-only.`
+        );
     }
-
     const inherited = view.namedDataScope.findDeclaredBinding(name);
     if (inherited) {
         throw new ViewMutationError(

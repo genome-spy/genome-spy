@@ -1,8 +1,12 @@
 import { getSpecErrorLocation } from "../../../utils/specError.js";
 import { logError } from "../../../utils/errorPresentation.js";
-import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../paramRuntime/paramUtils.js";
 import { debounce } from "../../../utils/debounce.js";
 import {
+    getUrlDescriptorExpressions,
     loadUrlDescriptorOrSkip,
     normalizeUrlDescriptors,
     UrlLimitExceededError,
@@ -46,6 +50,12 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
 
     /** @type {number[] | undefined} */
     #lastDomain;
+
+    /** @type {number[] | undefined} */
+    #activeWindow;
+
+    /** Whether the loading status is waiting for a replacement read to start. */
+    #pendingReload = false;
 
     /** @type {(interval: number[], windowSize?: number) => any} */
     #debouncedRequest = (interval, windowSize) =>
@@ -102,6 +112,40 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     }
 
     /**
+     * Descriptor changes replace the backing data. Window changes can reuse
+     * the existing handles and request coverage again.
+     *
+     * @template {{ url: unknown, windowSize?: unknown }} P
+     * @param {P} params
+     * @param {{ descriptorKeys?: (keyof P)[], windowKeys?: (keyof P)[], invalidateWindow?: boolean }} [options]
+     * @protected
+     */
+    activateUrlParams(params, options = {}) {
+        const { descriptorKeys, windowKeys, invalidateWindow } = options;
+        return activateExprRefProps(
+            this.paramRuntime,
+            params,
+            (props) => {
+                if (
+                    props.has("url") ||
+                    descriptorKeys?.some((key) => props.has(key))
+                ) {
+                    this.reloadUrlDescriptors();
+                } else if (
+                    windowKeys
+                        ? windowKeys.some((key) => props.has(key))
+                        : props.has("windowSize")
+                ) {
+                    if (invalidateWindow) this.invalidateData();
+                    this.reloadLastDomain();
+                }
+            },
+            (disposer) => this.registerDisposer(disposer),
+            getUrlDescriptorExpressions(params.url)
+        );
+    }
+
+    /**
      * @template M
      * @param {{
      *     loadModules: () => Promise<M>,
@@ -115,16 +159,13 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
     setupUrlLoading(options) {
         this.#options = options;
 
+        let handleDomain = this.onDomainChanged.bind(this);
         const wait = () => withoutExprRef(this.params.debounce);
         const mode = this.params.debounceMode;
         if (mode == "domain") {
-            const onDomainChanged = debounce(
-                this.onDomainChanged.bind(this),
-                wait,
-                false
-            );
-            this.onDomainChanged = onDomainChanged;
-            this.registerDisposer(() => onDomainChanged.cancel());
+            const debounced = debounce(handleDomain, wait, false);
+            handleDomain = debounced;
+            this.registerDisposer(() => debounced.cancel());
         } else if (mode == "window") {
             const request = debounce(this.#debouncedRequest, wait, false);
             this.#debouncedRequest = request;
@@ -132,43 +173,96 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
         } else {
             throw new Error("Invalid debounceMode: " + mode);
         }
+
+        this.onDomainChanged = (/** @type {number[]} */ domain) => {
+            this.#lastDomain = domain;
+            if (
+                this.#activeWindow &&
+                !this.#coversCurrentDomain(this.#activeWindow)
+            ) {
+                this.#cancelRequest();
+                this.setLoadingStatus("complete");
+            }
+            handleDomain(domain);
+        };
     }
 
     /** @protected */
     reloadUrlDescriptors() {
-        this.#abortController.abort();
+        this.#cancelRequest();
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
         this.invalidateData();
+        this.#pendingReload = true;
         this.setLoadingStatus("loading");
         this.onDomainChanged(this.scaleResolution.getDomain());
     }
 
-    /** @protected */
-    reloadLastDomain() {
-        this.#abortController.abort();
+    /**
+     * @param {number[]} [domain] Defaults to the latest known domain.
+     * @protected
+     */
+    reloadLastDomain(domain) {
+        this.#pendingReload ||= this.#activeWindow !== undefined;
+        this.#cancelRequest();
         this.#lastQuantizedInterval = [0, 0];
         this.#lastWindowSize = 0;
         this._lastLoadedDomain = undefined;
         this.onDomainChanged(
-            this.#lastDomain ?? this.scaleResolution.getDomain()
+            domain ?? this.#lastDomain ?? this.scaleResolution.getDomain()
         );
     }
 
     /** @param {number[]} domain */
     requestDataForDomain(domain) {
-        this.#lastDomain = domain;
-        this.reloadLastDomain();
+        this.reloadLastDomain(domain);
     }
 
     /** @param {number[]} domain Linearized domain */
     onDomainChanged(domain) {
-        this.#lastDomain = domain;
-        const windowSize = withoutExprRef(this.params.windowSize) ?? -1;
-        if (domain[1] - domain[0] <= windowSize) {
+        const windowSize = this.#getWindowSizeForDomain(domain);
+        if (windowSize !== undefined && !this.#activeWindow) {
             const interval = this.getChangedWindow(domain, windowSize);
-            if (interval) this.#debouncedRequest(interval, windowSize);
+            if (interval) {
+                this.#debouncedRequest(interval, windowSize);
+                return;
+            }
         }
+        this.#completeSkippedReload();
+    }
+
+    /**
+     * @param {number[]} domain
+     * @returns {number | undefined}
+     */
+    #getWindowSizeForDomain(domain) {
+        const windowSize = withoutExprRef(this.params.windowSize);
+        return windowSize != null && domain[1] - domain[0] <= windowSize
+            ? windowSize
+            : undefined;
+    }
+
+    #cancelRequest() {
+        this.#activeWindow = undefined;
+        this.#abortController.abort();
+    }
+
+    #completeSkippedReload() {
+        if (this.#pendingReload) {
+            this.#pendingReload = false;
+            this.setLoadingStatus("complete");
+        }
+    }
+
+    /** @param {number[]} interval */
+    #coversCurrentDomain(interval) {
+        const domain = this.#lastDomain;
+        if (!domain) return true;
+        if (this.#getWindowSizeForDomain(domain) === undefined) return false;
+
+        const start = Math.max(0, domain[0]);
+        const end = Math.min(this.genome.totalSize, domain[1]);
+        return start < end && start >= interval[0] && end <= interval[1];
     }
 
     /**
@@ -176,7 +270,6 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      * @protected
      */
     queueDomain(domain) {
-        this.#lastDomain = domain;
         this.#debouncedRequest(domain);
     }
 
@@ -186,8 +279,14 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
      */
     async requestInterval(domain, windowSize) {
         if (this.disposed) return;
+        if (windowSize !== undefined && !this.#coversCurrentDomain(domain)) {
+            this.#completeSkippedReload();
+            return;
+        }
 
-        this.#abortController.abort();
+        this.#pendingReload = false;
+        this.#cancelRequest();
+        this.#activeWindow = windowSize === undefined ? undefined : domain;
         this.#abortController = new AbortController();
         const signal = this.#abortController.signal;
         this.setLoadingStatus("loading");
@@ -228,6 +327,10 @@ export default class IntervalUrlSource extends SingleAxisLazySource {
                 errorPhase,
                 getSpecErrorLocation(e)
             );
+        } finally {
+            if (signal === this.#abortController.signal) {
+                this.#activeWindow = undefined;
+            }
         }
     }
 
