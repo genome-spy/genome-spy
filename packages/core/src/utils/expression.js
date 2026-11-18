@@ -137,9 +137,8 @@ const functionContext = {
 };
 
 /**
- * Finds scale helper calls and referenced globals without binding the
- * expression to a parameter scope or scale resolution. Analysis includes datum
- * among the globals so callers can identify expressions that require a row.
+ * Finds scale helper calls and referenced parameters without binding the
+ * expression to a parameter scope or scale resolution.
  *
  * @param {string} expr
  * @param {import("../types/embedApi.js").SpecLocation} [specLocation]
@@ -148,17 +147,16 @@ const functionContext = {
 export function analyzeExpression(expr, specLocation) {
     let usesScaleHelper = false;
     try {
-        const generate = codegenExpression({
-            allowed: ["undefined"],
-            globalvar: "globalObject",
-            functions: (visit) =>
-                buildFunctions(visit, (_kind, args) => {
-                    usesScaleHelper = true;
-                    args.forEach(visit);
-                    return "0";
-                }),
+        const generate = createExpressionCodegen((visit, _kind, args) => {
+            usesScaleHelper = true;
+            // Collect globals from the arguments. Vega still needs valid source
+            // for the helper call even though analysis discards it.
+            args.forEach(visit);
+            return "0";
         });
-        const { globals } = generate(parseExpression(expr));
+        const globals = generate(parseExpression(expr)).globals.filter(
+            (name) => name !== "datum"
+        );
         return { usesScaleHelper, globals };
     } catch (error) {
         throw invalidExpression(expr, error, specLocation);
@@ -178,35 +176,37 @@ function invalidExpression(expr, cause, location) {
 }
 
 /**
- * @param {(node: any) => string} codegen
- * @param {(kind: ScaleHelperKind, args: any[]) => string} scaleCall
+ * @param {(visit: (node: any) => string, kind: ScaleHelperKind, args: any[]) => string} scaleCall
  */
-function buildFunctions(codegen, scaleCall) {
-    const fn = /** @type {any} */ (functions(codegen));
-    for (const name in functionContext) {
-        fn[name] = `this.${name}`;
-    }
+function createExpressionCodegen(scaleCall) {
+    return codegenExpression({
+        allowed: ["undefined"],
+        globalvar: (id) =>
+            id === "datum" ? id : "globalObject[" + JSON.stringify(id) + "]",
+        fieldvar: "datum",
+        functions: (visit) => {
+            const fn = /** @type {any} */ (functions(visit));
+            for (const name in functionContext) {
+                fn[name] = `this.${name}`;
+            }
 
-    // Replace the public helper names with custom codegen hooks so we can bind
-    // a scale resolution once during compilation instead of looking it up for
-    // every datum.
-    for (const kind of /** @type {const} */ ([
-        "scale",
-        "invert",
-        "domain",
-        "range",
-        "bandwidth",
-        "bandstep",
-        "linearize",
-        "zoomLevel",
-    ])) {
-        fn[kind] = (
-            /** @type {any[]} */
-            args
-        ) => scaleCall(kind, args);
-    }
-
-    return fn;
+            // A scale helper binds to its resolution at compile time.
+            for (const kind of /** @type {const} */ ([
+                "scale",
+                "invert",
+                "domain",
+                "range",
+                "bandwidth",
+                "bandstep",
+                "linearize",
+                "zoomLevel",
+            ])) {
+                fn[kind] = (/** @type {any[]} */ args) =>
+                    scaleCall(visit, kind, args);
+            }
+            return fn;
+        },
+    });
 }
 
 /**
@@ -226,34 +226,21 @@ function buildFunctions(codegen, scaleCall) {
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
  * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "bandstep" | "linearize" | "zoomLevel"} ScaleHelperKind
- *
- * @typedef {ExpressionCompileContext & {
- *   globalvar: string,
- *   globalObject: Record<string, any>,
- *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
- * }} ScaleHelperCompileContext
  */
 
 /**
  * @param {(node: any) => string} codegen
- * @param {ScaleHelperCompileContext} context
  * @param {ScaleHelperKind} kind
  * @param {any[]} args
+ * @param {(channel: string) => string | undefined} bindScale
  * @returns {string}
  */
-function buildScaleHelperCall(codegen, context, kind, args) {
+function buildScaleHelperCall(codegen, kind, args, bindScale) {
     if (kind === "zoomLevel" && args.length === 0) {
         const calls = [];
-        for (const channel of /** @type {const} */ (["x", "y"])) {
-            const resolution = context.resolveScaleResolution?.(channel);
-            if (resolution) {
-                const helper = context.getScaleHelper(
-                    kind,
-                    channel,
-                    resolution
-                );
-                calls.push(`${context.globalvar}["${helper.codeName}"]()`);
-            }
+        for (const channel of ["x", "y"]) {
+            const callee = bindScale(channel);
+            if (callee) calls.push(callee + "()");
         }
         return `Math.sqrt(${calls.join("*") || "1"})`;
     }
@@ -292,19 +279,15 @@ function buildScaleHelperCall(codegen, context, kind, args) {
         );
     }
 
-    const resolution = context.resolveScaleResolution?.(channel);
-    if (!resolution) {
+    const callee = bindScale(channel);
+    if (!callee) {
         throw new Error(
             `Unknown scale channel "${channel}" in expression helper "${kind}".`
         );
     }
 
-    const helper = context.getScaleHelper(kind, channel, resolution);
-    const remainingArgs = args
-        .slice(1)
-        .map((arg) => codegen(arg))
-        .join(",");
-    return `${context.globalvar}["${helper.codeName}"](${remainingArgs})`;
+    const generatedArgs = args.slice(1).map(codegen).join(",");
+    return `${callee}(${generatedArgs})`;
 }
 
 /**
@@ -455,62 +438,36 @@ function createScaleDependency(kind, resolution) {
  */
 export default function createFunction(expr, globalObject = {}, context = {}) {
     try {
-        // Each scale helper call is rewritten once at compile time into a
-        // cached closure that targets a specific scale resolution.
-        /** @type {Map<string, {codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any>}>} */
-        const helperEntries = new Map();
+        /** @type {Map<string, string>} */
+        const scaleCallees = new Map();
+        /** @type {Set<import("../paramRuntime/types.js").ParamRef<any>>} */
+        const scaleDependencies = new Set();
         /** @type {ExpressionProps["scaleBindings"]} */
         const scaleBindings = new Map();
-        let nextScaleHelperId = 1;
 
-        /** @type {ScaleHelperCompileContext} */
-        const helperContext = {
-            ...context,
-            globalvar: "globalObject",
-            globalObject,
-            getScaleHelper(kind, channel, resolution) {
-                // Helper instances are keyed by helper kind + channel so
-                // `domain("x")` and `scale("x", ...)` share the same
-                // resolution binding but keep separate generated closures.
+        const generate = createExpressionCodegen((visit, kind, args) => {
+            // Even a zero-argument zoomLevel() with no axes uses the helper.
+            if (!scaleBindings.has(kind)) scaleBindings.set(kind, new Set());
+
+            return buildScaleHelperCall(visit, kind, args, (channel) => {
+                const resolution = context.resolveScaleResolution?.(channel);
+                if (!resolution) return undefined;
+
                 const key = kind + ":" + channel;
-                const cached = helperEntries.get(key);
-                if (cached) {
-                    return cached;
-                }
+                const cached = scaleCallees.get(key);
+                if (cached) return cached;
 
-                const dependency = createScaleDependency(kind, resolution);
-                const codeName = "__scale_helper_" + nextScaleHelperId++;
-                const entry = { codeName, dependency };
+                scaleDependencies.add(createScaleDependency(kind, resolution));
                 scaleBindings.get(kind).add(resolution);
-                helperEntries.set(key, entry);
-                // Store the concrete helper implementation on the global object
-                // used by the generated expression function.
+                const codeName = "__scale_helper_" + (scaleCallees.size + 1);
                 globalObject[codeName] = createScaleHelperFunction(
                     kind,
                     resolution
                 );
-                return entry;
-            },
-        };
-
-        const cg = codegenExpression({
-            allowed: ["undefined"],
-            globalvar: (id) =>
-                id === "datum"
-                    ? id
-                    : "globalObject[" + JSON.stringify(id) + "]",
-            fieldvar: "datum",
-            functions: (visit) =>
-                buildFunctions(visit, (kind, args) => {
-                    if (!scaleBindings.has(kind))
-                        scaleBindings.set(kind, new Set());
-                    return buildScaleHelperCall(
-                        visit,
-                        helperContext,
-                        kind,
-                        args
-                    );
-                }),
+                const callee = `globalObject["${codeName}"]`;
+                scaleCallees.set(key, callee);
+                return callee;
+            });
         });
 
         const parsed = /** @type {ReturnType<typeof parseExpression> & {
@@ -536,7 +493,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
                 }
             }
         });
-        const generatedCode = cg(parsed);
+        const generatedCode = generate(parsed);
 
         const createEvaluator = compileDatumAccessor(
             `try {
@@ -567,9 +524,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         // The expression runtime subscribes to these refs and invalidates the
         // compiled expression when the referenced scale changes.
         exprFunction.scaleBindings = scaleBindings;
-        exprFunction.scaleDependencies = Array.from(
-            new Set(helperEntries.values().map((entry) => entry.dependency))
-        );
+        exprFunction.scaleDependencies = Array.from(scaleDependencies);
 
         return exprFunction;
     } catch (e) {

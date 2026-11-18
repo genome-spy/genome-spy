@@ -143,10 +143,11 @@ export default class View {
     /** @type {boolean | undefined} */
     #postScaleParamDataReady = undefined;
 
-    #postScaleParamsConfigured = false;
-
-    /** @type {string[]} */
-    #scaleDependentParams = [];
+    /**
+     * Names to resolve during post-scale configuration. Undefined marks completion.
+     * @type {string[] | undefined}
+     */
+    #pendingPostScaleParams = [];
 
     /**
      * @type {function(number):number}
@@ -329,7 +330,7 @@ export default class View {
             // TODO: If interval selection, validate `encodings` or provides defaults
             if (isExprRef(param) && this.#needsResolvedScales(param)) {
                 this.paramRuntime.registerParam(param, { defer: true });
-                this.#scaleDependentParams.push(param.name);
+                this.#pendingPostScaleParams.push(param.name);
                 continue;
             }
             this.paramRuntime.registerParam(param);
@@ -976,35 +977,34 @@ export default class View {
     isVisibleInSpec() {
         const visible = this.spec.visible ?? true;
         if (!isExprRef(visible)) return visible;
+        if (this.#visibility) return this.#visibility.get();
 
-        if (!this.#visibility) {
-            const runtime = this.paramRuntime;
-            // Scale construction consults member visibility before domains are ready.
-            if (
-                !this.#postScaleParamsConfigured &&
-                this.#needsResolvedScales(visible)
-            )
-                return false;
-            const expression = runtime.createExpression(visible);
-            this.#validateVisibilityInputs(expression, visible);
-            this.#visibility = runtime.computed(
-                "visible",
-                expression.dependencies,
-                () => {
-                    const value = expression();
-                    if (typeof value !== "boolean") {
-                        throw new ViewError(
-                            "visible.expr must return a boolean.",
-                            this
-                        ).withSpecLocation(visible, ["expr"]);
-                    }
-                    return value;
-                }
-            );
-            runtime.effect([this.#visibility], () =>
-                this.context.requestVisibilityRefresh?.()
-            );
+        // Scale construction consults member visibility before domains are ready.
+        if (
+            this.#pendingPostScaleParams !== undefined &&
+            this.#needsResolvedScales(visible)
+        ) {
+            return false;
         }
+
+        const runtime = this.paramRuntime;
+        const expression = runtime.createExpression(visible);
+        this.#validateVisibilityInputs(expression, visible);
+        this.#visibility = runtime.computed(
+            "visible",
+            expression.dependencies,
+            () => {
+                const value = expression();
+                if (typeof value === "boolean") return value;
+                throw new ViewError(
+                    "visible.expr must return a boolean.",
+                    this
+                ).withSpecLocation(visible, ["expr"]);
+            }
+        );
+        runtime.effect([this.#visibility], () =>
+            this.context.requestVisibilityRefresh?.()
+        );
         return this.#visibility.get();
     }
 
@@ -1370,18 +1370,18 @@ export default class View {
      * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
-        if (this.#postScaleParamsConfigured) return;
+        const pendingParams = this.#pendingPostScaleParams;
+        if (pendingParams === undefined) return;
 
         // Mapping observation materializes scales; guides and assemblies must
         // already be configured before these subscriptions are installed.
         this.#registerStepSizeInvalidationFor("width", "x");
         this.#registerStepSizeInvalidationFor("height", "y");
 
-        const postScaleParams = this.#scaleDependentParams;
-        if (postScaleParams.length) {
+        if (pendingParams.length) {
             this.#postScaleParamDataReady = false;
 
-            for (const name of postScaleParams) {
+            for (const name of pendingParams) {
                 this.paramRuntime.getValue(name);
             }
 
@@ -1392,7 +1392,7 @@ export default class View {
                 })
             );
         }
-        this.#postScaleParamsConfigured = true;
+        this.#pendingPostScaleParams = undefined;
     }
 
     /**

@@ -6,7 +6,7 @@ import {
 } from "../data/flowInit.js";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
-import { VISIT_SKIP } from "../view/view.js";
+import { collectSubtreeViews } from "../view/flowBuilder.js";
 
 /**
  * Initializes the view data pipeline: builds the flow graph, awaits fonts,
@@ -130,7 +130,7 @@ export async function initializeVisibleViewData(
     const candidates = candidateViews && new Set(candidateViews);
     const { predicate: visibilityPredicate, producerPaths } =
         getInitializationDependencies(viewRoot);
-    const viewsToInitialize = collectVisibleViews(
+    const viewsToInitialize = collectSubtreeViews(
         viewRoot,
         visibilityPredicate
     ).filter(
@@ -225,7 +225,7 @@ function getInitializationDependencies(root) {
     const visible =
         root.layoutParent && !root.layoutParent.isVisible()
             ? []
-            : collectVisibleViews(root, (view) => view.isConfiguredVisible());
+            : collectSubtreeViews(root, (view) => view.isConfiguredVisible());
     const required = new Set(visible);
     const producerPaths = new Set();
     /** @param {import("../view/view.js").default | undefined} view */
@@ -245,21 +245,4 @@ function getInitializationDependencies(root) {
             required.has(view),
         producerPaths,
     };
-}
-
-/**
- * @param {import("../view/view.js").default} viewRoot
- * @param {(view: import("../view/view.js").default) => boolean} viewFilter
- * @returns {import("../view/view.js").default[]}
- */
-function collectVisibleViews(viewRoot, viewFilter) {
-    /** @type {import("../view/view.js").default[]} */
-    const views = [];
-    viewRoot.visit((view) => {
-        if (!viewFilter(view)) {
-            return VISIT_SKIP;
-        }
-        views.push(view);
-    });
-    return views;
 }

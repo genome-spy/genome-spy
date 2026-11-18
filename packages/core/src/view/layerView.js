@@ -181,14 +181,17 @@ export default class LayerView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
+        if (!this.isConfiguredVisible()) return;
+
         this.handleInteraction(event, true);
+        if (event.stopped) return;
+
         const children = this.#getChildrenInRenderOrder();
         for (let i = children.length - 1; i >= 0; i--) {
             children[i].propagateInteraction(event);
-            if (event.stopped) {
-                return;
-            }
+            if (event.stopped) return;
         }
+
         this.handleInteraction(event, false);
     }
 }
