@@ -76,6 +76,7 @@ describe("viewDataInit", () => {
                 params: [parent],
                 vconcat: [
                     {
+                        name: "detail",
                         params: [{ name: "show", expr: "p > 0" }, shadow],
                         visible: { expr: "show" },
                         mark: "point",
@@ -87,8 +88,11 @@ describe("viewDataInit", () => {
                 await expect(launch).rejects.toThrow(/visible.expr/);
             else {
                 const { view } = await launch;
-                expect(view.isConfiguredVisible()).toBe(true);
-                view.disposeSubtree();
+                onTestFinished(() => view.disposeSubtree());
+                const detail = view
+                    .getDescendants()
+                    .find((child) => child.name === "detail");
+                expect(detail.isConfiguredVisible()).toBe(true);
             }
         }
     );
@@ -180,19 +184,15 @@ describe("viewDataInit", () => {
         const root = await context.createOrImportView(
             {
                 params: [{ name: "showDetail", value: false }],
-                vconcat: [
-                    {
-                        name: "detail",
-                        visible: { expr: "showDetail" },
-                        data: { values: [{ value: 1 }] },
-                        mark: "point",
-                    },
-                ],
+                visible: { expr: "showDetail" },
+                data: { values: [{ value: 1 }] },
+                mark: "point",
             },
             null,
             null,
             "root"
         );
+        onTestFinished(() => root.disposeSubtree());
         const fonts = Promise.withResolvers();
         vi.spyOn(context.textMetrics, "waitUntilReady").mockReturnValueOnce(
             fonts.promise
@@ -203,15 +203,12 @@ describe("viewDataInit", () => {
             context.textMetrics,
             () => {}
         );
+        expect(root.flowHandle).toBeUndefined();
         root.paramRuntime.setValue("showDetail", true);
         await root.paramRuntime.whenPropagated();
         fonts.resolve();
         await launch;
-        const detail = root
-            .getDescendants()
-            .find((view) => view.name === "detail");
-        expect(detail.flowHandle.collector.getItemCount()).toBe(1);
-        root.disposeSubtree();
+        expect(root.flowHandle.collector.getItemCount()).toBe(1);
     });
 
     test("skips hidden subtrees during initial data initialization", async () => {

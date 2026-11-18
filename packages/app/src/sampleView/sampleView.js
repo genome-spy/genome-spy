@@ -429,24 +429,6 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * Zooms the view's x scale to a target domain.
-     *
-     * @param {import("@genome-spy/core/view/view.js").default} view
-     * @param {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} domain
-     * @returns {Promise<void>}
-     */
-    async #zoomToDomain(view, domain) {
-        const resolution = view.getScaleResolution("x");
-        if (!resolution) {
-            throw new Error(
-                `No x scale resolution found for view: ${view.name}`
-            );
-        }
-
-        await resolution.zoomTo(domain);
-    }
-
-    /**
      * Waits for the view subtree to satisfy the current x-domain readiness after
      * an action. Uses lazy-source readiness checks so it does not depend on
      * subtreeDataReady broadcasts.
@@ -493,12 +475,18 @@ export default class SampleView extends ContainerView {
             );
         }
 
-        this.#ensureViewVisible(view);
-        const scale = resolution.getScale();
-        if (isContinuous(scale.type) && !isDiscrete(scale.type)) {
+        const { type } = resolution.getScale();
+        if (isContinuous(type) && !isDiscrete(type)) {
             const domain = this.#resolveViewAttributeDomain(specifier);
-            await this.#zoomToDomain(view, domain);
+            await resolution.zoomTo(domain);
         }
+
+        // A visibility expression may depend on the action's target viewport.
+        this.#ensureViewVisible(view);
+
+        // Let the queued visibility refresh attach newly visible collectors.
+        await Promise.resolve();
+
         // Assumes the main sample subtree shares the x-scale resolution; if
         // that changes, switch to per-view readiness requests.
         await this.#awaitSubtreeDataReady(

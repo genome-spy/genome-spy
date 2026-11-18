@@ -77,7 +77,11 @@ export function getViewVisibilityOverride(visibilities, view) {
     }
 
     const explicitName = view.explicitName;
-    if (explicitName && Object.hasOwn(visibilities, explicitName)) {
+    if (
+        explicitName &&
+        Object.hasOwn(visibilities, explicitName) &&
+        !parseViewSelectorKey(explicitName)
+    ) {
         return visibilities[explicitName];
     }
 }
@@ -118,27 +122,32 @@ export function normalizeViewSettingsPayload(payload, viewRoot) {
 function scopedVisibilityChoices(viewRoot, visibilities) {
     /** @type {Record<string, boolean>} */
     const scoped = {};
+    /** @type {Set<string>} */
+    const legacyNames = new Set();
     for (const [key, value] of Object.entries(visibilities)) {
         const selector = parseViewSelectorKey(key);
+        if (!selector) legacyNames.add(key);
         scoped[selector ? makeViewSelectorKey(selector) : key] = value;
     }
 
     if (viewRoot && Object.keys(visibilities).length) {
         const legacyMatches = new Set();
         visitAddressableViews(viewRoot, (view) => {
+            const name = view.explicitName;
             const key = getViewVisibilityKey(view);
             if (!key) return;
-            delete scoped[view.explicitName];
+            const hasLegacyChoice = legacyNames.has(name);
+            if (hasLegacyChoice) delete scoped[name];
             if (view.visibilityIsExpression) {
                 delete scoped[key];
-            } else if (Object.hasOwn(visibilities, view.explicitName)) {
-                if (legacyMatches.has(view.explicitName)) {
+            } else if (hasLegacyChoice) {
+                if (legacyMatches.has(name)) {
                     console.warn(
-                        `Legacy visibility key "${view.explicitName}" matches multiple views. Applying to all matches.`
+                        `Legacy visibility key "${name}" matches multiple views. Applying to all matches.`
                     );
                 }
-                legacyMatches.add(view.explicitName);
-                scoped[key] ??= visibilities[view.explicitName];
+                legacyMatches.add(name);
+                scoped[key] ??= visibilities[name];
             }
         });
     }
@@ -147,35 +156,17 @@ function scopedVisibilityChoices(viewRoot, visibilities) {
 
 /**
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- * @param {Record<string, boolean>} visibilities
- * @returns {import("./state.js").ViewVisibilityEntry[]}
- */
-export function buildViewVisibilityEntries(viewRoot, visibilities) {
-    return Object.entries(
-        scopedVisibilityChoices(viewRoot, visibilities)
-    ).flatMap(([key, visible]) => {
-        const selector = parseViewSelectorKey(key);
-        return selector ? [{ ...selector, visible }] : [];
-    });
-}
-
-/**
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
  * @param {import("./state.js").ViewSettings} viewSettings
  * @returns {import("./state.js").ViewSettingsPayload | undefined}
  */
 export function buildViewSettingsPayload(viewRoot, viewSettings) {
-    const entries = buildViewVisibilityEntries(
-        viewRoot,
-        viewSettings.visibilities
-    );
-    if (!entries.length) {
-        return;
-    }
-
-    return {
-        visibilities: entries,
-    };
+    const visibilities = Object.entries(
+        scopedVisibilityChoices(viewRoot, viewSettings.visibilities)
+    ).flatMap(([key, visible]) => {
+        const selector = parseViewSelectorKey(key);
+        return selector ? [{ ...selector, visible }] : [];
+    });
+    return visibilities.length ? { visibilities } : undefined;
 }
 
 /**

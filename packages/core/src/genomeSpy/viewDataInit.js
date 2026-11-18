@@ -109,30 +109,8 @@ export async function refreshVisibility(root) {
 }
 
 /**
- * Initializes data flow for visible views that were previously
- * skipped. Intended for view-visibility toggles.
- *
- * @param {import("../view/view.js").default} viewRoot
- * @param {import("../data/dataFlow.js").default} dataFlow
- * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @returns {Promise<import("../data/dataFlow.js").default>}
- */
-export async function initializeVisibleViewData(
-    viewRoot,
-    dataFlow,
-    textMetrics
-) {
-    return initializeViewDataForViews(
-        viewRoot,
-        dataFlow,
-        textMetrics,
-        viewRoot.getDescendants()
-    );
-}
-
-/**
- * Initializes dataflow for selected views while avoiding unnecessary
- * data source reloads.
+ * Initializes previously skipped visible views. Mutations can restrict
+ * initialization to candidate views and required producers.
  *
  * If a selected view attaches downstream of an already completed collector,
  * the collector is repropagated instead of reloading the source.
@@ -140,16 +118,16 @@ export async function initializeVisibleViewData(
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
  * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @param {Iterable<import("../view/view.js").default>} candidateViews
+ * @param {Iterable<import("../view/view.js").default>} [candidateViews]
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
-export async function initializeViewDataForViews(
+export async function initializeVisibleViewData(
     viewRoot,
     dataFlow,
     textMetrics,
     candidateViews
 ) {
-    const candidates = new Set(candidateViews);
+    const candidates = candidateViews && new Set(candidateViews);
     const { predicate: visibilityPredicate, producerPaths } =
         getInitializationDependencies(viewRoot);
     const viewsToInitialize = collectVisibleViews(
@@ -157,7 +135,7 @@ export async function initializeViewDataForViews(
         visibilityPredicate
     ).filter(
         (view) =>
-            (candidates.has(view) || producerPaths.has(view)) &&
+            (!candidates || candidates.has(view) || producerPaths.has(view)) &&
             view.getDataInitializationState() === "none"
     );
 
@@ -234,6 +212,8 @@ export async function initializeViewDataForViews(
 
     return builtDataFlow;
 }
+
+export { initializeVisibleViewData as initializeViewDataForViews };
 
 /**
  * Visible consumers keep their output producers active, including hidden trees.

@@ -1,5 +1,5 @@
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
-import { initializeViewDataForViews } from "../genomeSpy/viewDataInit.js";
+import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
 import {
     attachViewLevelScaleProps,
     clearViewLevelScaleProps,
@@ -108,7 +108,7 @@ export default class ContainerMutationHelper {
             }
             configureViewsAfterScaleResolution(viewsToInitialize);
 
-            await initializeViewDataForViews(
+            await initializeVisibleViewData(
                 this.container,
                 this.container.context.dataFlow,
                 this.container.context.textMetrics,
@@ -200,7 +200,7 @@ export default class ContainerMutationHelper {
         }
         configureViewsAfterScaleResolution(viewsToInitialize);
 
-        await initializeViewDataForViews(
+        await initializeVisibleViewData(
             this.container,
             this.container.context.dataFlow,
             this.container.context.textMetrics,
