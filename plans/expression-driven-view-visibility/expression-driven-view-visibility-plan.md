@@ -32,7 +32,7 @@ same binding code.
 Support parameters available before layout, including ordinary derived and
 selection parameters. Classify derived declarations as they bind in lexical
 order so a later declaration cannot change an earlier expression's inputs.
-Report datum, scale, or automatic layout dependencies and non-boolean results
+Report datum, unsupported scale or automatic layout dependencies and non-boolean results
 at `visible.expr`. An authored
 parameter named `width` is an ordinary input. A track whose visibility requires
 its own unloaded data has a circular specification. Document that limit and
@@ -114,6 +114,17 @@ identified regressions around direct arrangement, pointer routing, and shared
 scale domains when loaded tracks reappear. The final milestone covers these
 paths and checks that domain input bindings are updated only for scales whose
 visible members change.
+
+## Domain-driven visibility
+
+Allow `visible: { "expr": "span(domain('x')) < 10000" }` through the existing
+expression compiler. A typed ancestor scale with a literal domain, or a locus
+scale with its assembly extent, owns a viewport independently of track data.
+Keep domain-dependent branches hidden during scale construction, bind their
+expressions before the first data scan, and use the existing visibility refresh
+when the boolean changes. Validate the domain in the scope where it is read,
+including reads in derived parameters. Verify zoom across the threshold in
+both directions, startup inside it, and rejection of a data-dependent domain.
 
 ## Follow-ups in #740
 

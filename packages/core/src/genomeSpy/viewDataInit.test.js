@@ -20,22 +20,41 @@ import Transform from "../data/transforms/transform.js";
 import { loadViewSubtreeData } from "../data/flowInit.js";
 
 describe("viewDataInit", () => {
-    test.each(["datum == null", "threshold > 0", "fromScale > 0", "42"])(
-        "rejects unsupported view visibility: %s",
-        async (expr) => {
-            await expect(
-                createHeadlessEngine({
-                    params: [
-                        { name: "threshold", expr: "width / 2" },
-                        { name: "fromScale", expr: "domain('x')[0]" },
-                    ],
-                    visible: { expr },
-                    mark: "point",
-                    encoding: { x: { datum: 0, type: "quantitative" } },
-                })
-            ).rejects.toThrow(/visible\.expr/);
-        }
-    );
+    test.each([
+        "datum == null",
+        "threshold > 0",
+        "fromScale > 0",
+        "span(range('x')) > 0",
+        "42",
+    ])("rejects unsupported view visibility: %s", async (expr) => {
+        await expect(
+            createHeadlessEngine({
+                params: [
+                    { name: "threshold", expr: "width / 2" },
+                    { name: "fromScale", expr: "domain('x')[0]" },
+                ],
+                visible: { expr },
+                mark: "point",
+                encoding: { x: { datum: 0, type: "quantitative" } },
+            })
+        ).rejects.toThrow(/visible\.expr/);
+    });
+    test("rejects visibility driven by data contributing to an ancestor scale", async () => {
+        await expect(
+            createHeadlessEngine({
+                scales: { x: { type: "linear" } },
+                vconcat: [
+                    {
+                        visible: { expr: "span(domain('x')) < 10000" },
+                        mark: "point",
+                        data: { values: [{ x: 10 }] },
+                        encoding: { x: { field: "x", type: "quantitative" } },
+                    },
+                ],
+            })
+        ).rejects.toThrow(/visible.expr.*literal domain/);
+    });
+
     test.each([false, true])(
         "uses a derived parameter's original binding when a later declaration shadows it (%s)",
         async (parentUsesLayout) => {
@@ -65,6 +84,57 @@ describe("viewDataInit", () => {
                 expect(view.isConfiguredVisible()).toBe(true);
                 view.disposeSubtree();
             }
+        }
+    );
+
+    test.each([false, true])(
+        "zooms a sequence track across its visibility threshold (initially visible: %s)",
+        async (initiallyVisible) => {
+            const { view: root } = await createHeadlessEngine({
+                scales: {
+                    x: {
+                        type: "locus",
+                        assembly: { contigs: [{ name: "chr1", size: 100000 }] },
+                        zoom: true,
+                        ...(initiallyVisible ? { domain: [0, 9000] } : {}),
+                    },
+                },
+                params: [{ name: "bases", expr: "span(domain('x'))" }],
+                vconcat: [
+                    {
+                        name: "sequence",
+                        visible: {
+                            expr: initiallyVisible
+                                ? "bases < 10000"
+                                : "span(domain('x')) < 10000",
+                        },
+                        mark: "point",
+                        data: { values: [{}] },
+                    },
+                ],
+            });
+            onTestFinished(() => root.disposeSubtree());
+            const detail = root
+                .getDescendants()
+                .find((view) => view.name === "sequence");
+            expect(detail.isConfiguredVisible()).toBe(initiallyVisible);
+            expect(!!detail.flowHandle).toBe(initiallyVisible);
+            const scale = root.getScaleResolution("x");
+            await scale.zoomTo([0, 5000], 0);
+            await root.paramRuntime.whenPropagated();
+            expect(detail.isConfiguredVisible()).toBe(true);
+            await vi.waitFor(() =>
+                expect(detail.flowHandle?.collector.getItemCount()).toBe(1)
+            );
+            const handle = detail.flowHandle;
+            await scale.zoomTo([0, 9999], 0);
+            expect(scale.getDomain()).toEqual([0, 10000]);
+            await root.paramRuntime.whenPropagated();
+            expect(detail.isConfiguredVisible()).toBe(false);
+            await scale.zoomTo([0, 7000], 0);
+            await root.paramRuntime.whenPropagated();
+            expect(detail.isConfiguredVisible()).toBe(true);
+            expect(detail.flowHandle).toBe(handle);
         }
     );
 

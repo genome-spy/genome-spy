@@ -99,6 +99,21 @@ Each output has one producer and cannot also receive interaction updates.
 See [values](./transform/values.md#output-parameters) for initialization and
 lifecycle details.
 
+## Zoom-dependent track visibility
+
+To show a nucleotide sequence track when the viewport spans fewer than 10,000
+bases, declare a shared `x` locus scale on its parent and set the track's
+`visible` property:
+
+```json
+{ "visible": { "expr": "span(domain('x')) < 10000" } }
+```
+
+The expression follows the current domain as the user zooms. It can also read a
+parameter in place of the constant threshold. Declare the scale's type on an
+ancestor and give it a literal domain, or let a locus scale use its assembly
+extent. This makes the viewport available before the track loads its data.
+
 ## Numeric Transitions
 
 Numeric value and expression parameters can use `transition` to smooth how the

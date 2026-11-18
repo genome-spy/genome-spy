@@ -143,18 +143,19 @@ const functionContext = {
  *
  * @param {string} expr
  * @param {import("../types/embedApi.js").SpecLocation} [specLocation]
- * @returns {{ usesScaleHelper: boolean, globals: string[] }}
+ * @returns {{ scaleHelpers: {kind: ScaleHelperKind, channel: string}[], globals: string[] }}
  */
 export function analyzeExpression(expr, specLocation) {
-    let usesScaleHelper = false;
+    /** @type {{kind: ScaleHelperKind, channel: string}[]} */
+    const scaleHelpers = [];
     const fn = createFunction(
         expr,
         {},
         {
             specLocation,
             includeDatumInGlobals: true,
-            resolveScaleResolution: () => {
-                usesScaleHelper = true;
+            resolveScaleResolution: (channel, kind) => {
+                scaleHelpers.push({ kind, channel });
                 // The compiler only captures this object in helper closures. The
                 // analysis never evaluates or subscribes to them.
                 return /** @type {any} */ ({
@@ -170,7 +171,7 @@ export function analyzeExpression(expr, specLocation) {
         }
     );
 
-    return { usesScaleHelper, globals: fn.globals };
+    return { scaleHelpers, globals: fn.globals };
 }
 
 /**
@@ -218,7 +219,7 @@ function buildFunctions(codegen, context) {
  *
  * @typedef {object} ExpressionCompileContext
  * @prop {boolean} [includeDatumInGlobals]
- * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ * @prop {(channel: string, kind: ScaleHelperKind) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
  * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "bandstep" | "linearize" | "zoomLevel"} ScaleHelperKind
@@ -241,7 +242,7 @@ function buildScaleHelperCall(codegen, context, kind, args) {
     if (kind === "zoomLevel" && args.length === 0) {
         const calls = [];
         for (const channel of /** @type {const} */ (["x", "y"])) {
-            const resolution = context.resolveScaleResolution?.(channel);
+            const resolution = context.resolveScaleResolution?.(channel, kind);
             if (resolution) {
                 const helper = context.getScaleHelper(
                     kind,
@@ -288,7 +289,7 @@ function buildScaleHelperCall(codegen, context, kind, args) {
         );
     }
 
-    const resolution = context.resolveScaleResolution?.(channel);
+    const resolution = context.resolveScaleResolution?.(channel, kind);
     if (!resolution) {
         throw new Error(
             `Unknown scale channel "${channel}" in expression helper "${kind}".`

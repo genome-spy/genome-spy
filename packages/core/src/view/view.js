@@ -18,6 +18,7 @@ import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import ViewError from "./viewError.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
+import { collectConfiguredDomainExprRefs } from "../scales/domainExpressions.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
@@ -86,6 +87,8 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @param {import("../utils/interaction.js").default} event
  */
 
+/** @typedef {{scope: View, channel: import("../spec/channel.js").ChannelWithScale}} VisibilityDomain */
+
 /** @typedef {import("../types/viewContext.js").ViewOptions} ViewOptions */
 
 /**
@@ -144,8 +147,11 @@ export default class View {
     /** @type {string[]} */
     #scaleDependentParams = [];
 
-    /** Names bound in this scope whose values require a datum, scale, or layout. */
-    #paramsUnavailableBeforeLayout = new Set();
+    /** Domain reads retain the lexical scope of the expression that uses them.
+     * A null entry requires a row, layout, or an unsupported scale helper.
+     * @type {Map<string, Set<VisibilityDomain> | null>}
+     */
+    #visibilityInputs = new Map();
 
     /**
      * @type {function(number):number}
@@ -278,7 +284,7 @@ export default class View {
         if ("mark" in spec) {
             // TODO(v2.0): Remove this alias and its lazy-name plumbing after
             // bare zoomLevel compatibility ends.
-            this.#paramsUnavailableBeforeLayout.add("zoomLevel");
+            this.#visibilityInputs.set("zoomLevel", null);
             this.paramRuntime.registerLazyExpression(
                 "zoomLevel",
                 "zoomLevel()",
@@ -328,27 +334,30 @@ export default class View {
         for (const param of params) {
             // TODO: If interval selection, validate `encodings` or provides defaults
             if ("expr" in param) {
-                const { usesScaleHelper, globals } = analyzeExpression(
+                const analysis = analyzeExpression(
                     param.expr,
                     this.paramRuntime.getSpecLocation(param, ["expr"])
                 );
+                const recordInputs = () =>
+                    this.#visibilityInputs.set(
+                        param.name,
+                        this.#getVisibilityDomains(analysis)
+                    );
                 if (
-                    usesScaleHelper ||
-                    globals.some((name) => this.#unavailableBeforeLayout(name))
+                    analysis.scaleHelpers.length ||
+                    analysis.globals.some((name) =>
+                        this.paramRuntime.isPendingParam(name)
+                    )
                 ) {
-                    this.#paramsUnavailableBeforeLayout.add(param.name);
-                }
-                const dependsOnDeferredParam = globals.some((name) =>
-                    this.paramRuntime.isPendingParam(name)
-                );
-
-                if (usesScaleHelper || dependsOnDeferredParam) {
-                    // Scale resolutions are established by descendant
-                    // views, after ordinary params are registered.
-                    this.paramRuntime.registerParam(param, { defer: true });
+                    // Record the actual bindings after deferred dependencies materialize.
+                    this.paramRuntime.registerParam(param, {
+                        defer: true,
+                        onBound: recordInputs,
+                    });
                     this.#scaleDependentParams.push(param.name);
                     continue;
                 }
+                recordInputs();
             }
 
             this.paramRuntime.registerParam(param);
@@ -368,7 +377,7 @@ export default class View {
             return undefined;
         }
 
-        this.#paramsUnavailableBeforeLayout.add(name);
+        this.#visibilityInputs.set(name, null);
         return this.paramRuntime.allocateSetter(name, 0);
     }
 
@@ -925,17 +934,39 @@ export default class View {
         return reader;
     }
 
-    /** Consult each declaration in the same lexical scope in which it binds.
+    /**
      * @param {string} name
-     * @returns {boolean}
+     * @returns {Set<VisibilityDomain> | null | undefined}
      */
-    #unavailableBeforeLayout(name) {
-        if (name === "datum") return true;
+    #paramVisibilityDomains(name) {
         if (this.paramRuntime.hasLocalParam(name))
-            return this.#paramsUnavailableBeforeLayout.has(name);
-        return this.dataParent
-            ? this.dataParent.#unavailableBeforeLayout(name)
-            : false;
+            return this.#visibilityInputs.get(name);
+        if (this.dataParent)
+            return this.dataParent.#paramVisibilityDomains(name);
+    }
+
+    /**
+     * @param {ReturnType<typeof analyzeExpression>} analysis
+     * @returns {Set<VisibilityDomain> | null}
+     */
+    #getVisibilityDomains({ globals, scaleHelpers }) {
+        /** @type {Set<VisibilityDomain>} */
+        const domains = new Set();
+        for (const { kind, channel } of scaleHelpers) {
+            if (kind !== "domain") return null;
+            domains.add({
+                scope: this,
+                channel: /** @type {VisibilityDomain["channel"]} */ (channel),
+            });
+        }
+        for (const name of globals) {
+            const inputs = this.#paramVisibilityDomains(name);
+            if (name === "datum" || inputs === null) return null;
+            if (inputs) {
+                for (const input of inputs) domains.add(input);
+            }
+        }
+        return domains;
     }
 
     get visibilityIsExpression() {
@@ -957,18 +988,44 @@ export default class View {
 
         if (!this.#visibility) {
             const runtime = this.paramRuntime;
-            const { usesScaleHelper, globals } = analyzeExpression(
+            const analysis = analyzeExpression(
                 visible.expr,
                 runtime.getSpecLocation(visible, ["expr"])
             );
+            const domains = this.#getVisibilityDomains(analysis);
+            // Scale construction consults member visibility before domains are ready.
             if (
-                usesScaleHelper ||
-                globals.some((name) => this.#unavailableBeforeLayout(name))
-            ) {
+                !this.#postScaleParamsConfigured &&
+                (domains?.size ||
+                    analysis.globals.some((name) =>
+                        runtime.isPendingParam(name)
+                    ))
+            )
+                return false;
+
+            if (!domains) {
                 throw new ViewError(
-                    "visible.expr requires parameters independent of datum, scales, and layout.",
+                    "visible.expr can read parameters and domain(), but cannot depend on datum, layout, or other scale helpers.",
                     this
                 ).withSpecLocation(visible, ["expr"]);
+            }
+            for (const { scope, channel } of domains) {
+                const resolution = scope.getScaleResolution(channel);
+                const owner = resolution?.getViewLevelScaleProps();
+                const props = owner?.props;
+                const fixedExtent = Array.isArray(props?.domain)
+                    ? !collectConfiguredDomainExprRefs(props.domain).length
+                    : props?.type === "locus" && props.domain === undefined;
+                if (
+                    !fixedExtent ||
+                    !resolution.isExplicitlyOwned() ||
+                    !this.dataParent?.getDataAncestors().includes(owner.view)
+                ) {
+                    throw new ViewError(
+                        `visible.expr requires domain('${channel}') to have a typed ancestor scale with a literal domain or a locus assembly extent.`,
+                        this
+                    ).withSpecLocation(visible, ["expr"]);
+                }
             }
             const expression = runtime.createExpression(visible);
             this.#visibility = runtime.computed(
@@ -1355,7 +1412,6 @@ export default class View {
      */
     configurePostScaleParams() {
         if (this.#postScaleParamsConfigured) return;
-        this.#postScaleParamsConfigured = true;
 
         // Mapping observation materializes scales; guides and assemblies must
         // already be configured before these subscriptions are installed.
@@ -1377,6 +1433,7 @@ export default class View {
                 })
             );
         }
+        this.#postScaleParamsConfigured = true;
     }
 
     /**
