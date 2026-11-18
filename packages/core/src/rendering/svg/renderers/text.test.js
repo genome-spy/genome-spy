@@ -26,25 +26,29 @@ describe("SVG text renderer", () => {
                     color: { value: "black" },
                 },
             });
-            const { svg } = createSvg({
-                viewRoot: view,
-                logicalWidth: 200,
-                logicalHeight: 100,
-                background: null,
-            });
-            const group = svg.querySelector('[data-mark-type="text"]');
-            const labels = Array.from(group.querySelectorAll("text"));
+            try {
+                const { svg } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 200,
+                    logicalHeight: 100,
+                    background: null,
+                });
+                const group = svg.querySelector('[data-mark-type="text"]');
+                const labels = Array.from(group.querySelectorAll("text"));
 
-            // Group opacity would fade the overlap of separate labels only once.
-            expect(group.hasAttribute("opacity")).toBe(false);
-            expect(group.getAttribute("fill-opacity")).toBe("1");
-            expect(
-                labels.map((label) => label.getAttribute("opacity"))
-            ).toEqual(["0.5", "0.5"]);
+                // Group opacity would fade the overlap of separate labels only once.
+                expect(group.hasAttribute("opacity")).toBe(false);
+                expect(group.getAttribute("fill-opacity")).toBe("1");
+                expect(
+                    labels.map((label) => label.getAttribute("opacity"))
+                ).toEqual(["0.5", "0.5"]);
+            } finally {
+                view.disposeSubtree();
+            }
         }
     );
 
-    test("combines encoded opacity with view opacity and squeeze fading", async () => {
+    test("combines label opacity and squeeze fading inside a faded view", async () => {
         const context = createHeadlessViewContext();
         const label = "A fitted label";
         const size = 20;
@@ -78,19 +82,26 @@ describe("SVG text renderer", () => {
             },
             { context }
         );
-        const { svg } = createSvg({
-            viewRoot: view,
-            logicalWidth: 200,
-            logicalHeight: 100,
-            background: null,
-        });
-        const labels = Array.from(
-            svg.querySelectorAll('[data-mark-type="text"] text')
-        );
-        expect(labels.map((text) => text.getAttribute("opacity"))).toEqual([
-            "0.25",
-            "0.125",
-        ]);
+        try {
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 200,
+                logicalHeight: 100,
+                background: null,
+            });
+            const labels = Array.from(
+                svg.querySelectorAll('[data-mark-type="text"] text')
+            );
+            expect(labels.map((text) => text.getAttribute("opacity"))).toEqual([
+                "0.25",
+                "0.125",
+            ]);
+            expect(
+                labels[0].closest("[data-view-path]").getAttribute("opacity")
+            ).toBe("0.8");
+        } finally {
+            view.disposeSubtree();
+        }
     });
 
     test.each(/** @type {const} */ (["color", "fill"]))(

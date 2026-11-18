@@ -31,14 +31,7 @@ export function renderTextSvg(baseMark, options) {
     const fontMeasurement = textMetrics.requestFont(props);
     const measureLogoInkBounds = requestLogoInkBounds(textMetrics, props);
     const properties = resolveTextProperties(mark);
-    const {
-        coords,
-        data,
-        group,
-        viewOpacity,
-        visibleBounds,
-        anchorCullBounds,
-    } = options;
+    const { coords, data, group, visibleBounds, anchorCullBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
@@ -107,11 +100,9 @@ export function renderTextSvg(baseMark, options) {
             }
             const opacity =
                 encodeNumber(encoders.opacity, instance.datum) *
-                viewOpacity *
                 instance.fadeOpacity;
 
-            // Opacity belongs to each completed label, not individual glyph paints
-            // or the mark group containing separate label occurrences.
+            // Each completed label owns opacity, including its overlapping glyphs.
             const styles = {
                 ...encodeStyles(instance.datum),
                 ...(opacity == 1
