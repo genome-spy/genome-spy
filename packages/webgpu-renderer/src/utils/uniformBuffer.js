@@ -1,137 +1,123 @@
-/**
- * Uniform layout specification input (before alignment/offsets).
- *
- * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }} UniformSpec
- */
-
-/**
- * Resolved uniform entry with computed offsets/stride.
- *
- * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, offset: number, arrayLength?: number, stride?: number }} UniformEntry
- */
-
 import { buildUniformLayout } from "./uniformLayout.js";
 
-/**
- * Packs uniforms into an ArrayBuffer using the computed layout so marks can
- * write values and upload them in one call.
- *
- * TODO: Provide TWGL.js styled uniform setters for convenience and performance.
- */
-export class UniformBuffer {
-    /** @type {DataView} */
-    #view;
+/** @typedef {import("./uniformLayout.js").UniformSpec} UniformSpec */
+/** @typedef {import("./uniformLayout.js").UniformEntry} UniformEntry */
+/** @typedef {number | ArrayLike<number> | Array<number | number[]>} UniformValue */
+/** @typedef {(value: UniformValue) => void} UniformSetter */
 
-    /**
-     * @param {UniformSpec[]} specs
-     */
+/** Packs uniforms using writers compiled from the fixed layout. */
+export class UniformBuffer {
+    /** @type {Map<string, UniformSetter>} */
+    #setters;
+
+    /** @param {UniformSpec[]} specs */
     constructor(specs) {
         const layout = buildUniformLayout(specs);
         this.entries = layout.entries;
         this.byteLength = layout.byteLength;
         this.data = new ArrayBuffer(this.byteLength);
-        this.#view = new DataView(this.data);
+        this.#setters = new Map(
+            this.entries
+                .values()
+                .map((entry) => [
+                    entry.name,
+                    compileUniformSetter(this.data, entry),
+                ])
+        );
     }
 
     /**
-     * Write a uniform value by name, enforcing component/array expectations.
-     *
+     * Return a retained writer. Optional uniforms absent from the layout are
+     * ignored, matching writes through setValue.
      * @param {string} name
-     * @param {number|ArrayLike<number>|Array<number|number[]>} value
+     * @returns {UniformSetter}
+     */
+    getSetter(name) {
+        return this.#setters.get(name) ?? ignoreUniform;
+    }
+
+    /**
+     * @param {string} name
+     * @param {UniformValue} value
      */
     setValue(name, value) {
-        const entry = this.entries.get(name);
-        if (!entry) {
-            return;
-        }
-        if (entry.arrayLength != null) {
-            const isArrayLike =
-                Array.isArray(value) || ArrayBuffer.isView(value);
-            if (!isArrayLike) {
-                throw new Error(`Uniform "${name}" expects an array value`);
-            }
-            const arrayValue = /** @type {ArrayLike<number|number[]>} */ (
-                value
-            );
-            if (arrayValue.length !== entry.arrayLength) {
-                throw new Error(
-                    `Uniform "${name}" expects ${entry.arrayLength} elements`
-                );
-            }
-            const stride = entry.stride ?? 16;
-            for (let i = 0; i < entry.arrayLength; i++) {
-                const element = arrayValue[i];
-                const baseOffset = entry.offset + i * stride;
-                this.#writeElement(entry, baseOffset, element);
-            }
-            return;
-        }
-        const components = entry.components;
-        const isArrayLike = Array.isArray(value) || ArrayBuffer.isView(value);
-        if (isArrayLike) {
-            const vectorValue = /** @type {ArrayLike<number>} */ (value);
-            if (vectorValue.length !== components) {
-                throw new Error(
-                    `Uniform "${name}" expects ${components} components`
-                );
-            }
-            for (let i = 0; i < components; i++) {
-                const component = vectorValue[i];
-                if (typeof component !== "number") {
-                    throw new Error(
-                        `Uniform "${name}" expects ${components} components`
-                    );
+        this.#setters.get(name)?.(value);
+    }
+}
+
+/** @type {UniformSetter} */
+const ignoreUniform = () => {};
+
+/**
+ * @param {ArrayBuffer} buffer
+ * @param {UniformEntry} entry
+ * @returns {UniformSetter}
+ */
+function compileUniformSetter(buffer, entry) {
+    const { name, offset, components, arrayLength } = entry;
+    const ArrayType =
+        entry.type === "u32"
+            ? Uint32Array
+            : entry.type === "i32"
+              ? Int32Array
+              : Float32Array;
+    const data = new ArrayType(buffer, offset);
+
+    if (arrayLength === undefined && components === 1) {
+        return (value) => {
+            if (Array.isArray(value) || ArrayBuffer.isView(value)) {
+                const values = /** @type {ArrayLike<number>} */ (value);
+                if (values.length !== 1 || typeof values[0] !== "number") {
+                    throw new Error(`Uniform "${name}" expects 1 components`);
                 }
-                this.#writeScalar(entry, entry.offset + i * 4, component ?? 0);
+                data[0] = values[0];
+            } else {
+                data[0] = /** @type {number} */ (value) ?? 0;
             }
-        } else {
-            if (components !== 1) {
+        };
+    }
+
+    if (arrayLength === undefined || components === 1) {
+        const length = arrayLength ?? components;
+        const stride = arrayLength === undefined ? 1 : (entry.stride ?? 16) / 4;
+        const error =
+            arrayLength === undefined
+                ? `Uniform "${name}" expects ${components} components`
+                : `Uniform "${name}" expects ${arrayLength} elements`;
+        return (value) => {
+            if (!Array.isArray(value) && !ArrayBuffer.isView(value)) {
+                throw new Error(error);
+            }
+            const values = /** @type {ArrayLike<number>} */ (value);
+            if (values.length !== length) throw new Error(error);
+            for (let i = 0; i < length; i++) {
+                if (typeof values[i] !== "number") throw new Error(error);
+                data[i * stride] = values[i];
+            }
+        };
+    }
+
+    const stride = (entry.stride ?? 16) / 4;
+    return (value) => {
+        if (!Array.isArray(value) && !ArrayBuffer.isView(value)) {
+            throw new Error(`Uniform "${name}" expects an array value`);
+        }
+        const values = /** @type {ArrayLike<number | number[]>} */ (value);
+        if (values.length !== arrayLength) {
+            throw new Error(
+                `Uniform "${name}" expects ${arrayLength} elements`
+            );
+        }
+        for (let i = 0; i < arrayLength; i++) {
+            const element = values[i];
+            if (!Array.isArray(element) || element.length !== components) {
                 throw new Error(
                     `Uniform "${name}" expects ${components} components`
                 );
             }
-            const scalarValue = /** @type {number} */ (value);
-            this.#writeScalar(entry, entry.offset, scalarValue ?? 0);
-        }
-    }
-
-    /**
-     * @param {UniformEntry} entry
-     * @param {number} baseOffset
-     * @param {number|number[]} value
-     */
-    #writeElement(entry, baseOffset, value) {
-        if (entry.components === 1) {
-            if (typeof value !== "number") {
-                throw new Error(
-                    `Uniform "${entry.name}" expects scalar elements`
-                );
+            for (let j = 0; j < components; j++) {
+                data[i * stride + j] = element[j] ?? 0;
             }
-            this.#writeScalar(entry, baseOffset, value);
-            return;
         }
-        if (!Array.isArray(value) || value.length !== entry.components) {
-            throw new Error(
-                `Uniform "${entry.name}" expects ${entry.components} components`
-            );
-        }
-        for (let i = 0; i < entry.components; i++) {
-            this.#writeScalar(entry, baseOffset + i * 4, value[i] ?? 0);
-        }
-    }
-
-    /**
-     * @param {UniformEntry} entry
-     * @param {number} offset
-     * @param {number} value
-     */
-    #writeScalar(entry, offset, value) {
-        if (entry.type === "u32") {
-            this.#view.setUint32(offset, value >>> 0, true);
-        } else if (entry.type === "i32") {
-            this.#view.setInt32(offset, value | 0, true);
-        } else {
-            this.#view.setFloat32(offset, value ?? 0, true);
-        }
-    }
+    };
 }

@@ -29,7 +29,8 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -320,10 +321,6 @@ float sdArrowHead(
     return sdPolygon(vertices, p);
 }
 
-float repeat(float x, float spacing) {
-    return x >= spacing ? x - floor(x / spacing) * spacing : x;
-}
-
 float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     float stemDistance = sdStem(
         arrowPos,
@@ -334,46 +331,45 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
         bidirectional
     );
 
-    bool headRepeat = vHeadSpacing >= 0.0;
-    float spacing = headRepeat
-        ? max(vHeadSpacing, vHeadRepeatFootprintLength)
-        : INFINITY_SUBSTITUTE;
     float distanceFromStart = arrowPos.x + arrowHalfLength;
-
-    // Keep the stroked tip inside the repeated head's local window.
-    float arrowHeadX = repeat(
-        distanceFromStart + vHalfStrokeWidth,
-        spacing
-    ) - vHalfStrokeWidth;
-
-    float headDistance = sdArrowHead(
-        vec2(arrowHeadX, arrowPos.y),
-        vHeadHalfWidth,
-        vRHeadSlope,
-        vRHeadNotchSlope,
-        vHeadStrokeWidth
-    );
-
-    if (bidirectional) {
-        float endHeadDistance = sdArrowHead(
-            vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+    float headDistance = INFINITY_SUBSTITUTE;
+    if (vHeadSpacing >= 0.0) {
+        float spacing = max(vHeadSpacing, vHeadRepeatFootprintLength);
+        float lastHead = floor(max(
+            arrowHalfLength * 2.0 - vHeadRepeatFootprintLength, 0.0
+        ) / spacing);
+        // Bracket nominal footprint centers, then clamp to admitted endpoint
+        // heads so their borders remain visible outside the repeat interval.
+        float index = clamp(floor(
+            (distanceFromStart - vHeadRepeatFootprintLength * 0.5) / spacing
+        ), 0.0, lastHead);
+        for (int neighbor = 0; neighbor < 2; neighbor++) {
+            float headIndex = min(index + float(neighbor), lastHead);
+            headDistance = min(headDistance, sdArrowHead(
+                vec2(distanceFromStart - headIndex * spacing, arrowPos.y),
+                vHeadHalfWidth,
+                vRHeadSlope,
+                vRHeadNotchSlope,
+                vHeadStrokeWidth
+            ));
+        }
+    } else {
+        headDistance = sdArrowHead(
+            vec2(distanceFromStart, arrowPos.y),
             vHeadHalfWidth,
             vRHeadSlope,
             vRHeadNotchSlope,
             vHeadStrokeWidth
         );
-        headDistance = min(headDistance, endHeadDistance);
-    }
-
-    if (headRepeat) {
-        // Cull heads that would be partially clipped.
-        float headTipDistance = distanceFromStart - arrowHeadX;
-        float headEndDistance = headTipDistance
-            + vHeadRepeatFootprintLength
-            - vHalfStrokeWidth;
-
-        if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
-            headDistance = INFINITY_SUBSTITUTE;
+        if (bidirectional) {
+            float endHeadDistance = sdArrowHead(
+                vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+                vHeadHalfWidth,
+                vRHeadSlope,
+                vRHeadNotchSlope,
+                vHeadStrokeWidth
+            );
+            headDistance = min(headDistance, endHeadDistance);
         }
     }
 
@@ -402,11 +398,11 @@ void main(void) {
     } else {
         fragColor = cf * vFillColor;
     }
+    fragColor *= uViewOpacity;
 
     if (uPickingEnabled) {
-        if (d < vHalfStrokeWidth) {
-            fragColor = vPickingColor;
-        }
+        if (d >= vHalfStrokeWidth) discard;
+        fragColor = vPickingColor;
     } else if (fragColor.a == 0.0) {
         discard;
     }
@@ -439,7 +435,8 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -953,7 +950,6 @@ uint accessor_y_0() {
 //////////////////////////////////////////////////////////////////////
 // Channel: y
 
-const vec2 range_y = vec2(1.0, 0.0);
 uniform highp usampler2D uDomainTexture_y;
 
 float scale_y(uint value) {
@@ -962,7 +958,7 @@ float scale_y(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -989,7 +985,7 @@ float scale_y2(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -1061,13 +1057,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -1079,22 +1075,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -1186,16 +1166,15 @@ float resolveHeadHalfWidth(float arrowSize) {
     return max(headWidth, 0.0) * 0.5;
 }
 
-// Width along the arrow axis needed by one repeated head, including stroke.
+// Nominal width along the arrow axis needed by one repeated head.
 float headRepeatFootprintLength(
     float halfWidth,
     float rHeadSlope,
-    float headStrokeWidth,
-    float halfStrokeWidth
+    float headStrokeWidth
 ) {
     float headAxisLength = halfWidth * rHeadSlope;
     float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
-    return headAxisLength + headStrokeLength + halfStrokeWidth * 2.0;
+    return headAxisLength + headStrokeLength;
 }
 
 // Distance from the head tip to its centerline notch/join point.
@@ -1357,7 +1336,7 @@ void main(void) {
     }
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
+    float strokeOpacity = getScaled_strokeOpacity();
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     float arrowSize = max(getScaled_size(), uMinSize);
@@ -1438,15 +1417,14 @@ void main(void) {
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
         vRHeadSlope,
-        vHeadStrokeWidth,
-        vHalfStrokeWidth
+        vHeadStrokeWidth
     );
     vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
     vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 
     gl_Position = unitToNdc(p);
 
-    float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
+    float fillOpacity = getScaled_fillOpacity();
     vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
@@ -1488,7 +1466,8 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -1779,10 +1758,6 @@ float sdArrowHead(
     return sdPolygon(vertices, p);
 }
 
-float repeat(float x, float spacing) {
-    return x >= spacing ? x - floor(x / spacing) * spacing : x;
-}
-
 float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
     float stemDistance = sdStem(
         arrowPos,
@@ -1793,46 +1768,45 @@ float sdArrow(vec2 arrowPos, float arrowHalfLength, bool bidirectional) {
         bidirectional
     );
 
-    bool headRepeat = vHeadSpacing >= 0.0;
-    float spacing = headRepeat
-        ? max(vHeadSpacing, vHeadRepeatFootprintLength)
-        : INFINITY_SUBSTITUTE;
     float distanceFromStart = arrowPos.x + arrowHalfLength;
-
-    // Keep the stroked tip inside the repeated head's local window.
-    float arrowHeadX = repeat(
-        distanceFromStart + vHalfStrokeWidth,
-        spacing
-    ) - vHalfStrokeWidth;
-
-    float headDistance = sdArrowHead(
-        vec2(arrowHeadX, arrowPos.y),
-        vHeadHalfWidth,
-        vRHeadSlope,
-        vRHeadNotchSlope,
-        vHeadStrokeWidth
-    );
-
-    if (bidirectional) {
-        float endHeadDistance = sdArrowHead(
-            vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+    float headDistance = INFINITY_SUBSTITUTE;
+    if (vHeadSpacing >= 0.0) {
+        float spacing = max(vHeadSpacing, vHeadRepeatFootprintLength);
+        float lastHead = floor(max(
+            arrowHalfLength * 2.0 - vHeadRepeatFootprintLength, 0.0
+        ) / spacing);
+        // Bracket nominal footprint centers, then clamp to admitted endpoint
+        // heads so their borders remain visible outside the repeat interval.
+        float index = clamp(floor(
+            (distanceFromStart - vHeadRepeatFootprintLength * 0.5) / spacing
+        ), 0.0, lastHead);
+        for (int neighbor = 0; neighbor < 2; neighbor++) {
+            float headIndex = min(index + float(neighbor), lastHead);
+            headDistance = min(headDistance, sdArrowHead(
+                vec2(distanceFromStart - headIndex * spacing, arrowPos.y),
+                vHeadHalfWidth,
+                vRHeadSlope,
+                vRHeadNotchSlope,
+                vHeadStrokeWidth
+            ));
+        }
+    } else {
+        headDistance = sdArrowHead(
+            vec2(distanceFromStart, arrowPos.y),
             vHeadHalfWidth,
             vRHeadSlope,
             vRHeadNotchSlope,
             vHeadStrokeWidth
         );
-        headDistance = min(headDistance, endHeadDistance);
-    }
-
-    if (headRepeat) {
-        // Cull heads that would be partially clipped.
-        float headTipDistance = distanceFromStart - arrowHeadX;
-        float headEndDistance = headTipDistance
-            + vHeadRepeatFootprintLength
-            - vHalfStrokeWidth;
-
-        if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
-            headDistance = INFINITY_SUBSTITUTE;
+        if (bidirectional) {
+            float endHeadDistance = sdArrowHead(
+                vec2(arrowHalfLength - arrowPos.x, arrowPos.y),
+                vHeadHalfWidth,
+                vRHeadSlope,
+                vRHeadNotchSlope,
+                vHeadStrokeWidth
+            );
+            headDistance = min(headDistance, endHeadDistance);
         }
     }
 
@@ -1861,11 +1835,11 @@ void main(void) {
     } else {
         fragColor = cf * vFillColor;
     }
+    fragColor *= uViewOpacity;
 
     if (uPickingEnabled) {
-        if (d < vHalfStrokeWidth) {
-            fragColor = vPickingColor;
-        }
+        if (d >= vHalfStrokeWidth) discard;
+        fragColor = vPickingColor;
     } else if (fragColor.a == 0.0) {
         discard;
     }
@@ -1902,7 +1876,8 @@ layout(std140) uniform Mark {
 
 
     mediump float uDomain_y[2];
-
+    uniform vec2 range_y;
+    uniform vec2 uPadding_y;
 
 
 };
@@ -2399,7 +2374,6 @@ uint accessor_y_0() {
 //////////////////////////////////////////////////////////////////////
 // Channel: y
 
-const vec2 range_y = vec2(1.0, 0.0);
 uniform highp usampler2D uDomainTexture_y;
 
 float scale_y(uint value) {
@@ -2408,7 +2382,7 @@ float scale_y(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.25, 0.25, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -2435,7 +2409,7 @@ float scale_y2(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
-    float transformed = scaleBand(value, domain, range_y, 0.25, 0.25, 0.5, 0.5);
+    float transformed = scaleBand(value, domain, range_y, uPadding_y.x, uPadding_y.y, 0.5, 0.5);
     return transformed;
 
 }
@@ -2507,13 +2481,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -2525,22 +2499,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -2632,16 +2590,15 @@ float resolveHeadHalfWidth(float arrowSize) {
     return max(headWidth, 0.0) * 0.5;
 }
 
-// Width along the arrow axis needed by one repeated head, including stroke.
+// Nominal width along the arrow axis needed by one repeated head.
 float headRepeatFootprintLength(
     float halfWidth,
     float rHeadSlope,
-    float headStrokeWidth,
-    float halfStrokeWidth
+    float headStrokeWidth
 ) {
     float headAxisLength = halfWidth * rHeadSlope;
     float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
-    return headAxisLength + headStrokeLength + halfStrokeWidth * 2.0;
+    return headAxisLength + headStrokeLength;
 }
 
 // Distance from the head tip to its centerline notch/join point.
@@ -2803,7 +2760,7 @@ void main(void) {
     }
 
     float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
+    float strokeOpacity = getScaled_strokeOpacity();
     vHalfStrokeWidth = strokeWidth / 2.0;
 
     float arrowSize = max(getScaled_size(), uMinSize);
@@ -2884,15 +2841,14 @@ void main(void) {
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
         vRHeadSlope,
-        vHeadStrokeWidth,
-        vHalfStrokeWidth
+        vHeadStrokeWidth
     );
     vHeadSpacing = headRepeat ? uHeadSpacing * arrowSize : -1.0;
     vStrokeColor = premultiplyColor(getScaled_stroke(), strokeOpacity);
 
     gl_Position = unitToNdc(p);
 
-    float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
+    float fillOpacity = getScaled_fillOpacity();
     vFillColor = premultiplyColor(getScaled_fill(), fillOpacity);
 
     setupPicking();
@@ -3089,6 +3045,7 @@ flat in float vRadiusWithPadding;
 
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
+flat in lowp float vOpacityFactor;
 flat in lowp float vShape;
 flat in lowp float vHalfStrokeWidth;
 
@@ -3199,6 +3156,7 @@ void main() {
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
+        fragColor *= vOpacityFactor;
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
@@ -3809,13 +3767,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -3827,22 +3785,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -3901,6 +3843,7 @@ flat out float vRadius;
 flat out float vRadiusWithPadding;
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
+flat out lowp float vOpacityFactor;
 flat out lowp float vShape;
 flat out lowp float vHalfStrokeWidth;
 flat out mat2 vRotationMatrix;
@@ -4003,8 +3946,9 @@ void main(void) {
 		}
 	}
 
-	float fillOpa = getScaled_fillOpacity() * opacity;
-	float strokeOpa = strokeOpacity * opacity;
+	float fillOpa = getScaled_fillOpacity();
+	float strokeOpa = strokeOpacity;
+    vOpacityFactor = opacity;
 
 	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
 	bool circle = vShape == 0.0;
@@ -4916,13 +4860,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -4934,22 +4878,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -5536,6 +5464,7 @@ flat in float vRadiusWithPadding;
 
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
+flat in lowp float vOpacityFactor;
 flat in lowp float vShape;
 flat in lowp float vHalfStrokeWidth;
 
@@ -5646,6 +5575,7 @@ void main() {
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
+        fragColor *= vOpacityFactor;
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
@@ -6307,13 +6237,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -6325,22 +6255,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -6399,6 +6313,7 @@ flat out float vRadius;
 flat out float vRadiusWithPadding;
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
+flat out lowp float vOpacityFactor;
 flat out lowp float vShape;
 flat out lowp float vHalfStrokeWidth;
 flat out mat2 vRotationMatrix;
@@ -6501,8 +6416,9 @@ void main(void) {
 		}
 	}
 
-	float fillOpa = getScaled_fillOpacity() * opacity;
-	float strokeOpa = strokeOpacity * opacity;
+	float fillOpa = getScaled_fillOpacity();
+	float strokeOpa = strokeOpacity;
+    vOpacityFactor = opacity;
 
 	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
 	bool circle = vShape == 0.0;
@@ -6740,6 +6656,7 @@ flat in float vRadiusWithPadding;
 
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
+flat in lowp float vOpacityFactor;
 flat in lowp float vShape;
 flat in lowp float vHalfStrokeWidth;
 
@@ -6850,6 +6767,7 @@ void main() {
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
+        fragColor *= vOpacityFactor;
 
 	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
@@ -7462,13 +7380,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -7480,22 +7398,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 
@@ -7554,6 +7456,7 @@ flat out float vRadius;
 flat out float vRadiusWithPadding;
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
+flat out lowp float vOpacityFactor;
 flat out lowp float vShape;
 flat out lowp float vHalfStrokeWidth;
 flat out mat2 vRotationMatrix;
@@ -7656,8 +7559,9 @@ void main(void) {
 		}
 	}
 
-	float fillOpa = getScaled_fillOpacity() * opacity;
-	float strokeOpa = strokeOpacity * opacity;
+	float fillOpa = getScaled_fillOpacity();
+	float strokeOpa = strokeOpacity;
+    vOpacityFactor = opacity;
 
 	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
 	bool circle = vShape == 0.0;
@@ -7738,7 +7642,8 @@ layout(std140) uniform Mark {
     // Selection parameter
     uniform highp uint uParam_highlight;
     mediump float uDomain_x[2];
-
+    uniform vec2 range_x;
+    uniform vec2 uPadding_x;
     mediump float uDomain_y[2];
 
 
@@ -8156,7 +8061,8 @@ layout(std140) uniform Mark {
     // Selection parameter
     uniform highp uint uParam_highlight;
     mediump float uDomain_x[2];
-
+    uniform vec2 range_x;
+    uniform vec2 uPadding_x;
     mediump float uDomain_y[2];
 
 
@@ -8612,7 +8518,6 @@ uint accessor_x_0() {
 //////////////////////////////////////////////////////////////////////
 // Channel: x
 
-const vec2 range_x = vec2(0.0, 1.0);
 uniform highp usampler2D uDomainTexture_x;
 
 float scale_x(uint value) {
@@ -8621,7 +8526,7 @@ float scale_x(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
-    float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 0.0);
+    float transformed = scaleBand(value, domain, range_x, uPadding_x.x, uPadding_x.y, 0.5, 0.0);
     return transformed;
 
 }
@@ -8696,7 +8601,7 @@ float scale_x2(uint value) {
     value = slotId - 1u;
     int slot = 0;
     vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
-    float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 1.0);
+    float transformed = scaleBand(value, domain, range_x, uPadding_x.x, uPadding_x.y, 0.5, 1.0);
     return transformed;
 
 }
@@ -8780,13 +8685,13 @@ struct SampleFacetPosition {
 
 // ----------------------------------------------------------------------------
 
-#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+#ifndef SAMPLE_FACET_UNIFORM
 
 SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(0.0, 1.0);
 }
 
-#elif defined(SAMPLE_FACET_UNIFORM)
+#else
 
 /**
  * Location and height of the band on the Y axis on a normalized [0, 1] scale.
@@ -8798,22 +8703,6 @@ SampleFacetPosition getSampleFacetPos() {
     return SampleFacetPosition(
         1.0 - uSampleFacet.x - uSampleFacet.y,
         uSampleFacet.y
-    );
-}
-
-#elif defined(SAMPLE_FACET_TEXTURE)
-
-uniform sampler2D uSampleFacetTexture;
-
-SampleFacetPosition getSampleFacetPos() {
-    vec2 texel = texelFetch(
-        uSampleFacetTexture,
-        ivec2(int(attr_facetIndex), 0),
-        0
-    ).rg;
-    return SampleFacetPosition(
-        1.0 - texel.x - texel.y,
-        texel.y
     );
 }
 

@@ -38,6 +38,21 @@ function makeEncoder(field, buildIndex = false) {
 }
 
 describe("Vertex builders", () => {
+    test("direct colors use one RGBA8 word per point", () => {
+        const encoder = makeEncoder("paint");
+        encoder.scale = { type: "null" };
+        const builder = new PointVertexBuilder({
+            encoders: { fill: encoder },
+            attributes: ["fill"],
+            numItems: 2,
+        });
+        builder.addBatch(null, [{ paint: "#11336680" }, {}]);
+
+        const attribute = builder.toArrays().arrays.attr_fill;
+        expect(attribute.numComponents).toBe(1);
+        expect(attribute.data).toEqual(Uint32Array.of(0x80663311, 0));
+    });
+
     test("categorical attributes preserve IDs beyond the 16-bit boundary", () => {
         // Stable IDs can outgrow the active domain after repeated replacement.
         const indexer = createIndexer();

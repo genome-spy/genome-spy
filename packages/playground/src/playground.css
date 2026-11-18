@@ -47,7 +47,6 @@ split-panel {
     > split-panel {
         flex: 1;
         min-height: 0;
-        /* Keep nested resize handles below overlays such as the example picker. */
         isolation: isolate;
     }
 }
@@ -61,7 +60,6 @@ gs-playground-workspace,
     overflow: hidden;
 }
 
-#input-bindings-host,
 gs-playground-workspace[hidden],
 #inspector-pane[hidden] {
     display: none;
@@ -76,6 +74,18 @@ code-editor {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+}
+
+.editor-notice {
+    margin: 0;
+    flex-shrink: 0;
+    overflow-wrap: anywhere;
+
+    &[data-visible] {
+        padding: 8px var(--playground-spacing);
+        border-bottom: 1px solid var(--playground-warning-border);
+        background: var(--playground-warning-bg);
+    }
 }
 
 .example-documentation {
@@ -203,7 +213,6 @@ base-url-notice {
         outline-offset: 2px;
     }
 
-    /* Core bindings are moved outside their original scoped container. */
     .gs-input-bindings {
         font-size: var(--playground-font-size);
         padding: var(--playground-spacing);

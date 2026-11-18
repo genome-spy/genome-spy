@@ -1,4 +1,8 @@
-import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
+import {
+    isNumericArray,
+    isSeriesChannelConfig,
+    isValueChannelConfig,
+} from "../../../types.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { validateScaleConfig } from "../../scales/scaleValidation.js";
 import { normalizeSelectionPredicate } from "../../shaders/visibilityPredicate.js";
@@ -388,7 +392,7 @@ export function validateChannel(name, channel, context, analysisName = name) {
                     );
                 }
             } else if (
-                !Array.isArray(value) ||
+                !isNumericArray(value) ||
                 value.length !== analysis.outputComponents
             ) {
                 throw new Error(

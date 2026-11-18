@@ -17,13 +17,6 @@ import { gpuLabel } from "../../utils/gpuLabel.js";
 
 export const PATH_POINT_SHADER_BODY = /* wgsl */ `
 ${POSITION_CLAMP_WGSL}
-fn placeClampedPoint(clip: vec2<f32>, anchor: vec2<f32>, i: u32) -> vec2<f32> {
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
-    return clip;
-#else
-    return applyPlacementClipForPoint(clip, anchor, i);
-#endif
-}
 
 const PI: f32 = 3.141592653589793;
 const AA_COVERAGE_RADIUS_PIXELS: f32 = 0.5;
@@ -49,9 +42,11 @@ struct VSOut {
     @location(5) halfStrokeWidth: f32,
     @location(6) @interpolate(flat) pickId: u32,
     @location(7) @interpolate(flat) devicePixelsPerAtlas: f32,
-    @location(8) @interpolate(flat) inwardStroke: u32,
+    @location(8) @interpolate(flat) strokeAlign: u32,
     @location(9) gradientStrength: f32,
     @location(10) @interpolate(flat) deviceRadius: f32,
+    @location(13) opacity: f32,
+    @location(14) @interpolate(flat) atlasBounds: vec4<f32>,
 };
 
 fn culledPoint() -> VSOut {
@@ -61,14 +56,16 @@ fn culledPoint() -> VSOut {
 #endif
     out.pos = vec4<f32>(0.0);
     out.uv = vec2<f32>(0.0);
+    out.atlasBounds = vec4<f32>(0.0);
     out.fill = vec4<f32>(0.0);
     out.stroke = vec4<f32>(0.0);
+    out.opacity = 0.0;
     out.fillOpacity = 0.0;
     out.strokeOpacity = 0.0;
     out.halfStrokeWidth = 0.0;
     out.pickId = 0u;
     out.devicePixelsPerAtlas = 0.0;
-    out.inwardStroke = 0u;
+    out.strokeAlign = 0u;
     out.gradientStrength = 0.0;
     out.deviceRadius = 0.0;
     return out;
@@ -99,8 +96,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         strokeWidth = 0.0;
     }
     let entry = pathAtlasEntries[shape];
-    let inwardStroke = getScaled_inwardStroke(i);
-    if (pickingEnabled && (strokeWidth <= 0.0 || inwardStroke != 0u)) {
+    let strokeAlign = getScaled_strokeAlign(i);
+    if (pickingEnabled && (strokeWidth <= 0.0 || strokeAlign == 0u)) {
         diameter = max(diameter, 1.0 / globals.dpr);
     }
     if (diameter <= 0.0) {
@@ -113,17 +110,17 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     // The generated field saturates at uSpread. Clamp effects before their AA
     // transition reaches that boundary; otherwise tiny marks with thick
     // strokes sample the saturated tile edge and produce malformed contours.
-    let strokeDistanceMultiplier = select(1.0, 2.0, inwardStroke != 0u);
+    let strokeDistanceMultiplier = max(f32(strokeAlign), 2.0 - f32(strokeAlign));
     let maxHalfStrokeWidth = max(
         params.uSpread * devicePixelsPerAtlas - AA_COVERAGE_RADIUS_PIXELS,
         0.0
     ) / (strokeDistanceMultiplier * globals.dpr);
     let halfStrokeWidth = min(strokeWidth * 0.5, maxHalfStrokeWidth);
-    let outwardStroke = halfStrokeWidth > 0.0 && inwardStroke == 0u;
+    let outwardStroke = halfStrokeWidth > 0.0 && strokeAlign > 0u;
     // The antialiased outer contour is another offset curve, so its radius
     // must use the path-specific miter extent too. Keep the remaining
     // pixel-center and rasterization safety isotropic.
-    let coverageRadius = select(0.0, halfStrokeWidth, outwardStroke) +
+    let coverageRadius = halfStrokeWidth * f32(strokeAlign) +
         AA_COVERAGE_RADIUS_PIXELS / globals.dpr;
     let rasterSafety = select(
         FILL_RASTER_SAFETY_PIXELS,
@@ -143,18 +140,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let cosTheta = cos(angle);
     let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
     // WebGL enlarges the padded sprite while retaining its local silhouette.
-    let paddedDiameter = diameter + select(strokeWidth, 0.0, inwardStroke != 0u) + 1.0 / globals.dpr;
+    let paddedDiameter = diameter + strokeWidth * f32(strokeAlign) + 1.0 / globals.dpr;
     let pickingScale = select(1.0,
         max(1.0, getScaled_minPickingSize(i) / paddedDiameter), pickingEnabled);
     let screenOffset = rot * localScreen * pickingScale;
     let center = projectClampedPosition(
-#if defined(xClampRange_DEFINED) || defined(yClampRange_DEFINED)
         vec2<f32>(getScaled_x(i), getScaled_y(i)),
         vec2<f32>(getScaled_xOffset(i) + getScaled_dx(i), getScaled_yOffset(i) + getScaled_dy(i)), i);
-#else
-        vec2<f32>(getScaled_x(i) + getScaled_dx(i), getScaled_y(i) + getScaled_dy(i)),
-        vec2<f32>(getScaled_xOffset(i), getScaled_yOffset(i)), i);
-#endif
     let centerX = center.x;
     let centerY = center.y;
 
@@ -167,18 +159,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         (pixel.x / globals.width) * 2.0 - 1.0,
         1.0 - (pixel.y / globals.height) * 2.0
     );
-    let centerClip = vec2<f32>(
-        (centerX / globals.width) * 2.0 - 1.0,
-        1.0 - (centerY / globals.height) * 2.0
-    );
 
     let atlasPixelsPerScreen = params.uShapePixels / max(diameter, 0.001);
     let tileCenter = vec2<f32>(params.uTileSize * 0.5);
-    let tilePixel = clamp(
-        tileCenter + localScreen * atlasPixelsPerScreen,
-        vec2<f32>(0.5),
-        vec2<f32>(params.uTileSize - 0.5)
-    );
+    // Clamp at sampling: clamped quad corners would stretch the nominal shape.
+    let tilePixel = tileCenter + localScreen * atlasPixelsPerScreen;
     let tileUnit = (tilePixel - vec2<f32>(0.5)) /
         max(params.uTileSize - 1.0, 1.0);
 
@@ -186,20 +171,18 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(
-        placeClampedPoint(clip, centerClip, i),
-        0.0,
-        1.0
-    );
+    out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.uv = mix(entry.uvBounds.xy, entry.uvBounds.zw, tileUnit);
+    out.atlasBounds = entry.uvBounds;
     out.fill = getScaled_fill(i);
     out.stroke = getScaled_stroke(i);
+    out.opacity = getScaled_opacity(i);
     out.fillOpacity = getScaled_fillOpacity(i);
     out.strokeOpacity = strokeOpacity;
     out.halfStrokeWidth = halfStrokeWidth;
     out.pickId = 0u;
     out.devicePixelsPerAtlas = devicePixelsPerAtlas;
-    out.inwardStroke = inwardStroke;
+    out.strokeAlign = strokeAlign;
     out.gradientStrength = getScaled_gradientStrength(i);
     out.deviceRadius = diameter * globals.dpr * 0.5;
 #if defined(uniqueId_DEFINED)
@@ -214,9 +197,11 @@ fn median3(value: vec3<f32>) -> f32 {
 
 fn signedDistanceInDevicePixels(
     uv: vec2<f32>,
+    bounds: vec4<f32>,
     devicePixelsPerAtlas: f32
 ) -> f32 {
-    let sample = textureSample(pathAtlas, pathAtlasSampler, uv).rgb;
+    let sampleUv = clamp(uv, bounds.xy, bounds.zw);
+    let sample = textureSample(pathAtlas, pathAtlasSampler, sampleUv).rgb;
     let median = median3(sample);
     return median * devicePixelsPerAtlas;
 }
@@ -224,10 +209,11 @@ fn signedDistanceInDevicePixels(
 fn shade(in: VSOut) -> vec4<f32> {
     let distance = signedDistanceInDevicePixels(
         in.uv,
+        in.atlasBounds,
         in.devicePixelsPerAtlas
     );
     if (pickingEnabled) {
-        if (distance + in.halfStrokeWidth * globals.dpr < 0.0) { discard; }
+        if (distance + in.halfStrokeWidth * globals.dpr * select(1.0, 2.0, in.strokeAlign == 2u) < 0.0) { discard; }
         return vec4<f32>(1.0);
     }
     let shapeCoverage = clamp(distance + 0.5, 0.0, 1.0);
@@ -245,10 +231,11 @@ fn shade(in: VSOut) -> vec4<f32> {
 
     var color = fillColor * shapeCoverage;
     if (in.halfStrokeWidth > 0.0) {
-        let inward = in.inwardStroke != 0u;
         let width = in.halfStrokeWidth * globals.dpr;
-        let innerCoverage = clamp(distance - select(width, 2.0 * width, inward) + 0.5, 0.0, 1.0);
-        let outerCoverage = select(clamp(distance + width + 0.5, 0.0, 1.0), shapeCoverage, inward);
+        let outset = width * f32(in.strokeAlign);
+        let inset = 2.0 * width - outset;
+        let innerCoverage = clamp(distance - inset + 0.5, 0.0, 1.0);
+        let outerCoverage = clamp(distance + outset + 0.5, 0.0, 1.0);
         color = innerCoverage * fillColor
             + (shapeCoverage - innerCoverage) * (strokeColor + (1.0 - strokeColor.a) * fillColor)
             + (outerCoverage - shapeCoverage) * strokeColor;
@@ -264,7 +251,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    return shade(in);
+    return shade(in) * select(in.opacity, 1.0, pickingEnabled);
 }
 `;
 

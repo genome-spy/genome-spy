@@ -21,8 +21,6 @@
     }
   },
 
-  "transform": [{ "type": "filter", "expr": "datum.score > 0" }],
-
   "encoding": {
     "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
     "x2": { "chrom": "chrom", "pos": "end" }

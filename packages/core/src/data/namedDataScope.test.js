@@ -1,7 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
 import { createViewMutationApi } from "../view/viewMutationApi.js";
+import { isDataReady } from "./dataReadiness.js";
 import NamedSource from "./sources/namedSource.js";
 
 /**
@@ -228,5 +230,334 @@ describe("named dataset scopes", () => {
         expect(getRows(view).map((datum) => datum.value)).toEqual([
             "refreshed",
         ]);
+    });
+});
+
+describe("derived named datasets", () => {
+    test("joins lane positions on first load and updates both readers from the same input", async () => {
+        let sourceLoads = 0;
+        const { view, context } = await createHeadlessEngine(
+            {
+                datasets: {
+                    labels: [
+                        { gene: "A", lane: 0, width: 2 },
+                        { gene: "B", lane: 0, width: 4 },
+                        { gene: "C", lane: 1, width: 7 },
+                    ],
+                },
+                params: [{ name: "factor", value: 1 }],
+                data: { name: "labels" },
+                transform: [
+                    { type: "collect" },
+                    {
+                        type: "branch",
+                        transform: [
+                            {
+                                type: "formula",
+                                expr: "datum.width * factor",
+                                as: "scaledWidth",
+                            },
+                            {
+                                type: "aggregate",
+                                groupby: ["lane"],
+                                fields: ["scaledWidth"],
+                                ops: ["max"],
+                                as: ["laneWidth"],
+                            },
+                            {
+                                type: "stack",
+                                field: "laneWidth",
+                                groupby: [],
+                                sort: { field: "lane" },
+                                as: ["laneStart", "laneEnd"],
+                            },
+                            { type: "publish", dataset: "lanePositions" },
+                        ],
+                    },
+                    {
+                        type: "lookup",
+                        from: { name: "lanePositions" },
+                        key: "lane",
+                        values: ["laneEnd"],
+                    },
+                ],
+                vconcat: [
+                    {
+                        name: "genes",
+                        mark: "point",
+                        encoding: {
+                            x: { field: "laneEnd", type: "quantitative" },
+                        },
+                    },
+                    {
+                        name: "lanes",
+                        data: { name: "lanePositions" },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "laneWidth", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            {
+                contextOptions: {
+                    isViewConfiguredVisible: (view) =>
+                        view.explicitName !== "lanes",
+                },
+                onDataFlowBuilt(dataFlow) {
+                    const source =
+                        dataFlow.findNamedDataSource("labels").dataSource;
+                    const load = source.loadSynchronously.bind(source);
+                    const spy = vi
+                        .spyOn(source, "loadSynchronously")
+                        .mockImplementation(() => {
+                            sourceLoads++;
+                            load();
+                        });
+                    onTestFinished(() => spy.mockRestore());
+                },
+            }
+        );
+        const genes = getView(view, "genes");
+        const lanes = getView(view, "lanes");
+        const api = createViewMutationApi({ viewRoot: view });
+        const datasets = api.root().datasets;
+        const offsets = () =>
+            getRows(genes).map(({ gene, laneEnd }) => [gene, laneEnd]);
+        const widths = () =>
+            getRows(lanes).map(({ lane, laneWidth }) => [lane, laneWidth]);
+
+        // Startup has already streamed the primary rows while building the side table.
+        expect(isDataReady(genes.flowHandle.collector)).toBe(true);
+        expect(offsets()).toEqual([
+            ["A", 4],
+            ["B", 4],
+            ["C", 11],
+        ]);
+        expect(lanes.getDataInitializationState()).toBe("none");
+        context.isViewConfiguredVisible = () => true;
+        await initializeVisibleViewData(
+            view,
+            context.dataFlow,
+            context.textMetrics
+        );
+        expect(widths()).toEqual([
+            [0, 4],
+            [1, 7],
+        ]);
+        expect(sourceLoads).toBe(1);
+
+        view.paramRuntime.setValue("factor", 2);
+        await view.paramRuntime.whenPropagated();
+        expect(offsets()).toEqual([
+            ["A", 8],
+            ["B", 8],
+            ["C", 22],
+        ]);
+        expect(widths()).toEqual([
+            [0, 8],
+            [1, 14],
+        ]);
+        expect(sourceLoads).toBe(1);
+
+        expect(() => datasets.set("lanePositions", [])).toThrow(/read.only/i);
+        expect(() => datasets.reset("lanePositions")).toThrow(/read.only/i);
+        await expect(
+            datasets.load("lanePositions", new ArrayBuffer(0), {
+                type: "arrow",
+            })
+        ).rejects.toThrow(/read.only/i);
+
+        await api.remove(api.get({ scope: [], view: "lanes" }));
+        datasets.set("labels", [{ gene: "D", lane: 0, width: 3 }]);
+        await view.paramRuntime.whenPropagated();
+        expect(offsets()).toEqual([["D", 6]]);
+        expect(sourceLoads).toBe(2);
+
+        const { dataSource } = context.dataFlow.findNamedDataSource("labels");
+        dataSource.reset();
+        dataSource.complete(false);
+        await view.paramRuntime.whenPropagated();
+        expect(isDataReady(genes.flowHandle.collector)).toBe(false);
+
+        datasets.set("labels", []);
+        await view.paramRuntime.whenPropagated();
+        expect(offsets()).toEqual([]);
+        expect(isDataReady(genes.flowHandle.collector)).toBe(true);
+        expect(sourceLoads).toBe(3);
+
+        view.disposeSubtree();
+        expect(context.dataFlow.dataSources).toHaveLength(0);
+        expect(context.dataFlow.collectors).toHaveLength(0);
+    });
+
+    test("publishes at its position and resolves derived names in descendants", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{ value: 1 }, { value: 3 }] },
+            transform: [
+                {
+                    type: "branch",
+                    transform: [
+                        { type: "filter", expr: "datum.value > 1" },
+                        {
+                            type: "formula",
+                            expr: "datum.value * 10",
+                            as: "width",
+                        },
+                        { type: "publish", dataset: "summary" },
+                    ],
+                },
+                {
+                    type: "lookup",
+                    from: { name: "summary" },
+                    key: "value",
+                    values: ["width"],
+                },
+                {
+                    type: "branch",
+                    transform: [
+                        {
+                            type: "aggregate",
+                            fields: ["width"],
+                            ops: ["max"],
+                            as: ["extent"],
+                        },
+                        {
+                            type: "values",
+                            field: "extent",
+                            param: "panelExtent",
+                        },
+                    ],
+                },
+            ],
+            vconcat: [
+                {
+                    data: { name: "summary" },
+                    transform: [
+                        {
+                            type: "formula",
+                            expr: "datum.value * 2",
+                            as: "value",
+                        },
+                        { type: "publish", dataset: "doubled" },
+                        {
+                            type: "formula",
+                            expr: "datum.value + 1",
+                            as: "value",
+                        },
+                    ],
+                    layer: [
+                        { name: "main", mark: "point" },
+                        {
+                            name: "chained",
+                            data: { name: "doubled" },
+                            mark: "point",
+                        },
+                    ],
+                },
+                {
+                    name: "shadow",
+                    datasets: { summary: [{ value: 8 }] },
+                    data: { name: "summary" },
+                    mark: "point",
+                },
+            ],
+        });
+        onTestFinished(() => view.disposeSubtree());
+        // Completing a pending join as empty would pass an undefined maximum to values.
+        expect(view.paramRuntime.getValue("panelExtent")).toEqual([30]);
+        for (const [name, value] of Object.entries({
+            main: 7,
+            chained: 6,
+            shadow: 8,
+        })) {
+            const reader = getView(view, name);
+            expect(getRows(reader).map((row) => row.value)).toEqual([value]);
+            expect(isDataReady(reader.flowHandle.collector)).toBe(true);
+        }
+    });
+
+    // Fail after attaching to a borrowed table and before attaching to a new source.
+    test.each([
+        {
+            name: "summary",
+            prefix: [
+                {
+                    type: /** @type {const} */ ("formula"),
+                    expr: "datum.value + 1",
+                    as: "shifted",
+                },
+            ],
+        },
+        { name: "input", prefix: [] },
+    ])(
+        "a failed reader insertion from $name leaves the published table usable",
+        async ({ name, prefix }) => {
+            const { view, context } = await createHeadlessEngine({
+                datasets: { input: [{ value: 3 }] },
+                data: { name: "input" },
+                transform: [{ type: "publish", dataset: "summary" }],
+                vconcat: [
+                    {
+                        name: "direct",
+                        data: { name: "summary" },
+                        mark: "point",
+                    },
+                ],
+            });
+            onTestFinished(() => view.disposeSubtree());
+            const api = createViewMutationApi({ viewRoot: view });
+            const owner = api.root();
+            const originalSource =
+                context.dataFlow.findNamedDataSource("input").dataSource;
+
+            await expect(
+                api.insert(owner, {
+                    data: { name },
+                    transform: [
+                        ...prefix,
+                        {
+                            type: "lookup",
+                            from: { name: "later" },
+                            key: "value",
+                        },
+                        { type: "publish", dataset: "later" },
+                    ],
+                    mark: "point",
+                })
+            ).rejects.toThrow(/later.*earlier publish/i);
+
+            expect(
+                context.dataFlow.findNamedDataSource("input").dataSource
+            ).toBe(originalSource);
+            owner.datasets.set("input", [{ value: 4 }]);
+            await view.paramRuntime.whenPropagated();
+            expect(
+                getRows(getView(view, "direct")).map((row) => row.value)
+            ).toEqual([4]);
+        }
+    );
+
+    test("reports a local name collision and a reference before publication", async () => {
+        /** @type {import("../spec/transform.js").PublishParams} */
+        const producer = {
+            type: "publish",
+            dataset: "summary",
+        };
+        await expect(
+            createHeadlessEngine({
+                datasets: { summary: [] },
+                data: { values: [{ value: 1 }] },
+                transform: [producer],
+                mark: "point",
+            })
+        ).rejects.toThrow(/duplicate.*summary/i);
+        await expect(
+            createHeadlessEngine({
+                data: { name: "summary" },
+                transform: [producer],
+                mark: "point",
+            })
+        ).rejects.toThrow(/summary.*earlier publish/i);
     });
 });

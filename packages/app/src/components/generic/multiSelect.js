@@ -304,19 +304,21 @@ export default class MultiSelect extends LitElement {
         if (this._inputHasFocus) {
             this._open = true;
         }
-        this.#queueSearch(this._query);
+        this.#queueSearch();
     }
 
-    /**
-     * @param {string} query
-     */
-    #queueSearch(query) {
+    #queueSearch() {
         this.#clearDebounceTimer();
-        /** @type {() => void} */
-        const runSearch = () => {
-            void this.#executeSearch(query);
-        };
-        this.#debounceTimer = window.setTimeout(runSearch, this.debounceMs);
+        const query = this._query;
+        const version = ++this.#searchVersion;
+        this._suggestions = [];
+        this._activeIndex = -1;
+        this._loading = !!this.search;
+
+        this.#debounceTimer = window.setTimeout(() => {
+            this.#debounceTimer = null;
+            void this.#executeSearch(query, version);
+        }, this.debounceMs);
     }
 
     #clearDebounceTimer() {
@@ -328,23 +330,20 @@ export default class MultiSelect extends LitElement {
 
     /**
      * @param {string} query
+     * @param {number} version
      */
-    async #executeSearch(query) {
+    async #executeSearch(query, version) {
         if (!this.search) {
-            this._suggestions = [];
             this._loading = false;
-            this._activeIndex = -1;
             this._open = false;
             return;
         }
 
-        const version = ++this.#searchVersion;
-        this._loading = true;
         this._open = this._inputHasFocus;
 
         try {
             const results = await this.search(query);
-            if (version !== this.#searchVersion || query !== this._query) {
+            if (version !== this.#searchVersion) {
                 return;
             }
 
@@ -598,17 +597,17 @@ export default class MultiSelect extends LitElement {
 
         this.#addValue(exact.id);
         this._query = "";
-        this.#queueSearch("");
+        this.#queueSearch();
         this.#focusInput();
         return true;
     }
 
     #confirmSelection() {
-        const active =
-            this._activeIndex >= 0 &&
-            this._activeIndex < this._suggestions.length
-                ? this._suggestions[this._activeIndex]
-                : null;
+        if (this._loading && !this.allowUnknown) {
+            return;
+        }
+
+        const active = this._suggestions[this._activeIndex];
         const query = this._query.trim();
 
         if (active) {
@@ -623,7 +622,7 @@ export default class MultiSelect extends LitElement {
         }
 
         this._query = "";
-        this.#queueSearch("");
+        this.#queueSearch();
         this.#focusInput();
     }
 
@@ -658,14 +657,14 @@ export default class MultiSelect extends LitElement {
         }
 
         this._query = input.value;
-        this.#queueSearch(this._query);
+        this.#queueSearch();
         this._open = true;
     }
 
     #onInputFocus() {
         this._inputHasFocus = true;
         this._open = true;
-        this.#queueSearch(this._query);
+        this.#queueSearch();
     }
 
     #onInputBlur() {
@@ -681,15 +680,13 @@ export default class MultiSelect extends LitElement {
             return;
         }
 
-        const lower = query.toLowerCase();
-        let exact =
-            this._suggestions.find(
-                (suggestion) => suggestion.id.toLowerCase() === lower
-            ) ?? null;
+        const version = this.#searchVersion;
+        let exact = this.#findExactMatch(query);
 
         if (!exact && this.search) {
             try {
                 const results = await this.search(query);
+                const lower = query.toLowerCase();
                 exact =
                     results
                         .map((result) => normalizeResult(result))
@@ -702,13 +699,13 @@ export default class MultiSelect extends LitElement {
             }
         }
 
-        if (!exact) {
+        if (!exact || version !== this.#searchVersion) {
             return;
         }
 
         this.#addValue(exact.id);
         this._query = "";
-        this.#queueSearch("");
+        this.#queueSearch();
     }
 
     /**
@@ -729,8 +726,7 @@ export default class MultiSelect extends LitElement {
         this.#addValues(values);
         this._query = "";
         this._open = false;
-        this._activeIndex = -1;
-        this.#queueSearch("");
+        this.#queueSearch();
         this.#focusInput();
     }
 
@@ -817,8 +813,7 @@ export default class MultiSelect extends LitElement {
 
         this.#addValue(suggestion.id);
         this._query = "";
-        this.#queueSearch("");
-        this._activeIndex = 0;
+        this.#queueSearch();
         this.#focusInput();
     }
 
@@ -888,23 +883,27 @@ export default class MultiSelect extends LitElement {
                     }
                 }}
             >
-                ${this._loading
-                    ? html`<div class="status">Loading...</div>`
-                    : nothing}
-                ${!this._loading && this._suggestions.length === 0
-                    ? html`<div class="status">No matches</div>`
-                    : nothing}
+                ${
+                    this._loading
+                        ? html`<div class="status">Loading...</div>`
+                        : nothing
+                }
+                ${
+                    !this._loading && this._suggestions.length === 0
+                        ? html`<div class="status">No matches</div>`
+                        : nothing
+                }
                 ${this._suggestions.map(
                     (suggestion, index) =>
                         html`<div
                             id=${this.#optionDomId(String(index))}
-                            class="option ${index === this._activeIndex
-                                ? "active"
-                                : ""}"
+                            class="option ${
+                                index === this._activeIndex ? "active" : ""
+                            }"
                             role="option"
-                            aria-selected=${index === this._activeIndex
-                                ? "true"
-                                : "false"}
+                            aria-selected=${
+                                index === this._activeIndex ? "true" : "false"
+                            }
                             @mousedown=${(/** @type {MouseEvent} */ event) =>
                                 event.preventDefault()}
                             @mouseenter=${() => {

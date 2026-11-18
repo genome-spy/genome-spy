@@ -195,10 +195,6 @@ class PlaygroundToolbar extends LitElement {
                 .toolbar-menu {
                     box-sizing: border-box;
                     position: fixed;
-                    inset: auto;
-                    margin: 0;
-                    position-area: block-end span-inline-end;
-                    position-try-fallbacks: flip-inline;
                     padding: 0.3rem;
                     border: 1px solid var(--playground-border);
                     border-radius: var(--playground-radius);
@@ -208,6 +204,13 @@ class PlaygroundToolbar extends LitElement {
                     max-width: calc(100vw - 8px);
                     max-height: calc(100dvh - 54px);
                     overflow: auto;
+
+                    @supports (position-area: block-end span-inline-end) {
+                        inset: auto;
+                        margin: 0;
+                        position-area: block-end span-inline-end;
+                        position-try-fallbacks: flip-inline;
+                    }
 
                     button,
                     a {
@@ -351,6 +354,7 @@ class PlaygroundToolbar extends LitElement {
                 <button
                     @click=${() => this.#openExamples()}
                     class="tool-button examples-button"
+                    aria-haspopup="dialog"
                 >
                     ${icon(faFolderOpen).node[0]}
                     <span>Examples</span>

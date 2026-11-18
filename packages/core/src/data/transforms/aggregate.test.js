@@ -64,6 +64,28 @@ describe("Aggregate transform", () => {
         ]);
     });
 
+    test("compound groups retain first-seen order and intern object keys", () => {
+        const date = new Date(2);
+        const output = transform(
+            { type: "aggregate", groupby: ["sample", "key"] },
+            [
+                { sample: "x", key: 1 },
+                { sample: "y", key: date },
+                { sample: "x", key: new Date(1) },
+                { sample: "x", key: NaN },
+                { sample: "y", key: 2 },
+                { sample: "x", key: NaN },
+            ]
+        );
+
+        expect(output).toEqual([
+            { sample: "x", key: 1, count: 2 },
+            { sample: "x", key: NaN, count: 2 },
+            { sample: "y", key: date, count: 2 },
+        ]);
+        expect(output[2].key).toBe(date);
+    });
+
     test("Compute count, sum, min, max, and mean for groups. Use default output field names.", () => {
         const input = [
             { name: "alpha", data: 123 },

@@ -3,10 +3,13 @@ import { clampRange } from "vega-util";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import { invertScalePosition } from "../../scales/scalePosition.js";
 import {
+    asEventConfig,
     createEventPredicate,
     getEventFilterLocation,
+    validateEventType,
 } from "../../utils/interactionConfig.js";
-import { startDocumentDrag } from "../../utils/documentDrag.js";
+import { startPointerDrag } from "../../utils/pointerDrag.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import {
@@ -19,10 +22,6 @@ import {
     createIntervalSelection,
     isActiveIntervalSelection,
 } from "../../selection/selection.js";
-import {
-    asEventConfig,
-    validateEventType,
-} from "../../utils/interactionConfig.js";
 import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracker.js";
 
 /**
@@ -60,8 +59,6 @@ export class IntervalSelectionController {
         selectionRect
     ) {
         this.host = host;
-        this.#selectionName = name;
-        this.#selectionRuntime = paramRuntime;
         this.#viewListeners = new ViewInteractionListenerTracker(host.view);
 
         this.#setup(
@@ -73,7 +70,6 @@ export class IntervalSelectionController {
             selectionRect
         );
 
-        paramRuntime.getIntervalSelectionState(name);
         this.#unregisterSelectionController =
             paramRuntime.registerSelectionController(name, this);
     }
@@ -95,12 +91,6 @@ export class IntervalSelectionController {
 
     /** @type {(() => void)[]} */
     #scaleDisposers = [];
-
-    /** @type {string} */
-    #selectionName;
-
-    /** @type {import("../../paramRuntime/viewParamRuntime.js").default} */
-    #selectionRuntime;
 
     /**
      * @param {string} type
@@ -131,15 +121,6 @@ export class IntervalSelectionController {
      */
     contains(point) {
         return this.#containsPoint(/** @type {Point} */ (point));
-    }
-
-    /**
-     * Cancels an active gesture and clears a changed selection.
-     */
-    clear() {
-        this.#selectionRuntime
-            .getIntervalSelectionState(this.#selectionName)
-            .clear();
     }
 
     /**
@@ -183,7 +164,6 @@ export class IntervalSelectionController {
         const requiresShiftToBrush = channels.some((channel) =>
             scaleResolutions[channel].isZoomable()
         );
-
         const eventConfig =
             /** @type {import("../../spec/parameter.js").EventConfig} */ (
                 select.on ??
@@ -202,6 +182,13 @@ export class IntervalSelectionController {
                 `Interval selection param "${name}" currently supports only "mousedown" in "on".`
             );
         }
+
+        const { touchDrag = !eventConfig.filter && !requiresShiftToBrush } =
+            select;
+        const overridesPan = select.touchDrag !== undefined;
+        const touchDragEnabled = isExprRef(touchDrag)
+            ? paramRuntime.createExpression(touchDrag)
+            : () => touchDrag;
 
         const source =
             "select" in param && typeof param.select === "object"
@@ -230,31 +217,11 @@ export class IntervalSelectionController {
             getEventFilterLocation(paramRuntime, source, "clear")
         );
 
-        // --- Validation and early exits done ---
-
+        const state = paramRuntime.getIntervalSelectionState(name);
         let preventNextClickPropagation = false;
         /** @type {Point | undefined} */
         let pendingClearStart;
-        /**
-         * @type {{ start: Point, translatedRectangle: Rectangle | null } | null}
-         */
-        let activeBrush = null;
-
-        /**
-         * @param {Record<string, number>} a
-         * @param {Record<string, number>} b
-         * @return {Partial<Record<import("../../spec/parameter.js").IntervalSelectionChannel, [number, number]>>}
-         */
-        const pointsToIntervals = (a, b) =>
-            Object.fromEntries(
-                channels.map((channel) => [
-                    channel,
-                    [
-                        Math.min(a[channel], b[channel]),
-                        Math.max(a[channel], b[channel]),
-                    ],
-                ])
-            );
+        let dragging = false;
 
         const selectionExpr = paramRuntime.createExpression(name);
         const setter = (
@@ -285,7 +252,7 @@ export class IntervalSelectionController {
                     bounds[1] = Infinity;
             }
             paramRuntime.setValue(name, selection, {
-                intervalGesture: activeBrush ? this : undefined,
+                intervalGesture: dragging ? this : undefined,
             });
         };
 
@@ -329,27 +296,26 @@ export class IntervalSelectionController {
             });
             this.host.setSelectionRect(dragOverlay);
         }
-        const setIntervalDragActive = dragOverlay
-            ? (/** @type {boolean} */ active) => {
-                  dragOverlay.view.paramRuntime.setValue(
-                      INTERVAL_DRAG_ACTIVE_PARAM,
-                      active
-                  );
-              }
-            : (/** @type {boolean} */ active) =>
-                  ramp?.setDragActive(
-                      active,
-                      !!activeBrush && !activeBrush.translatedRectangle
-                  );
+        const setIntervalDragActive = (
+            /** @type {boolean} */ translating,
+            creating = false
+        ) => {
+            if (dragOverlay) {
+                dragOverlay.view.paramRuntime.setValue(
+                    INTERVAL_DRAG_ACTIVE_PARAM,
+                    translating
+                );
+            } else {
+                ramp?.setDragActive(translating, creating);
+            }
+        };
 
         const invertPoint = (
             /** @type {import("../layout/point.js").default} */ point,
             projectionCoords = this.host.getProjectionCoords(channels[0], point)
         ) => {
-            const inverted = /** @type {Record<string, number>} */ ({
-                x: 0,
-                y: 0,
-            });
+            /** @type {Record<string, number>} */
+            const inverted = {};
             const normalizedPoint = projectionCoords.normalizePoint(
                 point.x,
                 point.y,
@@ -476,52 +442,41 @@ export class IntervalSelectionController {
             return rectangle.containsPoint(point.x, point.y) ? rectangle : null;
         };
 
-        this.#addViewInteractionListener("mousedown", (event) => {
-            if (
-                event.mouseEvent.button != 0 ||
-                !isInsideHost(event.point) ||
-                !ownsInteraction(event.point)
-            ) {
-                return;
-            }
+        /** @param {import("../../utils/interaction.js").default} event */
+        const canStartDrag = (event) =>
+            event.mouseEvent.button === 0 &&
+            isInsideHost(event.point) &&
+            ownsInteraction(event.point);
 
+        /**
+         * @param {import("../../utils/interaction.js").default} event
+         * @param {PointerEvent} [touchEvent]
+         */
+        const startDrag = (event, touchEvent) => {
             const selection = selectionExpr();
+            const start = event.point;
             const projectionCoords = this.host.getProjectionCoords(
                 channels[0],
-                event.point
+                start
             );
             pendingClearStart = undefined;
             // Keep translation geometry in screen coordinates because scales
             // may be nonlinear.
-            const translatedRectangle = selectionRectAt(event.point);
+            const translatedRectangle = selectionRectAt(start);
 
-            if (translatedRectangle) {
-                // Started dragging an existing selection
-                // Start of dragging should prevent click propagation so that
-                // no other selections or events are triggered.
-                preventNextClickPropagation = true;
-            } else {
-                const mouseDownPoint = event.point;
-                if (isActiveIntervalSelection(selectionExpr())) {
-                    // If there's a selection, prevent the next click from propagating.
-                    // The first click will clear the selection, not trigger
-                    // any other possible selections.
-                    preventNextClickPropagation = true;
-                }
-
-                const startSelection = eventPredicate(event.proxiedMouseEvent);
-
-                if (!startSelection) {
-                    if (
-                        !clearEventConfig ||
-                        !isActiveIntervalSelection(selection)
-                    ) {
-                        return;
-                    }
-
+            if (!touchEvent) {
+                const hasSelection = isActiveIntervalSelection(selection);
+                // Let the first click on or outside a brush belong to that brush.
+                if (hasSelection) preventNextClickPropagation = true;
+                if (
+                    !translatedRectangle &&
+                    !eventPredicate(event.proxiedMouseEvent)
+                ) {
                     // If mouse button is released and there was a selection,
                     // it should be cleared unless the viewport was panned by dragging.
-                    pendingClearStart = mouseDownPoint;
+                    if (clearEventConfig && hasSelection) {
+                        pendingClearStart = start;
+                    }
                     return;
                 }
             }
@@ -529,97 +484,119 @@ export class IntervalSelectionController {
             // Prevent panning interaction
             event.stopPropagation();
 
-            const brush = { start: event.point, translatedRectangle };
-            activeBrush = brush;
-            paramRuntime
-                .getIntervalSelectionState(name)
-                .begin(this, () => this.#cancelActiveDrag());
-            setIntervalDragActive(Boolean(translatedRectangle));
-            if (!translatedRectangle) {
+            state.begin(this, () => this.#cancelActiveDrag());
+            dragging = true;
+            setIntervalDragActive(!!translatedRectangle, !translatedRectangle);
+            if (!touchEvent && !translatedRectangle) {
                 clearSelection();
             }
 
             const viewOffset = Point.fromMouseEvent(event.mouseEvent).subtract(
-                brush.start
+                start
             );
 
-            const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
-                // This listener is added to the document so that events are captured even if the mouse leaves the view.
-                // Thus, coordinates need to be adjusted to the view's coordinate system.
-                const current =
-                    Point.fromMouseEvent(event).subtract(viewOffset);
+            const onMove = (/** @type {PointerEvent} */ event) => {
+                let startPoint = start;
+                let endPoint = Point.fromMouseEvent(event).subtract(viewOffset);
 
-                /** @type {ReturnType<typeof pointsToIntervals>} */
-                let intervals;
-
-                if (brush.translatedRectangle) {
-                    const offset = current.subtract(brush.start);
-                    const newRect = brush.translatedRectangle.translate(
+                if (translatedRectangle) {
+                    const offset = endPoint.subtract(start);
+                    const rect = translatedRectangle.translate(
                         offset.x,
                         offset.y
                     );
-
-                    intervals = pointsToIntervals(
-                        invertPoint(
-                            new Point(newRect.x, newRect.y),
-                            projectionCoords
-                        ),
-                        invertPoint(
-                            new Point(newRect.x2, newRect.y2),
-                            projectionCoords
-                        )
-                    );
-                } else {
-                    intervals = pointsToIntervals(
-                        invertPoint(brush.start, projectionCoords),
-                        invertPoint(current, projectionCoords)
-                    );
+                    startPoint = new Point(rect.x, rect.y);
+                    endPoint = new Point(rect.x2, rect.y2);
                 }
 
+                const startValues = invertPoint(startPoint, projectionCoords);
+                const endValues = invertPoint(endPoint, projectionCoords);
+                /** @type {import("../../types/selectionTypes.js").IntervalSelection["intervals"]} */
+                const intervals = {};
                 for (const channel of channels) {
                     const scaleResolution = scaleResolutions[channel];
                     const zoomExtent = ramp
                         ? ramp.getDomain()
                         : scaleResolution.zoomExtent;
-                    // Translation preserves span before normalization clips and rounds.
-                    // As before, span preservation is in domain units (linear scales).
-                    const interval = brush.translatedRectangle
-                        ? clampRange(
-                              intervals[channel],
-                              zoomExtent[0],
-                              zoomExtent[1]
-                          )
-                        : intervals[channel];
-                    intervals[channel] = (ramp
-                        ? normalizeIntervalForSelection(
-                              /** @type {[number, number]} */ (interval),
-                              zoomExtent
-                          )
+                    const a = startValues[channel];
+                    const b = endValues[channel];
+                    // Keep a lower bound of -0 when ordering the endpoints.
+                    const bounds = [Math.min(a, b), Math.max(a, b)];
+                    // Translation preserves the domain span before clipping and rounding.
+                    const interval = translatedRectangle
+                        ? clampRange(bounds, zoomExtent[0], zoomExtent[1])
+                        : bounds;
+                    const normalized = ramp
+                        ? normalizeIntervalForSelection(interval, zoomExtent)
                         : normalizeIntervalForChannel(
                               scaleResolution,
-                              /** @type {[number, number]} */ (interval)
-                          )) ?? [zoomExtent[0], zoomExtent[0]];
+                              interval
+                          );
+                    intervals[channel] = normalized ?? [
+                        zoomExtent[0],
+                        zoomExtent[0],
+                    ];
                 }
 
                 setter({ type: "interval", intervals });
             };
 
-            const state = paramRuntime.getIntervalSelectionState(name);
-            const cancel = startDocumentDrag({
-                onMove: mouseMoveListener,
-                hoverContext: view.context,
-                onFinish: () => {
-                    activeBrush = null;
-                    setIntervalDragActive(false);
-                },
-                onRelease: () => state.finish(this, true),
-            });
-            this.#cancelActiveDrag = () => {
-                const canceled = cancel();
-                state.finish(this, false);
-                return canceled;
-            };
+            this.#cancelActiveDrag = startPointerDrag(
+                touchEvent ?? event.mouseEvent,
+                {
+                    onMove,
+                    capture: !touchEvent,
+                    hoverContext: touchEvent ? undefined : view.context,
+                    onFinish: (released) => {
+                        dragging = false;
+                        setIntervalDragActive(false);
+                        if (!released) {
+                            preventNextClickPropagation = false;
+                            state.finish(this, false);
+                        }
+                    },
+                    onRelease: () => state.finish(this, true),
+                }
+            );
+            if (touchEvent) onMove(touchEvent);
+            return this.#cancelActiveDrag;
+        };
+        this.#addViewInteractionListener("mousedown", (event) => {
+            if (canStartDrag(event)) startDrag(event);
         });
+        if (touchDrag) {
+            this.#addViewInteractionListener("touchdragstart", (event) => {
+                const drag = event.uiEvent;
+                if (
+                    "activeEvent" in drag &&
+                    !event.stopped &&
+                    (!drag.brush ||
+                        (overridesPan && !drag.brush.overridesPan)) &&
+                    touchDragEnabled() &&
+                    canStartDrag(event)
+                ) {
+                    drag.brush = {
+                        start: () => startDrag(event, drag.activeEvent),
+                        overridesPan,
+                    };
+                }
+            });
+            if (
+                clearEventConfig?.type === "dblclick" &&
+                !clearEventConfig.filter
+            ) {
+                this.#addViewInteractionListener("touchtap", (event) => {
+                    if (
+                        touchDragEnabled() &&
+                        isInsideHost(event.point) &&
+                        ownsInteraction(event.point) &&
+                        !selectionRectAt(event.point)
+                    ) {
+                        state.clear();
+                    }
+                });
+            }
+        }
 
         this.#viewListeners.add("mouseup", (event) => {
             if (!pendingClearStart) {
@@ -678,7 +655,7 @@ export class IntervalSelectionController {
                 clearEventConfig.type,
                 (event) => {
                     if (canClear(event)) {
-                        this.clear();
+                        state.clear();
                         event.stopPropagation();
                     }
                 },
@@ -697,8 +674,7 @@ export class IntervalSelectionController {
                 zoomEventPredicate(createPrimitiveEventProxy(wheelEvent)) &&
                 this.#containsPoint(event.point) &&
                 wheelEvent.deltaY !== 0 &&
-                Math.abs(wheelEvent.deltaX) <= Math.abs(wheelEvent.deltaY) &&
-                isActiveIntervalSelection(selectionExpr())
+                Math.abs(wheelEvent.deltaX) <= Math.abs(wheelEvent.deltaY)
             );
         };
 
@@ -809,7 +785,7 @@ export function resolveIntervalZoomEventConfig(
 
 /**
  * @param {import("../../scales/scaleResolution.js").default} scaleResolution
- * @param {[number, number]} interval
+ * @param {number[]} interval
  * @returns {[number, number] | undefined}
  */
 function normalizeIntervalForChannel(scaleResolution, interval) {

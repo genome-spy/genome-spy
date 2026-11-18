@@ -113,6 +113,43 @@ test("launches with a rendering backend that has no retained resources", async (
     expect(finalize).toHaveBeenCalledOnce();
 });
 
+test("stops responding to device pixel ratio changes after destroy", async () => {
+    const container = document.createElement("div");
+    const originalQuery = new EventTarget();
+    const updatedQuery = new EventTarget();
+    const matchMedia = vi
+        .fn()
+        .mockReturnValueOnce(originalQuery)
+        .mockReturnValueOnce(updatedQuery);
+    vi.stubGlobal("matchMedia", matchMedia);
+    vi.stubGlobal("devicePixelRatio", 1);
+
+    const invalidateSize = vi.fn(() => false);
+    mocks.createRenderingBackend.mockImplementation((options) => {
+        const backend = createMockBackend(options);
+        backend.surface.invalidateSize = invalidateSize;
+        return backend;
+    });
+
+    const genomeSpy = new GenomeSpy(
+        container,
+        { width: 100, height: 100, data: { values: [{}] }, mark: "rect" },
+        { renderer: "canvas" }
+    );
+    onTestFinished(() => genomeSpy.destroy());
+    expect(await genomeSpy.launch()).toBe(true);
+    invalidateSize.mockClear();
+
+    vi.stubGlobal("devicePixelRatio", 2);
+    originalQuery.dispatchEvent(new Event("change"));
+    expect(matchMedia).toHaveBeenLastCalledWith("(resolution: 2dppx)");
+    expect(invalidateSize).toHaveBeenCalledOnce();
+
+    genomeSpy.destroy();
+    updatedQuery.dispatchEvent(new Event("change"));
+    expect(invalidateSize).toHaveBeenCalledOnce();
+});
+
 test("keeps canvas responsive across fixed and growing views", async () => {
     const container = document.createElement("div");
     document.body.append(container);
