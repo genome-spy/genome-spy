@@ -120,9 +120,9 @@ export default function createDomainInputs({
         }
         const zoomLevelResolutions = new Set(
             Array.from(expressions.values()).flatMap((expression) =>
-                (expression.zoomLevelResolutions ?? []).filter((resolution) =>
-                    resolution.isZoomable()
-                )
+                Array.from(
+                    expression.scaleBindings.get("zoomLevel") ?? []
+                ).filter((resolution) => resolution.isZoomable())
             )
         );
 

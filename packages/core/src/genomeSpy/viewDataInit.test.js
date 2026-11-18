@@ -23,6 +23,7 @@ describe("viewDataInit", () => {
     test.each([
         "datum == null",
         "threshold > 0",
+        "smoothed > 0",
         "fromScale > 0",
         "span(range('x')) > 0",
         "42",
@@ -30,7 +31,12 @@ describe("viewDataInit", () => {
         await expect(
             createHeadlessEngine({
                 params: [
-                    { name: "threshold", expr: "width / 2" },
+                    { name: "threshold", expr: "width / 2", debounce: 1 },
+                    {
+                        name: "smoothed",
+                        expr: "threshold",
+                        transition: { type: "lerp" },
+                    },
                     { name: "fromScale", expr: "domain('x')[0]" },
                 ],
                 visible: { expr },

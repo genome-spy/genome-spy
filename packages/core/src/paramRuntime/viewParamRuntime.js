@@ -380,7 +380,7 @@ export default class ViewParamRuntime {
      * Registers a parameter once per scope. Writable declarations return a setter;
      * derived expressions return a setter that throws. Expressions may bind lazily.
      * @param {Parameter} param
-     * @param {{ defer?: boolean, onBound?: () => void }} [options]
+     * @param {{ defer?: boolean }} [options]
      * @returns {ParameterSetter}
      */
     registerParam(param, options = {}) {
@@ -414,7 +414,6 @@ export default class ViewParamRuntime {
             }
             this.#runtime.registerInitializer(this.#scopeId, name, () => {
                 this.#registerParamValue(param);
-                options.onBound?.();
             });
             this.#paramConfigs.set(name, param);
             return () => {
@@ -1177,6 +1176,7 @@ export default class ViewParamRuntime {
             expression(null),
             transition
         );
+        this.#localRefs.get(name).definingExpression = expression;
         const unsubscribe = expression.subscribe(() => {
             this.#setTransitionTarget(name, state, expression(null), {
                 animate: !this.#settleTemporalUpdatesImmediately,
@@ -1199,6 +1199,8 @@ export default class ViewParamRuntime {
             initialValue
         );
         this.#localRefs.set(name, ref);
+
+        ref.definingExpression = expression;
 
         /** @type {DebounceState} */
         const state = {

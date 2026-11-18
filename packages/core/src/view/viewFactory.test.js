@@ -181,7 +181,7 @@ test("Throws if importing is not allowed", async () => {
 
 test("inserted import resolves visibility in its own scope on a live shared scale", async () => {
     const { root, views } = await createTestEmbed({
-        params: [{ name: "show", value: true }],
+        params: [{ name: "show", value: false }],
         templates: {
             panel: {
                 mark: "point",
@@ -191,24 +191,29 @@ test("inserted import resolves visibility in its own scope on a live shared scal
                 encoding: { x: { field: "x", type: "quantitative" } },
             },
         },
-        resolve: { scale: { x: "shared" } },
+        scales: { x: { type: "linear", domain: [0, 100000], zoom: true } },
         vconcat: [{ import: { template: "panel" }, name: "original" }],
     });
-    root.getScaleResolution("x").getScale();
+    await root.getScaleResolution("x").zoomTo([0, 9000], 0);
 
-    await views.insert(views.root(), {
-        import: { template: "panel" },
-        name: "detail",
-        visible: { expr: "show" },
-        params: { show: false },
-    });
+    const insertDetail = (/** @type {string} */ name) =>
+        views.insert(views.root(), {
+            import: { template: "panel" },
+            name,
+            visible: { expr: "show && span(domain('x')) < 10000" },
+            params: { show: true },
+        });
+    await insertDetail("detail");
     const detail = root.getDescendants().find((view) => view.name === "detail");
+    expect(detail.isConfiguredVisible()).toBe(true);
+    expect(detail.flowHandle.collector.getItemCount()).toBe(1);
+    await root.getScaleResolution("x").zoomTo([0, 20000], 0);
+    await detail.paramRuntime.whenPropagated();
     expect(detail.isConfiguredVisible()).toBe(false);
-    expect(detail.flowHandle).toBeUndefined();
-    detail.paramRuntime.setValue("show", true);
-    await vi.waitFor(() =>
-        expect(detail.flowHandle?.collector?.getItemCount()).toBe(1)
-    );
+    await insertDetail("wide");
+    expect(
+        root.getDescendants().find((view) => view.name === "wide").flowHandle
+    ).toBeUndefined();
 });
 
 test("ImportSpec.zindex overrides imported view zindex", async () => {

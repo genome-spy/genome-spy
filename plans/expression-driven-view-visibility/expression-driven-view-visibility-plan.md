@@ -30,8 +30,9 @@ parent becomes visible reads the parameters’ current values. Both cases use th
 same binding code.
 
 Support parameters available before layout, including ordinary derived and
-selection parameters. Classify derived declarations as they bind in lexical
-order so a later declaration cannot change an earlier expression's inputs.
+selection parameters. Validate the bound expression once, following parameter refs to
+their defining expressions. This preserves lexical shadowing and covers
+debounced and transitioned parameters.
 Report datum, unsupported scale or automatic layout dependencies and non-boolean results
 at `visible.expr`. An authored
 parameter named `width` is an ordinary input. A track whose visibility requires

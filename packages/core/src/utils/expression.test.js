@@ -51,22 +51,19 @@ describe("expression helpers", () => {
 
     test("analyzes scale helpers and referenced globals", () => {
         expect(analyzeExpression("width * scale('x', step)")).toEqual({
-            scaleHelpers: [{ kind: "scale", channel: "x" }],
+            usesScaleHelper: true,
             globals: ["width", "step"],
         });
         expect(analyzeExpression("domain('y')[offset]")).toEqual({
-            scaleHelpers: [{ kind: "domain", channel: "y" }],
+            usesScaleHelper: true,
             globals: ["offset"],
         });
         expect(analyzeExpression("zoomLevel() * zoomLevel('x')")).toEqual({
-            scaleHelpers: ["x", "y", "x"].map((channel) => ({
-                kind: "zoomLevel",
-                channel,
-            })),
+            usesScaleHelper: true,
             globals: [],
         });
         expect(analyzeExpression("datum.value + scaleFactor")).toEqual({
-            scaleHelpers: [],
+            usesScaleHelper: false,
             globals: ["datum", "scaleFactor"],
         });
     });

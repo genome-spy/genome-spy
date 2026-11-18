@@ -3,6 +3,9 @@
  * subscribers, allowing consumers to retain the value until the next
  * notification or explicit dataflow boundary.
  *
+ * An expression parameter retains its bound definingExpression, including
+ * when a transition or debounce delays publication of its value.
+ *
  * @template T
  * @typedef {{
  *   id: string,
@@ -11,6 +14,7 @@
  *   rank?: number,
  *   propagation?: "sync",
  *   batchStable?: boolean,
+ *   definingExpression?: ExprRefFunction,
  *   get: () => T,
  *   subscribe: (listener: () => void) => () => void
  * }} ParamRef
