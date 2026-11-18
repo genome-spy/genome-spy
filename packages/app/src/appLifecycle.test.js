@@ -436,6 +436,37 @@ test("a legacy choice is consumed by the first matching track", async () => {
     expect(replacement.visibility.locallyVisible).toBe(true);
 });
 
+test("View settings toggles generated metadata columns and keeps choices across rebuilds", async () => {
+    const app = await createApp([], {}, { vconcat: [cohortSpec("A")] });
+    const opener = app.appContainer.querySelector(
+        "button[title='View settings']"
+    );
+    const findCheckbox = (/** @type {string} */ title) =>
+        Array.from(
+            document.querySelectorAll("[aria-label='View settings'] input")
+        ).find((input) => input.closest("label").textContent.trim() === title);
+
+    opener.click();
+    const status = findCheckbox("status");
+    expect(status.disabled).toBe(false);
+    status.click();
+    expect(findCheckbox("status").checked).toBe(false);
+    opener.click();
+
+    await app.intentPipeline.submit(
+        sampleSlice.actions.addMetadata({
+            columnarMetadata: { sample: ["s1", "s2"], added: [1, 2] },
+        })
+    );
+    await app.getSampleView().metadataView.whenMetadataSettled();
+
+    opener.click();
+    expect(findCheckbox("added").disabled).toBe(false);
+    expect(findCheckbox("status").checked).toBe(false);
+    findCheckbox("status").click();
+    expect(findCheckbox("status").checked).toBe(true);
+});
+
 test("View settings keeps parameter controls and manual children of a hidden expression view", async () => {
     const app = await createApp(
         [],

@@ -32,9 +32,17 @@ export default class ViewVisibilitySettings {
         return this.store.getState().viewSettings.visibilities;
     }
 
-    /** @param {View} root */
-    updateHierarchy(root) {
+    /**
+     * @param {View} root
+     * @param {View} [rebuiltSubtree] Preserve choices for generated views recreated with the same selector.
+     */
+    updateHierarchy(root, rebuiltSubtree) {
         const keys = getViewVisibilityKeys(root);
+        const rebuiltKeys =
+            rebuiltSubtree &&
+            new Set(
+                rebuiltSubtree.getDescendants().map((view) => keys.get(view))
+            );
         const hiddenBefore = this.#getRadioHiddenViews();
         const previous = this.choices;
         const next = normalizeViewSettingsPayload(
@@ -47,7 +55,7 @@ export default class ViewVisibilitySettings {
             if (live.has(view)) {
                 view.visibilityOverride = previous[key];
             }
-            delete next[key];
+            if (!rebuiltKeys?.has(key)) delete next[key];
         }
         for (const [view, key] of keys) {
             if (view.visibilityOverride !== undefined) {

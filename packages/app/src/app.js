@@ -276,6 +276,12 @@ export default class App {
             if (view.disposed) throw new Error("SampleView has been disposed.");
             return this.runCohortOperation(operation);
         };
+        view.onMetadataViewsChanged = (metadataView) => {
+            this.viewVisibility.updateHierarchy(
+                this.genomeSpy.viewRoot,
+                metadataView
+            );
+        };
         view.registerDisposer(() => {
             if (this.#sampleViewCandidate === view)
                 this.#sampleViewCandidate = undefined;

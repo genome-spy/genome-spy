@@ -353,6 +353,7 @@ export class MetadataView extends ConcatView {
             if (this.#isMetadataStale(metadataGeneration)) {
                 return;
             }
+            this.#sampleView.onMetadataViewsChanged?.(this);
             await this.syncGuideViews();
             if (this.#isMetadataStale(metadataGeneration)) {
                 return;
