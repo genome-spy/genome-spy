@@ -93,6 +93,29 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Changing view visibility
+
+Hide a track to reclaim its layout space while retaining its handle, loaded
+data, and selections. `visibility.locallyVisible` reads the view's own choice
+even when an ancestor is hidden. Views controlled by an expression have an
+undefined `visibility.staticDefault` and reject manual writes.
+
+Save `visibility.override` with the track's selector when the override is a
+boolean. Restore saved choices with `initialVisibilityOverrides` during embed:
+
+```js
+const coverage = { scope: [], view: "coverage" };
+const api = await embed(container, spec, {
+  initialVisibilityOverrides: [{ ...coverage, visible: false }],
+});
+const { visibility } = api.views.get(coverage);
+await visibility.setOverride(undefined); // Resume the authored default.
+```
+
+Showing a track for the first time may load data. Await `setOverride()` for
+that initialization and [subscribe to layout](#reading-layout-bounds) for
+updated bounds.
+
 ## Reading transformed records
 
 Each handle exposes `data` for reading and analyzing its current transformed

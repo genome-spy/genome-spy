@@ -924,10 +924,18 @@ export default class View {
         return isExprRef(this.spec.visible);
     }
 
-    isConfiguredVisible() {
+    /** @type {boolean | undefined} */
+    visibilityOverride;
+
+    isLocallyVisible() {
         return this.visibilityIsExpression
             ? this.isVisibleInSpec()
-            : this.context.isViewConfiguredVisible(this);
+            : (this.visibilityOverride ??
+                  this.context.isViewConfiguredVisible(this));
+    }
+
+    isConfiguredVisible() {
+        return this.isLocallyVisible();
     }
 
     /** @type {import("../paramRuntime/types.js").ParamRef<boolean>} */

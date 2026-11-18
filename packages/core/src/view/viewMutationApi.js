@@ -25,6 +25,7 @@ import { createEmbedParamNamespace } from "../paramRuntime/embedParamApi.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { bindDisposer } from "../utils/bindDisposer.js";
 import { NamedDataBinding } from "../data/namedDataScope.js";
+import { applyVisibilityUpdate } from "../genomeSpy/viewDataInit.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -421,11 +422,58 @@ export function createViewMutationApi(
             }),
 
             marks: createViewMarksApi(view),
+
+            visibility: createViewVisibilityApi(view),
         };
 
         handlesByView.set(view, handle);
         viewsByHandle.set(handle, view);
         return handle;
+    }
+
+    /**
+     * @param {import("./view.js").default} view
+     * @returns {import("../types/embedApi.js").ViewVisibilityApi}
+     */
+    function createViewVisibilityApi(view) {
+        const ensureLive = () => {
+            ensureEmbedIsActive(isActive);
+            ensureViewIsLive(view);
+        };
+        return {
+            get locallyVisible() {
+                ensureLive();
+                return view.isLocallyVisible();
+            },
+            get staticDefault() {
+                ensureLive();
+                return view.visibilityIsExpression
+                    ? undefined
+                    : view.isVisibleInSpec();
+            },
+            get override() {
+                ensureLive();
+                return view.visibilityOverride;
+            },
+            setOverride: (value) =>
+                enqueue(async () => {
+                    ensureLive();
+                    if (view.visibilityIsExpression) {
+                        throw new ViewMutationError(
+                            "expressionControlledVisibility",
+                            "View visibility is controlled by an expression."
+                        );
+                    }
+                    if (value !== undefined && typeof value !== "boolean") {
+                        throw new TypeError(
+                            "Visibility override must be a boolean or undefined."
+                        );
+                    }
+                    await applyVisibilityUpdate(getRootView(), view, () => {
+                        view.visibilityOverride = value;
+                    });
+                }),
+        };
     }
 
     /**
@@ -515,7 +563,7 @@ export function createViewMutationApi(
         if (!isLiveView(view, getRootView)) {
             throw new ViewMutationError(
                 "staleHandle",
-                "Cannot use a mark API handle for a removed view."
+                "Cannot use an API handle for a removed view."
             );
         }
     }

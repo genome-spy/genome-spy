@@ -39,6 +39,7 @@ import {
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
+import { resolveVisibilityOverrides } from "./view/viewVisibility.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
 import { initializeViewGuides } from "./view/gridView/guideViewSync.js";
@@ -517,6 +518,17 @@ export default class GenomeSpy {
         }
     }
 
+    /** @internal Applies saved choices to the constructed startup hierarchy. */
+    initializeViewVisibility() {
+        if (!this.options.initialVisibilityOverrides?.length) return;
+        for (const [view, visible] of resolveVisibilityOverrides(
+            this.viewRoot,
+            this.options.initialVisibilityOverrides
+        )) {
+            view.visibilityOverride = visible;
+        }
+    }
+
     /**
      * @param {import("./types/viewContext.js").default} context
      */
@@ -532,6 +544,8 @@ export default class GenomeSpy {
             null,
             VIEW_ROOT_NAME
         );
+
+        this.initializeViewVisibility();
 
         // Reminder: assemblies must be ensured after view creation (imports and
         // inheritance resolved), but before any code path that may touch scales

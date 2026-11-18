@@ -8,6 +8,12 @@ import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
 import { collectSubtreeViews } from "../view/flowBuilder.js";
 
+/** @typedef {import("../view/view.js").default} View */
+/** @typedef {import("../data/dataFlow.js").default} DataFlow */
+
+/** @type {WeakMap<import("../types/viewContext.js").default, Map<View, Promise<DataFlow>>>} */
+const pendingInitializations = new WeakMap();
+
 /**
  * Initializes the view data pipeline: builds the flow graph, awaits fonts,
  * and loads sources.
@@ -65,18 +71,49 @@ export async function initializeViewData(
     }
 
     if (context.requestVisibilityRefresh) {
-        context.requestVisibilityRefresh = () => {
+        context.requestVisibilityRefresh = (immediate) => {
+            if (immediate) {
+                changed = false;
+                return refreshVisibility(viewRoot);
+            }
             if (changed) return;
             changed = true;
             queueMicrotask(() => {
-                changed = false;
-                if (context.requestVisibilityRefresh) {
+                if (changed && context.requestVisibilityRefresh) {
+                    changed = false;
                     void refreshVisibility(viewRoot).catch(context.reportError);
                 }
             });
         };
     }
     return builtDataFlow;
+}
+
+/**
+ * Also awaits branches a previous refresh has wired but is still loading.
+ * @param {View} root
+ * @param {View} target
+ * @param {() => void} write
+ */
+export async function applyVisibilityUpdate(root, target, write) {
+    const pending = pendingInitializations.get(root.context);
+    const hidden = new Set(pending?.keys().filter((view) => !view.isVisible()));
+
+    write();
+
+    /** @type {Set<Promise<unknown>>} */
+    const waits = new Set();
+    const refresh = root.context.requestVisibilityRefresh?.(true);
+    waits.add(refresh || refreshVisibility(root));
+    if (pending?.size) {
+        const subtree = new Set(target.getDescendants());
+        for (const [view, completion] of pending) {
+            if ((subtree.has(view) || hidden.has(view)) && view.isVisible()) {
+                waits.add(completion);
+            }
+        }
+    }
+    await Promise.all(waits);
 }
 
 /**
@@ -143,6 +180,40 @@ export async function initializeVisibleViewData(
         return dataFlow;
     }
 
+    const completion = initializeNewlyVisibleViews(
+        viewRoot,
+        dataFlow,
+        textMetrics,
+        visibilityPredicate,
+        viewsToInitialize
+    );
+    let pending = pendingInitializations.get(viewRoot.context);
+    if (!pending) {
+        pending = new Map();
+        pendingInitializations.set(viewRoot.context, pending);
+    }
+    for (const view of viewsToInitialize) pending.set(view, completion);
+    try {
+        return await completion;
+    } finally {
+        for (const view of viewsToInitialize) pending.delete(view);
+    }
+}
+
+/**
+ * @param {View} viewRoot
+ * @param {DataFlow} dataFlow
+ * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
+ * @param {(view: View) => boolean} visibilityPredicate
+ * @param {View[]} viewsToInitialize
+ */
+async function initializeNewlyVisibleViews(
+    viewRoot,
+    dataFlow,
+    textMetrics,
+    visibilityPredicate,
+    viewsToInitialize
+) {
     const viewsToInitializeSet = new Set(viewsToInitialize);
     const viewInitializationPredicate = (
         /** @type {import("../view/view.js").default} */ view

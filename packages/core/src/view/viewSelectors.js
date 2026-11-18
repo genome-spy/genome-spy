@@ -274,12 +274,13 @@ export function visitAddressableViews(root, visitor) {
  *
  * @param {import("./view.js").default} root
  * @param {ViewSelector} selector
+ * @param {boolean} [skipAmbiguous]
  * @returns {import("./view.js").default | undefined}
  */
-export function resolveViewSelector(root, selector) {
+export function resolveViewSelector(root, selector, skipAmbiguous = false) {
     validateViewSelector(selector);
 
-    const scopeRoot = resolveScopeRoot(root, selector.scope);
+    const scopeRoot = resolveScopeRoot(root, selector.scope, skipAmbiguous);
     if (!scopeRoot) {
         return;
     }
@@ -300,7 +301,7 @@ export function resolveViewSelector(root, selector) {
 
     if (matches.length === 1) {
         return matches[0];
-    } else if (matches.length === 0) {
+    } else if (matches.length === 0 || skipAmbiguous) {
         return;
     }
 
@@ -689,9 +690,10 @@ function hasAddressableFeatures(root) {
  *
  * @param {import("./view.js").default} root
  * @param {string[]} scope
+ * @param {boolean} [skipAmbiguous]
  * @returns {import("./view.js").default | undefined}
  */
-function resolveScopeRoot(root, scope) {
+function resolveScopeRoot(root, scope, skipAmbiguous = false) {
     /** @type {import("./view.js").default} */
     let current = root;
 
@@ -731,6 +733,7 @@ function resolveScopeRoot(root, scope) {
         );
 
         if (hasDuplicate) {
+            if (skipAmbiguous) return;
             throw new Error(
                 'Multiple import instances named "' + name + '" in scope.'
             );

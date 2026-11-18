@@ -11,6 +11,7 @@ import {
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
 import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
+import InlineSource from "../data/sources/inlineSource.js";
 import OutlineTextMetricsProvider from "../rendering/webgpu/outlineTextMetrics.js";
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
@@ -1539,7 +1540,7 @@ describe("ViewMutationApi", () => {
         const { view } = await createHeadlessEngine(
             {
                 name: "tracks",
-                vconcat: [],
+                vconcat: [{ mark: "point", data: { values: [{}] } }],
             },
             {
                 contextOptions: {
@@ -1551,7 +1552,16 @@ describe("ViewMutationApi", () => {
         requestLayoutReflow.mockClear();
 
         const api = createViewMutationApi({ viewRoot: view });
+        const [unnamed] = api.root().children();
         await api.transaction(async (views) => {
+            await api.root().visibility.setOverride(false);
+            expect(unnamed.visibility.locallyVisible).toBe(true);
+            await api.root().visibility.setOverride(undefined);
+            expect(unnamed.visibility.staticDefault).toBe(true);
+            await unnamed.visibility.setOverride(true);
+            expect(unnamed.visibility.override).toBe(true);
+            await unnamed.visibility.setOverride(false);
+            expect(unnamed.visibility.locallyVisible).toBe(false);
             await views.insert("root", makeUnitSpec("trackA"));
             await views.transaction(async (nestedViews) => {
                 await nestedViews.insert("root", makeUnitSpec("trackB"));
@@ -1566,7 +1576,62 @@ describe("ViewMutationApi", () => {
                 .root()
                 .children()
                 .map((child) => child.name)
-        ).toEqual(["trackA", "trackB"]);
+        ).toEqual([undefined, "trackA", "trackB"]);
+    });
+
+    test("joins first-show work in the target subtree without blocking an unrelated hide", async () => {
+        const { view } = await createHeadlessEngine({
+            params: [{ name: "showDetail", value: false }],
+            vconcat: [
+                makeUnitSpec("coverage"),
+                {
+                    name: "branch",
+                    vconcat: [
+                        {
+                            ...makeUnitSpec("detail"),
+                            visible: { expr: "showDetail" },
+                        },
+                    ],
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const [coverage, branch] = api.root().children();
+        const started = Promise.withResolvers();
+        const finish = Promise.withResolvers();
+        const load = InlineSource.prototype.load;
+        const loading = vi
+            .spyOn(InlineSource.prototype, "load")
+            .mockImplementationOnce(async function () {
+                started.resolve();
+                await finish.promise;
+                await load.call(this);
+            });
+        try {
+            view.paramRuntime.setValue("showDetail", true);
+            await started.promise;
+            const hidden = vi.fn();
+            const hide = coverage.visibility.setOverride(false).then(hidden);
+            await vi.waitFor(() => expect(hidden).toHaveBeenCalledOnce());
+            await hide;
+
+            const shown = vi.fn();
+            const show = branch.visibility.setOverride(true).then(shown);
+            await vi.waitFor(() =>
+                expect(branch.visibility.override).toBe(true)
+            );
+            expect(shown).not.toHaveBeenCalled();
+            finish.resolve();
+            await show;
+            expect(
+                branch.children()[0].data.read({ scope: "all", limit: 1 }).rows
+            ).toHaveLength(1);
+            expect(loading).toHaveBeenCalledOnce();
+        } finally {
+            finish.resolve();
+            loading.mockRestore();
+            view.disposeSubtree();
+        }
     });
 
     test("serializes concurrently started mutations inside a transaction", async () => {

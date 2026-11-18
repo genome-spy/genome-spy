@@ -14,6 +14,7 @@ import {
     validateSelectorConstraints,
 } from "./viewSelectors.js";
 import { VISIT_SKIP, VISIT_STOP } from "./view.js";
+import { resolveVisibilityOverrides } from "./viewVisibility.js";
 
 /**
  * @param {string} name
@@ -134,7 +135,7 @@ describe("view selectors", () => {
         expect(hasChromeAncestor(child)).toBe(true);
     });
 
-    test("resolveViewSelector separates named import scopes", async () => {
+    test("scoped visibility choices distinguish import instances and canonicalize import roots", async () => {
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -148,6 +149,8 @@ describe("view selectors", () => {
                     import: { template: "panel" },
                     name: "panelB",
                 },
+                { import: { template: "panel" }, name: "duplicate" },
+                { import: { template: "panel" }, name: "duplicate" },
             ],
         };
 
@@ -173,6 +176,19 @@ describe("view selectors", () => {
             view: "panelA",
         });
         expect(importRoot).toBeDefined();
+        expect(
+            resolveVisibilityOverrides(root, [
+                { scope: ["panelA"], view: "coverage", visible: false },
+                { scope: ["duplicate"], view: "coverage", visible: false },
+                { scope: [], view: "panelA", visible: false },
+                { scope: ["panelA"], view: "panelA", visible: true },
+            ])
+        ).toEqual(
+            new Map([
+                [viewA, false],
+                [importRoot, true],
+            ])
+        );
     });
 
     test("unnamed import scopes do not appear in selector chains", async () => {
