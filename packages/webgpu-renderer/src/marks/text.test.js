@@ -43,18 +43,27 @@ describe("textMark program identity", () => {
         ).not.toThrow();
     });
 
-    test("separates effect-free and effect-enabled outline programs", () => {
+    test("uses a shadow variant while foreground paints share identity", () => {
         const config = /** @type {any} */ ({
             font,
             channels: { text: { value: "AB" } },
         });
 
-        expect(textMark.getProgramKey(config)).not.toBe(
+        expect(textMark.getProgramKey(config)).toBe(
             textMark.getProgramKey({
                 ...config,
                 channels: {
                     ...config.channels,
                     strokeWidth: { value: 0, dynamic: true },
+                },
+            })
+        );
+        expect(textMark.getProgramKey(config)).not.toBe(
+            textMark.getProgramKey({
+                ...config,
+                channels: {
+                    ...config.channels,
+                    shadowOpacity: { value: 0, dynamic: true },
                 },
             })
         );

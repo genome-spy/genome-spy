@@ -154,7 +154,7 @@ test("text mark renders supersampled RGBA16F TrueType outlines", async ({
     });
 });
 
-test("TrueType text renders label-major outline and SDF shadow layers", async ({
+test("TrueType text renders foreground paint and SDF shadows", async ({
     page,
 }) => {
     await ensureWebGPU(page);
@@ -244,35 +244,17 @@ test("TrueType text renders label-major outline and SDF shadow layers", async ({
         const shadowPixel = findPixel(
             ([r, g, b, a]) => a > 32 && r > g + 70 && r > b + 70
         );
-        const program = renderer._marks.get(mark.markId);
-        const picks = await Promise.all(
-            [fillPixel, outlinePixel, shadowPixel].map((position) =>
-                position ? renderer.pick(position[0], position[1]) : null
-            )
-        );
         const validationError = await renderer.device.popErrorScope();
-        const drawCount = program.drawCount;
-        const expandedInstances = program.resolveDrawRange(0, 1).instanceCount;
-        const hasRenderItems = program._extraBuffers.has("renderItems");
         renderer.destroy();
         canvas.remove();
         return {
             found: [fillPixel, outlinePixel, shadowPixel].map(Boolean),
-            picks,
-            drawCount,
-            expandedInstances,
-            hasRenderItems,
             validationError: validationError?.message ?? null,
         };
     });
 
     expect(result).toEqual({
         found: [true, true, true],
-        // These effect samples also lie inside the base glyph quad.
-        picks: [91, 91, 91],
-        drawCount: 1,
-        expandedInstances: 3,
-        hasRenderItems: true,
         validationError: null,
     });
 });

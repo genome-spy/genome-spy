@@ -12,9 +12,10 @@ const STRINGS = ["GenomeSpy", "Outlined labels", "SDF glow", "AV M&W 50%"];
  * @prop {number} [angle]
  * @prop {string} [fill]
  * @prop {number} [fillOpacity]
- * @prop {string} [outlineColor]
- * @prop {number} [outlineWidth]
- * @prop {number} [outlineOpacity]
+ * @prop {number} [opacity]
+ * @prop {string} [stroke]
+ * @prop {number} [strokeWidth]
+ * @prop {number} [strokeOpacity]
  * @prop {string} [shadowColor]
  * @prop {number} [shadowOpacity]
  * @prop {number} [shadowBlur]
@@ -59,9 +60,10 @@ export default async function runTextEffectsScene(canvas, options = {}) {
         angle: options.angle ?? -6,
         fill: options.fill ?? "#f7f8ff",
         fillOpacity: options.fillOpacity ?? 1,
-        outlineColor: options.outlineColor ?? "#14213d",
-        outlineWidth: options.outlineWidth ?? 4,
-        outlineOpacity: options.outlineOpacity ?? 1,
+        opacity: options.opacity ?? 1,
+        stroke: options.stroke ?? "#14213d",
+        strokeWidth: options.strokeWidth ?? 4,
+        strokeOpacity: options.strokeOpacity ?? 1,
         shadowColor: options.shadowColor ?? "#2457ff",
         shadowOpacity: options.shadowOpacity ?? 0.55,
         shadowBlur: options.shadowBlur ?? 7,
@@ -104,13 +106,14 @@ export default async function runTextEffectsScene(canvas, options = {}) {
             baseline: { value: 1, type: "u32" },
             fill: { value: parseColor(initial.fill), dynamic: true },
             fillOpacity: { value: initial.fillOpacity, dynamic: true },
+            opacity: { value: initial.opacity, dynamic: true },
             stroke: {
-                value: parseColor(initial.outlineColor),
+                value: parseColor(initial.stroke),
                 dynamic: true,
             },
-            strokeWidth: { value: initial.outlineWidth, dynamic: true },
+            strokeWidth: { value: initial.strokeWidth, dynamic: true },
             strokeOpacity: {
-                value: initial.outlineOpacity,
+                value: initial.strokeOpacity,
                 dynamic: true,
             },
             shadowColor: {
@@ -151,12 +154,11 @@ export default async function runTextEffectsScene(canvas, options = {}) {
             values.angle.set(next.angle ?? initial.angle);
             values.fill.set(parseColor(next.fill ?? initial.fill));
             values.fillOpacity.set(next.fillOpacity ?? initial.fillOpacity);
-            values.stroke.set(
-                parseColor(next.outlineColor ?? initial.outlineColor)
-            );
-            values.strokeWidth.set(next.outlineWidth ?? initial.outlineWidth);
+            values.opacity.set(next.opacity ?? initial.opacity);
+            values.stroke.set(parseColor(next.stroke ?? initial.stroke));
+            values.strokeWidth.set(next.strokeWidth ?? initial.strokeWidth);
             values.strokeOpacity.set(
-                next.outlineOpacity ?? initial.outlineOpacity
+                next.strokeOpacity ?? initial.strokeOpacity
             );
             values.shadowColor.set(
                 parseColor(next.shadowColor ?? initial.shadowColor)

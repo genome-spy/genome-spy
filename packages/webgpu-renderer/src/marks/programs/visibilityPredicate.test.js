@@ -18,7 +18,7 @@ describe("built-in mark visibility culls", () => {
         const shaderBody = Object.getOwnPropertyDescriptor(
             Program.prototype,
             "shaderBody"
-        ).get.call({});
+        ).get.call({ _markConfig: { shadow: false } });
 
         expect(shaderBody).toContain(
             "if (!isInstanceVisible(i) || !isPlacementVisible(i))"
