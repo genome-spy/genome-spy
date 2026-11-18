@@ -345,13 +345,12 @@ export default class FacetView extends ContainerView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
-        super.arrange(context, coords, options);
         this.#interactionCells = [];
         this.#zoomBounds = Rectangle.ZERO;
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         // Outer axes need not occur in the first cell.
         for (const axis of Object.values(this.#gridChild.axes)) {
@@ -510,7 +509,7 @@ export default class FacetView extends ContainerView {
     propagateInteraction(event) {
         propagateInteraction(this, event, () => {
             const layout = this.getInteractionCell(event.point);
-            if (layout) {
+            if (layout && this.child.isConfiguredVisible()) {
                 event.facetId = layout.cell.facetId;
                 this.child.propagateInteraction(event);
             }

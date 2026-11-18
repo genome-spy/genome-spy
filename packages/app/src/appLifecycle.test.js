@@ -3,7 +3,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import InlineSource from "@genome-spy/core/data/sources/inlineSource.js";
-import { renderToLayout } from "@genome-spy/core/view/testUtils.js";
 import GenomeStore from "@genome-spy/core/genome/genomeStore.js";
 import { createHeadlessEngine } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
@@ -234,6 +233,7 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
             },
         })
     );
+    const loadInline = InlineSource.prototype.load;
     const load = vi.spyOn(InlineSource.prototype, "load");
     const app = await createApp(
         [{ name: "mode", value: "overview" }],
@@ -272,7 +272,10 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
     const root = app.genomeSpy.viewRoot;
     const coverage = root.findDescendantByName("coverage");
     const detail = root.findDescendantByName("detail");
-    renderToLayout(root);
+    const svg = () =>
+        createSvg({ viewRoot: root, logicalWidth: 200, logicalHeight: 100 })
+            .svg;
+    expect(svg().querySelector('[data-name="coverage"]')).toBeNull();
     expect(coverage.coords).toBeUndefined();
     expect(coverage.flowHandle).toBeUndefined();
     expect(detail.flowHandle).toBeUndefined();
@@ -293,11 +296,27 @@ test("a URL bookmark defers Coverage and leaves Detail under parameter control",
     handle.params.get("brush").setValue(brush);
     api.setViewVisibility(coverageSelector, false);
     await Promise.resolve();
+    // Hide Detail again while its first independent data load is in flight.
+    const started = Promise.withResolvers();
+    const finish = Promise.withResolvers();
+    load.mockImplementationOnce(async function () {
+        started.resolve();
+        await finish.promise;
+        await loadInline.call(this);
+    });
     root.paramRuntime.setValue("mode", "detail");
+    await started.promise;
+    root.paramRuntime.setValue("mode", "overview");
+    await root.paramRuntime.whenPropagated();
+    expect(svg().querySelector('[data-name="detail"]')).toBeNull();
+    finish.resolve();
     await vi.waitFor(() =>
         expect(detail.flowHandle?.collector.completed).toBe(true)
     );
-    expect(detail.isVisible()).toBe(true);
+    expect(detail.isVisible()).toBe(false);
+    root.paramRuntime.setValue("mode", "detail");
+    await root.paramRuntime.whenPropagated();
+    expect(svg().querySelector('[data-name="detail"]')).toBeTruthy();
     expect(coverage.isVisible()).toBe(false);
     api.setViewVisibility(coverageSelector, true);
     await Promise.resolve();

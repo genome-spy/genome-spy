@@ -9,6 +9,7 @@ import MockLazySource from "../data/sources/lazy/mockLazySource.js";
 import {
     createHeadlessEngine,
     createTestViewContext,
+    renderToLayout,
 } from "../view/testUtils.js";
 import {
     initializeViewData,
@@ -32,9 +33,72 @@ describe("viewDataInit", () => {
                     mark: "point",
                     encoding: { x: { datum: 0, type: "quantitative" } },
                 })
-            ).rejects.toThrow(/datum|visible.expr/);
+            ).rejects.toThrow(/visible\.expr/);
         }
     );
+    test.each([false, true])(
+        "uses a derived parameter's original binding when a later declaration shadows it (%s)",
+        async (parentUsesLayout) => {
+            const parent = {
+                name: "p",
+                expr: parentUsesLayout ? "width" : "2",
+            };
+            const shadow = {
+                name: "p",
+                expr: parentUsesLayout ? "2" : "width",
+            };
+            const launch = createHeadlessEngine({
+                params: [parent],
+                vconcat: [
+                    {
+                        params: [{ name: "show", expr: "p > 0" }, shadow],
+                        visible: { expr: "show" },
+                        mark: "point",
+                        data: { values: [{}] },
+                    },
+                ],
+            });
+            if (parentUsesLayout)
+                await expect(launch).rejects.toThrow(/visible.expr/);
+            else {
+                const { view } = await launch;
+                expect(view.isConfiguredVisible()).toBe(true);
+                view.disposeSubtree();
+            }
+        }
+    );
+
+    test("restores loaded tracks to the shared domain and clears hidden root bounds", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [{ name: "mode", value: "wide" }],
+            visible: { expr: "mode !== 'hidden'" },
+            resolve: { scale: { x: "shared" } },
+            vconcat: [100, 10].map((x, i) => ({
+                visible: {
+                    expr: i === 0 ? "mode !== 'narrow'" : "mode !== 'wide'",
+                },
+                mark: "point",
+                data: { values: [{ x }] },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            })),
+        });
+        onTestFinished(() => root.disposeSubtree());
+        const x = root.getScaleResolution("x");
+        expect(x.getDomain()).toEqual([0, 100]);
+        root.paramRuntime.setValue("mode", "narrow");
+        await vi.waitFor(() => expect(x.getDomain()).toEqual([0, 10]));
+        root.paramRuntime.setValue("mode", "both");
+        await vi.waitFor(() => expect(x.getDomain()).toEqual([0, 100]));
+        renderToLayout(root);
+        expect(root.coords).toBeDefined();
+        root.paramRuntime.setValue("mode", "hidden");
+        await root.paramRuntime.whenPropagated();
+        renderToLayout(root);
+        expect(root.coords).toBeUndefined();
+    });
+
     test("reconciles visibility changed while startup awaits fonts", async () => {
         const context = createTestViewContext();
         const root = await context.createOrImportView(

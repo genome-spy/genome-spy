@@ -73,22 +73,14 @@ export default class MergeSampleFacets extends FlowNode {
         const unsubscribeHierarchy = subscribeTo(
             this.provenance.store,
             (state) => state.provenance.present[SAMPLE_SLICE_NAME],
-            () => {
-                // TODO: Should update only when the structure of the sample hierarchy changes.
-                // i.e., when groups or samples are added or removed. Reordering the
-                // the samples within a group should not trigger an update.
-                // TODO: Also check child visibilities. No need to propagate if
-                // the directly attached view is visible but all its children are
-                // invisible.
-                scheduleUpdate();
-            }
+            scheduleUpdate
         );
         this.view.registerDisposer(unsubscribeHierarchy);
 
         // A hidden summary may miss a cohort change or a data publication.
         view.registerDisposer(
             view._addBroadcastHandler("layoutComputed", () => {
-                if (this.#pending && view.isVisible()) scheduleUpdate();
+                if (this.#pending) scheduleUpdate();
             })
         );
     }
@@ -195,16 +187,6 @@ export default class MergeSampleFacets extends FlowNode {
         for (const child of this.children) {
             child.beginBatch(flowBatch);
         }
-    }
-
-    /**
-     *
-     * @param {FlowNode} parent
-     */
-    setParent(parent) {
-        super.setParent(parent);
-
-        // TODO: Validate that the parent is a collector
     }
 }
 

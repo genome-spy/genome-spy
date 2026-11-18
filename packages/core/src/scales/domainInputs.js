@@ -476,6 +476,7 @@ export default function createDomainInputs({
         }
 
         return {
+            members,
             zoomLevelResolutions,
 
             get lastVisible() {

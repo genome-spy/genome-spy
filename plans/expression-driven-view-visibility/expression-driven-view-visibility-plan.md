@@ -30,10 +30,10 @@ parent becomes visible reads the parameters’ current values. Both cases use th
 same binding code.
 
 Support parameters available before layout, including ordinary derived and
-selection parameters. At binding, use the existing expression analysis and
-scoped declarations to check the inputs the expression references. Follow
-derived declarations in their own scope. Report datum, scale, or automatic
-layout dependencies and non-boolean results at `visible.expr`. An authored
+selection parameters. Classify derived declarations as they bind in lexical
+order so a later declaration cannot change an earlier expression's inputs.
+Report datum, scale, or automatic layout dependencies and non-boolean results
+at `visible.expr`. An authored
 parameter named `width` is an ordinary input. A track whose visibility requires
 its own unloaded data has a circular specification. Document that limit and
 leave data loading under the existing producer rules.
@@ -107,6 +107,13 @@ Use a `vconcat` with ordinary Coverage and expression-controlled Detail.
 
 In the existing App sample tests, regroup while a summary is hidden and reveal
 it with a parameter write. Its aggregates should reflect the new groups.
+
+The Core and App verification cases are covered by the data initialization,
+import, live Canvas, App lifecycle, and sample summary tests. Review also
+identified regressions around direct arrangement, pointer routing, and shared
+scale domains when loaded tracks reappear. The final milestone covers these
+paths and checks that domain input bindings are updated only for scales whose
+visible members change.
 
 ## Follow-ups in #740
 

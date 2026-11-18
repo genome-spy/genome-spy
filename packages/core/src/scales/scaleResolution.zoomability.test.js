@@ -21,7 +21,7 @@ function createMember({ path, channel = "x", type = "index", zoom }) {
             getConfigScopes: () => [INTERNAL_DEFAULT_CONFIG],
             getEncoding: () => ({}),
             getPathString: () => path,
-            isConfiguredVisible: () => true,
+            isVisible: () => true,
             isDataInitialized: () => true,
         }),
         channelDef: {

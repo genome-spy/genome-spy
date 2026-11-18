@@ -391,6 +391,7 @@ export interface ViewSpecBase extends ResolveSpec {
      * A hidden view leaves the layout and retains its data and selections.
      * A boolean sets the default. A parameter expression controls visibility
      * exclusively and must return a boolean without reading scales or layout.
+     * Visibility must be decidable before an independently loaded track has data.
      *
      * **Default:** `true`
      */

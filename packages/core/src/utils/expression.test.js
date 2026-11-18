@@ -64,7 +64,7 @@ describe("expression helpers", () => {
         });
         expect(analyzeExpression("datum.value + scaleFactor")).toEqual({
             usesScaleHelper: false,
-            globals: ["scaleFactor"],
+            globals: ["datum", "scaleFactor"],
         });
     });
 

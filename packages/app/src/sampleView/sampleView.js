@@ -1347,11 +1347,10 @@ export default class SampleView extends ContainerView {
      * @type {import("@genome-spy/core/types/rendering.js").ArrangeMethod}
      */
     arrange(context, coords, options = {}) {
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         if (!this.layoutParent) {
             // Usually padding is applied by GridView, but if this is the root view, we need to apply it here
@@ -1888,14 +1887,13 @@ export default class SampleView extends ContainerView {
             }
 
             const mainPaneZoomCoords = this.#getMainPaneZoomCoords();
-            const inMainPane = this.childCoords.containsPoint(
-                event.point.x,
-                event.point.y
-            );
-            const inMainPaneZoomSurface = mainPaneZoomCoords.containsPoint(
-                event.point.x,
-                event.point.y
-            );
+            const mainVisible = this.#gridChild.view.isConfiguredVisible();
+            const inMainPane =
+                mainVisible &&
+                this.childCoords.containsPoint(event.point.x, event.point.y);
+            const inMainPaneZoomSurface =
+                mainVisible &&
+                mainPaneZoomCoords.containsPoint(event.point.x, event.point.y);
             const inSidebar = this.sidebarCoords.containsPoint(
                 event.point.x,
                 event.point.y

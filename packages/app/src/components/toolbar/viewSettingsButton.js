@@ -236,16 +236,15 @@ class ViewSettingsButton extends LitElement {
 
     #makeToggles() {
         const viewRoot = this.#app.genomeSpy.viewRoot;
-        const visibilities = this.getVisibilities();
-        const effectiveVisibilities = viewRoot
-            ? resolveRadioVisibilityConflicts(viewRoot, visibilities)
-            : visibilities;
-        const uniqueSelectorKeys = viewRoot
-            ? getUniqueViewSelectorKeys(viewRoot)
-            : new Set();
-        const radioGroupsBySelector = viewRoot
-            ? getRadioVisibilityGroupsBySelector(viewRoot)
-            : new Map();
+        if (!viewRoot || !this.#nestedPaths) return [];
+
+        const effectiveVisibilities = resolveRadioVisibilityConflicts(
+            viewRoot,
+            this.getVisibilities()
+        );
+        const uniqueSelectorKeys = getUniqueViewSelectorKeys(viewRoot);
+        const radioGroupsBySelector =
+            getRadioVisibilityGroupsBySelector(viewRoot);
 
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
@@ -261,10 +260,7 @@ class ViewSettingsButton extends LitElement {
                 (getViewVisibilityOverride(effectiveVisibilities, view) ??
                     view.isVisibleInSpec());
             const selectorKey = getViewVisibilityKey(view);
-            const radioGroup =
-                selectorKey && radioGroupsBySelector.has(selectorKey)
-                    ? radioGroupsBySelector.get(selectorKey)
-                    : undefined;
+            const radioGroup = radioGroupsBySelector.get(selectorKey);
             const isRadioGroup = Boolean(
                 radioGroup && radioGroup.memberKeys.length > 1
             );
@@ -348,9 +344,7 @@ class ViewSettingsButton extends LitElement {
                                       ? this.#handleRadioClick(
                                             event,
                                             view,
-                                            /** @type {{ memberKeys: string[] }} */ (
-                                                radioGroup
-                                            ).memberKeys
+                                            radioGroup.memberKeys
                                         )
                                       : this.#handleCheckboxClick(event, view)}
                           />${label}
@@ -371,10 +365,6 @@ class ViewSettingsButton extends LitElement {
                 }
             }
         };
-
-        if (!this.#nestedPaths) {
-            return items;
-        }
 
         const startDepth =
             this.#nestedPaths.children.length ||

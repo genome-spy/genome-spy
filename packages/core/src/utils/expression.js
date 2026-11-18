@@ -138,21 +138,21 @@ const functionContext = {
 
 /**
  * Finds scale helper calls and referenced globals without binding the
- * expression to a parameter scope or scale resolution.
+ * expression to a parameter scope or scale resolution. Analysis includes datum
+ * among the globals so callers can identify expressions that require a row.
  *
  * @param {string} expr
  * @param {import("../types/embedApi.js").SpecLocation} [specLocation]
- * @param {boolean} [allowDatum]
  * @returns {{ usesScaleHelper: boolean, globals: string[] }}
  */
-export function analyzeExpression(expr, specLocation, allowDatum = true) {
+export function analyzeExpression(expr, specLocation) {
     let usesScaleHelper = false;
     const fn = createFunction(
         expr,
         {},
         {
             specLocation,
-            allowDatum,
+            includeDatumInGlobals: true,
             resolveScaleResolution: () => {
                 usesScaleHelper = true;
                 // The compiler only captures this object in helper closures. The
@@ -217,7 +217,7 @@ function buildFunctions(codegen, context) {
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
  * @typedef {object} ExpressionCompileContext
- * @prop {boolean} [allowDatum]
+ * @prop {boolean} [includeDatumInGlobals]
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  * @prop {import("../types/embedApi.js").SpecLocation} [specLocation]
  *
@@ -508,8 +508,9 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         };
 
         const cg = codegenExpression({
-            forbidden: context.allowDatum === false ? ["datum"] : [],
-            allowed: ["datum", "undefined"],
+            allowed: context.includeDatumInGlobals
+                ? ["undefined"]
+                : ["datum", "undefined"],
             globalvar: "globalObject",
             fieldvar: "datum",
             functions: (visitor) => buildFunctions(visitor, helperContext),

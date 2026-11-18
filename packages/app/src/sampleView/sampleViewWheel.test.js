@@ -47,8 +47,14 @@ class LayoutContext extends ViewRenderingContext {
  * @param {"default" | "cooperative"} wheelBehavior
  * @param {boolean} [zoom]
  * @param {import("@genome-spy/core/spec/parameter.js").Parameter[]} [params]
+ * @param {boolean | import("@genome-spy/core/spec/parameter.js").ExprRef} [visible]
  */
-async function createWheelHarness(wheelBehavior, zoom = true, params = []) {
+async function createWheelHarness(
+    wheelBehavior,
+    zoom = true,
+    params = [],
+    visible = true
+) {
     const { view, context } = await createSampleViewForTest({
         spec: {
             data: {
@@ -61,6 +67,7 @@ async function createWheelHarness(wheelBehavior, zoom = true, params = []) {
             spec: {
                 name: "signal",
                 params,
+                visible,
                 mark: "point",
                 encoding: {
                     sample: { field: "sample" },
@@ -187,6 +194,27 @@ describe("sample wheel ownership", () => {
     });
 
     afterEach(() => vi.unstubAllGlobals());
+
+    test("a hidden sample plot has no bounds and receives no main-pane input", async () => {
+        const { signal, wheel, advance, dispose } = await createWheelHarness(
+            "default",
+            true,
+            [{ name: "show", value: true }],
+            { expr: "show" }
+        );
+        try {
+            expect(signal.coords).toBeDefined();
+            signal.paramRuntime.setValue("show", false);
+            await signal.paramRuntime.whenPropagated();
+            advance(16);
+            expect(signal.coords).toBeUndefined();
+            const propagate = vi.spyOn(signal, "propagateInteraction");
+            wheel("main", { deltaY: 30, ctrlKey: true });
+            expect(propagate).not.toHaveBeenCalled();
+        } finally {
+            dispose();
+        }
+    });
 
     test("cooperative overview leaves ordinary input and sidebar Ctrl input to the page", async () => {
         const h = await createWheelHarness("cooperative");

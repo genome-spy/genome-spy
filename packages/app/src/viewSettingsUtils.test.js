@@ -87,10 +87,18 @@ describe("view visibility entries", () => {
         );
     });
 
-    test("legacy keys apply to all matching views", async () => {
+    test("legacy keys apply to manual matches across import instances", async () => {
         const spec = {
             templates: {
                 panel: makeTemplate(),
+                detail: {
+                    vconcat: [
+                        {
+                            ...makeUnitSpec("coverage"),
+                            visible: { expr: "true" },
+                        },
+                    ],
+                },
             },
             vconcat: [
                 {
@@ -101,6 +109,7 @@ describe("view visibility entries", () => {
                     import: { template: "panel" },
                     name: "panelB",
                 },
+                { import: { template: "detail" }, name: "panelC" },
             ],
         };
 
@@ -108,9 +117,23 @@ describe("view visibility entries", () => {
 
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        const entries = buildViewVisibilityEntries(root, {
-            coverage: false,
+        const stale = makeViewSelectorKey({
+            scope: ["panelC"],
+            view: "coverage",
         });
+        const settings = normalizeViewSettingsPayload(
+            {
+                visibilities: {
+                    coverage: false,
+                    [stale]: false,
+                    futureTrack: true,
+                },
+            },
+            root
+        );
+        expect(settings.visibilities).not.toHaveProperty(stale);
+        expect(settings.visibilities.futureTrack).toBe(true);
+        const entries = buildViewVisibilityEntries(root, settings.visibilities);
 
         expect(entries).toHaveLength(2);
         expect(entries).toEqual(

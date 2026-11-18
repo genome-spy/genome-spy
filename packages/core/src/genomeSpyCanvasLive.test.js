@@ -750,6 +750,11 @@ test("falls back automatically, picks data, updates live state, and exports", as
         expect.closeTo(12.2),
     ]);
 
+    const detailPoint = { x: 50, y: 8 };
+    expect(await genomeSpy.pick(detailPoint, detail)).toMatchObject({
+        status: "hit",
+    });
+
     const { blob } = await genomeSpy.exportRaster({
         logicalWidth: 40,
         logicalHeight: 20,
@@ -792,6 +797,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
     toggle.setValue(false);
     await genomeSpy.viewRoot.paramRuntime.whenPropagated();
     flushAnimationFrames(2);
+    expect(await genomeSpy.pick(detailPoint)).toEqual({ status: "empty" });
     expect(detail.coords).toBeUndefined();
     expect(detail.flowHandle.collector.getItemCount()).toBe(1);
     genomeSpy.destroy();

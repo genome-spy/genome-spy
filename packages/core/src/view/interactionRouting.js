@@ -6,6 +6,7 @@
  * @param {() => void} handler
  */
 export function propagateInteraction(view, event, handler) {
+    if (!view.isConfiguredVisible()) return;
     view.handleInteraction(event, true);
 
     if (event.stopped) {

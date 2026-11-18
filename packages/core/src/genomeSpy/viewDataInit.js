@@ -61,7 +61,7 @@ export async function initializeViewData(
 
     while (changed && context.requestVisibilityRefresh) {
         changed = false;
-        await initializeVisibleViewData(viewRoot, dataFlow, textMetrics);
+        await refreshVisibility(viewRoot);
     }
 
     if (context.requestVisibilityRefresh) {
@@ -87,7 +87,12 @@ export async function refreshVisibility(root) {
     const context = root.context;
     root._invalidateCacheByPrefix("size", "progeny");
     root.visit((view) => {
-        if (!view.isVisible()) view.facetCoords.clear();
+        if (!view.isVisible()) {
+            view.facetCoords.clear();
+            view.layoutCoords = undefined;
+        }
+        for (const scale of Object.values(view.resolutions.scale))
+            scale.refreshVisibility();
     });
     context.highlightView(null);
     context.requestLayoutReflow();

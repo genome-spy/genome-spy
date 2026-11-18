@@ -144,6 +144,9 @@ export default class View {
     /** @type {string[]} */
     #scaleDependentParams = [];
 
+    /** Names bound in this scope whose values require a datum, scale, or layout. */
+    #paramsUnavailableBeforeLayout = new Set();
+
     /**
      * @type {function(number):number}
      */
@@ -275,6 +278,7 @@ export default class View {
         if ("mark" in spec) {
             // TODO(v2.0): Remove this alias and its lazy-name plumbing after
             // bare zoomLevel compatibility ends.
+            this.#paramsUnavailableBeforeLayout.add("zoomLevel");
             this.paramRuntime.registerLazyExpression(
                 "zoomLevel",
                 "zoomLevel()",
@@ -328,6 +332,12 @@ export default class View {
                     param.expr,
                     this.paramRuntime.getSpecLocation(param, ["expr"])
                 );
+                if (
+                    usesScaleHelper ||
+                    globals.some((name) => this.#unavailableBeforeLayout(name))
+                ) {
+                    this.#paramsUnavailableBeforeLayout.add(param.name);
+                }
                 const dependsOnDeferredParam = globals.some((name) =>
                     this.paramRuntime.isPendingParam(name)
                 );
@@ -358,6 +368,7 @@ export default class View {
             return undefined;
         }
 
+        this.#paramsUnavailableBeforeLayout.add(name);
         return this.paramRuntime.allocateSetter(name, 0);
     }
 
@@ -914,6 +925,19 @@ export default class View {
         return reader;
     }
 
+    /** Consult each declaration in the same lexical scope in which it binds.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    #unavailableBeforeLayout(name) {
+        if (name === "datum") return true;
+        if (this.paramRuntime.hasLocalParam(name))
+            return this.#paramsUnavailableBeforeLayout.has(name);
+        return this.dataParent
+            ? this.dataParent.#unavailableBeforeLayout(name)
+            : false;
+    }
+
     get visibilityIsExpression() {
         return isExprRef(this.spec.visible);
     }
@@ -933,8 +957,19 @@ export default class View {
 
         if (!this.#visibility) {
             const runtime = this.paramRuntime;
-            const location = runtime.getSpecLocation(visible, ["expr"]);
-            validateVisibilityInputs(visible.expr, runtime, location);
+            const { usesScaleHelper, globals } = analyzeExpression(
+                visible.expr,
+                runtime.getSpecLocation(visible, ["expr"])
+            );
+            if (
+                usesScaleHelper ||
+                globals.some((name) => this.#unavailableBeforeLayout(name))
+            ) {
+                throw new ViewError(
+                    "visible.expr requires parameters independent of datum, scales, and layout.",
+                    this
+                ).withSpecLocation(visible, ["expr"]);
+            }
             const expression = runtime.createExpression(visible);
             this.#visibility = runtime.computed(
                 "visible",
@@ -1941,50 +1976,4 @@ export const isStepSize = (size) =>
  */
 function isFiniteNumber(value) {
     return typeof value == "number" && Number.isFinite(value);
-}
-
-/**
- * Inspect declarations before binding: looking up a deferred scale parameter
- * can itself initialize a scale that is currently asking for visibility.
- * @param {string} expr
- * @param {ViewParamRuntime} runtime
- * @param {import("../types/embedApi.js").SpecLocation | undefined} location
- * @param {Set<object>} [checked]
- */
-function validateVisibilityInputs(
-    expr,
-    runtime,
-    location,
-    checked = new Set()
-) {
-    const { usesScaleHelper, globals } = analyzeExpression(
-        expr,
-        location,
-        false
-    );
-    if (usesScaleHelper) {
-        throw annotateSpecError(
-            new Error("visible.expr cannot depend on a scale."),
-            location
-        );
-    }
-    for (const name of globals) {
-        const owner = runtime.findRuntimeForParam(name);
-        const param = owner?.paramConfigs.get(name);
-        if (
-            !param &&
-            (name === "width" || name === "height" || name === "zoomLevel")
-        ) {
-            throw annotateSpecError(
-                new Error(
-                    "visible.expr cannot depend on automatic " + name + "."
-                ),
-                location
-            );
-        }
-        if (param && "expr" in param && !checked.has(param)) {
-            checked.add(param);
-            validateVisibilityInputs(param.expr, owner, location, checked);
-        }
-    }
 }

@@ -120,7 +120,7 @@ function scopedVisibilityChoices(viewRoot, visibilities) {
     const scoped = {};
     for (const [key, value] of Object.entries(visibilities)) {
         const selector = parseViewSelectorKey(key);
-        if (selector) scoped[makeViewSelectorKey(selector)] = value;
+        scoped[selector ? makeViewSelectorKey(selector) : key] = value;
     }
 
     if (viewRoot && Object.keys(visibilities).length) {
@@ -128,6 +128,7 @@ function scopedVisibilityChoices(viewRoot, visibilities) {
         visitAddressableViews(viewRoot, (view) => {
             const key = getViewVisibilityKey(view);
             if (!key) return;
+            delete scoped[view.explicitName];
             if (view.visibilityIsExpression) {
                 delete scoped[key];
             } else if (Object.hasOwn(visibilities, view.explicitName)) {
@@ -150,9 +151,12 @@ function scopedVisibilityChoices(viewRoot, visibilities) {
  * @returns {import("./state.js").ViewVisibilityEntry[]}
  */
 export function buildViewVisibilityEntries(viewRoot, visibilities) {
-    return Object.entries(scopedVisibilityChoices(viewRoot, visibilities)).map(
-        ([key, visible]) => ({ ...parseViewSelectorKey(key), visible })
-    );
+    return Object.entries(
+        scopedVisibilityChoices(viewRoot, visibilities)
+    ).flatMap(([key, visible]) => {
+        const selector = parseViewSelectorKey(key);
+        return selector ? [{ ...selector, visible }] : [];
+    });
 }
 
 /**
