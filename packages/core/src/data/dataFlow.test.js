@@ -64,15 +64,18 @@ describe("DataFlow", () => {
         expect(source.children).toEqual([]);
     });
 
-    test("pruneBranch disposes orphaned ancestors", () => {
+    test("pruneBranch disposes orphaned ancestors up to a registered collector", () => {
         const flow = new DataFlow();
         const source = new DataSource(/** @type {any} */ ({}));
+        const upstream = new Collector();
         const middle = new FlowNode();
         const collector = new Collector();
 
-        source.addChild(middle);
+        source.addChild(upstream);
+        upstream.addChild(middle);
         middle.addChild(collector);
         flow.addDataSource(source);
+        flow.addCollector(upstream);
         flow.addCollector(collector);
 
         let middleDisposed = 0;
@@ -83,6 +86,12 @@ describe("DataFlow", () => {
         flow.pruneBranch(collector);
 
         expect(middleDisposed).toBe(1);
+        expect(flow.collectors).toEqual([upstream]);
+        expect(source.children).toEqual([upstream]);
+
+        flow.pruneBranch(upstream);
+
+        expect(flow.collectors).toEqual([]);
         expect(flow.dataSources).not.toContain(source);
     });
 });
