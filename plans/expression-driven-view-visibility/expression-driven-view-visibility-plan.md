@@ -1,85 +1,118 @@
 # Expression-driven view visibility
 
-A track with `"visible": { "expr": "mode === 'detail'" }` should take up space
-only in detail mode. This plan covers the first PR in
+A track with `"visible": { "expr": "mode === 'detail'" }` should take up a row
+only in detail mode. Implement this as another way to supply the boolean that
+Core already uses for view visibility. This plan covers the first PR in
 [#740](https://github.com/genome-spy/genome-spy/issues/740).
-
-## Visibility rules
-
-- Omitted `visible` defaults to true. A boolean sets the default. Both accept
-  manual overrides, and clearing an override restores the default.
-- An expression owns the view’s visibility and must return a boolean. An
-  import-site declaration takes precedence over the imported root’s declaration
-  and uses the resulting view’s parameter scope.
-- Hiding a parent preserves each child’s local choice. Existing layout rules
-  still apply. For example, hiding the center of a surround hides the surround.
 
 ## Core
 
-Extend `visible` in `spec/view.d.ts` and reuse the scoped expression runtime in
-`view/view.js`. Resolve the local value here so every caller honors expression
-ownership. Use the existing host predicate for manual choices.
+**Resolve the local choice on the view.** Extend `visible` to
+`boolean | ExprRef` on views and import sites in `spec/view.d.ts`. Keep the
+import-site precedence in `viewFactory.js`. For an omitted value or boolean,
+keep the existing host predicate and its authored default of `visible ?? true`.
+For an expression, its boolean in the resulting view’s lexical parameter scope
+is authoritative even if App has a saved override. Container collapse and
+ancestor visibility continue to use `isConfiguredVisible()` and `isVisible()`.
+Hiding a parent preserves each child’s choice.
 
-Bind the expression after its parameters exist and by the first visibility read.
-A unit inserted into a live shared scale can be queried during construction. Use
-view-owned cleanup so a failed insertion leaves the existing tree usable.
-Support parameter expressions that can run without a datum, layout or a data
-load. Report non-boolean results and unsupported dependencies at `visible.expr`,
-including scale or layout reads through a derived parameter. A track cannot
-require its own data load to decide whether to load.
+**Bind only expressions, once, on first read.** In `view/view.js`, have
+`isVisibleInSpec()` return the literal default directly or read a view-owned
+computed. Bind the authored `ExprRef` with `createExpression()`, pass its
+dependencies and a boolean-checked evaluator to `paramRuntime.computed()`, and
+attach one effect to its changes. The existing runtime handles equality,
+propagation, and disposal. First read is early enough even when a unit joins an
+already-live shared scale during construction. A child first visited when its
+parent becomes visible reads the parameters’ current values. Both cases use the
+same binding code.
 
-When the boolean changes, run the same Core refresh for parameter writes and App
-toggles. Reuse `genomeSpy/viewDataInit.js` to initialize newly shown branches.
-Reflow the current tree and clear hidden bounds and picks, including when a
-track is hidden again during its first load. Keep its handle, collector and
-selections. Use the same path in the initialized headless engine.
+Support parameters available before layout, including ordinary derived and
+selection parameters. At binding, use the existing expression analysis and
+scoped declarations to check the inputs the expression references. Follow
+derived declarations in their own scope. Report datum, scale, or automatic
+layout dependencies and non-boolean results at `visible.expr`. An authored
+parameter named `width` is an ordinary input. A track whose visibility requires
+its own unloaded data has a circular specification. Document that limit and
+leave data loading under the existing producer rules.
 
-Update the grammar, schema and import example. Tentative commit
+**Give visibility changes one route to layout.** Move the work currently split
+between App’s Redux subscriber and `GenomeSpyBase.initializeVisibleViewData()`
+into one Core refresh, callable from the expression effect or the App
+subscriber. Batch changes, clear hidden bounds and stale picks, invalidate
+sizes, and request reflow. Let `genomeSpy/viewDataInit.js` initialize any newly
+visible branches. Its existing initialization states and collector replay
+already handle first show and preserve loaded data. If a track is hidden during
+loading, completion lays out the current live tree. A visibility change keeps
+the view, its handle, and its selections.
+
+Use the authored value during the existing startup scan. Reconcile changes
+during initial loading before the first completed layout. Wire the same refresh
+into the initialized headless engine. Keep raw hierarchy inspection free of data
+loading. Skip hidden children during layer arrangement and hit testing so they
+cannot reacquire bounds after reflow. All renderers and SVG export consume the
+resulting placements.
+
+Update the grammar JSDoc, schema, and import example. Tentative commit
 `feat(core): support expression-driven view visibility`.
 
 ## App
 
-Keep manual choices in Redux and radio policy in `viewSettingsUtils.js`. Exclude
-expression-owned views from visibility controls and radio groups while keeping
-their parameter controls available. The open menu and sample summaries must also
-respond when a parameter alone changes visibility.
+- Keep Redux as the owner of manual choices. Use the same expression-ownership
+  check in `configurableVisibilityUtils.js`, scoped radio membership, and direct
+  writes. A hidden parent still permits setting a manual child’s choice. A
+  sample operation that needs the child’s data must check the whole layout path
+  before changing settings, zooming, or waiting for that data.
+- In View settings, omit the visibility input for an expression-owned view. If
+  it has parameter controls, keep its row. List eligible descendants
+  independently of the expression’s current value. This makes the menu usable
+  through a parameter change with its existing update behavior.
+- Preserve the existing URL startup and live bookmark restore paths. Early URL
+  settings are available before the hierarchy exists. Core’s local read already
+  honors the expression on the first layout. At live restore and save, filter
+  scoped entries and legacy name matches by ownership. Serialize explicit Redux
+  choices in `buildViewSettingsPayload()`. Apply radio conflict resolution when
+  reading the local state for display. A default radio loser creates no saved
+  override. Restored parameter actions can still drive Detail.
+- `MergeSampleFacets` can miss regrouping while a summary is hidden. Reuse its
+  existing hidden-to-shown check on the `layoutComputed` broadcast so a
+  parameter-only reveal republishes the current aggregates. Keep its cohort
+  subscription for actual grouping changes.
 
-Honor eligible startup bookmark choices before first layout. Discard stale
-expression entries on startup and live restore, including legacy names.
-Bookmarks save explicit Redux choices. A radio group can hide a sibling without
-creating a bookmark entry for it.
-
-A direct write checks the target only, so a manual child can be configured under
-a hidden parent. A sample operation that needs to reveal the child must check
-its ancestors before writing settings, zooming or waiting for data.
-
-Update the View settings docs and add a changeset covering Core and App.
+Update the View settings docs and add a feature changeset covering Core and App.
 Tentative commit `feat(app): respect expression-owned view visibility`.
 
-## Acceptance
+## Verification
 
-Use one `vconcat` with ordinary Coverage and expression-controlled Detail.
-Restore an App bookmark that hides Coverage and contains a stale Detail entry.
+Use a `vconcat` with ordinary Coverage and expression-controlled Detail.
 
-1. The first layout omits Coverage and its independent source has zero loads.
-   Show it, brush an interval, hide it, and show it again. Its source has loaded
-   once and the same handle still reports the interval.
+1. Restore an App bookmark that hides Coverage and contains a stale Detail
+   entry. The first layout has no Coverage row and its independent source has
+   zero loads. Show it, brush an interval, hide it, and show it again. Check one
+   source load, the same handle, and the same interval.
 2. Change `mode` through the parameter API in both App and a bare Core embed.
-   Detail’s row, marks and pick targets follow the expression. Saving the App
-   bookmark again records only the explicit Coverage choice, if one is set.
-3. In Core, check an imported Detail track with a shadowed parameter and a
-   hidden layer over a visible sibling. The hidden layer has no bounds, picks,
-   or SVG marks after reflow.
+   Detail follows it on screen and in SVG export. Save the App bookmark again
+   and check the explicit manual choices. In a scoped radio group, distinguish a
+   default selection from an explicit radio click.
+3. Use focused existing tests for the two easy-to-miss paths. Insert an imported
+   track into a live shared scale with a shadowed parameter and verify its
+   initial visibility. Hide a layer over a visible sibling and verify its bounds
+   and pick target disappear after reflow. `UnitView.arrange()` currently
+   records bounds before checking visibility.
 
-## Follow-ups
+In the existing App sample tests, regroup while a summary is hidden and reveal
+it with a parameter write. Its aggregates should reflect the new groups.
 
-PR 2 adds the stable `handle.visibility` object. Its `locallyVisible` getter
-reads the choice before ancestor and container rules, `staticDefault` is
-undefined for expression-owned views, and `override` is the explicit choice to
-save. Async `setOverride(value)` stores a boolean or clears it with `undefined`.
-Bare Core stores it on the live view. App uses Redux for addressable views.
-Restore `initialVisibilityOverrides` once, before layout and loading, for unique
-eligible matches in the initial hierarchy.
+## Follow-ups in #740
 
-PR 3 adds the optional `trackVisibilityButton(tracks)` in
-`@genome-spy/core/controls` using those handles.
+PR 2 exposes the stable `handle.visibility` object. `locallyVisible` reads the
+local decision before ancestor and container rules, `staticDefault` identifies
+manually toggleable views, and `override` reads the explicit choice to save.
+Async `setOverride(value)` accepts a boolean or clears the choice with
+`undefined`. Store bare-embed choices on live views, including unnamed children.
+Addressable App handles use the same Redux choice as the menu. Apply
+`initialVisibilityOverrides` once to unique eligible matches before first layout
+and loading. Repeat the Coverage bookmark case across two bare embeds and verify
+a later same-name insertion starts fresh.
+
+PR 3 builds the optional `trackVisibilityButton(tracks)` in
+`@genome-spy/core/controls` using only those public handles.
