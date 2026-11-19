@@ -23,6 +23,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "../../../utils/gpuLabel.js";
  * @property {import("../../../index.d.ts").MarkOrder} [order]
  * @property {Record<string, import("../../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
  * @property {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
+ * @property {ReadonlyMap<string, string>} [sharedPositionNames]
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  * @property {GPUBindGroupLayout} [placementBindGroupLayout]
  * @property {import("../../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
@@ -86,6 +87,7 @@ export function buildPipelines({
     order,
     scalarSlots = {},
     extraResources,
+    sharedPositionNames,
     primitiveTopology = "triangle-list",
     placementBindGroupLayout,
     placementIndex,
@@ -101,6 +103,7 @@ export function buildPipelines({
         order,
         scalarSlots,
         extraResources,
+        sharedPositionNames,
         placementIndex,
     });
 

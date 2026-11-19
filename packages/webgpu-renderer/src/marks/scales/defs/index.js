@@ -124,6 +124,7 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
  */
 export const indexScaleDef = {
     type: "index",
+    sharedPositionLayout: "packed-index",
     input: "u32",
     output: "f32",
     params: [
@@ -168,12 +169,14 @@ function emitIndexScale({
     inputScalarType,
     inputComponents,
     scaleConfig,
+    sharedPositionName,
 }) {
     const valueExpr =
         inputComponents === 2
             ? rawValueExpr
             : toU32Expr(rawValueExpr, inputScalarType);
     const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
+    const domain = domainVec3(name, sharedPositionName);
     if (hasGroupingGaps(scaleConfig)) {
         const key =
             inputComponents === 2
@@ -183,9 +186,12 @@ function emitIndexScale({
         const before = scaleConfig.gapPeer
             ? `gapKeyGreater(v, gapPeer_${scaleConfig.gapPeer}(i, v))`
             : `${!!scaleConfig.gapBefore}`;
+        const geometry = sharedPositionName
+            ? sharedPositionName + "[1]"
+            : "params.gapGeometry_" + name;
         return `${makeFnHeader(name, "f32", functionName)} {
     let v = ${key};
-    return scaleIndexGaps(v, ${domainVec3(name)}, ${rangeVec2(name)}, params.gapTable_${name}, params.gapGeometry_${name},
+    return scaleIndexGaps(v, ${domain}, ${rangeVec2(name)}, params.gapTable_${name}, ${geometry},
         params.${SCALE_PADDING_INNER_PREFIX}${name}, params.${SCALE_PADDING_OUTER_PREFIX}${name},
         params.${SCALE_ALIGN_PREFIX}${name}, params.${SCALE_BAND_PREFIX}${name}, ${before}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u), 1.0);
 }`;
@@ -194,7 +200,7 @@ function emitIndexScale({
     let v = ${valueExpr};
     return ${fnName}(
         v,
-        ${domainVec3(name)},
+        ${domain},
         ${rangeVec2(name)},
         params.${SCALE_PADDING_INNER_PREFIX}${name},
         params.${SCALE_PADDING_OUTER_PREFIX}${name},

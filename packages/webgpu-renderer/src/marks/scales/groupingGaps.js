@@ -10,7 +10,7 @@ export function hasGroupingGaps(scale) {
 }
 
 /** @param {readonly number[]} cuts @param {number} value @param {boolean} [before] */
-export function cutRank(cuts, value, before = false) {
+function cutRank(cuts, value, before = false) {
     let lo = 0;
     let hi = cuts.length;
     while (lo < hi) {
@@ -19,6 +19,28 @@ export function cutRank(cuts, value, before = false) {
         else hi = mid;
     }
     return lo;
+}
+
+/** @param {number | null | undefined} width */
+export function normalizeGapWidth(width) {
+    if (width != null && (!Number.isFinite(width) || width < 0))
+        throw new Error("Gap width must be finite and nonnegative.");
+    return width ?? 0;
+}
+
+/**
+ * @param {number[] | Float32Array} target
+ * @param {number} width
+ * @param {readonly number[]} cuts
+ * @param {number} start
+ * @param {number} end
+ * @param {readonly number[]} [ranks]
+ */
+export function writeGapGeometry(target, width, cuts, start, end, ranks) {
+    target[0] = width;
+    target[1] = ranks?.[0] ?? cutRank(cuts, start);
+    target[2] = ranks?.[1] ?? cutRank(cuts, end, true);
+    target[3] = ranks ? 1 : 0;
 }
 
 /** @param {readonly number[] | null} values */

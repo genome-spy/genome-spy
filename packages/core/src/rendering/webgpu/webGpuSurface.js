@@ -2,6 +2,13 @@ import deepEqual from "../../utils/deepEqual.js";
 import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 import {
+    getPrimaryChannel,
+    isPositionalChannel,
+    positionalChannels,
+} from "../../encoder/encoder.js";
+import { isCategoricalPositionScale } from "../../scales/scaleRules.js";
+import { shallowArrayEquals } from "../../utils/arrayUtils.js";
+import {
     getWebGpuCategorySelectionBinding,
     isWebGpuScaleDependentValue,
 } from "./webGpuMarkAdapter.js";
@@ -12,6 +19,9 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
 
 /** @type {Readonly<Record<string, {value: any, dynamic?: boolean}>>} */
 const EMPTY_PROPERTIES = Object.freeze({});
+
+/** @typedef {import("@genome-spy/webgpu-renderer").SharedPositionScaleHandle} SharedPositionScaleHandle */
+/** @typedef {import("../../scales/scaleInstanceManager.js").MappingConfiguration} MappingConfiguration */
 
 /**
  * Only primitives can suppress a write: uniform vectors may reuse mutable storage.
@@ -47,6 +57,9 @@ export default class WebGpuSurface {
 
     /** @type {Map<import("../../marks/mark.js").default, RetainedMark>} */
     #marks = new Map();
+
+    /** @type {Map<import("../../scales/scaleResolution.js").default, {handle: SharedPositionScaleHandle, categorical: boolean, read: () => MappingConfiguration, previous: MappingConfiguration | undefined, dispose: () => void}>} */
+    #sharedPositions = new Map();
 
     /** @type {WeakMap<import("../../view/layout/placementSource.js").default, {set: import("@genome-spy/webgpu-renderer").PlacementSetHandle, topologyRevision: number, geometryRevision: number}>} */
     #placementSets = new WeakMap();
@@ -314,6 +327,10 @@ export default class WebGpuSurface {
 
         this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
+        const sharedPositions =
+            retained?.config === config
+                ? retained.sharedPositions
+                : this.#attachSharedPositions(mark, config);
         const resourceExpressionsRevision = mark.getRenderingRevision(
             "resourceExpressions"
         );
@@ -326,6 +343,7 @@ export default class WebGpuSurface {
             !retained ||
             retained.definition !== definition ||
             !Object.is(retained.programKey, programKey) ||
+            !shallowArrayEquals(retained.sharedPositions, sharedPositions) ||
             retained.gapKey !== gapKey ||
             !!retained.config.placementIndex !== !!config.placementIndex ||
             retained.config.placementIndex?.source !==
@@ -340,6 +358,7 @@ export default class WebGpuSurface {
             retained = {
                 definition,
                 programKey,
+                sharedPositions,
                 gapKey,
                 handle,
                 config,
@@ -386,6 +405,96 @@ export default class WebGpuSurface {
             writes += updateRetainedSelections(retained, mark);
             retained.resourceExpressionsRevision = resourceExpressionsRevision;
         });
+        return writes;
+    }
+
+    /**
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("@genome-spy/webgpu-renderer").MarkConfig} config
+     */
+    #attachSharedPositions(mark, config) {
+        const channels =
+            /** @type {Partial<Record<import("../../spec/channel.js").PositionalChannel, import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */ (
+                config.channels
+            );
+        /** @type {(SharedPositionScaleHandle | undefined)[]} */
+        const handles = Array(positionalChannels.length).fill(undefined);
+        for (const [index, channel] of positionalChannels.entries()) {
+            const input = channels[channel];
+            const scale = input && "scale" in input ? input.scale : undefined;
+            const encoder = mark.encoders[channel];
+            const scaleType = encoder?.scale?.type;
+            const scaleChannel = encoder?.branches[0]?.accessor.scaleChannel;
+            if (
+                !scale ||
+                input.conditions?.length ||
+                !scaleType ||
+                scaleType === "null" ||
+                !isPositionalChannel(scaleChannel)
+            )
+                continue;
+
+            const resolution = mark.unitView.getScaleResolution(scaleChannel);
+            const primaryChannel =
+                /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ (
+                    getPrimaryChannel(scaleChannel)
+                );
+            if (
+                !resolution ||
+                mark.unitView.resolutions.scale[primaryChannel] === resolution
+            )
+                continue;
+
+            let shared = this.#sharedPositions.get(resolution);
+            if (!shared) {
+                const handle = this.#renderer.createSharedPositionScale(scale);
+                if (!handle) continue;
+                const mapping = resolution.getMappingRef();
+                const dispose = () => {
+                    unregister();
+                    handle.destroy();
+                    this.#sharedPositions.delete(resolution);
+                };
+                const unregister = resolution.registerDisposer(dispose);
+                shared = {
+                    handle,
+                    categorical: isCategoricalPositionScale(scaleType),
+                    read: () => mapping.get(),
+                    previous: undefined,
+                    dispose,
+                };
+                this.#sharedPositions.set(resolution, shared);
+            }
+            handles[index] = shared.handle;
+            scale.sharedPosition = shared.handle;
+        }
+        return handles;
+    }
+
+    updateSharedPositions() {
+        let writes = 0;
+        for (const shared of this.#sharedPositions.values()) {
+            const mapping = shared.read();
+            if (mapping === shared.previous) continue;
+            const viewport = mapping.viewport;
+            const { categorical } = shared;
+            writes += Number(
+                shared.handle.update({
+                    start:
+                        viewport?.interval[0] ??
+                        (categorical ? 0 : +mapping.domain[0]),
+                    end:
+                        viewport?.interval[1] ??
+                        (categorical
+                            ? mapping.domain.length
+                            : +mapping.domain[1]),
+                    gapPositions: mapping.gapPositions,
+                    gapWidth: mapping.gapWidth,
+                    gapRanks: viewport?.gapRanks ?? mapping.gapDomain,
+                })
+            );
+            shared.previous = mapping;
+        }
         return writes;
     }
 
@@ -458,6 +567,7 @@ export default class WebGpuSurface {
         for (const source of this.#occurrencePlacementSources.values()) {
             source.dispose();
         }
+        for (const shared of this.#sharedPositions.values()) shared.dispose();
         this.#renderer?.destroy();
         this.#renderer = undefined;
         this.#marks.clear();
@@ -648,13 +758,21 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 ([inner, outer]) => scaleSlot.setPadding(inner, outer)
             );
         }
-        if (channel.scale.gapEnabled && channel.scale.type === "index") {
+        const shared = channel.scale.sharedPosition;
+        if (
+            channel.scale.gapEnabled &&
+            channel.scale.type === "index" &&
+            !shared
+        ) {
             addScale(
                 key + ":domain",
                 () => [channel.scale.domain, channel.scale.gapDomain],
                 ([domain, ranks]) => scaleSlot.setDomain(domain, ranks)
             );
-        } else if ("domain" in channel.scale) {
+        } else if (
+            "domain" in channel.scale &&
+            (!shared || channel.scale.type === "band")
+        ) {
             addScale(
                 key + ":domain",
                 () => channel.scale.domain,
@@ -662,7 +780,7 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 true
             );
         }
-        if ("viewport" in channel.scale) {
+        if ("viewport" in channel.scale && !shared) {
             const binding = addScale(
                 key + ":viewport",
                 () => channel.scale.viewport,
@@ -684,11 +802,12 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 () => channel.scale.gapPositions,
                 (value) => scaleSlot.setGapPositions(value)
             );
-            addScale(
-                key + ":gapWidth",
-                () => channel.scale.gapWidth,
-                (value) => scaleSlot.setGapWidth(value)
-            );
+            if (!shared)
+                addScale(
+                    key + ":gapWidth",
+                    () => channel.scale.gapWidth,
+                    (value) => scaleSlot.setGapWidth(value)
+                );
         }
     }
 
@@ -924,6 +1043,7 @@ function getLogicalChannelSeries(channel) {
  * @prop {any} config
  * @prop {Record<string, {value: any, dynamic?: boolean}>} properties
  * @prop {ResourceBindings} bindings
+ * @prop {(SharedPositionScaleHandle | undefined)[]} sharedPositions
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | import("../../types/selectionTypes.js").IntervalSelection | IntegerSetSnapshot>} selections

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { TransientTexturePool } from "./renderGroups.js";
 import { Renderer, createRenderer } from "./renderer.js";
+import { bandScale } from "./scales/band.js";
 
 const renderers = new Set();
 afterEach(() => {
@@ -40,6 +41,20 @@ test.each([134217728, 536870912])(
 );
 
 describe("Renderer mark definitions", () => {
+    test("rejects a repeated invalid shared gap update before writing", () => {
+        const { renderer } = createRendererHarness();
+        const shared = renderer.createSharedPositionScale(bandScale());
+        const writes = vi.mocked(renderer.device.queue.writeBuffer);
+        writes.mockClear();
+        const invalid = { start: 0, end: 2, gapPositions: [-1] };
+
+        expect(() => shared.update(invalid)).toThrow("Gap positions");
+        expect(() => shared.update(invalid)).toThrow("Gap positions");
+        expect(writes).not.toHaveBeenCalled();
+        expect(shared.update({ ...invalid, gapPositions: [1] })).toBe(true);
+        expect(writes).toHaveBeenCalledOnce();
+    });
+
     test("renders detached targets without replacing live or picking draws", async () => {
         const { renderer, pass } = createRendererHarness();
         renderer.format = "bgra8unorm";

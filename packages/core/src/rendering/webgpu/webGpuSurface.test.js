@@ -36,6 +36,10 @@ const mocks = vi.hoisted(() => {
     const renderer = {
         createMark: vi.fn(() => handle),
         createPlacementSet: vi.fn(() => placementHandle),
+        createSharedPositionScale: vi.fn(
+            /** @returns {import("@genome-spy/webgpu-renderer").SharedPositionScaleHandle | undefined} */
+            () => undefined
+        ),
         updateGlobals: vi.fn(),
         destroyMark: vi.fn(),
         destroy: vi.fn(),
@@ -101,6 +105,7 @@ beforeEach(() => {
     mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
     mocks.renderer.createDetachedTarget.mockReset();
+    mocks.renderer.createSharedPositionScale.mockReset();
 });
 
 /**
@@ -150,6 +155,79 @@ function configureMockMark(mark, definition) {
 }
 
 describe("WebGpuSurface", () => {
+    test.each([
+        { type: /** @type {const} */ ("linear"), shares: true },
+        { type: /** @type {const} */ ("null"), shares: false },
+    ])(
+        "binds layered $type positions according to their source scale",
+        async ({ type, shares }) => {
+            const { view } = await createHeadlessEngine({
+                scales: { x: { type, domain: [0, 4] } },
+                data: { values: [{ start: 0.25, end: 0.5 }] },
+                encoding: {
+                    x: { field: "start", type: "quantitative", axis: null },
+                    fill: { value: "black" },
+                    stroke: { value: null },
+                },
+                layer: [
+                    { mark: "rect", encoding: { x2: { value: 0.9 } } },
+                    { mark: "rect", encoding: { x2: { field: "end" } } },
+                ],
+            });
+            onTestFinished(() => view.disposeSubtree());
+            const surface = new WebGpuSurface(
+                /** @type {any} */ ({
+                    container: document.body,
+                    onCanvasResize: vi.fn(),
+                })
+            );
+            await surface.initialize();
+            onTestFinished(() => surface.finalize());
+            const shared = { update: vi.fn(() => true), destroy: vi.fn() };
+            mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
+
+            const endpoints = [];
+            for (const unit of view
+                .getDescendants()
+                .filter((view) => view instanceof UnitView)) {
+                const { mark } = unit;
+                const { definition, config, properties } =
+                    createWebGpuMarkConfig(
+                        mark,
+                        {},
+                        Rectangle.create(0, 0, 100, 50)
+                    );
+                surface.updateMark(mark, definition, config, properties);
+                const { x, x2 } =
+                    /** @type {{channels: import("@genome-spy/webgpu-renderer").RectChannels}} */ (
+                        config
+                    ).channels;
+                endpoints.push(x, x2);
+            }
+
+            expect(
+                mocks.renderer.createSharedPositionScale
+            ).toHaveBeenCalledTimes(Number(shares));
+            for (const [index, endpoint] of endpoints.entries()) {
+                if (shares && index !== 1) {
+                    expect(endpoint).toHaveProperty(
+                        "scale.sharedPosition",
+                        shared
+                    );
+                } else {
+                    expect(endpoint).not.toHaveProperty("scale.sharedPosition");
+                }
+            }
+            expect(surface.updateSharedPositions()).toBe(Number(shares));
+            expect(surface.updateSharedPositions()).toBe(0);
+            if (shares) {
+                expect(shared.update).toHaveBeenCalledExactlyOnceWith(
+                    expect.objectContaining({ start: 0, end: 4 })
+                );
+            }
+        }
+    );
+
     test("submits export layouts with detached target dimensions", async () => {
         const detachedHandle = {
             render: vi.fn(),
@@ -1617,7 +1695,9 @@ test("recreates retained infrastructure across static gap enablement", async () 
     );
     await surface.initialize();
     const scale = { props: { gapPositions: [10], gapWidth: 0 } };
-    const mark = /** @type {any} */ ({ encoders: { x: { scale } } });
+    const mark = /** @type {any} */ ({
+        encoders: { x: { scale, branches: [] } },
+    });
     const definition = /** @type {any} */ ({ type: "point" });
     configureMockMark(mark, definition);
     const config = createConfig(0);

@@ -46,7 +46,7 @@ import {
  * @prop {"float"|"uint"|"sint"} [sampleType]
  * @prop {"2d"|"2d-array"} [dimension]
  * @prop {"filtering"|"non-filtering"} [samplerType]
- * @prop {"read-only-storage"} [bufferType]
+ * @prop {"read-only-storage"|"uniform"} [bufferType]
  * @prop {string} [wgslType]
  * @prop {"extraTexture"|"extraSampler"|"extraBuffer"} role
  */
@@ -70,6 +70,7 @@ import {
  * @prop {import("../../index.d.ts").MarkOrder} [order]
  * @prop {Record<string, import("../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
  * @prop {ExtraResourceDef[]} [extraResources]
+ * @prop {ReadonlyMap<string, string>} [sharedPositionNames]
  * @prop {import("../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
  */
 
@@ -102,6 +103,7 @@ export function buildMarkShader({
     order,
     scalarSlots = {},
     extraResources = [],
+    sharedPositionNames,
     placementIndex,
 }) {
     const { channels, channelIRs, channelNames, inputNames } = compiledChannels;
@@ -218,7 +220,9 @@ export function buildMarkShader({
     const gapChecks = gapChannels.map(({ name, channel }) => {
         const axis =
             channel.scale.gapAxis ?? (name.startsWith("y") ? "y" : "x");
-        return `groupingGapsFit(${rangeVec2(name)}, params.gapGeometry_${name}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
+        const shared = sharedPositionNames?.get(name);
+        const geometry = shared ? shared + "[1]" : "params.gapGeometry_" + name;
+        return `groupingGapsFit(${rangeVec2(name)}, ${geometry}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
     });
     const instanceVisibility =
         order || hasGaps
@@ -630,8 +634,10 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                 buffer: { type: extra.bufferType ?? "read-only-storage" },
             });
             resourceLayout.push({ name: extra.name, role: extra.role });
+            const addressSpace =
+                extra.bufferType === "uniform" ? "uniform" : "storage, read";
             extraDecls.push(
-                `@group(1) @binding(${binding}) var<storage, read> ${wgslName}: ${extra.wgslType ?? "array<f32>"};`
+                `@group(1) @binding(${binding}) var<${addressSpace}> ${wgslName}: ${extra.wgslType ?? "array<f32>"};`
             );
             continue;
         }
@@ -695,6 +701,7 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                     outputComponents: channelIR.outputComponents,
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
+                    sharedPositionName: sharedPositionNames?.get(name),
                     useRangeTexture: channelIR.useRangeTexture,
                     domainMapName: channelIR.needsDomainMap
                         ? `${DOMAIN_MAP_PREFIX}${name}`

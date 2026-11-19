@@ -3,6 +3,10 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
 import RenderPassState from "./renderPassState.js";
+import {
+    createSharedPositionScale,
+    supportsSharedPositionScale,
+} from "./marks/programs/internal/sharedPositionScale.js";
 
 const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
@@ -638,6 +642,17 @@ export class Renderer {
         const set = new PlacementSet(this, this.#nextPlacementSetId++, data);
         this._placementSets.set(set.placementSetId, set);
         return set;
+    }
+
+    /** @param {import("./index.d.ts").ChannelScale} scale */
+    createSharedPositionScale(scale) {
+        if (!supportsSharedPositionScale(scale)) return;
+        this._assertAlive();
+        return this._ownResource(
+            createSharedPositionScale(this, scale.definition, (handle) =>
+                this.#ownedResources.delete(handle)
+            )
+        );
     }
 
     /**

@@ -18,6 +18,10 @@ import {
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
+import {
+    sharedPositionScaleBuffers,
+    supportsSharedPositionScale,
+} from "./sharedPositionScale.js";
 
 /**
  * @template T
@@ -397,10 +401,49 @@ export default class BaseProgram {
         this.#validateUniformBufferCapacity();
         this._initializeExtraResources();
         this.#selectionResources.initializeSelections(this._extraBuffers);
+        /** @type {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
         const extraResources = [
             ...this.#selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
+        /** @type {Map<import("../../../index.d.ts").SharedPositionScaleHandle, string>} */
+        const sharedPositions = new Map();
+        /** @type {Map<string, string>} */
+        const sharedPositionNames = new Map();
+        for (const {
+            name,
+            channel,
+            outputComponents,
+        } of compiledChannels.channelIRs) {
+            const scale = channel.scale;
+            const handle = scale?.sharedPosition;
+            if (!handle) continue;
+            const entry = sharedPositionScaleBuffers.get(handle);
+            if (
+                entry?.renderer !== renderer ||
+                entry.definition !== scale.definition ||
+                outputComponents !== 1 ||
+                !supportsSharedPositionScale(scale)
+            )
+                throw new Error(`Invalid shared position scale for "${name}".`);
+
+            let bindingName = sharedPositions.get(handle);
+            if (!bindingName) {
+                bindingName = "sharedPosition_" + sharedPositions.size;
+                sharedPositions.set(handle, bindingName);
+                this._extraBuffers.set(bindingName, entry.buffer);
+                this._borrowedExtraBuffers.add(bindingName);
+                extraResources.push({
+                    name: bindingName,
+                    kind: "buffer",
+                    role: "extraBuffer",
+                    visibility: "vertex",
+                    bufferType: "uniform",
+                    wgslType: "array<vec4<f32>, 2>",
+                });
+            }
+            sharedPositionNames.set(name, bindingName);
+        }
         const {
             bindGroupLayout,
             getPipeline,
@@ -424,6 +467,7 @@ export default class BaseProgram {
             order: this._order,
             scalarSlots: this.#scalarSlots,
             extraResources,
+            sharedPositionNames,
             primitiveTopology: this.primitiveTopology,
             placementBindGroupLayout: renderer._placementBindGroupLayout,
             placementIndex: this._placementIndex,

@@ -297,6 +297,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
+        countPerformance(
+            "sharedPositionScaleWrites",
+            this.surface.updateSharedPositions()
+        );
         return items;
     }
 

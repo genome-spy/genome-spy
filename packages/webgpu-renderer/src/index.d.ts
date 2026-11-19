@@ -297,6 +297,20 @@ export type BuiltInScaleType =
     | "threshold"
     | "ordinal";
 
+/** A position domain shared by channels on one renderer. */
+export type SharedPositionScaleHandle = {
+    /** Publish visible bounds or band ranks. Returns whether a GPU write occurred. */
+    update(state: {
+        start: number;
+        end: number;
+        gapWidth?: number | null;
+        /** Replace this array when the cut positions change. */
+        gapPositions?: readonly number[];
+        gapRanks?: readonly number[];
+    }): boolean;
+    destroy(): void;
+};
+
 export type ChannelScale = {
     /** Imported implementation used by shader generation and resource planning. */
     definition?: ScaleDef;
@@ -309,6 +323,10 @@ export type ChannelScale = {
 
     /** Band scales only: displayed rank window, separate from category membership. */
     viewport?: ScaleViewport | null;
+
+    /** Use this handle for displayed bounds and gap geometry. The local domain
+     * still defines band category membership. Initialize the handle before drawing. */
+    sharedPosition?: SharedPositionScaleHandle;
 
     /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */
     range?: Array<number | number[] | string> | ColorInterpolatorFn;
@@ -441,6 +459,9 @@ export type ScaleEmitParams = {
     /** Scale config for custom emitters that need direct access. */
     scaleConfig?: ChannelScale;
 
+    /** WGSL binding for the shared position domain and gap geometry. */
+    sharedPositionName?: string;
+
     /** WGSL expression for the raw value (buffer read or literal/uniform). */
     rawValueExpr: string;
 
@@ -542,6 +563,7 @@ export type ScaleFunctionParams = ScaleIOContext & {
     rawValueExpr: string;
     /** Full scale config for detecting piecewise scales and clamp behavior. */
     scaleConfig?: ChannelScale;
+    sharedPositionName?: string;
     /** Storage buffer identifier for ordinal/band domain lookup, if used. */
     domainMapName?: string | null;
     /** Whether to map scale output through a color ramp texture. */
@@ -620,6 +642,9 @@ export type ScaleDef = {
 
     /** Resource hints used for allocating buffers and textures. */
     resources: ScaleResourceRules;
+
+    /** Layout accepted by the shared position shader path. */
+    sharedPositionLayout?: "bounds" | "packed-index";
 
     /**
      * Vector output policy for the scale. "interpolated" allows vector outputs
@@ -1363,6 +1388,11 @@ export class Renderer {
 
     /** Create a retained, renderer-owned placement table. */
     createPlacementSet(data: PlacementSetData): PlacementSetHandle;
+
+    /** Create a shared domain resource for a supported positional scale layout. */
+    createSharedPositionScale(
+        scale: ChannelScale
+    ): SharedPositionScaleHandle | undefined;
 
     /** Log the GPU resources reserved by a mark to the console. */
     debugResources(markId: MarkId, label?: string): void;

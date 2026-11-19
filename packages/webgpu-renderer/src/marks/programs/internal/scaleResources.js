@@ -27,7 +27,8 @@ import { gpuLabel } from "../../../utils/gpuLabel.js";
 import {
     hasGroupingGaps,
     normalizeCuts,
-    cutRank,
+    normalizeGapWidth,
+    writeGapGeometry,
 } from "../../scales/groupingGaps.js";
 
 /**
@@ -738,20 +739,15 @@ export class ScaleResourceManager {
 
     /** @param {string} name @param {number | null} width */
     updateGapWidth(name, width) {
-        if (width != null && (!Number.isFinite(width) || width < 0))
-            throw new Error("Gap width must be finite and nonnegative.");
         const gaps = this.#getGaps(name);
-        gaps.width = width ?? 0;
+        gaps.width = normalizeGapWidth(width);
         this.#updateGapGeometry(gaps);
     }
 
     /** @param {GapScaleState} gaps */
     #updateGapGeometry(gaps) {
-        const { cuts, domain, ranks, geometry } = gaps;
-        geometry[0] = gaps.width;
-        geometry[1] = ranks?.[0] ?? cutRank(cuts, domain[0]);
-        geometry[2] = ranks?.[1] ?? cutRank(cuts, domain[1], true);
-        geometry[3] = ranks ? 1 : 0;
+        const { width, cuts, domain, ranks, geometry } = gaps;
+        writeGapGeometry(geometry, width, cuts, domain[0], domain[1], ranks);
         gaps.writeGeometry(geometry);
     }
 

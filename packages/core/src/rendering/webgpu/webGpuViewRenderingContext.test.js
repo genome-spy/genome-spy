@@ -53,7 +53,7 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
  */
 function createContext(surface, options = {}) {
     return new WebGpuViewRenderingContext({
-        surface,
+        surface: { updateSharedPositions: () => 0, ...surface },
         ...options,
     });
 }

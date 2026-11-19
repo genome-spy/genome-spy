@@ -14,7 +14,7 @@ import {
 /**
  * @typedef {import("../../index.d.ts").ScaleEmitParams} ScaleEmitParams
  * @typedef {import("./scalePipeline.js").ScalePipelineStep} ScalePipelineStep
- * @typedef {Pick<ScaleEmitParams, "name"|"functionName"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture">} ContinuousEmitParams
+ * @typedef {Pick<ScaleEmitParams, "name"|"functionName"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture"|"sharedPositionName">} ContinuousEmitParams
  */
 
 /**
@@ -28,18 +28,24 @@ export function makeFnHeader(name, returnType, functionName = name) {
 
 /**
  * @param {string} name
+ * @param {string} [sharedPositionName]
  * @returns {string}
  */
-export function domainVec2(name) {
-    return `readPacked2(params.${DOMAIN_PREFIX}${name})`;
+export function domainVec2(name, sharedPositionName) {
+    return sharedPositionName
+        ? sharedPositionName + "[0].xy"
+        : `readPacked2(params.${DOMAIN_PREFIX}${name})`;
 }
 
 /**
  * @param {string} name
+ * @param {string} [sharedPositionName]
  * @returns {string}
  */
-export function domainVec3(name) {
-    return `readPacked3(params.${DOMAIN_PREFIX}${name})`;
+export function domainVec3(name, sharedPositionName) {
+    return sharedPositionName
+        ? sharedPositionName + "[0].xyz"
+        : `readPacked3(params.${DOMAIN_PREFIX}${name})`;
 }
 
 /**
@@ -75,6 +81,7 @@ export function emitContinuousScale(
         clamp,
         round,
         useRangeTexture,
+        sharedPositionName,
     },
     valueExprFn
 ) {
@@ -86,7 +93,7 @@ export function emitContinuousScale(
     }
 
     if (clamp) {
-        steps.push(clampToDomainStep(domainVec2(name)));
+        steps.push(clampToDomainStep(domainVec2(name, sharedPositionName)));
     }
 
     steps.push(applyScaleStep(name, valueExprFn));
