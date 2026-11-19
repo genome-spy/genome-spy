@@ -1,22 +1,13 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { createGenerator } from "ts-json-schema-generator";
+import { generateSpecSchema } from "../../../../scripts/generateSpecSchema.mjs";
 import Ajv from "ajv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const specDir = path.dirname(fileURLToPath(import.meta.url));
 
 describe("generated App schema", () => {
     /** @type {import("ajv").ValidateFunction} */
     let validate;
 
     beforeAll(() => {
-        const schema = createGenerator({
-            path: path.join(specDir, "*.d.ts"),
-            tsconfig: path.resolve(specDir, "../../../../tsconfig.json"),
-            type: "AppRootSpec",
-            skipTypeCheck: true,
-        }).createSchema("AppRootSpec");
+        const schema = generateSpecSchema("app", { skipTypeCheck: true });
         validate = new Ajv.default({
             strict: false,
             allowUnionTypes: true,
