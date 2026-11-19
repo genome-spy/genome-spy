@@ -386,14 +386,19 @@ Behavior details:
 
 EXAMPLE examples/docs/grammar/data/eager/bed.json height=160
 
-#### Reusable interval track with item colors
+#### Item colors
 
-Use [`bedColor()`](../expressions.md#bedColor) with `scale: null` to apply each
-item's color to its mark. The same named template draws BED3, BED9, and BED12
-intervals. Set `bedUrl` when importing the template to load your own file and
-`fallbackColor` to style intervals without an item color.
+The [`bedColor()`](../expressions.md#bedColor) expression function converts BED
+`itemRgb` values such as `123,123,123` into CSS colors. Use
+`bedColor(datum.itemRgb, '#4c78a8')` in a color encoding with `scale: null` to
+apply the color directly to the mark. The second argument supplies a fallback
+for intervals without an item color. A value of `0` produces black.
 
-EXAMPLE examples/docs/grammar/data/eager/bed-item-colors.json height=190
+The BED3 track below uses the blue fallback, while the BED9 and BED12 tracks
+use their item colors from column 9. All three tracks share a reusable
+[named template](../import.md#repeating-with-named-templates).
+
+EXAMPLE examples/docs/grammar/data/eager/bed-item-colors.json height=120 spechidden
 
 For larger BED files, consider using the lazy [BigBed data
 source](lazy.md#bigbed) instead of the eager `url` source.
