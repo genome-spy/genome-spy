@@ -283,10 +283,13 @@ for (const renderer of ["canvas", "webgl", "webgpu"]) {
                     result.svg,
                     result.hybrid,
                 ]) {
-                    expect(pixels).toEqual([
-                        [0, 0, 255, 128],
-                        [255, 0, 0, 128],
-                    ]);
+                    for (const [i, color] of [blue, red].entries()) {
+                        expect(pixels[i].slice(0, 3)).toEqual(
+                            color.slice(0, 3)
+                        );
+                        // Half opacity is between two 8-bit alpha values.
+                        expect([127, 128]).toContain(pixels[i][3]);
+                    }
                 }
                 expect(result.invisible).toEqual([clear, [255, 0, 0, 128]]);
                 expect(result.clipped).toEqual([blue, clear]);
