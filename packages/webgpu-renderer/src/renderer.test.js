@@ -43,9 +43,7 @@ test.each([134217728, 536870912])(
 describe("Renderer mark definitions", () => {
     test("rejects a repeated invalid shared gap update before writing", () => {
         const { renderer } = createRendererHarness();
-        const shared = renderer.createSharedPositionScale(
-            bandScale({ gapEnabled: true })
-        );
+        const shared = renderer.createSharedPositionScale(bandScale());
         const writes = vi.mocked(renderer.device.queue.writeBuffer);
         writes.mockClear();
         const invalid = { start: 0, end: 2, gapPositions: [-1] };
@@ -53,7 +51,9 @@ describe("Renderer mark definitions", () => {
         expect(() => shared.update(invalid)).toThrow("Gap positions");
         expect(() => shared.update(invalid)).toThrow("Gap positions");
         expect(writes).not.toHaveBeenCalled();
-        expect(shared.update({ ...invalid, gapPositions: [1] })).toBe(true);
+        const valid = { ...invalid, gapPositions: [1] };
+        shared.update(valid);
+        shared.update({ ...valid, gapPositions: [1] });
         expect(writes).toHaveBeenCalledOnce();
     });
 

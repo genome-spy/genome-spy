@@ -1,15 +1,12 @@
 import deepEqual from "../../utils/deepEqual.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 import {
-    getPrimaryChannel,
-    isPositionalChannel,
+    isPrimaryPositionalChannel,
     positionalChannels,
 } from "../../encoder/encoder.js";
-import { isCategoricalPositionScale } from "../../scales/scaleRules.js";
-import { shallowArrayEquals } from "../../utils/arrayUtils.js";
 import {
     getWebGpuCategorySelectionBinding,
-    getWebGpuMarkGapKey,
+    getWebGpuChannelResolution,
     isWebGpuScaleDependentValue,
 } from "./webGpuMarkAdapter.js";
 
@@ -32,6 +29,28 @@ function equalUniformValues(previous, value) {
     return (
         (value === null || typeof value !== "object") &&
         Object.is(previous, value)
+    );
+}
+
+/** @typedef {Pick<import("@genome-spy/webgpu-renderer").ChannelConfigInput, "scale" | "conditions">} PositionConfig */
+
+/**
+ * @param {PositionConfig | undefined} before
+ * @param {PositionConfig | undefined} after
+ * @returns {boolean}
+ */
+function positionBindingChanged(before, after) {
+    return (
+        before?.scale?.sharedPosition !== after?.scale?.sharedPosition ||
+        !!before?.scale?.gapEnabled !== !!after?.scale?.gapEnabled ||
+        (before?.conditions?.length ?? 0) !==
+            (after?.conditions?.length ?? 0) ||
+        !!after?.conditions?.some((condition, index) =>
+            positionBindingChanged(
+                before?.conditions?.[index]?.channel,
+                condition.channel
+            )
+        )
     );
 }
 
@@ -58,7 +77,7 @@ export default class WebGpuSurface {
     /** @type {Map<import("../../marks/mark.js").default, RetainedMark>} */
     #marks = new Map();
 
-    /** @type {Map<import("../../scales/scaleResolution.js").default, {handle: SharedPositionScaleHandle, categorical: boolean, read: () => MappingConfiguration, previous: MappingConfiguration | undefined, dispose: () => void}>} */
+    /** @type {Map<import("../../scales/scaleResolution.js").default, {handle: SharedPositionScaleHandle, categorical: boolean, mapping: ReturnType<import("../../scales/scaleResolution.js").default["getMappingRef"]>, previous: MappingConfiguration | undefined, dispose: () => void}>} */
     #sharedPositions = new Map();
 
     /** @type {WeakMap<import("../../view/layout/placementSource.js").default, {set: import("@genome-spy/webgpu-renderer").PlacementSetHandle, topologyRevision: number, geometryRevision: number}>} */
@@ -318,39 +337,35 @@ export default class WebGpuSurface {
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
      * @param {Record<string, {value: any, dynamic?: boolean}>} [properties]
-     * @param {number} [gapKey]
      * @returns {number} Number of retained resource writes.
      */
-    updateMark(
-        mark,
-        definition,
-        config,
-        properties = EMPTY_PROPERTIES,
-        gapKey = getWebGpuMarkGapKey(mark)
-    ) {
+    updateMark(mark, definition, config, properties = EMPTY_PROPERTIES) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
 
         this.#registerMarkOwner(mark);
         let retained = this.#marks.get(mark);
-        const sharedPositions =
-            retained?.config === config
-                ? retained.sharedPositions
-                : this.#attachSharedPositions(mark, config);
+        const configChanged = retained?.config !== config;
+        if (configChanged) this.#attachSharedPositions(mark, config);
         const resourceExpressionsRevision = mark.getRenderingRevision(
             "resourceExpressions"
         );
         const programKey =
-            retained?.definition === definition && retained.config === config
+            retained?.definition === definition && !configChanged
                 ? retained.programKey
                 : definition.getProgramKey?.(config);
         if (
             !retained ||
             retained.definition !== definition ||
             !Object.is(retained.programKey, programKey) ||
-            !shallowArrayEquals(retained.sharedPositions, sharedPositions) ||
-            retained.gapKey !== gapKey ||
+            (configChanged &&
+                positionalChannels.some((channel) =>
+                    positionBindingChanged(
+                        retained.config.channels?.[channel],
+                        config.channels?.[channel]
+                    )
+                )) ||
             !!retained.config.placementIndex !== !!config.placementIndex ||
             retained.config.placementIndex?.source !==
                 config.placementIndex?.source
@@ -364,8 +379,6 @@ export default class WebGpuSurface {
             retained = {
                 definition,
                 programKey,
-                sharedPositions,
-                gapKey,
                 handle,
                 config,
                 properties,
@@ -419,38 +432,21 @@ export default class WebGpuSurface {
      * @param {import("@genome-spy/webgpu-renderer").MarkConfig} config
      */
     #attachSharedPositions(mark, config) {
-        const channels =
-            /** @type {Partial<Record<import("../../spec/channel.js").PositionalChannel, import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */ (
-                config.channels
-            );
-        /** @type {(SharedPositionScaleHandle | undefined)[]} */
-        const handles = Array(positionalChannels.length).fill(undefined);
-        for (const [index, channel] of positionalChannels.entries()) {
-            const input = channels[channel];
-            const scale = input && "scale" in input ? input.scale : undefined;
-            const encoder = mark.encoders[channel];
-            const scaleType = encoder?.scale?.type;
-            const scaleChannel = encoder?.branches[0]?.accessor.scaleChannel;
-            if (
-                !scale ||
-                input.conditions?.length ||
-                !scaleType ||
-                scaleType === "null" ||
-                !isPositionalChannel(scaleChannel)
-            )
-                continue;
-
-            const resolution = mark.unitView.getScaleResolution(scaleChannel);
-            const primaryChannel =
-                /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ (
-                    getPrimaryChannel(scaleChannel)
-                );
+        /** @type {Partial<Record<import("../../spec/channel.js").PositionalChannel, import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */
+        const channels = config.channels;
+        for (const channel of positionalChannels) {
+            const input = channels?.[channel];
+            if (!input?.scale || input.conditions?.length) continue;
+            const resolution = getWebGpuChannelResolution(input);
             if (
                 !resolution ||
-                mark.unitView.resolutions.scale[primaryChannel] === resolution
+                !isPrimaryPositionalChannel(resolution.channel) ||
+                mark.unitView.resolutions.scale[resolution.channel] ===
+                    resolution
             )
                 continue;
 
+            const scale = input.scale;
             let shared = this.#sharedPositions.get(resolution);
             if (!shared) {
                 const handle = this.#renderer.createSharedPositionScale(scale);
@@ -464,44 +460,36 @@ export default class WebGpuSurface {
                 const unregister = resolution.registerDisposer(dispose);
                 shared = {
                     handle,
-                    categorical: isCategoricalPositionScale(scaleType),
-                    read: () => mapping.get(),
+                    categorical: scale.type === "band",
+                    mapping,
                     previous: undefined,
                     dispose,
                 };
                 this.#sharedPositions.set(resolution, shared);
             }
-            handles[index] = shared.handle;
             scale.sharedPosition = shared.handle;
         }
-        return handles;
     }
 
     updateSharedPositions() {
-        let writes = 0;
         for (const shared of this.#sharedPositions.values()) {
-            const mapping = shared.read();
+            const mapping = shared.mapping.get();
             if (mapping === shared.previous) continue;
-            const viewport = mapping.viewport;
-            const { categorical, handle } = shared;
-            writes += Number(
-                handle.update({
-                    start:
-                        viewport?.interval[0] ??
-                        (categorical ? 0 : +mapping.domain[0]),
-                    end:
-                        viewport?.interval[1] ??
-                        (categorical
-                            ? mapping.domain.length
-                            : +mapping.domain[1]),
-                    gapPositions: mapping.gapPositions,
-                    gapWidth: mapping.gapWidth,
-                    gapRanks: viewport?.gapRanks ?? mapping.gapDomain,
-                })
-            );
+            const { domain, viewport, gapPositions, gapWidth, gapDomain } =
+                mapping;
+            shared.handle.update({
+                start:
+                    viewport?.interval[0] ??
+                    (shared.categorical ? 0 : +domain[0]),
+                end:
+                    viewport?.interval[1] ??
+                    (shared.categorical ? domain.length : +domain[1]),
+                gapPositions,
+                gapWidth,
+                gapRanks: viewport?.gapRanks ?? gapDomain,
+            });
             shared.previous = mapping;
         }
-        return writes;
     }
 
     /**
@@ -1043,12 +1031,10 @@ function getLogicalChannelSeries(channel) {
  * @typedef {object} RetainedMark
  * @prop {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
  * @prop {unknown} programKey
- * @prop {number} gapKey
  * @prop {import("@genome-spy/webgpu-renderer").MarkHandle<any, Record<string, any>>} handle
  * @prop {any} config
  * @prop {Record<string, {value: any, dynamic?: boolean}>} properties
  * @prop {ResourceBindings} bindings
- * @prop {(SharedPositionScaleHandle | undefined)[]} sharedPositions
  * @prop {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} series
  * @prop {number} count
  * @prop {Map<string, number | import("../../types/selectionTypes.js").IntervalSelection | IntegerSetSnapshot>} selections

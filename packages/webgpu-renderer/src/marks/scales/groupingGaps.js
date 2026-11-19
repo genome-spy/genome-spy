@@ -3,11 +3,25 @@ export function hasGroupingGaps(scale) {
     return (
         (scale?.type === "index" || scale?.type === "band") &&
         (scale.gapEnabled ??
-            scale.sharedPosition?.gapEnabled ??
             (scale.gapWidth !== 0 &&
                 scale.gapWidth !== null &&
                 (scale.gapPositions?.length ?? 0) > 0))
     );
+}
+
+/**
+ * @param {string} name
+ * @param {import("../../index.d.ts").ChannelScale | undefined} scale
+ * @param {string} [sharedPositionName]
+ */
+export function gapShaderInputs(name, scale, sharedPositionName) {
+    const channel = scale?.gapAxis ?? (name.startsWith("y") ? "y" : "x");
+    return {
+        geometry: sharedPositionName
+            ? sharedPositionName + "[1]"
+            : "params.gapGeometry_" + name,
+        placement: `gapPlacementFactor(i, ${channel === "y" ? 1 : 0}u)`,
+    };
 }
 
 /** @param {readonly number[]} cuts @param {number} value @param {boolean} [before] */
@@ -42,6 +56,13 @@ export function writeGapGeometry(target, width, cuts, start, end, ranks) {
     target[1] = ranks?.[0] ?? cutRank(cuts, start);
     target[2] = ranks?.[1] ?? cutRank(cuts, end, true);
     target[3] = ranks ? 1 : 0;
+}
+
+/** @param {readonly number[]} a @param {readonly number[]} b */
+export function equalCuts(a, b) {
+    return (
+        a === b || (a.length === b.length && a.every((cut, i) => cut === b[i]))
+    );
 }
 
 /** @param {readonly number[] | null} values */

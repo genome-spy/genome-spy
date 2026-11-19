@@ -15,7 +15,7 @@ import {
 } from "../scaleEmitUtils.js";
 import { isValueChannelConfig } from "../../../types.js";
 import { normalizeOrdinalDomain } from "../ordinalDomain.js";
-import { hasGroupingGaps } from "../groupingGaps.js";
+import { gapShaderInputs, hasGroupingGaps } from "../groupingGaps.js";
 
 const bandWgsl = /* wgsl */ `
 // TODO: domainExtent should be uint
@@ -102,11 +102,12 @@ function emitBandScale({
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
     const gaps = hasGroupingGaps(scaleConfig);
-    const axis = scaleConfig?.gapAxis ?? (name.startsWith("y") ? "y" : "x");
-    const gapGeometry = sharedPositionName
-        ? sharedPositionName + "[1]"
-        : "params.gapGeometry_" + name;
-    const gapArgs = gaps ? `params.gapTable_${name}, ${gapGeometry}, ` : "";
+    const { geometry, placement } = gapShaderInputs(
+        name,
+        scaleConfig,
+        sharedPositionName
+    );
+    const gapArgs = gaps ? `params.gapTable_${name}, ${geometry}, ` : "";
     // WGSL rejects constant NaNs, so construct missing positions at runtime.
     return `${makeFnHeader(name, "f32", functionName)} {
     var mapped = ${valueExpr};
@@ -126,7 +127,7 @@ function emitBandScale({
         ${gapArgs}params.${SCALE_PADDING_INNER_PREFIX}${name},
         params.${SCALE_PADDING_OUTER_PREFIX}${name},
         params.${SCALE_ALIGN_PREFIX}${name},
-        params.${SCALE_BAND_PREFIX}${name}${gaps ? `, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u)` : ""}
+        params.${SCALE_BAND_PREFIX}${name}${gaps ? `, ${placement}` : ""}
     );
 }`;
 }

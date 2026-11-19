@@ -4,7 +4,10 @@ import { resolveCategoryInput } from "../../selection/categorySelection.js";
 import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
 import { cssColorToRgba, packCssColor } from "../color.js";
 import { format as numberFormat } from "d3-format";
-import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
+import {
+    groupingGapKey,
+    hasGroupingGaps,
+} from "../../genome/indexGapMapping.js";
 import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
 import { rgba8Unorm } from "@genome-spy/webgpu-renderer";
 import {
@@ -49,13 +52,18 @@ import forEachInBatch from "../../utils/forEachInBatch.js";
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
 
 /** Values evaluated by Core can depend on scales without a renderer scale slot.
- * @type {WeakSet<object>}
+ * @type {WeakMap<object, import("../../scales/scaleResolution.js").default | undefined>}
  */
-const SCALE_DEPENDENT_VALUES = new WeakSet();
+const SCALE_DEPENDENT_VALUES = new WeakMap();
 
 /** @param {object} channel */
 export function isWebGpuScaleDependentValue(channel) {
     return SCALE_DEPENDENT_VALUES.has(channel);
+}
+
+/** @param {object} channel */
+export function getWebGpuChannelResolution(channel) {
+    return SCALE_DEPENDENT_VALUES.get(channel);
 }
 
 /** @param {import("../../marks/mark.js").default} mark @param {string} slot */
@@ -279,12 +287,7 @@ export function getWebGpuMarkConfigRevision(mark) {
 
 /** @param {import("../../marks/mark.js").default} mark */
 export function getWebGpuMarkGapKey(mark) {
-    let key = 0;
-    for (let index = 0; index < positionalChannels.length; index++) {
-        const scale = mark.encoders[positionalChannels[index]]?.scale;
-        if (scale && hasGroupingGaps(scale.props)) key |= 1 << index;
-    }
-    return key;
+    return groupingGapKey(mark.encoders, positionalChannels);
 }
 
 /**
@@ -351,8 +354,14 @@ function createConditionalChannel(mark, channel, data, build) {
     const buildBranch = (branch) => {
         const branchEncoder = createBranchEncoder(mark, encoder, branch);
         const config = build(branchEncoder, branch);
-        if (branchEncoder.scale && !isValueDef(branchEncoder.channelDef))
-            SCALE_DEPENDENT_VALUES.add(config);
+        if (branchEncoder.scale && !isValueDef(branchEncoder.channelDef)) {
+            SCALE_DEPENDENT_VALUES.set(
+                config,
+                branchEncoder.scale.type === "null"
+                    ? undefined
+                    : branchEncoder.resolution
+            );
+        }
         return config;
     };
     const result = buildBranch(fallback);
@@ -378,12 +387,14 @@ function createConditionalChannel(mark, channel, data, build) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../types/encoder.js").Encoder} encoder
  * @param {import("../../types/encoder.js").EncodingBranch} branch
- * @returns {import("../../types/encoder.js").Encoder}
  */
 function createBranchEncoder(mark, encoder, branch) {
     const accessor = branch.accessor;
+    const resolution = accessor.scaleChannel
+        ? mark.unitView.getScaleResolution(accessor.scaleChannel)
+        : undefined;
     const scale = accessor.scaleChannel
-        ? mark.unitView.getScaleResolution(accessor.scaleChannel)?.getScale()
+        ? resolution?.getScale()
         : encoder.scale;
     if (accessor.scaleChannel && !scale) {
         throw unsupported(
@@ -392,19 +403,16 @@ function createBranchEncoder(mark, encoder, branch) {
         );
     }
 
-    return /** @type {import("../../types/encoder.js").Encoder} */ (
-        Object.assign(
-            /**
-             * @param {any} datum
-             */
-            (datum) => accessor(datum),
-            {
-                constant: accessor.constant ?? encoder.constant,
-                branches: [branch],
-                scale,
-                channelDef: accessor.channelDef ?? encoder.channelDef,
-            }
-        )
+    return Object.assign(
+        /** @param {any} datum */
+        (datum) => accessor(datum),
+        {
+            constant: accessor.constant ?? encoder.constant,
+            branches: [branch],
+            scale,
+            resolution,
+            channelDef: accessor.channelDef ?? encoder.channelDef,
+        }
     );
 }
 

@@ -40,9 +40,7 @@ for (const [base, sharedCuts] of /** @type {const} */ ([
             });
             const gap = { gapPositions: [base + 10], gapWidth: 6 };
             const shared = sharedCuts
-                ? renderer.createSharedPositionScale(
-                      indexScale({ gapEnabled: true })
-                  )
+                ? renderer.createSharedPositionScale(indexScale())
                 : undefined;
             shared?.update({ start: base, end: base + 20, ...gap });
             /** @param {number[]} values @param {string} peer */
@@ -56,7 +54,9 @@ for (const [base, sharedCuts] of /** @type {const} */ ([
                     domain: [base, base + 20],
                     range: [0, 200],
                     band: 0,
-                    ...(shared ? { sharedPosition: shared } : gap),
+                    ...(shared
+                        ? { sharedPosition: shared, gapEnabled: true }
+                        : gap),
                     gapPeer: peer,
                 }),
             });

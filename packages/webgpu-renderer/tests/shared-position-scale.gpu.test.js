@@ -29,9 +29,7 @@ test("marks share position buffers across endpoints and keep independent ranges"
         const domain = [200, 5, 900];
         const band = bandScale({ domain });
         const linear = linearScale({ domain: [0, 1], range: [0, 100] });
-        const sharedX = renderer.createSharedPositionScale(
-            bandScale({ gapEnabled: true })
-        );
+        const sharedX = renderer.createSharedPositionScale(band);
         const sharedY = renderer.createSharedPositionScale(linear);
         const bandExtent = { start: 0, end: 3, gapPositions: [1], gapWidth: 8 };
         sharedX.update(bandExtent);
@@ -56,6 +54,7 @@ test("marks share position buffers across endpoints and keep independent ranges"
                     band: anchor,
                     range: [offset, offset + 100],
                     sharedPosition: sharedX,
+                    gapEnabled: true,
                 },
             });
             /** @param {number} position */
@@ -111,12 +110,11 @@ test("marks share position buffers across endpoints and keep independent ranges"
         draw();
         const initial = await picks();
         sharedY.update({ start: 0.25, end: 0.75 });
-        const unchanged = sharedX.update({ ...bandExtent });
         // Picking observes a shared update even before another visible render.
         const yMoved = await picks();
         const initialBindings = bindGroups;
         // Moving a cut keeps the bounds and ranks identical and still invalidates picks.
-        const moved = sharedX.update({ ...bandExtent, gapPositions: [2] });
+        sharedX.update({ ...bandExtent, gapPositions: [2] });
         const movedCut = await picks();
         const inPlaceBindings = bindGroups - initialBindings;
         sharedX.update({ ...bandExtent, gapPositions: [1, 2] });
@@ -137,9 +135,7 @@ test("marks share position buffers across endpoints and keep independent ranges"
         renderer.destroy();
         return {
             initial,
-            unchanged,
             yMoved,
-            moved,
             movedCut,
             inPlaceBindings,
             grown,
@@ -155,9 +151,7 @@ test("marks share position buffers across endpoints and keep independent ranges"
 
     expect(result).toEqual({
         initial: [1, null, 101, null, null, null],
-        unchanged: false,
         yMoved: [1, null, 101, null, 1, null],
-        moved: true,
         movedCut: [1, 2, 101, 102, 1, null],
         inPlaceBindings: 0,
         grown: [1, null, 101, null, 1, null],

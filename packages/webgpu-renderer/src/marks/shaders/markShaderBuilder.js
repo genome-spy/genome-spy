@@ -6,7 +6,11 @@ import HASH_TABLE_WGSL, {
 import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
-import { hasGroupingGaps, GROUPING_GAPS_WGSL } from "../scales/groupingGaps.js";
+import {
+    gapShaderInputs,
+    hasGroupingGaps,
+    GROUPING_GAPS_WGSL,
+} from "../scales/groupingGaps.js";
 import { rangeVec2 } from "../scales/scaleEmitUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
@@ -70,7 +74,6 @@ import {
  * @prop {import("../../index.d.ts").MarkOrder} [order]
  * @prop {Record<string, import("../../index.d.ts").ScalarSlotConfig>} [scalarSlots]
  * @prop {ExtraResourceDef[]} [extraResources]
- * @prop {ReadonlyMap<string, string>} [sharedPositionNames]
  * @prop {import("../../index.d.ts").MarkConfig["placementIndex"]} [placementIndex]
  */
 
@@ -103,7 +106,6 @@ export function buildMarkShader({
     order,
     scalarSlots = {},
     extraResources = [],
-    sharedPositionNames,
     placementIndex,
 }) {
     const { channels, channelIRs, channelNames, inputNames } = compiledChannels;
@@ -217,13 +219,16 @@ export function buildMarkShader({
               selectionDefs,
           })
         : "";
-    const gapChecks = gapChannels.map(({ name, channel }) => {
-        const axis =
-            channel.scale.gapAxis ?? (name.startsWith("y") ? "y" : "x");
-        const shared = sharedPositionNames?.get(name);
-        const geometry = shared ? shared + "[1]" : "params.gapGeometry_" + name;
-        return `groupingGapsFit(${rangeVec2(name)}, ${geometry}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
-    });
+    const gapChecks = gapChannels.map(
+        ({ name, channel, sharedPositionName }) => {
+            const { geometry, placement } = gapShaderInputs(
+                name,
+                channel.scale,
+                sharedPositionName
+            );
+            return `groupingGapsFit(${rangeVec2(name)}, ${geometry}, ${placement})`;
+        }
+    );
     const instanceVisibility =
         order || hasGaps
             ? /* wgsl */ `
@@ -701,7 +706,7 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                     outputComponents: channelIR.outputComponents,
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
-                    sharedPositionName: sharedPositionNames?.get(name),
+                    sharedPositionName: channelIR.sharedPositionName,
                     useRangeTexture: channelIR.useRangeTexture,
                     domainMapName: channelIR.needsDomainMap
                         ? `${DOMAIN_MAP_PREFIX}${name}`

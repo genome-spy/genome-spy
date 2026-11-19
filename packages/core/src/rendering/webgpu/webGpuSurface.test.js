@@ -188,8 +188,7 @@ describe("WebGpuSurface", () => {
             surface.finalize();
         });
         const shared = {
-            gapEnabled: false,
-            update: vi.fn(() => true),
+            update: vi.fn(),
             destroy: vi.fn(),
         };
         mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
@@ -245,6 +244,56 @@ describe("WebGpuSurface", () => {
         expect(mocks.renderer.createMark).toHaveBeenCalledTimes(6);
     });
 
+    test("recompiles gap mode on a conditional position with a fixed fallback", async () => {
+        const scale = {
+            type: /** @type {const} */ ("index"),
+            domain: [0, 16],
+            gapPositions: [8],
+            gapWidth: 0,
+        };
+        // Core's encoder accepts conditional positions at runtime.
+        const x = {
+            condition: { param: "chosen", field: "start", type: "index" },
+            value: 0,
+        };
+        const { view } = await createHeadlessEngine({
+            scales: { x: scale },
+            params: [{ name: "chosen", select: "point" }],
+            data: { values: [{ start: 0 }] },
+            mark: "rect",
+            encoding: {
+                x,
+                x2: { value: 1 },
+                fill: { value: "black" },
+            },
+        });
+        const unit = /** @type {UnitView} */ (view);
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => {
+            view.disposeSubtree();
+            surface.finalize();
+        });
+        const frame = new WebGpuViewRenderingContext({ surface });
+        frame.pushView(unit, Rectangle.create(0, 0, 100, 50));
+        frame.renderMark(unit.mark, {});
+        frame.popView(unit);
+        frame.finish();
+        frame.render();
+
+        unit.getScaleResolution("x").attachViewLevelScaleProps(unit, {
+            ...scale,
+            gapWidth: 6,
+        });
+        frame.render();
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(2);
+    });
+
     test.each([
         { type: /** @type {const} */ ("linear"), shares: true },
         { type: /** @type {const} */ ("null"), shares: false },
@@ -274,8 +323,7 @@ describe("WebGpuSurface", () => {
             await surface.initialize();
             onTestFinished(() => surface.finalize());
             const shared = {
-                gapEnabled: false,
-                update: vi.fn(() => true),
+                update: vi.fn(),
                 destroy: vi.fn(),
             };
             mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
@@ -312,10 +360,11 @@ describe("WebGpuSurface", () => {
                     expect(endpoint).not.toHaveProperty("scale.sharedPosition");
                 }
             }
-            expect(surface.updateSharedPositions()).toBe(Number(shares));
-            expect(surface.updateSharedPositions()).toBe(0);
+            surface.updateSharedPositions();
+            surface.updateSharedPositions();
+            expect(shared.update).toHaveBeenCalledTimes(Number(shares));
             if (shares) {
-                expect(shared.update).toHaveBeenCalledExactlyOnceWith(
+                expect(shared.update).toHaveBeenCalledWith(
                     expect.objectContaining({ start: 0, end: 4 })
                 );
             }
@@ -1779,30 +1828,6 @@ function createTextConfig(text) {
         },
     };
 }
-
-test("recreates retained infrastructure across static gap enablement", async () => {
-    const surface = new WebGpuSurface(
-        /** @type {any} */ ({
-            container: document.body,
-            onCanvasResize: vi.fn(),
-        })
-    );
-    await surface.initialize();
-    const scale = { props: { gapPositions: [10], gapWidth: 0 } };
-    const mark = /** @type {any} */ ({
-        encoders: { x: { scale, branches: [] } },
-    });
-    const definition = /** @type {any} */ ({ type: "point" });
-    configureMockMark(mark, definition);
-    const config = createConfig(0);
-    for (const width of [0, 6, 0]) {
-        scale.props.gapWidth = width;
-        surface.updateMark(mark, definition, config);
-    }
-    expect(mocks.renderer.createMark).toHaveBeenCalledTimes(3);
-    expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(2);
-    surface.finalize();
-});
 
 test.each([false, true])(
     "updates retained membership without redundant writes (categories=%s)",

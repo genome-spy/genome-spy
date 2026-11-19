@@ -123,3 +123,21 @@ during navigation. Both reduced-resolution raster comparisons matched the
 baseline exactly. The 364 unit tests, 26 GPU tests, and both type checks passed.
 The local diagnostics are in
 `output/webgpu-shared-position-poc/diagnostics-derived-cuts.json`.
+
+## Trim the binding and cut paths
+
+The mark translation records the resolved source with each channel. Core uses
+those sources for sharing and compares the translated position bindings and gap
+modes when a retained configuration changes. The renderer carries the binding
+name on its existing channel record. The channel declares gap mode, and the
+shared handle publishes the live scale data. Local and shared cuts feed the same
+mark table allocator.
+
+This pass removes 22 net runtime lines from `1f7d1cc7f` and one declaration
+line. Against `a560ccaa3`, the branch adds 294 net runtime lines (122 in Core
+and 172 in the renderer) and 17 declaration lines. The 20-attribute SampleView
+again recorded 40 shared writes in 40 scroll frames, with zero scale-table
+writes and bind-group rebuilds. The 24-track fixture recorded one shared write
+per navigation frame and zero mark uniform uploads. Both reduced-resolution
+exports matched the baseline pixels. The local diagnostics are in
+`output/webgpu-shared-position-poc/diagnostics-trimmed.json`.

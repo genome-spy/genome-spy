@@ -412,14 +412,9 @@ export default class BaseProgram {
         ];
         /** @type {Map<import("../../../index.d.ts").SharedPositionScaleHandle, string>} */
         const sharedPositions = new Map();
-        /** @type {Map<string, string>} */
-        const sharedPositionNames = new Map();
         const cutSubscriptions = new Set();
-        for (const {
-            name,
-            channel,
-            outputComponents,
-        } of compiledChannels.channelIRs) {
+        for (const channelIR of compiledChannels.channelIRs) {
+            const { name, channel, outputComponents } = channelIR;
             const scale = channel.scale;
             const handle = scale?.sharedPosition;
             if (!handle) continue;
@@ -447,7 +442,7 @@ export default class BaseProgram {
                     wgslType: "array<vec4<f32>, 2>",
                 });
             }
-            sharedPositionNames.set(name, bindingName);
+            channelIR.sharedPositionName = bindingName;
             if (hasGroupingGaps(scale))
                 cutSubscriptions.add(entry.cutListeners);
         }
@@ -474,7 +469,6 @@ export default class BaseProgram {
             order: this._order,
             scalarSlots: this.#scalarSlots,
             extraResources,
-            sharedPositionNames,
             primitiveTopology: this.primitiveTopology,
             placementBindGroupLayout: renderer._placementBindGroupLayout,
             placementIndex: this._placementIndex,

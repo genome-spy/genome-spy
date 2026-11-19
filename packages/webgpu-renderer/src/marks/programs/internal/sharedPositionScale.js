@@ -1,5 +1,5 @@
 import {
-    hasGroupingGaps,
+    equalCuts,
     normalizeCuts,
     normalizeGapWidth,
     writeGapGeometry,
@@ -22,17 +22,16 @@ export const sharedPositionScaleBuffers = new WeakMap();
 
 /** @param {import("../../../index.d.ts").ChannelScale} scale */
 export function supportsSharedPositionScale(scale) {
+    const { definition, domain, range } = scale;
+    const layout = definition?.sharedPositionLayout;
+    if (layout === undefined) return false;
+    if (!definition.continuous || layout === "packed-index") return true;
     return (
-        scale.definition?.sharedPositionLayout !== undefined &&
-        (!scale.definition.continuous ||
-            scale.definition.sharedPositionLayout === "packed-index" ||
-            (scale.domain?.length === 2 &&
-                (scale.range === undefined ||
-                    (Array.isArray(scale.range) &&
-                        scale.range.length === 2 &&
-                        scale.range.every(
-                            (value) => typeof value === "number"
-                        )))))
+        domain?.length === 2 &&
+        (range === undefined ||
+            (Array.isArray(range) &&
+                range.length === 2 &&
+                range.every((value) => typeof value === "number")))
     );
 }
 
@@ -67,7 +66,6 @@ export function createSharedPositionScale(renderer, scale, release) {
     };
     /** @type {Handle} */
     const handle = Object.freeze({
-        gapEnabled: hasGroupingGaps(scale),
         update({ start, end, gapWidth, gapPositions, gapRanks }) {
             if (!sharedPositionScaleBuffers.has(handle))
                 throw new Error("Shared position scale is disposed.");
@@ -89,27 +87,17 @@ export function createSharedPositionScale(renderer, scale, release) {
                 end,
                 gapRanks
             );
-            const cutsChanged =
-                cuts !== resources.cuts &&
-                (cuts.length !== resources.cuts.length ||
-                    cuts.some((cut, index) => cut !== resources.cuts[index]));
-            if (cutsChanged) {
+            if (!equalCuts(cuts, resources.cuts)) {
                 resources.cuts = cuts;
                 for (const refresh of resources.cutListeners) refresh();
             }
             previousCuts = gapPositions;
-            const headerChanged =
-                !written || words.some((word, i) => word !== uploaded[i]);
-            if (headerChanged) {
+            if (!written || words.some((word, i) => word !== uploaded[i])) {
                 device.queue.writeBuffer(buffer, 0, data);
                 uploaded.set(words);
                 written = true;
+                renderer.markPickingDirty();
             }
-            const wrote =
-                headerChanged ||
-                (cutsChanged && resources.cutListeners.size > 0);
-            if (wrote) renderer.markPickingDirty();
-            return wrote;
         },
         destroy() {
             if (!sharedPositionScaleBuffers.delete(handle)) return;

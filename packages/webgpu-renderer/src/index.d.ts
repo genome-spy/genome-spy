@@ -299,10 +299,7 @@ export type BuiltInScaleType =
 
 /** A position domain shared by channels on one renderer. */
 export type SharedPositionScaleHandle = {
-    /** The default grouping-gap mode for consuming channels. */
-    readonly gapEnabled: boolean;
-    /** Publish a mapping snapshot. Omitted cuts are empty and omitted width
-     * is zero. Returns whether the update wrote to the GPU. */
+    /** Publish a mapping snapshot. Omitted cuts are empty and omitted width is zero. */
     update(state: {
         start: number;
         end: number;
@@ -311,7 +308,7 @@ export type SharedPositionScaleHandle = {
         /** Replace this array when the cut positions change. */
         gapPositions?: readonly number[];
         gapRanks?: readonly number[];
-    }): boolean;
+    }): void;
     destroy(): void;
 };
 
@@ -328,9 +325,10 @@ export type ChannelScale = {
     /** Band scales only: displayed rank window, separate from category membership. */
     viewport?: ScaleViewport | null;
 
-    /** Use this handle for displayed bounds and grouping gaps. The local domain
-     * defines band category membership. Initialize the handle before drawing and
-     * keep it alive until all consuming marks are destroyed. */
+    /** Use this handle for displayed bounds and grouping gaps. Enable gaps on the
+     * channel with gapEnabled. The local domain defines band category membership.
+     * Initialize the handle before drawing and keep it alive until all consuming
+     * marks are destroyed. */
     sharedPosition?: SharedPositionScaleHandle;
 
     /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */

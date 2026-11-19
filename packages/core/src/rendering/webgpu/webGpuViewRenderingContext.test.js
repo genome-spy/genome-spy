@@ -54,7 +54,7 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
  */
 function createContext(surface, options = {}) {
     return new WebGpuViewRenderingContext({
-        surface: { updateSharedPositions: () => 0, ...surface },
+        surface: { updateSharedPositions: () => {}, ...surface },
         ...options,
     });
 }
@@ -535,13 +535,7 @@ describe("WebGpuViewRenderingContext", () => {
             ]).toEqual([20.5, 30.5, 100, 80]);
             expect(adapterCalls[0][3]).toBe(mocks.packed.data);
 
-            expect(surface.updateMark).toHaveBeenCalledWith(
-                mark,
-                {},
-                {},
-                {},
-                0
-            );
+            expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
             expect(surface.prepareDraw).toHaveBeenCalledWith(
                 mark,
                 expect.objectContaining({
@@ -590,7 +584,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
         context.render();
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {}, 0);
+        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
         expect(surface.prepareDraw).toHaveBeenCalledWith(
             mark,
             expect.objectContaining({

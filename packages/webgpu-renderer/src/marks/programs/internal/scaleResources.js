@@ -25,6 +25,7 @@ import {
 } from "../../../wgsl/prefixes.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import {
+    equalCuts,
     hasGroupingGaps,
     normalizeCuts,
     normalizeGapWidth,
@@ -41,13 +42,12 @@ import { sharedPositionScaleBuffers } from "./sharedPositionScale.js";
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
  * @typedef {object} GapScaleState
- * @property {readonly number[] | undefined} cuts
- * @property {import("./sharedPositionScale.js").SharedPositionResources | undefined} shared
+ * @property {readonly number[]} cuts
  * @property {readonly number[]} domain
  * @property {number} width
  * @property {readonly number[] | undefined} ranks
  * @property {number[]} geometry Scratch consumed synchronously by writeGeometry.
- * @property {import("../../../utils/uniformBuffer.js").UniformSetter | undefined} writeGeometry
+ * @property {import("../../../utils/uniformBuffer.js").UniformSetter} writeGeometry
  */
 
 /**
@@ -75,7 +75,7 @@ export class ScaleResourceManager {
     /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }>} */
     #scaleUpdaters = new Map();
 
-    /** @type {Map<string, GapScaleState>} */
+    /** @type {Map<string, GapScaleState | {cuts: readonly number[]}>} */
     #gapScales = new Map();
 
     /** @type {GPUBuffer | null} */
@@ -325,29 +325,29 @@ export class ScaleResourceManager {
     initializeScale(name, channel, scale) {
         if (hasGroupingGaps(scale)) {
             const shared = sharedPositionScaleBuffers.get(scale.sharedPosition);
-            this.#gapScales.set(name, {
-                shared,
-                cuts: shared ? undefined : normalizeCuts(scale.gapPositions),
-                domain:
-                    scale.type === "band"
-                        ? [0, scale.domain?.length ?? 0]
-                        : this.#unpackDomain(scale.domain ?? [0, 1]),
-                width: shared
-                    ? 0
-                    : normalizeGapWidth(
-                          scale.gapWidth === undefined ? 6 : scale.gapWidth
-                      ),
-                ranks:
-                    !shared && scale.type === "index"
-                        ? scale.gapDomain
-                        : undefined,
-                geometry: [0, 0, 0, 0],
-                writeGeometry: shared
-                    ? undefined
-                    : this.#getUniformSetter("gapGeometry_" + name),
-            });
+            if (shared) {
+                this.#gapScales.set(name, shared);
+            } else {
+                /** @type {GapScaleState} */
+                const gaps = {
+                    cuts: normalizeCuts(scale.gapPositions),
+                    domain:
+                        scale.type === "band"
+                            ? [0, scale.domain?.length ?? 0]
+                            : this.#unpackDomain(scale.domain ?? [0, 1]),
+                    width: normalizeGapWidth(
+                        scale.gapWidth === undefined ? 6 : scale.gapWidth
+                    ),
+                    ranks: scale.type === "index" ? scale.gapDomain : undefined,
+                    geometry: [0, 0, 0, 0],
+                    writeGeometry: this.#getUniformSetter(
+                        "gapGeometry_" + name
+                    ),
+                };
+                this.#gapScales.set(name, gaps);
+                this.#updateGapGeometry(gaps);
+            }
             this.refreshGapCuts();
-            if (!shared) this.#updateGapGeometry(this.#gapScales.get(name));
         }
         const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
@@ -599,7 +599,9 @@ export class ScaleResourceManager {
             }
         }
 
-        const gaps = this.#gapScales.get(name);
+        const gapState = this.#gapScales.get(name);
+        const gaps =
+            gapState && "writeGeometry" in gapState ? gapState : undefined;
         let viewport = normalizeScaleViewport(scale.viewport ?? null);
         let categoryCount = scale.domain?.length ?? 0;
         const publishViewport = () => {
@@ -736,7 +738,7 @@ export class ScaleResourceManager {
             throw new Error(
                 `Scale "${name}" was created without grouping gaps.`
             );
-        if (state.shared)
+        if (!("writeGeometry" in state))
             throw new Error(
                 `Update grouping gaps on the shared scale for "${name}".`
             );
@@ -747,11 +749,7 @@ export class ScaleResourceManager {
     updateGapPositions(name, values) {
         const gaps = this.#getGaps(name);
         const cuts = normalizeCuts(values);
-        if (
-            cuts.length === gaps.cuts.length &&
-            cuts.every((v, i) => v === gaps.cuts[i])
-        )
-            return false;
+        if (equalCuts(cuts, gaps.cuts)) return false;
         gaps.cuts = cuts;
         const rebind = this.refreshGapCuts();
         this.#updateGapGeometry(gaps);
@@ -768,7 +766,6 @@ export class ScaleResourceManager {
     /** @param {GapScaleState} gaps */
     #updateGapGeometry(gaps) {
         const { width, cuts, domain, ranks, geometry, writeGeometry } = gaps;
-        if (!writeGeometry) return;
         writeGapGeometry(geometry, width, cuts, domain[0], domain[1], ranks);
         writeGeometry(geometry);
     }
@@ -776,31 +773,25 @@ export class ScaleResourceManager {
     refreshGapCuts() {
         /** @type {number[]} */
         const packed = [];
-        /** @type {{cuts: readonly number[], offset: number}[]} */
-        const tables = [];
-        /** @type {Array<{name: string, offset: number, length: number}>} */
+        /** @type {Array<{name: string, offset: number, cuts: readonly number[]}>} */
         const slices = [];
-        for (const [name, gaps] of this.#gapScales) {
-            const cuts = gaps.shared?.cuts ?? gaps.cuts;
-            const previous = tables.find(
-                (table) =>
-                    table.cuts.length === cuts.length &&
-                    cuts.every((v, i) => table.cuts[i] === v)
+        for (const [name, { cuts }] of this.#gapScales) {
+            const previous = slices.find((slice) =>
+                equalCuts(slice.cuts, cuts)
             );
-            const offset = previous?.offset ?? packed.length / 2;
+            const offset = previous?.offset ?? packed.length;
             if (!previous) {
                 for (const cut of cuts)
                     packed.push(Math.floor(cut / 4096), cut % 4096);
-                tables.push({ cuts, offset });
             }
-            slices.push({ name, offset: offset * 2, length: cuts.length });
+            slices.push({ name, offset, cuts });
         }
         const data = new Uint32Array(packed.length ? packed : [0, 0]);
         return this.#setTable("gapCuts", data, (offset) => {
             for (const slice of slices) {
                 this.#setUniformValue("gapTable_" + slice.name, [
                     offset + slice.offset,
-                    slice.length,
+                    slice.cuts.length,
                 ]);
             }
         });

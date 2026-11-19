@@ -299,10 +299,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
-        countPerformance(
-            "sharedPositionScaleWrites",
-            this.surface.updateSharedPositions()
-        );
+        this.surface.updateSharedPositions();
         return items;
     }
 
@@ -428,11 +425,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
         const configRevision = getWebGpuMarkConfigRevision(state.mark);
         const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
-        const gapKey =
-            resourceRevision === undefined ||
-            resourceRevision !== state.resourceRevision
-                ? getWebGpuMarkGapKey(state.mark)
-                : state.gapKey;
+        const resourcesChanged = resourceRevision !== state.resourceRevision;
+        const gapKey = resourcesChanged
+            ? getWebGpuMarkGapKey(state.mark)
+            : state.gapKey;
         const gapModeChanged = state.gapKey !== gapKey;
         const packedChanged = state.packed !== packed;
         const expressionChanged = state.configRevision !== configRevision;
@@ -451,12 +447,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.configY !== configY ||
             state.configWidth !== configWidth ||
             state.configHeight !== configHeight;
-        if (
+        const configChanged =
             packedChanged ||
             expressionChanged ||
             geometryChanged ||
-            gapModeChanged
-        ) {
+            gapModeChanged;
+        if (configChanged) {
             countPerformance(
                 packedChanged
                     ? "markConfigurationPackedMiss"
@@ -504,13 +500,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 );
             }
         }
-        state.resourcesDirty ||=
-            resourceRevision === undefined ||
-            packedChanged ||
-            expressionChanged ||
-            geometryChanged ||
-            gapModeChanged ||
-            state.resourceRevision !== resourceRevision;
+        state.resourcesDirty ||= configChanged || resourcesChanged;
         state.resourceRevision = resourceRevision ?? -1;
         state.active = !!state.config;
     }
@@ -644,8 +634,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                             state.mark,
                             state.definition,
                             state.config,
-                            state.properties ?? {},
-                            state.gapKey
+                            state.properties ?? {}
                         )
                 );
                 state.resourcesDirty = false;

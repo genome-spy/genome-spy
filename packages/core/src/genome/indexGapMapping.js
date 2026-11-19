@@ -100,13 +100,17 @@ export function hasEffectiveGroupingGaps(mapping) {
     return mapping.gapWidth > 0 && mapping.gapPositions.length > 0;
 }
 
+const PRIMARY_POSITIONS = ["x", "y"];
+
 /** Shader structure changes only when static gap enablement changes.
  * @param {Record<string, import("../types/encoder.js").Encoder>} encoders
+ * @param {readonly string[]} [channels]
  */
-export function groupingGapKey(encoders) {
-    const enabled = (/** @type {"x" | "y"} */ axis) => {
-        const scale = encoders[axis]?.scale;
-        return !!scale && hasGroupingGaps(scale.props);
-    };
-    return Number(enabled("x")) | (Number(enabled("y")) << 1);
+export function groupingGapKey(encoders, channels = PRIMARY_POSITIONS) {
+    let key = 0;
+    for (let index = 0; index < channels.length; index++) {
+        const scale = encoders[channels[index]]?.scale;
+        if (scale && hasGroupingGaps(scale.props)) key |= 1 << index;
+    }
+    return key;
 }
