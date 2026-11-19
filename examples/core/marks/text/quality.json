@@ -15,6 +15,6 @@
 
   "encoding": {
     "y": { "field": "data", "type": "quantitative" },
-    "size": { "field": "data", "type": "quantitative", "scale": null }
+    "size": { "field": "data", "scale": null }
   }
 }

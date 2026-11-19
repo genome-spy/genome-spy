@@ -199,9 +199,11 @@ export default class ScaleResolution {
     /**
      * @param {Channel} channel
      * @param {import("../view/view.js").default} [hostView]
+     * @param {boolean} [direct] Whether this scale is local pass-through for a mark.
      */
-    constructor(channel, hostView) {
+    constructor(channel, hostView, direct = false) {
         this.channel = channel;
+        this.direct = direct;
         /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
@@ -283,7 +285,7 @@ export default class ScaleResolution {
                     this.channel
                 )
             ]?.type;
-        return !!type && type !== "null";
+        return !!type && type !== "null" && !this.direct;
     }
 
     get #resolutionView() {

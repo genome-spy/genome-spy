@@ -73,7 +73,7 @@ export function attachViewLevelAxisProps(root) {
             Object.keys(view.spec.axes ?? {})
         )) {
             const scale = view.getScaleResolution(channel);
-            if (scale) {
+            if (scale && !scale.direct) {
                 ensureAxisResolution(
                     getResolutionView(view, "axis", channel),
                     channel,
@@ -206,7 +206,12 @@ function collectVisibleGuideResolutions(view, guide, channel) {
         }
 
         const resolution = guide.getResolution(descendant, channel);
-        if (resolution) {
+        if (
+            resolution &&
+            !descendant.getScaleResolution(
+                /** @type {ChannelWithScale} */ (channel)
+            )?.direct
+        ) {
             resolutions.add(resolution);
         }
     });

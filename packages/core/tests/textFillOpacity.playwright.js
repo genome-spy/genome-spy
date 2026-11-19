@@ -95,7 +95,7 @@ async function verifyTextOpacity({ coreSource, renderer, dpr }) {
         host.style.cssText = "width:192px;height:96px";
         globalThis.document.body.append(host);
         const alpha = reference
-            ? { field: "ref", type: "quantitative", scale: null }
+            ? { field: "ref", scale: null }
             : {
                   condition: {
                       test: { param: "picked", empty: false },

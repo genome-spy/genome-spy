@@ -206,8 +206,15 @@ export type TypedFieldDef<T extends Type = Type> = FieldDefBase &
     TitleMixins &
     TypeMixins<T>;
 
-export type ScaleFieldDef<T extends Type> = TypedFieldDef<T> &
-    ScaleMixins &
+type DirectScaleDef = { scale: null; type?: Type };
+
+type EncodingScaleDef<T extends Type> =
+    | (TypeMixins<T> & ScaleMixins)
+    | (Type extends T ? DirectScaleDef & Omit<ScaleMixins, "scale"> : never);
+
+export type ScaleFieldDef<T extends Type> = FieldDefBase &
+    TitleMixins &
+    EncodingScaleDef<T> &
     DomainContributionMixins;
 
 export type FieldDefWithoutScale = FieldDefBase & TitleMixins;
@@ -298,9 +305,8 @@ export type MarkPropFieldDef<T extends Type = Type> = ScaleFieldDef<T> &
     LegendMixins &
     FormatMixins;
 
-export type MarkPropExprDef<T extends Type = Type> = ExprDef &
-    TypeMixins<T> &
-    ScaleMixins &
+export type MarkPropExprDef<T extends Type = Type> = Omit<ExprDef, "type"> &
+    EncodingScaleDef<T> &
     DomainContributionMixins &
     TitleMixins &
     LegendMixins;
@@ -506,16 +512,19 @@ export type NumericValueDef = ValueDef<number>;
 
 export type ScaleDatumDef = ScaleMixins & DatumDef & DomainContributionMixins;
 
-export type PositionDatumDefBase = ScaleDatumDef & TypeMixins<Type>;
+export type PositionDatumDefBase = Omit<
+    ScaleDatumDef,
+    "type" | "scale" | "resolutionChannel"
+> &
+    EncodingScaleDef<Type>;
 
 export type PositionFieldDef = PositionFieldDefBase & PositionMixins;
 
 export type PositionDatumDef = PositionDatumDefBase & PositionMixins;
 
-export type PositionExprDef = ExprDef &
+export type PositionExprDef = Omit<ExprDef, "type"> &
     PositionMixins &
-    BandMixins &
-    TypeMixins<Type> &
+    (TypeMixins<Type> | DirectScaleDef) &
     DomainContributionMixins;
 
 export type PositionValueDef = NumericValueDef;

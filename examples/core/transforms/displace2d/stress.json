@@ -136,16 +136,8 @@
           "encoding": {
             "x2": { "field": "x" },
             "y2": { "field": "y" },
-            "xOffset": {
-              "field": "leaderDx",
-              "type": "quantitative",
-              "scale": null
-            },
-            "yOffset": {
-              "field": "leaderDy",
-              "type": "quantitative",
-              "scale": null
-            }
+            "xOffset": { "field": "leaderDx", "scale": null },
+            "yOffset": { "field": "leaderDy", "scale": null }
           }
         },
         {
@@ -158,16 +150,8 @@
           },
           "encoding": {
             "text": { "field": "label", "type": "nominal" },
-            "xOffset": {
-              "field": "labelDx",
-              "type": "quantitative",
-              "scale": null
-            },
-            "yOffset": {
-              "field": "labelDy",
-              "type": "quantitative",
-              "scale": null
-            }
+            "xOffset": { "field": "labelDx", "scale": null },
+            "yOffset": { "field": "labelDy", "scale": null }
           }
         }
       ]
