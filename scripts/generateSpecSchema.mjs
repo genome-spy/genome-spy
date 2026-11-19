@@ -1,3 +1,19 @@
+/*
+ * Generate the Core and App JSON Schemas from their TypeScript specs, then
+ * reduce download size by sharing identical inline subschemas.
+ *
+ * The CLI writes JSON to stdout. The Core and App builds redirect it to
+ * dist/schema.json, and schema tests call the same generator in memory.
+ * Deduplication adds shared-* definitions and replaces repeated inline
+ * schemas with local $refs. Tools that read inline annotations directly,
+ * such as the grammar documentation renderer, must follow those references.
+ *
+ * An issue for ts-json-schema-generator could propose opt-in deduplication
+ * after generation, exposed through both the CLI and API. The pass would
+ * compare whole subschemas, including annotations, and use deterministic
+ * names while preserving existing reference targets and scope.
+ */
+
 import { Buffer } from "node:buffer";
 import process from "node:process";
 import { fileURLToPath, URL } from "node:url";
