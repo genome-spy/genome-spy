@@ -2,9 +2,12 @@ import { inheritSpecOrigin, cloneWithSpecOrigin } from "../utils/specOrigin.js";
 import createEncoders, {
     findChannelDefWithScale,
     isChannelWithScale,
+    isColorChannel,
     isDatumDef,
+    isDiscreteChannel,
     isExprDef,
     isNestedDiscreteOffsetDef,
+    isSecondaryChannel,
     isValueDef,
     resolveSecondaryOffset,
 } from "../encoder/encoder.js";
@@ -294,17 +297,6 @@ export default class Mark {
                     .filter((entry) => isValueDef(entry[1]))
             );
 
-            const encoding = this.fixEncoding({
-                ...(this.requiresRecordIdentity()
-                    ? { uniqueId: { field: UNIQUE_ID_KEY } }
-                    : {}),
-                ...propertyValues,
-                ...configured,
-            });
-            const internalEncoding = /** @type {Record<string, any>} */ (
-                encoding
-            );
-
             /**
              * @param {import("../spec/channel.js").ChannelDef} channelDef
              * @param {Record<string, any>} properties
@@ -320,6 +312,48 @@ export default class Mark {
                 Object.assign(scaleDef, properties);
                 return clone;
             };
+
+            /** @type {Encoding} */
+            const merged = {
+                ...(this.requiresRecordIdentity()
+                    ? { uniqueId: { field: UNIQUE_ID_KEY } }
+                    : {}),
+                ...propertyValues,
+                ...configured,
+            };
+            const mutable = /** @type {Record<string, any>} */ (merged);
+            for (const channel of /** @type {Channel[]} */ (Object.keys(merged))) {
+                if (!isChannelWithScale(channel)) {
+                    continue;
+                }
+                const def = merged[channel];
+                const direct = findChannelDefWithScale(def);
+                if (direct?.scale !== null) {
+                    continue;
+                }
+
+                // An explicitly direct secondary datum has its own visual
+                // coordinate. A secondary field or expr inherits the primary.
+                if (isSecondaryChannel(channel) && isDatumDef(def)) {
+                    mutable[channel] = inheritSpecOrigin(def, {
+                        value: def.datum,
+                    });
+                } else if (
+                    direct.type === undefined &&
+                    !isDiscreteChannel(channel)
+                ) {
+                    mutable[channel] = withScaleProperties(def, {
+                        type: isColorChannel(channel)
+                            ? "nominal"
+                            : "quantitative",
+                    });
+                }
+            }
+
+            const encoding = this.fixEncoding(merged);
+            const internalEncoding = /** @type {Record<string, any>} */ (
+                encoding
+            );
 
             for (const primary of /** @type {const} */ (["x", "y"])) {
                 const secondary = primary == "x" ? "x2" : "y2";

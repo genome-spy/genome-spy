@@ -441,6 +441,7 @@ describe("container annotation contracts", () => {
         for (const track of spec.vconcat) {
             track.encoding.x = {
                 ...track.encoding.x,
+                type: "quantitative",
                 scale: { domain: [0, 100], zoom: true },
             };
         }

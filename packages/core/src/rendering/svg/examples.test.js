@@ -21,6 +21,61 @@ const baseConfig = resolveBaseConfig({
 });
 
 describe("SVG example exports", () => {
+    test("isolates direct interval endpoints from a layer's shared scale", async () => {
+        const { view } = await createHeadlessEngine({
+            padding: 0,
+            data: { values: [{ start: 0.2, end: 0.4, measurement: 50 }] },
+            scales: { x: { type: "linear", domain: [0, 100] } },
+            layer: [
+                {
+                    name: "direct",
+                    mark: { type: "rule", fill: "black", strokeWidth: 0 },
+                    // This declaration is local to the direct channel.
+                    axes: { x: { title: "Direct" } },
+                    encoding: {
+                        x: { field: "start", scale: null },
+                        x2: { field: "end" },
+                        y: { value: 0.25 },
+                    },
+                },
+                {
+                    name: "scaled",
+                    mark: { type: "rule", fill: "black", strokeWidth: 0 },
+                    encoding: {
+                        x: {
+                            field: "measurement",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                        x2: { datum: 0.75, scale: null },
+                        y: { value: 0.75 },
+                    },
+                },
+            ],
+        });
+        try {
+            const { svg, warnings } = createSvg({
+                viewRoot: view,
+                logicalWidth: 100,
+                logicalHeight: 100,
+            });
+
+            expect(warnings).toEqual([]);
+            const direct = svg.querySelector('[data-name="direct"] line');
+            const scaled = svg.querySelector('[data-name="scaled"] line');
+            expect([
+                direct.getAttribute("x1"),
+                direct.getAttribute("x2"),
+            ]).toEqual(["20", "40"]);
+            expect([
+                scaled.getAttribute("x1"),
+                scaled.getAttribute("x2"),
+            ]).toEqual(["50", "75"]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test.each(/** @type {const} */ (["shared", "forced"]))(
         "surround keeps %s side axes local and projects each track's own span",
         async (behavior) => {
