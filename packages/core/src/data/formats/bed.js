@@ -41,7 +41,11 @@ export default async function bed(data) {
         }
 
         try {
-            rows.push(parser.parseLine(line));
+            const row = parser.parseLine(line);
+            // The parser uses a positional name for column 9 in shorter BED rows.
+            const itemRgb = row.itemRgb ?? row.field8;
+            row.itemRgb = itemRgb === "." ? null : (itemRgb ?? null);
+            rows.push(row);
         } catch (error) {
             throw new Error(
                 `Cannot parse BED line ${i + 1}: ${
