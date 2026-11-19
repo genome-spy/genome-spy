@@ -7,14 +7,6 @@ import { visitAddressableViews } from "@genome-spy/core/view/viewSelectors.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { queryDependency } from "../../utils/dependency.js";
 import { nestPaths } from "../../utils/nestPaths.js";
-import { viewSettingsSlice } from "../../viewSettingsSlice.js";
-import {
-    getRadioVisibilityGroupsBySelector,
-    getUniqueViewSelectorKeys,
-    getViewVisibilityKey,
-    getViewVisibilityOverride,
-    resolveRadioVisibilityConflicts,
-} from "../../viewSettingsUtils.js";
 import {
     dismissDropdownMenu,
     dropdownMenu,
@@ -107,85 +99,21 @@ class ViewSettingsButton extends LitElement {
 
     /**
      * @param {UIEvent} event
-     * @param {import("@genome-spy/core/view/view.js").default} view
-     */
-    #handleCheckboxClick(event, view) {
-        const checked = /** @type {HTMLInputElement} */ (event.target).checked;
-        const selectorKey = getViewVisibilityKey(view);
-        if (!selectorKey) {
-            throw new Error(
-                "Cannot toggle view visibility without an explicit name."
-            );
-        }
-
-        if (checked != view.isVisibleInSpec()) {
-            this.#app.store.dispatch(
-                viewSettingsSlice.actions.setVisibility({
-                    key: selectorKey,
-                    visibility: checked,
-                })
-            );
-        } else {
-            this.#app.store.dispatch(
-                viewSettingsSlice.actions.restoreDefaultVisibility(selectorKey)
-            );
-
-            // Clear legacy explicit-name overrides too. Otherwise an old
-            // bookmark key can keep the view invisible even after restoring.
-            if (view.explicitName && view.explicitName !== selectorKey) {
-                this.#app.store.dispatch(
-                    viewSettingsSlice.actions.restoreDefaultVisibility(
-                        view.explicitName
-                    )
-                );
-            }
-        }
-
-        this.#clearHoverHighlight();
-
-        // Just to be sure...
-        this.requestUpdate();
-
-        // Update reset item
-        void this.#showDropdown();
-
-        event.stopPropagation();
-    }
-
-    /**
-     * @param {UIEvent} event
      * @param {View} view
-     * @param {string[]} groupMemberKeys
+     * @param {boolean} radio
      */
-    #handleRadioClick(event, view, groupMemberKeys) {
+    #handleVisibilityClick(event, view, radio) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
-        if (!checked) {
-            event.stopPropagation();
-            return;
-        }
-
-        const selectorKey = getViewVisibilityKey(view);
-        if (!selectorKey) {
-            throw new Error(
-                "Cannot toggle view visibility without an explicit name."
-            );
-        }
-
-        for (const memberKey of groupMemberKeys) {
-            this.#app.store.dispatch(
-                viewSettingsSlice.actions.setVisibility({
-                    key: memberKey,
-                    visibility: memberKey === selectorKey,
-                })
-            );
-        }
+        event.stopPropagation();
+        if (radio && !checked) return;
+        this.#app.viewVisibility.setOverride(
+            view,
+            radio || checked !== view.isVisibleInSpec() ? checked : undefined
+        );
 
         this.#clearHoverHighlight();
-
         this.requestUpdate();
         void this.#showDropdown();
-
-        event.stopPropagation();
     }
 
     #clearHoverHighlight() {
@@ -194,9 +122,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     #handleResetClick() {
-        this.#app.store.dispatch(
-            viewSettingsSlice.actions.restoreDefaultVisibilities()
-        );
+        this.#app.viewVisibility.restoreChoices(undefined);
         // Update checkboxes
         void this.#showDropdown();
     }
@@ -236,16 +162,9 @@ class ViewSettingsButton extends LitElement {
 
     #makeToggles() {
         const viewRoot = this.#app.genomeSpy.viewRoot;
-        const visibilities = this.getVisibilities();
-        const effectiveVisibilities = viewRoot
-            ? resolveRadioVisibilityConflicts(viewRoot, visibilities)
-            : visibilities;
-        const uniqueSelectorKeys = viewRoot
-            ? getUniqueViewSelectorKeys(viewRoot)
-            : new Set();
-        const radioGroupsBySelector = viewRoot
-            ? getRadioVisibilityGroupsBySelector(viewRoot)
-            : new Map();
+        if (!viewRoot || !this.#nestedPaths) return [];
+
+        const { keys, radioGroups } = this.#app.viewVisibility;
 
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
@@ -256,21 +175,12 @@ class ViewSettingsButton extends LitElement {
          */
         const nestedItemToHtml = (/** */ item, depth = -1) => {
             const view = item.item;
-            const visibilityOverride = getViewVisibilityOverride(
-                effectiveVisibilities,
-                view
-            );
             const checked =
-                visibilityOverride !== undefined
-                    ? visibilityOverride
-                    : view.isVisibleInSpec();
-            const selectorKey = getViewVisibilityKey(view);
-            const radioGroup =
-                selectorKey && radioGroupsBySelector.has(selectorKey)
-                    ? radioGroupsBySelector.get(selectorKey)
-                    : undefined;
+                view.visibilityIsExpression || view.isLocallyVisible();
+            const selectorKey = keys.get(view);
+            const radioGroup = radioGroups.get(selectorKey);
             const isRadioGroup = Boolean(
-                radioGroup && radioGroup.memberKeys.length > 1
+                radioGroup && radioGroup.members.length > 1
             );
 
             /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
@@ -327,36 +237,33 @@ class ViewSettingsButton extends LitElement {
                     !checked && item.children.length > 0
                         ? title + "..."
                         : title;
-                const template = html` <label
-                    class="checkbox"
-                    @mouseover=${(/** @type {MouseEvent} */ event) =>
-                        this.#handleViewHover(event, view)}
-                    @mouseout=${(/** @type {MouseEvent} */ event) =>
-                        this.#handleViewHover(event, view)}
-                >
-                    <input
-                        data-control-key=${`${selectorKey ?? title}:visibility`}
-                        style=${`margin-left: ${depth * 1.5}em;`}
-                        type=${isRadioGroup ? "radio" : "checkbox"}
-                        name=${isRadioGroup ? radioGroup.groupKey : nothing}
-                        ?disabled=${
-                            !selectorKey ||
-                            !uniqueSelectorKeys.has(selectorKey) ||
-                            !isVisibilityConfigurable(view)
-                        }
-                        .checked=${live(checked)}
-                        @change=${(/** @type {UIEvent} */ event) =>
-                            isRadioGroup
-                                ? this.#handleRadioClick(
+                const template = view.visibilityIsExpression
+                    ? undefined
+                    : html` <label
+                          class="checkbox"
+                          @mouseover=${(/** @type {MouseEvent} */ event) =>
+                              this.#handleViewHover(event, view)}
+                          @mouseout=${(/** @type {MouseEvent} */ event) =>
+                              this.#handleViewHover(event, view)}
+                      >
+                          <input
+                              data-control-key=${`${selectorKey ?? title}:visibility`}
+                              style=${`margin-left: ${depth * 1.5}em;`}
+                              type=${isRadioGroup ? "radio" : "checkbox"}
+                              name=${isRadioGroup ? radioGroup.groupKey : nothing}
+                              ?disabled=${
+                                  !selectorKey ||
+                                  !isVisibilityConfigurable(view)
+                              }
+                              .checked=${live(checked)}
+                              @change=${(/** @type {UIEvent} */ event) =>
+                                  this.#handleVisibilityClick(
                                       event,
                                       view,
-                                      /** @type {{ memberKeys: string[] }} */ (
-                                          radioGroup
-                                      ).memberKeys
-                                  )
-                                : this.#handleCheckboxClick(event, view)}
-                    />${label}
-                </label>`;
+                                      isRadioGroup
+                                  )}
+                          />${label}
+                      </label>`;
 
                 items.push({
                     label: title,
@@ -374,10 +281,6 @@ class ViewSettingsButton extends LitElement {
             }
         };
 
-        if (!this.#nestedPaths) {
-            return items;
-        }
-
         const startDepth =
             this.#nestedPaths.children.length ||
             !this.#nestedPaths.item.explicitName
@@ -392,8 +295,6 @@ class ViewSettingsButton extends LitElement {
         this.#updateNestedPaths();
         const viewRoot = this.#app.genomeSpy.viewRoot;
         const visibilityItems = this.#makeToggles();
-
-        const defaultVis = !Object.keys(this.getVisibilities()).length;
 
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
@@ -414,9 +315,9 @@ class ViewSettingsButton extends LitElement {
                 { label: "View visibility", type: "header" },
                 {
                     label: "Restore defaults",
-                    callback: defaultVis
-                        ? undefined
-                        : () => this.#handleResetClick(),
+                    callback: this.#app.viewVisibility.hasChoices
+                        ? () => this.#handleResetClick()
+                        : undefined,
                 },
                 { type: "divider" },
                 ...visibilityItems
@@ -454,10 +355,6 @@ class ViewSettingsButton extends LitElement {
                 </button>
             </div>
         `;
-    }
-
-    getVisibilities() {
-        return this.#app.store.getState().viewSettings.visibilities;
     }
 
     /**

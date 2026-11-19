@@ -73,6 +73,11 @@ export default interface ViewContext {
     /** Optional opaque authored-spec context for diagnostics. */
     getSpecOrigin?: (fragment: object) => string | undefined;
 
+    /** Queues a visibility refresh. Initialized engines can flush it for an API write. */
+    requestVisibilityRefresh?: (
+        affected?: ReadonlySet<View>
+    ) => void | Promise<void>;
+
     requestLayoutReflow: () => void;
 
     /**

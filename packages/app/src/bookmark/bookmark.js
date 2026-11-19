@@ -1,7 +1,5 @@
 import { html } from "lit";
 import "../components/dialogs/bookmarkInfoBox.js";
-import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { normalizeViewSettingsPayload } from "../viewSettingsUtils.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { showDialog } from "../components/generic/baseDialog.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
@@ -38,12 +36,10 @@ export function resetToDefaultState(app) {
         }
     }
 
-    const store = app.store;
-
     if (app.provenance.isUndoable()) {
         app.provenance.activateInitialState();
     }
-    store.dispatch(viewSettingsSlice.actions.restoreDefaultVisibilities());
+    app.viewVisibility.restoreChoices(undefined);
 }
 
 /**
@@ -69,10 +65,7 @@ export async function restoreBookmark(entry, app) {
             await app.paramProvenanceBridge?.whenApplied();
         }
 
-        const normalized = normalizeViewSettingsPayload(entry.viewSettings);
-        app.store.dispatch(
-            viewSettingsSlice.actions.setViewSettings(normalized)
-        );
+        app.viewVisibility.restoreChoices(entry.viewSettings);
 
         /** @type {Promise<void>[]} */
         const promises = [];

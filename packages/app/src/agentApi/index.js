@@ -326,6 +326,15 @@ export function createAgentApi(app) {
          * @param {boolean} visibility
          */
         setViewVisibility(selector, visibility) {
+            const view = resolveCoreViewSelector(
+                app.genomeSpy.viewRoot,
+                selector
+            );
+            if (view?.visibilityIsExpression) {
+                throw new Error(
+                    `Visibility of "${view.name}" is controlled by an expression.`
+                );
+            }
             app.runCohortOperation(() =>
                 app.store.dispatch(
                     viewSettingsSlice.actions.setVisibility({

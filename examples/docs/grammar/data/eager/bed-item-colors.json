@@ -1,0 +1,45 @@
+{
+  "description": "BED item colors with a fallback",
+
+  "assembly": "hg38",
+  "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } },
+
+  "vconcat": [
+    { "name": "bed3", "import": { "template": "bedTrack" } },
+
+    {
+      "name": "bed9",
+      "import": { "template": "bedTrack" },
+      "params": { "bedUrl": "data/bed-item-rgb-9.bed", "trackTitle": "BED9" }
+    },
+
+    {
+      "name": "bed12",
+      "import": { "template": "bedTrack" },
+      "params": { "bedUrl": "data/bed-item-rgb-12.bed", "trackTitle": "BED12" }
+    }
+  ],
+
+  "templates": {
+    "bedTrack": {
+      "params": [
+        { "name": "bedUrl", "value": "data/bed-item-rgb-3.bed" },
+        { "name": "trackTitle", "value": "BED3" },
+        { "name": "fallbackColor", "value": "#4c78a8" }
+      ],
+      "data": { "url": { "expr": "bedUrl" }, "format": { "type": "bed" } },
+
+      "title": { "text": { "expr": "trackTitle" }, "style": "track-title" },
+      "height": 18,
+      "mark": "rect",
+      "encoding": {
+        "x": { "chrom": "chrom", "pos": "chromStart", "type": "locus" },
+        "x2": { "chrom": "chrom", "pos": "chromEnd" },
+        "color": {
+          "expr": "bedColor(datum.itemRgb, fallbackColor)",
+          "scale": null
+        }
+      }
+    }
+  }
+}

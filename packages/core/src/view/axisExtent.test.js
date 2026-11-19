@@ -708,6 +708,7 @@ describe("Axis extent measurement", () => {
                     ...baseSpec.encoding,
                     y: {
                         ...baseSpec.encoding.y,
+                        type: "quantitative",
                         scale: {
                             domain: [0, 10],
                             zoom: { extent: [-100000, 100000] },

@@ -1,5 +1,5 @@
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
-import { initializeViewDataForViews } from "../genomeSpy/viewDataInit.js";
+import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
 import {
     attachViewLevelScaleProps,
     clearViewLevelScaleProps,
@@ -10,6 +10,7 @@ import {
     clearViewLevelGuideProps,
 } from "../scales/viewLevelGuideProps.js";
 import { configureViewsAfterScaleResolution } from "../genomeSpy/viewHierarchyConfig.js";
+import { VISIT_SKIP } from "./view.js";
 import { isChromeView } from "./viewSelectors.js";
 import { isImportSpec } from "./viewSpecGuards.js";
 import { cloneWithSpecOrigin } from "../utils/specOrigin.js";
@@ -32,7 +33,7 @@ export default class ContainerMutationHelper {
      *   specs: (ViewSpec | ImportSpec)[],
      *   insertView: (view: View, index: number) => import("./gridView/gridChild.js").default | void,
      *   removeView: (index: number) => void,
-     *   syncMutationGuideViews?: (gridChild?: import("./gridView/gridChild.js").default | void) => Promise<Iterable<View>>,
+     *   syncMutationGuideViews?: (gridChild?: import("./gridView/gridChild.js").default | void) => Promise<ReadonlySet<View>>,
      *   namePrefix: string,
      *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
      *   specValidator?: (spec: ViewSpec) => void
@@ -102,18 +103,7 @@ export default class ContainerMutationHelper {
             // assemblies are ready so generated guide marks can initialize.
             const guideRoots =
                 await this.options.syncMutationGuideViews?.(insertionResult);
-            const viewsToInitialize = new Set(childView.getDescendants());
-            for (const root of guideRoots ?? [this.container]) {
-                collectUninitializedChromeViews(root, viewsToInitialize);
-            }
-            configureViewsAfterScaleResolution(viewsToInitialize);
-
-            await initializeViewDataForViews(
-                this.container,
-                this.container.context.dataFlow,
-                this.container.context.textMetrics,
-                viewsToInitialize
-            );
+            await this.initializeMutationViews(guideRoots, childView);
         } catch (error) {
             if (viewInserted) {
                 await this.#rollbackInsertedChild(insertIndex, error);
@@ -169,7 +159,7 @@ export default class ContainerMutationHelper {
             // Removed children may change shared guide ownership and visibility.
             const guideRoots = await this.options.syncMutationGuideViews?.();
 
-            await this.initializeUninitializedChromeViews(guideRoots);
+            await this.initializeMutationViews(guideRoots);
 
             if (options.requestLayout !== false) {
                 this.container.invalidateSizeCache();
@@ -181,29 +171,45 @@ export default class ContainerMutationHelper {
     }
 
     /**
-     * Initializes generated guide/chrome views created by a dynamic mutation.
+     * Initializes the inserted subtree and generated chrome after a mutation.
      *
-     * Reorder operations can recreate shared axes or legends without touching
-     * normal child dataflow. This keeps those regenerated chrome views renderable
-     * without reloading or rebuilding existing track data.
-     *
-     * @param {Iterable<View>} [roots]
+     * @param {ReadonlySet<View>} [guideHosts] Layout ancestors that refreshed guides.
+     * @param {View} [inserted]
      */
-    async initializeUninitializedChromeViews(roots = [this.container]) {
-        if (this.container.getDataInitializationState() === "none") {
+    initializeMutationViews(guideHosts, inserted) {
+        const { container } = this;
+        if (!inserted && container.getDataInitializationState() === "none") {
             return;
         }
 
-        const viewsToInitialize = new Set();
-        for (const root of roots) {
-            collectUninitializedChromeViews(root, viewsToInitialize);
-        }
+        const root =
+            container
+                .getLayoutAncestors()
+                .findLast((view) => guideHosts?.has(view)) ?? container;
+        const viewsToInitialize = new Set(inserted?.getDescendants());
+
+        /** @param {View} view */
+        const collectUninitialized = (view) => {
+            if (view.getDataInitializationState() === "none") {
+                viewsToInitialize.add(view);
+            }
+        };
+        /** @type {import("./view.js").Visitor} */
+        const collectChromeSubtree = (view) => {
+            if (!isChromeView(view)) return;
+            if (view.getDataInitializationState() !== "none") return;
+
+            view.visit(collectUninitialized);
+            return VISIT_SKIP;
+        };
+        root.visit(collectChromeSubtree);
+
         configureViewsAfterScaleResolution(viewsToInitialize);
 
-        await initializeViewDataForViews(
-            this.container,
-            this.container.context.dataFlow,
-            this.container.context.textMetrics,
+        return initializeVisibleViewData(
+            root,
+            container.context.dataFlow,
+            container.context.textMetrics,
             viewsToInitialize
         );
     }
@@ -228,26 +234,4 @@ async function awaitDisposedSources(sources) {
     );
     const failure = results.find((result) => result.status === "rejected");
     if (failure?.status === "rejected") throw failure.reason;
-}
-
-/**
- * @param {import("./view.js").default} root
- * @param {Set<import("./view.js").default>} [views]
- * @returns {Set<import("./view.js").default>}
- */
-function collectUninitializedChromeViews(root, views = new Set()) {
-    for (const view of root.getDescendants()) {
-        if (
-            isChromeView(view) &&
-            view.getDataInitializationState() === "none"
-        ) {
-            for (const chromeView of view.getDescendants()) {
-                if (chromeView.getDataInitializationState() === "none") {
-                    views.add(chromeView);
-                }
-            }
-        }
-    }
-
-    return views;
 }

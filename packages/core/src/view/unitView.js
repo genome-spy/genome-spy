@@ -332,11 +332,10 @@ export default class UnitView extends View {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         context.pushView(this, coords);
         context.renderMark(this.mark, options);

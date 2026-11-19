@@ -37,6 +37,8 @@ export function getVisibilityGroup(view) {
  * @returns {boolean}
  */
 export function isVisibilityConfigurable(view) {
+    if (view.visibilityIsExpression) return false;
+
     const explicit = getConfigurableVisibility(view);
     if (explicit !== undefined) {
         return explicit !== false;

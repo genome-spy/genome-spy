@@ -54,6 +54,7 @@ def get_public_example_path(example_path):
         raise ValueError('Unsupported example path: {}'.format(example_path))
 
 refPattern = re.compile('^#/definitions/(.+)$')
+sharedRefPattern = re.compile(r"^#/definitions/(shared-[0-9]+)$")
 schemaLinePattern = re.compile(r'^\s*"\$schema"\s*:\s*".*",?\s*$')
 
 class MyPreprocessor(Preprocessor):
@@ -398,7 +399,13 @@ class MyPreprocessor(Preprocessor):
             return '[{}]({})'.format(type_name, docs_baseurl + link)
         return ref
 
+    def resolveSharedSchema(self, prop_type: dict, schema: dict) -> dict:
+        """Unwrap generated references while preserving links to named types."""
+        match = sharedRefPattern.fullmatch(prop_type.get("$ref", ""))
+        return schema["definitions"][match.group(1)] if match else prop_type
+
     def propTypeToString(self, prop_type, schema):
+        prop_type = self.resolveSharedSchema(prop_type, schema)
         any_of = prop_type.get('anyOf')
         if any_of:
             return self.propTypesToString(any_of, schema)
@@ -499,6 +506,7 @@ class MyPreprocessor(Preprocessor):
                 selected_properties.append((property, value))
 
         for (property, value) in selected_properties:
+            value = self.resolveSharedSchema(value, schema)
             if value.get('const', "") != "":
                 # Skip contants such as types of transforms
                 continue

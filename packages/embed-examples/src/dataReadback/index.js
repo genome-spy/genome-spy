@@ -99,11 +99,9 @@ const stop = selected.subscribe(showSelection);
 selectButton.disabled = clearButton.disabled = false;
 selectMatches();
 showSelection();
-window.addEventListener(
-    "pagehide",
-    () => {
+window.addEventListener("pagehide", (event) => {
+    if (!event.persisted) {
         stop();
         api.finalize();
-    },
-    { once: true }
-);
+    }
+});

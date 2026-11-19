@@ -59,6 +59,30 @@ class ExampleGalleryPreprocessorTest(unittest.TestCase):
             "(UnitSpec | SurroundSpec)[] | SurroundSideSpec",
         )
 
+    def test_schema_macro_expands_shared_properties_and_inline_types(self) -> None:
+        schema = {
+            "definitions": {
+                "Axis": {},
+                "View": {
+                    "properties": {"axes": {"$ref": "#/definitions/shared-0"}},
+                },
+                "shared-0": {
+                    "anyOf": [{"$ref": "#/definitions/shared-1"}, {"type": "null"}],
+                    "description": "The axes in this view.",
+                },
+                "shared-1": {"type": "array", "items": {"$ref": "#/definitions/Axis"}},
+            }
+        }
+        preprocessor = MyPreprocessor(
+            None, schema, {}, "", type_links={"Axis": "/grammar/axis/"}
+        )
+
+        lines = "\n".join(preprocessor.getType("View"))
+
+        self.assertIn("[Axis](https://genomespy.app/docs/grammar/axis/)[] | null", lines)
+        self.assertIn("The axes in this view.", lines)
+        self.assertNotIn("shared-", lines)
+
     def test_schema_macro_keeps_property_descriptions_in_definition_list(self):
         schema = {
             "definitions": {

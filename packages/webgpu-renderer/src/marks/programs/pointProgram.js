@@ -30,6 +30,7 @@ export const POINT_CHANNEL_SPECS = {
     angle: { type: "f32", components: 1, default: 0.0 },
     gradientStrength: { type: "f32", components: 1, default: 0.0 },
     strokeAlign: { type: "u32", components: 1, default: 1 },
+    strokeOnlyAlign: { type: "u32", components: 1, optional: true },
     minPickingSize: { type: "f32", components: 1, default: 2.0 },
 };
 

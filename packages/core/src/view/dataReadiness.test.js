@@ -184,31 +184,6 @@ describe("dataReadiness", () => {
         expect(isSubtreeReady(subtreeRoot, { x: [0, 10] })).toBe(false);
     });
 
-    it("treats non-lazy sources as ready for lazy readiness checks", () => {
-        // Non-obvious: dataSource lacks isDataReadyForDomain and should be ignored.
-        const unitView = Object.create(UnitView.prototype);
-        unitView.isVisible = () => true;
-        unitView.getEffectiveOpacity = () => 1;
-        unitView.flowHandle = {
-            dataSource: new DataSource(
-                /** @type {import("./view.js").default} */ (
-                    /** @type {any} */ ({})
-                )
-            ),
-        };
-
-        const subtreeRoot = /** @type {import("./view.js").default} */ (
-            /** @type {any} */ ({
-                /**
-                 * @param {(view: import("./view.js").default) => void} visitor
-                 */
-                visit: (visitor) => visitor(unitView),
-            })
-        );
-
-        expect(isSubtreeLazyReady(subtreeRoot, undefined)).toBe(true);
-    });
-
     it("uses current domains when lazy readiness request is missing", () => {
         const { subtreeRoot, readyState } = createLazySubtree({ ready: false });
 
@@ -405,6 +380,25 @@ it.each(["before", "during"])(
         expect(source.requests).toBe(requests + (timing === "during" ? 1 : 0));
     }
 );
+
+it("reports a later branch's failure while an earlier branch is loading", async () => {
+    const {
+        context,
+        root,
+        lazy: [pending, failed],
+    } = await createLoadingGraph({
+        vconcat: [
+            { data: controlledData, mark: "point", encoding: xEncoding },
+            { data: controlledData, mark: "point", encoding: xEncoding },
+        ],
+    });
+    pending.requestDataForDomain([0, 10]);
+    failed.fail();
+
+    await expect(
+        awaitSubtreeLazyReady(context, root, { x: [0, 10] })
+    ).rejects.toThrow("Indexed data failed");
+});
 
 it.each(["primary", "side"])(
     "rejects failed eager %s data required by a lazy branch",

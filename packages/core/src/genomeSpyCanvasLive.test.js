@@ -17,6 +17,7 @@ import "./rendering/registerSvg.js";
 import "./rendering/registerWebGL.js";
 import GenomeSpy from "./genomeSpyBase.js";
 import { createEmbed } from "./embedFactory.js";
+import { intervalSelection } from "./selection/index.js";
 
 const embed = createEmbed(/** @type {any} */ (GenomeSpy));
 
@@ -76,6 +77,120 @@ beforeEach(() => {
 afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+});
+
+test("restores saved visibility before layout and retains data and selection through later toggles", async () => {
+    /** @type {import("./view/viewUtilTypes.js").ViewSelector} */
+    const coverage = { scope: [], view: "coverage" };
+    /** @type {import("./view/viewUtilTypes.js").ViewSelector} */
+    const detail = { scope: [], view: "detail" };
+    /** @type {import("./spec/root.js").RootSpec} */
+    const spec = {
+        width: 200,
+        height: 100,
+        data: { values: [{}] },
+        params: [{ name: "showDetail", value: false }],
+        vconcat: [
+            {
+                name: "coverage",
+                data: {
+                    url: "coverage.csv",
+                    format: { parse: { x: "number" } },
+                },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative", axis: null },
+                },
+                params: [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+            },
+            { name: "detail", visible: { expr: "showDetail" }, mark: "point" },
+            { mark: "point" },
+        ],
+    };
+    const fetch = vi.fn(async () => new Response("x\n2\n5\n"));
+    vi.stubGlobal("fetch", fetch);
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const first = await embed(container, structuredClone(spec), {
+        renderer: "canvas",
+    });
+    const old = first.views.get(coverage).visibility;
+    await old.setOverride(false);
+    if (old.override === undefined) throw new Error("Expected a saved choice.");
+    const saved = { ...coverage, visible: old.override };
+    first.finalize();
+    expect(() => old.override).toThrow(/finalized/);
+    await expect(old.setOverride(true)).rejects.toThrow(/finalized/);
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    const api = await embed(container, structuredClone(spec), {
+        renderer: "canvas",
+        initialVisibilityOverrides: [
+            saved,
+            { ...detail, visible: true },
+            { scope: [], view: "missing", visible: false },
+        ],
+    });
+    try {
+        const track = api.views.get(coverage);
+        const { visibility } = track;
+        expect(visibility.override).toBe(false);
+        expect(api.views.getLayoutBounds(track)).toBeUndefined();
+        const detailVisibility = api.views.get(detail).visibility;
+        expect(detailVisibility.staticDefault).toBeUndefined();
+        expect(detailVisibility.locallyVisible).toBe(false);
+        await expect(detailVisibility.setOverride(true)).rejects.toThrow(
+            /expression/
+        );
+        expect(fetch).toHaveBeenCalledTimes(1);
+
+        const started = Promise.withResolvers();
+        const ready = Promise.withResolvers();
+        fetch.mockImplementationOnce(async () => {
+            started.resolve();
+            await ready.promise;
+            return new Response("x\n2\n5\n");
+        });
+        const settled = vi.fn();
+        const reveal = visibility.setOverride(undefined).then(settled);
+        await started.promise;
+        expect(settled).not.toHaveBeenCalled();
+        ready.resolve();
+        await reveal;
+        expect(track.data.read({ scope: "all", limit: 3 }).rows).toHaveLength(
+            2
+        );
+        const brush = intervalSelection({ x: [2, 4] });
+        track.params.get("brush").setValue(brush);
+
+        await visibility.setOverride(false);
+        flushAnimationFrames(2);
+        expect(api.views.getLayoutBounds(track)).toBeUndefined();
+        await visibility.setOverride(true);
+        flushAnimationFrames(2);
+        expect(api.views.getLayoutBounds(track)).toBeDefined();
+        expect(api.views.get(coverage).visibility).toBe(visibility);
+        expect(track.params.get("brush").getValue()).toEqual(brush);
+        expect(fetch).toHaveBeenCalledTimes(2);
+
+        await visibility.setOverride(false);
+        await api.views.remove(track);
+        const replacement = await api.views.insert("root", {
+            name: "coverage",
+            mark: "point",
+        });
+        expect(replacement.visibility.locallyVisible).toBe(true);
+        expect(replacement.visibility.override).toBeUndefined();
+        expect(() => visibility.locallyVisible).toThrow(/removed view/);
+    } finally {
+        api.finalize();
+        container.remove();
+    }
 });
 
 test("keeps a shared data-loading error visible after launch", async () => {
@@ -590,11 +705,11 @@ test("falls back automatically, picks data, updates live state, and exports", as
     const container = document.createElement("div");
     document.body.appendChild(container);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    let showHidden = false;
     const genomeSpy = new GenomeSpy(container, {
         width: 80,
         height: 40,
         padding: 0,
+        params: [{ name: "showDetail", value: false }],
         datasets: { values: [{ x: 0.2, x2: 0.4 }] },
         layer: [
             {
@@ -616,7 +731,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
             },
             {
                 name: "initially-hidden",
-                visible: false,
+                visible: { expr: "showDetail" },
                 data: { values: [{}] },
                 mark: "rect",
                 encoding: {
@@ -629,8 +744,7 @@ test("falls back automatically, picks data, updates live state, and exports", as
             },
         ],
     });
-    genomeSpy.viewVisibilityPredicate = (view) =>
-        showHidden || view.isVisibleInSpec();
+    genomeSpy.viewVisibilityPredicate = () => true; // Expressions own their visibility.
 
     expect(await genomeSpy.launch()).toBe(true);
     genomeSpy.renderAll();
@@ -734,8 +848,15 @@ test("falls back automatically, picks data, updates live state, and exports", as
     ]);
 
     contexts[0].fillRect.mockClear();
-    showHidden = true;
-    await genomeSpy.initializeVisibleViewData();
+    const detail = genomeSpy.viewRoot
+        .getDescendants()
+        .find((view) => view.name === "initially-hidden");
+    expect(detail.flowHandle).toBeUndefined();
+    const toggle = genomeSpy.getParam("showDetail");
+    toggle.setValue(true);
+    await vi.waitFor(() =>
+        expect(detail.flowHandle?.collector?.completed).toBe(true)
+    );
     flushAnimationFrames(2);
     expect(contexts[0].fillRect.mock.calls).toContainEqual([
         expect.closeTo(39.9),
@@ -743,6 +864,11 @@ test("falls back automatically, picks data, updates live state, and exports", as
         expect.closeTo(24.2),
         expect.closeTo(12.2),
     ]);
+
+    const detailPoint = { x: 50, y: 8 };
+    expect(await genomeSpy.pick(detailPoint, detail)).toMatchObject({
+        status: "hit",
+    });
 
     const { blob } = await genomeSpy.exportRaster({
         logicalWidth: 40,
@@ -783,6 +909,12 @@ test("falls back automatically, picks data, updates live state, and exports", as
         gpuContextRequests
     );
 
+    toggle.setValue(false);
+    await genomeSpy.viewRoot.paramRuntime.whenPropagated();
+    flushAnimationFrames(2);
+    expect(await genomeSpy.pick(detailPoint)).toEqual({ status: "empty" });
+    expect(detail.coords).toBeUndefined();
+    expect(detail.flowHandle.collector.getItemCount()).toBe(1);
     genomeSpy.destroy();
     warn.mockRestore();
 });

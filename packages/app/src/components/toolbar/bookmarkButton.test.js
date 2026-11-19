@@ -40,6 +40,7 @@ describe("bookmark toolbar menu", () => {
                     new Map([["locus", { zoomTo }]]),
             },
             store: { dispatch: vi.fn() },
+            viewVisibility: { restoreChoices: vi.fn() },
         };
         document.body.append(element);
         await element.updateComplete;

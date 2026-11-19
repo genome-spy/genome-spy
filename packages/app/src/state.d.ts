@@ -22,11 +22,8 @@ export interface ViewSettings {
     visibilities: Record<string, boolean>;
 }
 
-export interface ViewVisibilityEntry {
-    scope: string[];
-    view: string;
-    visible: boolean;
-}
+export type ViewVisibilityEntry =
+    import("@genome-spy/core/types/embedApi.js").ViewVisibilityOverride;
 
 export type ViewVisibilityWire =
     ViewVisibilityEntry[] | Record<string, boolean>;

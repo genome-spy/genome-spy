@@ -1,8 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "playwright/test";
 
-const coreSource =
-    "/@fs" + fileURLToPath(new URL("../../core/src/", import.meta.url));
+const coreSource = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 
 for (const dpr of [1, 2]) {
     test(`WebGL rectangle composition at DPR ${dpr}`, async ({
@@ -279,7 +278,26 @@ for (const dpr of [1, 2]) {
                         );
                         const picked = await view.marks.pick({ x: 40, y: 32 });
                         const outside = await view.marks.pick({ x: 10, y: 32 });
+                        // Put repeat edges at physical pixel centers to check their half coverage.
+                        const phase = -0.5 + 0.5 / dpr;
+                        api.datasets.set("rows", [
+                            { ...row, x: 8 + phase, x2: 56 + phase },
+                        ]);
+                        const repeating = await paint({
+                            radius: 0,
+                            width: 4,
+                            alpha: 1,
+                            viewFade: 1,
+                            minimum: 0,
+                            floor: 0,
+                            shadow: 0,
+                            hatch: "vertical",
+                        });
+                        const hatchRepeats = [
+                            16, 18, 24, 32, 34, 40, 48, 50,
+                        ].map((x) => pixel(repeating, x, 32));
                         return {
+                            hatchRepeats,
                             transparentErrors,
                             subpixel,
                             viewFade,
@@ -324,6 +342,12 @@ for (const dpr of [1, 2]) {
             close(result.subpixel, [112, 0, 32, 143]);
             close(result.blend, [128, 0, 128, 255]);
             close(result.viewFade, [0, 0, 128, 128]);
+            const edge = [128, 0, 128, 255],
+                stripe = [0, 0, 255, 255],
+                gap = [255, 0, 0, 255];
+            [edge, stripe, gap, edge, stripe, gap, edge, stripe].forEach(
+                (expected, i) => close(result.hatchRepeats[i], expected)
+            );
             // PNG stores straight colors; fading blue changes alpha, not its RGB value.
             for (const { fade, color } of result.pngColors)
                 close(color, [0, 0, 255, Math.round(255 * fade)]);

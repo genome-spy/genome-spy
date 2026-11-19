@@ -11,6 +11,7 @@ import {
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
 import HeadlessTextMetricsProvider from "../fonts/headlessTextMetrics.js";
+import InlineSource from "../data/sources/inlineSource.js";
 import OutlineTextMetricsProvider from "../rendering/webgpu/outlineTextMetrics.js";
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
@@ -790,6 +791,33 @@ describe("ViewMutationApi", () => {
         expect(getCollectorValues(consumerBView)).toEqual([2]);
     });
 
+    test("keeps a merged named source available for a deferred sibling", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: { shared: [{ x: 1 }] },
+            vconcat: [
+                {
+                    name: "first",
+                    data: { name: "shared" },
+                    vconcat: [{ mark: "point" }],
+                },
+                {
+                    data: { name: "shared" },
+                    vconcat: [
+                        { name: "deferred", visible: false, mark: "point" },
+                    ],
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const deferred = api.get({ scope: [], view: "deferred" });
+        await api.remove({ scope: [], view: "first" });
+        await deferred.visibility.setOverride(true);
+        expect(deferred.data.read({ scope: "all", limit: 1 }).rows).toEqual([
+            { x: 1 },
+        ]);
+        view.disposeSubtree();
+    });
+
     test("inserts a direct spec into a concat container", async () => {
         const { view } = await createHeadlessViewHierarchy({
             name: "tracks",
@@ -1314,7 +1342,14 @@ describe("ViewMutationApi", () => {
             { scope: "variants-1" }
         );
 
-        expect(getLegends(view)).toHaveLength(1);
+        // The shared legend lives outside the inserted subtree.
+        const legends = getLegends(view);
+        expect(legends).toHaveLength(1);
+        expect(
+            legends[0]
+                .getDescendants()
+                .every((descendant) => descendant.isDataInitialized())
+        ).toBe(true);
         expect(getRenderedLegendRegions(renderToLayout(view))).toHaveLength(1);
     });
 
@@ -1539,7 +1574,7 @@ describe("ViewMutationApi", () => {
         const { view } = await createHeadlessEngine(
             {
                 name: "tracks",
-                vconcat: [],
+                vconcat: [{ mark: "point", data: { values: [{}] } }],
             },
             {
                 contextOptions: {
@@ -1551,7 +1586,16 @@ describe("ViewMutationApi", () => {
         requestLayoutReflow.mockClear();
 
         const api = createViewMutationApi({ viewRoot: view });
+        const [unnamed] = api.root().children();
         await api.transaction(async (views) => {
+            await api.root().visibility.setOverride(false);
+            expect(unnamed.visibility.locallyVisible).toBe(true);
+            await api.root().visibility.setOverride(undefined);
+            expect(unnamed.visibility.staticDefault).toBe(true);
+            await unnamed.visibility.setOverride(true);
+            expect(unnamed.visibility.override).toBe(true);
+            await unnamed.visibility.setOverride(false);
+            expect(unnamed.visibility.locallyVisible).toBe(false);
             await views.insert("root", makeUnitSpec("trackA"));
             await views.transaction(async (nestedViews) => {
                 await nestedViews.insert("root", makeUnitSpec("trackB"));
@@ -1566,8 +1610,78 @@ describe("ViewMutationApi", () => {
                 .root()
                 .children()
                 .map((child) => child.name)
-        ).toEqual(["trackA", "trackB"]);
+        ).toEqual([undefined, "trackA", "trackB"]);
     });
+
+    test.each([false, true])(
+        "joins relevant first-show work when an unrelated track becomes visible in the same turn (show %s)",
+        async (visible) => {
+            const { view } = await createHeadlessEngine({
+                params: [{ name: "showDetail", value: false }],
+                vconcat: [
+                    { ...makeUnitSpec("coverage"), visible: !visible },
+                    {
+                        name: "branch",
+                        vconcat: [
+                            {
+                                ...makeUnitSpec("detail"),
+                                data: { values: [{ x: 3, y: 4 }] },
+                                visible: { expr: "showDetail" },
+                            },
+                        ],
+                    },
+                ],
+            });
+            const api = createViewMutationApi({ viewRoot: view });
+            const [coverage, branch] = api.root().children();
+            const started = Promise.withResolvers();
+            const finish = Promise.withResolvers();
+            const load = InlineSource.prototype.load;
+            const loading = vi
+                .spyOn(InlineSource.prototype, "load")
+                .mockImplementation(async function () {
+                    if (this.view.explicitName === "detail") {
+                        started.resolve();
+                        await finish.promise;
+                    }
+                    await load.call(this);
+                });
+            try {
+                const changed = vi.fn();
+                const change = coverage.visibility
+                    .setOverride(visible)
+                    .then(changed);
+                // This same-turn change can be picked up by the manual refresh.
+                view.paramRuntime.setValue("showDetail", true);
+                await started.promise;
+                await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+                await change;
+                expect(coverage.visibility.locallyVisible).toBe(visible);
+                if (visible)
+                    expect(
+                        coverage.data.read({ scope: "all", limit: 1 }).rows
+                    ).toHaveLength(1);
+
+                const shown = vi.fn();
+                const show = branch.visibility.setOverride(true).then(shown);
+                await vi.waitFor(() =>
+                    expect(branch.visibility.override).toBe(true)
+                );
+                expect(shown).not.toHaveBeenCalled();
+                finish.resolve();
+                await show;
+                expect(
+                    branch.children()[0].data.read({ scope: "all", limit: 1 })
+                        .rows
+                ).toHaveLength(1);
+                expect(loading).toHaveBeenCalledTimes(visible ? 2 : 1);
+            } finally {
+                finish.resolve();
+                loading.mockRestore();
+                view.disposeSubtree();
+            }
+        }
+    );
 
     test("serializes concurrently started mutations inside a transaction", async () => {
         const { view } = await createHeadlessEngine({

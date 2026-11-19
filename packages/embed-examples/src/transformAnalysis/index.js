@@ -63,4 +63,8 @@ clearButton.addEventListener("click", () => {
 view.params.get("brush").setValue(intervalSelection({ x: [1.5, 6.5] }));
 analyzeButton.disabled = clearButton.disabled = false;
 analyze();
-window.addEventListener("pagehide", () => api.finalize(), { once: true });
+window.addEventListener("pagehide", (event) => {
+    if (!event.persisted) {
+        api.finalize();
+    }
+});

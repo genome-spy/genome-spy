@@ -102,6 +102,7 @@ test("UrlSource reads BED using format.type bed", async () => {
             chromEnd: 10,
             name: "feature",
             strand: 0,
+            itemRgb: null,
         },
     ]);
 });

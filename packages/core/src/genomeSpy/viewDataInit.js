@@ -6,7 +6,13 @@ import {
 } from "../data/flowInit.js";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
-import { VISIT_SKIP } from "../view/view.js";
+import { collectSubtreeViews } from "../view/flowBuilder.js";
+
+/** @typedef {import("../view/view.js").default} View */
+/** @typedef {import("../data/dataFlow.js").default} DataFlow */
+
+/** @type {WeakMap<View, Promise<DataFlow>>} */
+const pendingInitializations = new WeakMap();
 
 /**
  * Initializes the view data pipeline: builds the flow graph, awaits fonts,
@@ -24,8 +30,19 @@ export async function initializeViewData(
     textMetrics,
     onDataFlowBuilt
 ) {
-    const { predicate: visibilityPredicate } =
-        getInitializationDependencies(viewRoot);
+    // During initial loading a parameter can change after we selected the sources.
+    const context = viewRoot.context;
+    let changed = false;
+    context.requestVisibilityRefresh = () => {
+        changed = true;
+    };
+    viewRoot.registerDisposer(() => {
+        context.requestVisibilityRefresh = undefined;
+    });
+
+    const { required } = getInitializationDependencies(viewRoot);
+    const visibilityPredicate = (/** @type {View} */ view) =>
+        required.has(view);
     const { dataFlow: builtDataFlow } = initializeViewSubtree(
         viewRoot,
         dataFlow,
@@ -49,34 +66,99 @@ export async function initializeViewData(
         visibilityPredicate
     );
 
+    while (changed && context.requestVisibilityRefresh) {
+        changed = false;
+        await refreshVisibility(viewRoot);
+    }
+
+    if (context.requestVisibilityRefresh) {
+        context.requestVisibilityRefresh = (affected) => {
+            if (affected) {
+                changed = false;
+                return refreshVisibility(viewRoot, affected);
+            }
+            if (changed) return;
+            changed = true;
+            queueMicrotask(() => {
+                if (changed && context.requestVisibilityRefresh) {
+                    changed = false;
+                    void refreshVisibility(viewRoot).catch(context.reportError);
+                }
+            });
+        };
+    }
     return builtDataFlow;
 }
 
 /**
- * Initializes data flow for visible views that were previously
- * skipped. Intended for view-visibility toggles.
- *
- * @param {import("../view/view.js").default} viewRoot
- * @param {import("../data/dataFlow.js").default} dataFlow
- * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @returns {Promise<import("../data/dataFlow.js").default>}
+ * Also awaits branches a previous refresh has wired but is still loading.
+ * @param {View} root
+ * @param {View} target
+ * @param {() => void} write
  */
-export async function initializeVisibleViewData(
-    viewRoot,
-    dataFlow,
-    textMetrics
-) {
-    return initializeViewDataForViews(
-        viewRoot,
-        dataFlow,
-        textMetrics,
-        viewRoot.getDescendants()
+export async function applyVisibilityUpdate(root, target, write) {
+    const { required: before } = getInitializationDependencies(root);
+    write();
+    const subtree = new Set(target.getDescendants());
+    const { required: affected } = getInitializationDependencies(
+        root,
+        (view) => subtree.has(view) || !before.has(view)
     );
+    await (root.context.requestVisibilityRefresh?.(affected) ||
+        refreshVisibility(root, affected));
 }
 
 /**
- * Initializes dataflow for selected views while avoiding unnecessary
- * data source reloads.
+ * A hide takes effect while an earlier first-show load may still be pending.
+ * @param {View} root
+ * @param {ReadonlySet<View>} [affected]
+ */
+export async function refreshVisibility(root, affected) {
+    const context = root.context;
+    root._invalidateCacheByPrefix("size", "progeny");
+    root.visit((view) => {
+        if (!view.isVisible()) {
+            view.facetCoords.clear();
+            view.layoutCoords = undefined;
+        }
+        for (const scale of Object.values(view.resolutions.scale))
+            scale.refreshVisibility();
+    });
+    context.highlightView(null);
+    context.requestLayoutReflow();
+
+    const { required } = getInitializationDependencies(root);
+    const visible = (/** @type {View} */ view) => required.has(view);
+    const reflowAfterLoading = () => {
+        if (!context.requestVisibilityRefresh) return;
+        root._invalidateCacheByPrefix("size", "progeny");
+        context.requestLayoutReflow();
+    };
+    if (affected) {
+        // Include existing inputs so the affected views can attach to them.
+        initializeBatch(
+            root,
+            (view) =>
+                visible(view) &&
+                (affected.has(view) ||
+                    view.getDataInitializationState() !== "none")
+        );
+        void initializeBatch(root, visible)
+            ?.then(reflowAfterLoading)
+            .catch(context.reportError);
+        const pending = affected
+            .values()
+            .map((view) => pendingInitializations.get(view));
+        await Promise.all(new Set(pending));
+    } else {
+        await initializeBatch(root, visible);
+    }
+    reflowAfterLoading();
+}
+
+/**
+ * Initializes previously skipped visible views. Mutations can restrict
+ * initialization to candidate views and required producers.
  *
  * If a selected view attaches downstream of an already completed collector,
  * the collector is repropagated instead of reloading the source.
@@ -84,111 +166,145 @@ export async function initializeVisibleViewData(
  * @param {import("../view/view.js").default} viewRoot
  * @param {import("../data/dataFlow.js").default} dataFlow
  * @param {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
- * @param {Iterable<import("../view/view.js").default>} candidateViews
+ * @param {Iterable<import("../view/view.js").default>} [candidateViews]
  * @returns {Promise<import("../data/dataFlow.js").default>}
  */
-export async function initializeViewDataForViews(
+export function initializeVisibleViewData(
     viewRoot,
     dataFlow,
     textMetrics,
     candidateViews
 ) {
-    const candidates = new Set(candidateViews);
-    const { predicate: visibilityPredicate, producerPaths } =
-        getInitializationDependencies(viewRoot);
-    const viewsToInitialize = collectVisibleViews(
-        viewRoot,
-        visibilityPredicate
-    ).filter(
-        (view) =>
-            (candidates.has(view) || producerPaths.has(view)) &&
-            view.getDataInitializationState() === "none"
+    const { required, producerPaths } = getInitializationDependencies(viewRoot);
+    const visible = (/** @type {View} */ view) => required.has(view);
+    const candidates =
+        candidateViews && new Set([...candidateViews, ...producerPaths]);
+    return (
+        initializeBatch(viewRoot, visible, candidates, {
+            dataFlow,
+            textMetrics,
+        }) ?? Promise.resolve(dataFlow)
     );
-
-    if (viewsToInitialize.length === 0) {
-        return dataFlow;
-    }
-
-    const viewsToInitializeSet = new Set(viewsToInitialize);
-    const viewInitializationPredicate = (
-        /** @type {import("../view/view.js").default} */ view
-    ) => viewsToInitializeSet.has(view);
-
-    // Only pre-existing materializations can provide a complete cache. A new
-    // collector may receive just the tail of an in-flight load while fonts wait.
-    const existingCollectors = new Set(dataFlow.collectors);
-
-    const { dataFlow: builtDataFlow } = initializeViewSubtree(
-        viewRoot,
-        dataFlow,
-        visibilityPredicate,
-        viewInitializationPredicate
-    );
-
-    // Newly visible subtrees may introduce text marks or measureText transforms
-    // that request fonts during initializeViewSubtree.
-    await textMetrics.waitUntilReady();
-    viewRoot.invalidateSizeCache();
-
-    /** @type {Set<Collector>} */
-    const replayRoots = new Set();
-    /** @type {Set<DataSource>} */
-    const sourcesToLoad = new Set();
-    for (const view of viewsToInitialize) {
-        for (const endpoint of [
-            view.flowHandle?.node,
-            ...(view.flowHandle?.terminals ?? []),
-            ...(view.flowHandle?.auxiliaryCollectors ?? []),
-        ]) {
-            let ancestor = endpoint;
-            while (
-                ancestor &&
-                !(ancestor instanceof DataSource) &&
-                !(
-                    ancestor instanceof Collector &&
-                    existingCollectors.has(ancestor)
-                )
-            ) {
-                ancestor = ancestor.parent;
-            }
-
-            if (ancestor instanceof Collector && ancestor.completed) {
-                replayRoots.add(ancestor);
-            } else {
-                const source = findAncestorDataSource(ancestor);
-                if (source) sourcesToLoad.add(source);
-            }
-        }
-    }
-
-    await loadViewSubtreeData(viewRoot, sourcesToLoad, visibilityPredicate, {
-        // Newly attached paths need a complete publication, including
-        // when an equivalent source is already loading.
-        queueReload: true,
-    });
-
-    // Load side inputs before replaying a cached primary. A source load already
-    // covers every replay root downstream of that source.
-    for (const collector of replayRoots) {
-        if (!sourcesToLoad.has(findAncestorDataSource(collector))) {
-            collector.repropagate();
-        }
-    }
-    broadcastSubtreeDataReady(viewRoot);
-
-    return builtDataFlow;
 }
+
+/**
+ * @param {View} viewRoot
+ * @param {(view: View) => boolean} visibilityPredicate
+ * @param {ReadonlySet<View>} [candidates]
+ * @param {Pick<import("../types/viewContext.js").default, "dataFlow" | "textMetrics">} [context]
+ */
+function initializeBatch(
+    viewRoot,
+    visibilityPredicate,
+    candidates,
+    { dataFlow, textMetrics } = viewRoot.context
+) {
+    const views = collectSubtreeViews(viewRoot, visibilityPredicate);
+    const viewsToInitialize = new Set(
+        views
+            .values()
+            .filter(
+                (view) =>
+                    (!candidates || candidates.has(view)) &&
+                    view.getDataInitializationState() === "none"
+            )
+    );
+
+    if (!viewsToInitialize.size) return;
+
+    const completion = load().finally(() => {
+        for (const view of viewsToInitialize)
+            pendingInitializations.delete(view);
+    });
+    for (const view of viewsToInitialize)
+        pendingInitializations.set(view, completion);
+    return completion;
+
+    async function load() {
+        // Only pre-existing materializations can provide a complete cache. A new
+        // collector may receive just the tail of an in-flight load while fonts wait.
+        const existingCollectors = new Set(dataFlow.collectors);
+
+        const { dataFlow: builtDataFlow } = initializeViewSubtree(
+            viewRoot,
+            dataFlow,
+            visibilityPredicate,
+            (view) => viewsToInitialize.has(view)
+        );
+
+        // Newly visible subtrees may introduce text marks or measureText transforms
+        // that request fonts during initializeViewSubtree.
+        await textMetrics.waitUntilReady();
+        viewRoot.invalidateSizeCache();
+
+        /** @type {Set<Collector>} */
+        const replayRoots = new Set();
+        /** @type {Set<DataSource>} */
+        const sourcesToLoad = new Set();
+        for (const view of viewsToInitialize) {
+            for (const endpoint of [
+                view.flowHandle?.node,
+                ...(view.flowHandle?.terminals ?? []),
+                ...(view.flowHandle?.auxiliaryCollectors ?? []),
+            ]) {
+                let ancestor = endpoint;
+                while (ancestor && !(ancestor instanceof DataSource)) {
+                    if (
+                        ancestor instanceof Collector &&
+                        existingCollectors.has(ancestor)
+                    )
+                        break;
+                    ancestor = ancestor.parent;
+                }
+
+                if (ancestor instanceof Collector && ancestor.completed) {
+                    replayRoots.add(ancestor);
+                } else {
+                    const source = findAncestorDataSource(ancestor);
+                    if (source) sourcesToLoad.add(source);
+                }
+            }
+        }
+
+        await loadViewSubtreeData(
+            viewRoot,
+            sourcesToLoad,
+            visibilityPredicate,
+            {
+                // Newly attached paths need a complete publication, including
+                // when an equivalent source is already loading.
+                queueReload: true,
+            }
+        );
+
+        // Load side inputs before replaying a cached primary. A source load already
+        // covers every replay root downstream of that source.
+        for (const collector of replayRoots) {
+            if (!sourcesToLoad.has(findAncestorDataSource(collector))) {
+                collector.repropagate();
+            }
+        }
+        broadcastSubtreeDataReady(viewRoot);
+
+        return builtDataFlow;
+    }
+}
+
+export { initializeVisibleViewData as initializeViewDataForViews };
 
 /**
  * Visible consumers keep their output producers active, including hidden trees.
  * Include traversal/data ancestry without initializing unrelated hidden siblings.
- * @param {import("../view/view.js").default} root
+ * @param {View} root
+ * @param {(view: View) => boolean} [selected]
  */
-function getInitializationDependencies(root) {
-    const visible = collectVisibleViews(root, (view) =>
-        view.isConfiguredVisible()
-    );
-    const required = new Set(visible);
+function getInitializationDependencies(root, selected) {
+    // A mutation may start this traversal below a hidden layout ancestor.
+    const visible =
+        root.layoutParent && !root.layoutParent.isVisible()
+            ? []
+            : collectSubtreeViews(root, (view) => view.isConfiguredVisible());
+    const required = new Set(selected ? visible.filter(selected) : visible);
     const producerPaths = new Set();
     /** @param {import("../view/view.js").default | undefined} view */
     const include = (view) => {
@@ -202,26 +318,5 @@ function getInitializationDependencies(root) {
         for (const output of view.paramRuntime.outputs)
             include(output.producerView);
     }
-    return {
-        predicate: (/** @type {import("../view/view.js").default} */ view) =>
-            required.has(view),
-        producerPaths,
-    };
-}
-
-/**
- * @param {import("../view/view.js").default} viewRoot
- * @param {(view: import("../view/view.js").default) => boolean} viewFilter
- * @returns {import("../view/view.js").default[]}
- */
-function collectVisibleViews(viewRoot, viewFilter) {
-    /** @type {import("../view/view.js").default[]} */
-    const views = [];
-    viewRoot.visit((view) => {
-        if (!viewFilter(view)) {
-            return VISIT_SKIP;
-        }
-        views.push(view);
-    });
-    return views;
+    return { required, producerPaths };
 }

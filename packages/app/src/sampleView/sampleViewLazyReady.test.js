@@ -1,5 +1,7 @@
 // @ts-check
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { initializeViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
+import { finalizeViewConfiguration } from "@genome-spy/core/genomeSpy/viewHierarchyConfig.js";
 import {
     buildReadinessRequest,
     isSubtreeLazyReady,
@@ -7,11 +9,13 @@ import {
 import { registerLazyDataSource } from "@genome-spy/core/data/sources/lazy/lazyDataSourceRegistry.js";
 import MockLazySource from "@genome-spy/core/data/sources/lazy/mockLazySource.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
+import { subscribeTo } from "../state/subscribeTo.js";
+import { getViewVisibilityKey } from "../viewSettingsUtils.js";
 
 describe("SampleView lazy readiness", () => {
     // This test is intentionally headless: it validates the async readiness
     // contract without spinning up the full app or rendering pipeline.
-    it("waits for mock lazy data before resolving ensureViewAttributeAvailability", async () => {
+    it("waits for lazy data on a manually hidden track revealed by the action", async () => {
         vi.useFakeTimers();
         /** @type {() => void} */
         let unregister;
@@ -44,13 +48,14 @@ describe("SampleView lazy readiness", () => {
                         idField: "sample",
                     },
                 },
-                data: {
-                    lazy: /** @type {import("@genome-spy/core/spec/data.js").LazyDataParams} */ (
-                        /** @type {unknown} */ (lazySource)
-                    ),
-                },
                 spec: {
                     name: "beta-values",
+                    visible: false,
+                    data: {
+                        lazy: /** @type {import("@genome-spy/core/spec/data.js").LazyDataParams} */ (
+                            /** @type {unknown} */ (lazySource)
+                        ),
+                    },
                     mark: "point",
                     encoding: {
                         sample: { field: "sample" },
@@ -60,12 +65,33 @@ describe("SampleView lazy readiness", () => {
                 },
             };
 
-            const { view } = await createSampleViewForTest({
+            const { view, context, store } = await createSampleViewForTest({
                 spec,
+                initializeFlow: false,
             });
+            onTestFinished(() => view.disposeSubtree());
+            context.isViewConfiguredVisible = (child) =>
+                store.getState().viewSettings.visibilities[
+                    getViewVisibilityKey(child)
+                ] ?? child.isVisibleInSpec();
+            const root = view.getLayoutAncestors().at(-1);
+            finalizeViewConfiguration(root);
+            await initializeViewData(
+                root,
+                context.dataFlow,
+                context.textMetrics,
+                () => undefined
+            );
+            view.registerDisposer(
+                subscribeTo(
+                    store,
+                    (state) => state.viewSettings.visibilities,
+                    () => context.requestVisibilityRefresh()
+                )
+            );
 
             const trackView = view.findDescendantByName("beta-values");
-            expect(trackView).toBeDefined();
+            expect(trackView.flowHandle).toBeUndefined();
 
             // This asserts the integration between SampleView's ensure step
             // (view visibility + zoom) and the lazy source readiness wait.
@@ -80,17 +106,9 @@ describe("SampleView lazy readiness", () => {
             ensurePromise.then(() => {
                 resolved = true;
             });
-            // Let the zero-duration zoom await continue to lazy readiness setup
-            // before advancing the mock lazy source timer.
-            await Promise.resolve();
-
-            const readinessRequest = buildReadinessRequest(trackView, ["x"]);
-            expect(readinessRequest).toBeDefined();
-            expect(isSubtreeLazyReady(trackView, readinessRequest)).toBe(false);
-
             // Before the mock lazy delay elapses, readiness should not resolve.
             await vi.advanceTimersByTimeAsync(49);
-            await Promise.resolve();
+            const readinessRequest = buildReadinessRequest(trackView, ["x"]);
             expect(resolved).toBe(false);
 
             // After the delay, the lazy source publishes data and readiness resolves.

@@ -88,6 +88,24 @@ try {
                 )
             );
             if (renderer === "canvas") {
+                // Exercise cached-page behavior even if the dev server cannot be cached.
+                await page.evaluate(() => {
+                    window.dispatchEvent(
+                        new window.PageTransitionEvent("pagehide", {
+                            persisted: true,
+                        })
+                    );
+                });
+                assert.equal(
+                    await page
+                        .locator(
+                            "#chart canvas, #viewport canvas, #cohort canvas"
+                        )
+                        .count(),
+                    3,
+                    "cached page keeps all three embeds mounted"
+                );
+
                 const directory = new URL(
                     "../../../output/playwright/",
                     import.meta.url

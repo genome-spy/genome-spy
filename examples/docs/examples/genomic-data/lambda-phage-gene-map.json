@@ -156,7 +156,6 @@
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
-              "type": "quantitative",
               "scale": null
             },
             "y2": { "value": 0 }
@@ -177,7 +176,6 @@
             "x2": { "field": "mid", "band": 0 },
             "xOffset": {
               "expr": "datum.labelOffset - datum.labelWidth / 2",
-              "type": "quantitative",
               "scale": null
             },
             "x2Offset": { "expr": "datum.labelOffset + datum.labelWidth / 2" },
@@ -206,7 +204,6 @@
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
-              "type": "quantitative",
               "scale": null
             },
             "y2": { "field": "lane", "band": 0 }
@@ -232,7 +229,6 @@
             "x2": { "field": "mid", "band": 0 },
             "xOffset": {
               "expr": "datum.labelOffset - datum.labelWidth / 2",
-              "type": "quantitative",
               "scale": null
             },
             "x2Offset": { "expr": "datum.labelOffset + datum.labelWidth / 2" }
@@ -272,11 +268,7 @@
               "value": "#171717"
             },
             "x": { "field": "mid", "type": "index", "band": 0 },
-            "xOffset": {
-              "field": "labelOffset",
-              "type": "quantitative",
-              "scale": null
-            },
+            "xOffset": { "field": "labelOffset", "scale": null },
             "text": { "field": "product" }
           }
         }
@@ -351,7 +343,6 @@
             "x": { "field": "mid", "type": "index", "band": 0 },
             "xOffset": {
               "expr": "(datum.mid - floor(datum.mid)) * pixelsPerBase",
-              "type": "quantitative",
               "scale": null
             },
             "y2": { "value": 1 }

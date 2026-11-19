@@ -1,6 +1,7 @@
 import {
     getImportScopeInfo,
     getViewSelector,
+    resolveViewSelector,
     visitAddressableViews,
 } from "@genome-spy/core/view/viewSelectors.js";
 import {
@@ -66,145 +67,73 @@ export function getViewVisibilityKey(view) {
 }
 
 /**
- * @param {Record<string, boolean>} visibilities
- * @param {import("@genome-spy/core/view/view.js").default} view
- * @returns {boolean | undefined}
- */
-export function getViewVisibilityOverride(visibilities, view) {
-    const selectorKey = getViewVisibilityKey(view);
-    if (selectorKey && hasOwn(visibilities, selectorKey)) {
-        return visibilities[selectorKey];
-    }
-
-    const explicitName = view.explicitName;
-    if (explicitName && hasOwn(visibilities, explicitName)) {
-        return visibilities[explicitName];
-    }
-}
-
-/**
  * @param {import("./state.js").ViewSettingsPayload | undefined} payload
+ * @param {import("@genome-spy/core/view/view.js").default} [viewRoot]
  * @returns {import("./state.js").ViewSettings}
  */
-export function normalizeViewSettingsPayload(payload) {
-    if (!payload || !payload.visibilities) {
-        return { visibilities: {} };
-    }
-
-    const visibilities = payload.visibilities;
-
-    if (Array.isArray(visibilities)) {
-        /** @type {Record<string, boolean>} */
-        const normalized = {};
-
-        for (const entry of visibilities) {
-            if (
-                !entry ||
-                !Array.isArray(entry.scope) ||
-                typeof entry.view !== "string"
-            ) {
-                continue;
-            }
-
-            if (typeof entry.visible !== "boolean") {
-                continue;
-            }
-
-            normalized[
-                makeViewSelectorKey({
-                    scope: entry.scope,
-                    view: entry.view,
-                })
-            ] = entry.visible;
-        }
-
-        return { visibilities: normalized };
-    }
-
-    if (typeof visibilities === "object") {
-        return { visibilities: { ...visibilities } };
-    }
-
-    return { visibilities: {} };
+export function normalizeViewSettingsPayload(payload, viewRoot) {
+    const { visibilities } = payload ?? {};
+    const choices = Array.isArray(visibilities)
+        ? Object.fromEntries(
+              visibilities
+                  .filter(
+                      (entry) =>
+                          entry &&
+                          Array.isArray(entry.scope) &&
+                          typeof entry.view === "string" &&
+                          typeof entry.visible === "boolean"
+                  )
+                  .map((entry) => [makeViewSelectorKey(entry), entry.visible])
+          )
+        : Object.fromEntries(
+              Object.entries(visibilities ?? {}).filter(
+                  ([, value]) => typeof value === "boolean"
+              )
+          );
+    return {
+        visibilities: viewRoot
+            ? scopedVisibilityChoices(viewRoot, choices)
+            : choices,
+    };
 }
 
 /**
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
  * @param {Record<string, boolean>} visibilities
- * @returns {import("./state.js").ViewVisibilityEntry[]}
  */
-export function buildViewVisibilityEntries(viewRoot, visibilities) {
-    /** @type {Map<string, boolean>} */
-    const selectorEntries = new Map();
-
+function scopedVisibilityChoices(viewRoot, visibilities) {
+    /** @type {Record<string, boolean>} */
+    const scoped = {};
+    /** @type {Set<string>} */
+    const legacyNames = new Set();
     for (const [key, value] of Object.entries(visibilities)) {
         const selector = parseViewSelectorKey(key);
-        if (selector) {
-            selectorEntries.set(makeViewSelectorKey(selector), value);
-        }
+        if (!selector) legacyNames.add(key);
+        scoped[selector ? makeViewSelectorKey(selector) : key] = value;
     }
 
-    const legacyKeys = Object.keys(visibilities).filter(
-        (key) => !parseViewSelectorKey(key)
-    );
-
-    if (legacyKeys.length && viewRoot) {
-        const legacyKeySet = new Set(legacyKeys);
-        /** @type {Map<string, import("@genome-spy/core/view/view.js").default[]>} */
-        const legacyMatches = new Map();
-
+    if (viewRoot && Object.keys(visibilities).length) {
+        const legacyMatches = new Set();
         visitAddressableViews(viewRoot, (view) => {
-            const explicitName = view.explicitName;
-            if (!explicitName || !legacyKeySet.has(explicitName)) {
-                return;
-            }
-
-            const matches = legacyMatches.get(explicitName) ?? [];
-            matches.push(view);
-            legacyMatches.set(explicitName, matches);
-        });
-
-        for (const legacyKey of legacyKeys) {
-            const matches = legacyMatches.get(legacyKey) ?? [];
-            if (!matches.length) {
-                continue;
-            }
-
-            if (matches.length > 1) {
-                console.warn(
-                    'Legacy visibility key "' +
-                        legacyKey +
-                        '" matches multiple views. Applying to all matches.'
-                );
-            }
-
-            for (const view of matches) {
-                const selectorKey = getViewVisibilityKey(view);
-                if (!selectorKey || selectorEntries.has(selectorKey)) {
-                    continue;
+            const name = view.explicitName;
+            const key = getViewVisibilityKey(view);
+            if (!key) return;
+            const hasLegacyChoice = legacyNames.has(name);
+            if (hasLegacyChoice) delete scoped[name];
+            if (view.visibilityIsExpression) {
+                delete scoped[key];
+            } else if (hasLegacyChoice) {
+                if (legacyMatches.has(name)) {
+                    console.warn(
+                        `Legacy visibility key "${name}" matches multiple views. Applying to all matches.`
+                    );
                 }
-                selectorEntries.set(selectorKey, visibilities[legacyKey]);
+                legacyMatches.add(name);
+                scoped[key] ??= visibilities[name];
             }
-        }
-    }
-
-    /** @type {import("./state.js").ViewVisibilityEntry[]} */
-    const entries = [];
-
-    for (const [key, value] of selectorEntries) {
-        const selector = parseViewSelectorKey(key);
-        if (!selector) {
-            continue;
-        }
-
-        entries.push({
-            scope: selector.scope,
-            view: selector.view,
-            visible: value,
         });
     }
-
-    return entries;
+    return scoped;
 }
 
 /**
@@ -213,141 +142,54 @@ export function buildViewVisibilityEntries(viewRoot, visibilities) {
  * @returns {import("./state.js").ViewSettingsPayload | undefined}
  */
 export function buildViewSettingsPayload(viewRoot, viewSettings) {
-    const resolvedVisibilities = resolveRadioVisibilityConflicts(
-        viewRoot,
-        viewSettings.visibilities
-    );
-    const entries = buildViewVisibilityEntries(viewRoot, resolvedVisibilities);
-    if (!entries.length) {
-        return;
-    }
-
-    return {
-        visibilities: entries,
-    };
-}
-
-/**
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- * @returns {Set<string>}
- */
-export function getUniqueViewSelectorKeys(viewRoot) {
-    /** @type {Map<string, number>} */
-    const counts = new Map();
-
-    visitAddressableViews(viewRoot, (view) => {
-        const selectorKey = getViewVisibilityKey(view);
-        if (!selectorKey) {
-            return;
-        }
-
-        counts.set(selectorKey, (counts.get(selectorKey) ?? 0) + 1);
+    const visibilities = Object.entries(
+        scopedVisibilityChoices(viewRoot, viewSettings.visibilities)
+    ).flatMap(([key, visible]) => {
+        const selector = parseViewSelectorKey(key);
+        return selector ? [{ ...selector, visible }] : [];
     });
-
-    /** @type {Set<string>} */
-    const uniqueKeys = new Set();
-
-    for (const [key, count] of counts) {
-        if (count === 1) {
-            uniqueKeys.add(key);
-        }
-    }
-
-    return uniqueKeys;
-}
-
-/**
- * Returns radio-group membership information by selector key.
- *
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- * @returns {Map<string, { groupKey: string, memberKeys: string[] }>}
- */
-export function getRadioVisibilityGroupsBySelector(viewRoot) {
-    /** @type {Map<string, { groupKey: string, memberKeys: string[] }>} */
-    const bySelector = new Map();
-
-    for (const [groupKey, members] of collectRadioVisibilityGroups(viewRoot)) {
-        const memberKeys = members.map((member) => member.selectorKey);
-        for (const member of members) {
-            bySelector.set(member.selectorKey, {
-                groupKey,
-                memberKeys,
-            });
-        }
-    }
-
-    return bySelector;
-}
-
-/**
- * Resolves conflicts in mutually exclusive visibility groups so at most one
- * view is visible in each radio group.
- *
- * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- * @param {Record<string, boolean>} visibilities
- * @returns {Record<string, boolean>}
- */
-export function resolveRadioVisibilityConflicts(viewRoot, visibilities) {
-    /** @type {Record<string, boolean>} */
-    const resolved = { ...visibilities };
-
-    for (const members of collectRadioVisibilityGroups(viewRoot).values()) {
-        const visibleMembers = members.filter((member) => {
-            const override = getViewVisibilityOverride(
-                visibilities,
-                member.view
-            );
-            if (override !== undefined) {
-                return override;
-            }
-
-            return member.view.isVisibleInSpec();
-        });
-
-        if (visibleMembers.length <= 1) {
-            continue;
-        }
-
-        const winner = visibleMembers[0].selectorKey;
-
-        for (const member of members) {
-            if (member.selectorKey === winner) {
-                continue;
-            }
-
-            resolved[member.selectorKey] = false;
-        }
-    }
-
-    return resolved;
+    return visibilities.length ? { visibilities } : undefined;
 }
 
 /**
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
- * @returns {Map<string, { view: import("@genome-spy/core/view/view.js").default, selectorKey: string }[]>}
  */
-function collectRadioVisibilityGroups(viewRoot) {
-    /**
-     * @type {Map<string, { view: import("@genome-spy/core/view/view.js").default, selectorKey: string }[]>}
-     */
+export function getViewVisibilityKeys(viewRoot) {
+    /** @type {Map<import("@genome-spy/core/view/view.js").default, string>} */
+    const keys = new Map();
+    visitAddressableViews(viewRoot, (view) => {
+        if (!view.explicitName || view.visibilityIsExpression) return;
+        const selector = getViewSelector(view);
+        if (
+            !selector.scope.includes("") &&
+            resolveViewSelector(viewRoot, selector, true) === view
+        )
+            keys.set(view, makeViewSelectorKey(selector));
+    });
+    return keys;
+}
+
+/**
+ * @typedef {import("@genome-spy/core/view/view.js").default} View
+ * @typedef {{groupKey: string, members: {view: View, selectorKey: string}[]}} RadioGroup
+ */
+
+/**
+ * Each member's selector key points to the same group in view order.
+ * @param {ReturnType<typeof getViewVisibilityKeys>} viewKeys
+ */
+export function getRadioVisibilityGroupsBySelector(viewKeys) {
+    /** @type {Map<string, RadioGroup>} */
     const groups = new Map();
 
-    visitAddressableViews(viewRoot, (view) => {
-        if (!isVisibilityConfigurable(view)) {
-            return;
-        }
-
-        if (!view.explicitName) {
-            return;
-        }
-
+    /** @type {Map<string, RadioGroup>} */
+    const bySelector = new Map();
+    for (const [view, selectorKey] of viewKeys) {
+        if (!isVisibilityConfigurable(view)) continue;
         const group = getVisibilityGroup(view);
-        if (!group) {
-            return;
-        }
+        if (!group) continue;
 
         const selector = getViewSelector(view);
-        const selectorKey = makeViewSelectorKey(selector);
         const groupScope =
             getImportScopeInfo(view)?.name && selector.scope.length
                 ? selector.scope.slice(0, selector.scope.length - 1)
@@ -357,22 +199,30 @@ function collectRadioVisibilityGroups(viewRoot) {
             group,
         });
 
-        const members = groups.get(groupKey);
-        if (members) {
-            members.push({ view, selectorKey });
-        } else {
-            groups.set(groupKey, [{ view, selectorKey }]);
-        }
-    });
-
-    return groups;
+        const entry = groups.get(groupKey) ?? { groupKey, members: [] };
+        entry.members.push({ view, selectorKey });
+        groups.set(groupKey, entry);
+        bySelector.set(selectorKey, entry);
+    }
+    return bySelector;
 }
 
 /**
- * @param {Record<string, boolean>} entries
- * @param {string} key
- * @returns {boolean}
+ * The first visible choice in each group wins. These hidden views have no new
+ * explicit choice to persist.
+ * @param {Map<string, RadioGroup>} groups
+ * @param {Record<string, boolean>} choices
  */
-function hasOwn(entries, key) {
-    return Object.prototype.hasOwnProperty.call(entries, key);
+export function getRadioHiddenViews(groups, choices) {
+    /** @type {Set<View>} */
+    const hidden = new Set();
+    for (const { members } of new Set(groups.values())) {
+        let selected = false;
+        for (const { view, selectorKey } of members) {
+            if (!(choices[selectorKey] ?? view.isVisibleInSpec())) continue;
+            if (selected) hidden.add(view);
+            selected = true;
+        }
+    }
+    return hidden;
 }

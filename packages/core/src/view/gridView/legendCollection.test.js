@@ -331,7 +331,7 @@ describe("collected legend routing", () => {
         );
     });
 
-    test("refreshes an outer collector after nested mutations", async () => {
+    test("initializes and refreshes an outer collector after nested mutations", async () => {
         const root = await createAndInitialize(
             {
                 config: { legend: { disable: false } },
@@ -350,11 +350,17 @@ describe("collected legend routing", () => {
         );
 
         await nested.addChildSpec(makeColorUnit("second", "Second"));
+        const legends = getLegendViews(getDirectLegendRegions(root)[0]);
+        expect(legends.map((legend) => legend.legendProps.title)).toEqual([
+            "First",
+            "Second",
+        ]);
+        // Both legends were rebuilt outside the mutated concat.
         expect(
-            getLegendViews(getDirectLegendRegions(root)[0]).map(
-                (legend) => legend.legendProps.title
-            )
-        ).toEqual(["First", "Second"]);
+            legends
+                .flatMap((legend) => legend.getDescendants())
+                .every((view) => view.isDataInitialized())
+        ).toBe(true);
 
         await nested.moveChildAt(1, 0);
         expect(

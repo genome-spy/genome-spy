@@ -7,18 +7,34 @@
 
 /**
  * Traces a non-primitive point shape without allocating intermediate geometry.
- * Circles and squares are handled directly by each output backend.
+ * These are the fixed Canvas and SVG point contours. The outset shifts their
+ * edges in parallel for an outside stroke. WebGPU renders its SVG paths directly.
+ * Circles and squares are handled directly by Canvas and SVG.
  *
  * @param {string} shape
  * @param {number} x
  * @param {number} y
  * @param {number} radius
  * @param {PointPathSink} path
+ * @param {number} [outset] Distance to move the border path outward in CSS pixels
  * @returns {boolean} Whether the shape is supported
  */
-export function tracePointPath(shape, x, y, radius, path) {
-    const arm = radius * 0.4;
-    const tickHalfWidth = radius * 0.15;
+export function tracePointPath(shape, x, y, radius, path, outset = 0) {
+    const arm = radius * 0.4 + outset;
+    const tickHalfWidth = radius * 0.15 + outset;
+    if (outset > 0) {
+        if (shape === "diamond") radius += Math.SQRT2 * outset;
+        else if (shape.startsWith("triangle-")) {
+            radius += Math.sqrt(3) * outset;
+            const shift = outset / 2;
+            if (shape === "triangle-up") y -= shift;
+            else if (shape === "triangle-right") x += shift;
+            else if (shape === "triangle-down") y += shift;
+            else if (shape === "triangle-left") x -= shift;
+        } else {
+            radius += outset;
+        }
+    }
     const triangleHeight = (Math.sqrt(3) * radius) / 2;
 
     switch (shape) {
@@ -74,13 +90,13 @@ export function tracePointPath(shape, x, y, radius, path) {
                 x - tickHalfWidth,
                 y - radius,
                 x + tickHalfWidth,
-                y
+                y + outset
             );
             return true;
         case "tick-right":
             traceRectangle(
                 path,
-                x,
+                x - outset,
                 y - tickHalfWidth,
                 x + radius,
                 y + tickHalfWidth
@@ -90,7 +106,7 @@ export function tracePointPath(shape, x, y, radius, path) {
             traceRectangle(
                 path,
                 x - tickHalfWidth,
-                y,
+                y - outset,
                 x + tickHalfWidth,
                 y + radius
             );
@@ -100,7 +116,7 @@ export function tracePointPath(shape, x, y, radius, path) {
                 path,
                 x - radius,
                 y - tickHalfWidth,
-                x,
+                x + outset,
                 y + tickHalfWidth
             );
             return true;

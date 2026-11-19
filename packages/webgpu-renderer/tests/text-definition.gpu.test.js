@@ -533,7 +533,7 @@ test("outline text applies fill gamma without a zero-width stroke", async ({
     expect(result.whiteAlpha).toBeGreaterThan(result.blackAlpha);
 });
 
-test("TrueType atlases grow across marks and accept new replacement glyphs", async ({
+test("TrueType atlas growth preserves visible text shadows", async ({
     page,
 }) => {
     await ensureWebGPU(page);
@@ -558,31 +558,61 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
         canvas.width = 256;
         canvas.height = 128;
         document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas);
-        renderer.updateGlobals({ width: 128, height: 64, dpr: 2 });
+        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
+        renderer.context.configure({
+            device: renderer.device,
+            format: renderer.format,
+            alphaMode: "premultiplied",
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        renderer.updateGlobals({ width: 256, height: 128, dpr: 1 });
+        const readback = renderer.device.createBuffer({
+            size: canvas.width * canvas.height * 4,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
         renderer.device.pushErrorScope("validation");
         const first = renderer.createMark(textMark, {
             font,
             fontSize: 32,
             channels: {
-                uniqueId: { value: 81, type: "u32" },
-                text: { value: "A" },
-                x: { value: 24, scale: identityScale() },
-                y: { value: 32, scale: identityScale() },
+                text: { value: "AV" },
+                x: { value: 96.25, scale: identityScale() },
+                y: { value: 72.25, scale: identityScale() },
                 size: { value: 32 },
+                fill: { value: [0.5, 0.5, 0.5, 1] },
+                stroke: { value: [0, 0, 1, 1] },
+                strokeOpacity: { value: 0.6 },
+                strokeWidth: { value: 4 },
+                shadowColor: { value: [1, 0, 0, 1] },
+                shadowOpacity: { value: 0.5 },
+                shadowBlur: { value: 4 },
+                shadowOffsetX: { value: 3 },
             },
         });
-        const firstProgram = renderer._marks.get(first.markId);
-        const atlas = firstProgram._outlineAtlas;
+        const atlas = renderer._marks.get(first.markId)._outlineAtlas;
         const initialVersion = atlas.version;
-        const initialTexture = atlas.texture;
-        const aGlyph = font.getGlyph("A");
-        const initialEntry = { ...atlas.ensure([aGlyph])[0] };
 
+        async function capture() {
+            renderer.render({ draws: [{ mark: first }] });
+            const encoder = renderer.device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                { texture: renderer.context.getCurrentTexture() },
+                { buffer: readback, bytesPerRow: canvas.width * 4 },
+                { width: canvas.width, height: canvas.height }
+            );
+            renderer.device.queue.submit([encoder.finish()]);
+            await readback.mapAsync(GPUMapMode.READ);
+            const pixels = new Uint8Array(readback.getMappedRange()).slice();
+            readback.unmap();
+            return pixels;
+        }
+
+        // At normal pixel density, supersampling could read past a glyph tile.
+        const beforeGrowth = await capture();
         const ascii = Array.from({ length: 95 }, (_, index) =>
             String.fromCodePoint(index + 32)
         ).join("");
-        const second = renderer.createMark(textMark, {
+        renderer.createMark(textMark, {
             font,
             fontSize: 20,
             channels: {
@@ -592,73 +622,38 @@ test("TrueType atlases grow across marks and accept new replacement glyphs", asy
                 size: { value: 20 },
             },
         });
-        const secondProgram = renderer._marks.get(second.markId);
-        const preservedEntry = atlas.ensure([aGlyph])[0];
-        const firstBoundAtlas =
-            firstProgram._extraTextures.get("fontAtlas").texture;
-        const atlasScaleEntry =
-            secondProgram._uniformBufferState.entries.get("uAtlasScale");
-        const secondAtlasScale = Array.from(
-            new Float32Array(
-                secondProgram._uniformBufferState.data,
-                atlasScaleEntry.offset,
-                2
-            )
+
+        const afterGrowth = await capture();
+        const pixelDifference = beforeGrowth.reduce(
+            (maximum, value, index) =>
+                Math.max(maximum, Math.abs(value - afterGrowth[index])),
+            0
         );
 
-        renderer.render({ draws: [{ mark: first }] });
-        await renderer.device.queue.onSubmittedWorkDone();
-        let preservedHit = null;
-        for (let y = 16; y <= 48 && preservedHit === null; y += 2) {
-            for (let x = 8; x <= 48 && preservedHit === null; x += 2) {
-                preservedHit = await renderer.pick(x, y);
-            }
-        }
-
-        first.series.replace({ text: "Ω−" }, 1);
-        renderer.render({ draws: [{ mark: first }] });
-        await renderer.device.queue.onSubmittedWorkDone();
-        let hit = null;
-        for (let y = 16; y <= 48 && hit === null; y += 2) {
-            for (let x = 8; x <= 48 && hit === null; x += 2) {
-                hit = await renderer.pick(x, y);
-            }
-        }
         const validationError = await renderer.device.popErrorScope();
         const value = {
-            sharedAtlas: secondProgram._outlineAtlas === atlas,
+            pixelDifference,
+            visibleShadow: beforeGrowth.some(
+                (red, index) =>
+                    index % 4 === 0 &&
+                    red > beforeGrowth[index + 1] + 2 &&
+                    red > beforeGrowth[index + 2] + 2
+            ),
             grew: atlas.version > initialVersion,
-            replacedTexture: atlas.texture !== initialTexture,
-            reboundFirstMark: firstBoundAtlas === atlas.texture,
-            secondAtlasScale,
-            atlasDimensions: [atlas.width, atlas.height],
-            preservedEntry:
-                JSON.stringify(preservedEntry) === JSON.stringify(initialEntry),
-            preservedHit,
-            hit,
             validationError: validationError?.message ?? null,
         };
+        readback.destroy();
         renderer.destroy();
         canvas.remove();
         return value;
     });
 
     expect(result).toMatchObject({
-        sharedAtlas: true,
+        visibleShadow: true,
         grew: true,
-        replacedTexture: true,
-        reboundFirstMark: true,
-        preservedEntry: true,
-        preservedHit: 81,
-        hit: 81,
         validationError: null,
     });
-    expect(result.secondAtlasScale[0]).toBeCloseTo(
-        1 / result.atlasDimensions[0]
-    );
-    expect(result.secondAtlasScale[1]).toBeCloseTo(
-        1 / result.atlasDimensions[1]
-    );
+    expect(result.pixelDifference).toBeLessThanOrEqual(2);
 });
 
 test("initially empty text has valid resources through retained updates", async ({

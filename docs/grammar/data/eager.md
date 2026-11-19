@@ -364,16 +364,18 @@ such as `.wig.gz`.
 ### BED
 
 [BED](https://genome.ucsc.edu/FAQ/FAQformat#format1) parsing is based on
-[@gmod/bed](https://github.com/GMOD/bed-js) and supports BED3-BED12 fields.
-Output uses standard BED field names such as `chrom`, `chromStart`, `chromEnd`,
-and optional BED/BED12 fields.
+[@gmod/bed](https://github.com/GMOD/bed-js) and supports tab-delimited
+BED3-BED12 files. Output uses standard BED field names such as `chrom`,
+`chromStart`, and `chromEnd`.
 
 Behavior details:
 
 - Leading `browser`, `track`, and `#` lines are skipped before the first data
   row.
 - BED12 rows use BED12 field names (for example `thickStart`, `thickEnd`,
-  `itemRgb`, `blockCount`, `blockSizes`, `blockStarts`).
+  `blockCount`, `blockSizes`, `blockStarts`).
+- `itemRgb` contains the raw text from column 9, or `null` when the column is
+  absent or contains `.`.
 - `strand` is normalized to numeric codes: `"+"` -> `1`, `"-"` -> `-1`, and
   any other value -> `0`.
 - `blockSizes` and `blockStarts` are parsed from comma-separated text into
@@ -383,6 +385,20 @@ Behavior details:
 #### Example
 
 EXAMPLE examples/docs/grammar/data/eager/bed.json height=160
+
+#### Item colors
+
+The [`bedColor()`](../expressions.md#bedColor) expression function converts BED
+`itemRgb` values such as `123,123,123` into CSS colors. Use
+`bedColor(datum.itemRgb, '#4c78a8')` in a color encoding with `scale: null` to
+apply the color directly to the mark. The second argument supplies a fallback
+for intervals without an item color. A value of `0` produces black.
+
+The BED3 track below uses the blue fallback, while the BED9 and BED12 tracks
+use their item colors from column 9. All three tracks share a reusable
+[named template](../import.md#repeating-with-named-templates).
+
+EXAMPLE examples/docs/grammar/data/eager/bed-item-colors.json height=120 spechidden
 
 For larger BED files, consider using the lazy [BigBed data
 source](lazy.md#bigbed) instead of the eager `url` source.
