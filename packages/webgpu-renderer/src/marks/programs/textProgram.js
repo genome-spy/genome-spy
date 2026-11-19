@@ -444,6 +444,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 ${glyphLookup}
     let textMetrics = stringMetrics[glyph.stringIndex];
     let metrics = glyphMetrics[glyph.glyphId];
+    // Atlas entries span texel centers; geometry and UVs use the full tile bounds.
     let tileSize = metrics.texRect.zw + vec2<f32>(1.0);
 
     // Base font size before range fitting.
@@ -575,7 +576,7 @@ ${effectSetup}
     var y = glyphVertexY(
         local.y,
         glyph.yOffset,
-        metrics.texRect.w,
+        tileSize.y,
         metrics.metrics.x,
         sizeScale,
         sizeRatio,
@@ -585,7 +586,7 @@ ${effectSetup}
         params.uDescent
     );
     if (params.uLogoLetters != 0u) {
-        let logoAtlasScale = metrics.texRect.zw / metrics.metrics.yz;
+        let logoAtlasScale = tileSize / metrics.metrics.yz;
         width = logoSize.x * logoAtlasScale.x;
         height = logoSize.y * logoAtlasScale.y;
         x = -0.5 * width;
@@ -627,7 +628,8 @@ ${effectSetup}
         0.0,
         1.0
     );
-    out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
+    out.uv = (metrics.texRect.xy - vec2<f32>(0.5) + local * tileSize) *
+        params.uAtlasScale;
     out.color = layerColor;
     out.opacity = opacity * layerOpacityMultiplier;
     out.slope = max(1.0, size / params.uSdfNumerator * globals.dpr);
@@ -772,7 +774,12 @@ fn sampleSuperOutline(
 }
 
 fn shadowCoverageAt(in: VSOut, uv: vec2<f32>) -> f32 {
-    let distance = sampleTrueDistance(uv) * in.devicePixelsPerAtlas +
+    // Supersampling must stay inside this glyph as the shared atlas grows.
+    let tileSize = in.shapeBounds.zw + vec2<f32>(params.uSpread);
+    let uvSize = (tileSize - vec2<f32>(1.0)) * params.uAtlasScale;
+    let uvMin = in.uv + (vec2<f32>(0.5) - in.tilePosition) * params.uAtlasScale;
+    let glyphUv = clamp(uv, uvMin, uvMin + uvSize);
+    let distance = sampleTrueDistance(glyphUv) * in.devicePixelsPerAtlas +
         in.stemDarkening;
     let maxBlur = max(
         (params.uSpread - 1.0) * in.devicePixelsPerAtlas,
