@@ -199,7 +199,6 @@
             },
             "xOffset": {
               "expr": "(datum._textWidth / 2 + 5) * (datum.strand == '-' ? -1 : 1)",
-              "type": "quantitative",
               "scale": null
             },
             "color": { "value": "black" },

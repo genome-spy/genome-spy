@@ -59,11 +59,7 @@
           },
           "axis": null
         },
-        "xOffset": {
-          "field": "xDisplacement",
-          "type": "quantitative",
-          "scale": null
-        },
+        "xOffset": { "field": "xDisplacement", "scale": null },
         "y": {
           "field": "sampleCount",
           "type": "quantitative",
