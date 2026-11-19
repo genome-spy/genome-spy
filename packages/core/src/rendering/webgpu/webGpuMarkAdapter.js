@@ -1,3 +1,4 @@
+import { pointStrokeAlign } from "../../marks/point.js";
 import { collectAppearanceSelections } from "../../selection/selection.js";
 import { resolveCategoryInput } from "../../selection/categorySelection.js";
 import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
@@ -567,7 +568,11 @@ function createRectConfig(mark, data, coords) {
  * @returns {object}
  */
 function createPointConfig(mark, data, coords) {
+    const explicitAlign =
+        "strokeAlign" in mark.properties && mark.properties.strokeAlign != null;
+    const alignProperty = explicitAlign ? "strokeAlign" : "inwardStroke";
     mark.initializeRenderingRevisions([
+        ...(explicitAlign ? ["strokeAlign"] : []),
         "fillGradientStrength",
         "inwardStroke",
         "minPickingSize",
@@ -600,10 +605,18 @@ function createPointConfig(mark, data, coords) {
             ),
             strokeAlign: staticOrLivePropertyValue(
                 mark,
-                ["inwardStroke"],
-                () => (readProperty(mark, "inwardStroke") ? 0 : 1),
+                [alignProperty],
+                () => pointStrokeAlign(readProperty(mark, alignProperty)),
                 "u32"
             ),
+            ...(explicitAlign && {
+                strokeOnlyAlign: staticOrLivePropertyValue(
+                    mark,
+                    ["inwardStroke"],
+                    () => pointStrokeAlign(readProperty(mark, "inwardStroke")),
+                    "u32"
+                ),
+            }),
             minPickingSize: numericPropertyValue(mark, "minPickingSize", 2),
         },
         ...visibility,
@@ -637,7 +650,7 @@ function createPointShapeConfig(mark, data) {
         }
     };
     for (const branch of encoder.branches) {
-        if (encoder.scale) {
+        if (encoder.scale && encoder.scale.type !== "null") {
             for (const value of encoder.scale.range()) {
                 addShape(value);
             }

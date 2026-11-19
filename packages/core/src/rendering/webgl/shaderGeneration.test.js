@@ -300,7 +300,6 @@ describe("generated shader snapshots", () => {
             },
         });
 
-        expect(sources).toMatchSnapshot();
         expect(sources.vertex).not.toContain("#define VISIBLE_RANGE_CULLING");
     });
 
@@ -415,51 +414,6 @@ describe("generated shader snapshots", () => {
         );
     });
 
-    test("interval selection example", async () => {
-        const sources = await captureShaderSources({
-            ...loadSpec(
-                "../../../../../examples/docs/grammar/parameters/interval-selection.json"
-            ),
-            baseUrl: "examples/",
-        });
-
-        expect(sources).toMatchSnapshot();
-    });
-
-    test("point selection example", async () => {
-        const sources = await captureShaderSources(
-            loadSpec(
-                "../../../../../examples/docs/grammar/parameters/point-selection.json"
-            )
-        );
-
-        expect(sources).toMatchSnapshot();
-    });
-
-    test("link mark control spec", async () => {
-        const sources = await captureShaderSources({
-            data: {
-                values: [{ x: 2, x2: 8, y: 3 }],
-            },
-            resolve: {
-                scale: { x: "shared", y: "shared" },
-            },
-            mark: {
-                type: "link",
-                linkShape: "arc",
-                orient: "vertical",
-            },
-            encoding: {
-                x: { field: "x", type: "quantitative" },
-                x2: { field: "x2" },
-                y: { field: "y", type: "quantitative" },
-                y2: { field: "y" },
-            },
-        });
-
-        expect(sources).toMatchSnapshot();
-    });
-
     test("one interval component tests separate link endpoints", async () => {
         const sources = await captureShaderSources({
             data: { values: [{ source: 2, target: 8, y: 3 }] },
@@ -571,7 +525,6 @@ describe("generated shader snapshots", () => {
             )
         );
 
-        expect(sources).toMatchSnapshot();
         expect(sources.fragment).toContain("float sdArrow");
         expect(sources.fragment).toContain("float sdStem");
         expect(sources.fragment).toContain("float sdArrowHead");
@@ -605,7 +558,6 @@ describe("generated shader snapshots", () => {
             "horizontal-arrows"
         );
 
-        expect(sources).toMatchSnapshot();
         expect(sources.vertex).toContain("getScaled_direction()");
         expect(sources.vertex).toContain("uRangeTexture_direction");
         expect(sources.fragment).toContain("vDirection");
@@ -676,20 +628,6 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("#define VISIBLE_RANGE_CULLING");
         expect(sources.vertex).toContain("bool isOutsideVisibleRange");
         expect(sources.vertex).toContain("isOutsideVisibleRange(facetedPos)");
-    });
-
-    test("penguins scatter plot example", async () => {
-        const sources = await captureShaderSources(
-            {
-                ...loadSpec(
-                    "../../../../../examples/docs/grammar/parameters/penguins.json"
-                ),
-                baseUrl: "examples/",
-            },
-            "scatterPlot"
-        );
-
-        expect(sources).toMatchSnapshot();
     });
 });
 

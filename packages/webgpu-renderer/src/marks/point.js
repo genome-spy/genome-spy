@@ -20,6 +20,9 @@ function resolvePathConfig(config) {
     return {
         ...config,
         paths,
+        strokeOnlyShapes: table.flatMap((name, index) =>
+            name === "x" || name === "+" ? [index] : []
+        ),
         atlasOptions: { normalizationSpan: 2 },
         channels: {
             ...config.channels,
