@@ -46,6 +46,8 @@ export function createWebGLMark(mark, glHelper, rendererResources) {
     return new Mark(mark, glHelper, rendererResources);
 }
 
+/** @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel */
+
 /**
  * @typedef {object} WebGLMarkEntry
  * @prop {import("../../marks/mark.js").default} mark
@@ -71,7 +73,7 @@ export default class WebGLRendererResources {
 
     #drawPass = 0;
 
-    /** @type {Partial<Record<"x" | "y", WebGLBuffer>>} */
+    /** @type {Partial<Record<PrimaryPositionalChannel, WebGLBuffer>>} */
     #boundScaleUniforms = {};
 
     beginDrawPass() {
@@ -81,23 +83,26 @@ export default class WebGLRendererResources {
     /**
      * @param {import("../../scales/scaleResolution.js").default} resolution
      * @param {WebGLProgram} program
-     * @param {"x" | "y"} axis
+     * @param {PrimaryPositionalChannel} channel
      */
-    createSharedScaleBinding(resolution, program, axis) {
+    createSharedScaleBinding(resolution, program, channel) {
         const gl = this.glHelper.gl;
-        const index = gl.getUniformBlockIndex(program, "SharedScale_" + axis);
+        const index = gl.getUniformBlockIndex(
+            program,
+            "SharedScale_" + channel
+        );
         if (index === gl.INVALID_INDEX) return;
 
-        const binding = SCALE_BINDINGS[axis];
+        const binding = SCALE_BINDINGS[channel];
         gl.uniformBlockBinding(program, index, binding);
         const retained = this.#scaleResolutionRefs.get(resolution);
         const { buffer, refresh } = (retained.uniforms ??=
             this.#createScaleUniforms(resolution));
         return () => {
             refresh();
-            if (this.#boundScaleUniforms[axis] !== buffer) {
+            if (this.#boundScaleUniforms[channel] !== buffer) {
                 gl.bindBufferBase(gl.UNIFORM_BUFFER, binding, buffer);
-                this.#boundScaleUniforms[axis] = buffer;
+                this.#boundScaleUniforms[channel] = buffer;
             }
         };
     }

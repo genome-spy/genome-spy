@@ -38,6 +38,7 @@ import {
     isDatumDef,
     isExprDef,
     isFieldDef,
+    isPrimaryPositionalChannel,
     isValueDef,
     primaryPositionalChannels,
 } from "../../../encoder/encoder.js";
@@ -714,13 +715,13 @@ export default class WebGLMark {
 
         // Secondary functions use declarations emitted by their primary.
         const channelEntries = Object.entries(encoders);
-        for (const axis of primaryPositionalChannels) {
-            const secondary = getSecondaryChannel(axis);
+        for (const channel of primaryPositionalChannels) {
+            const secondary = getSecondaryChannel(channel);
             const secondaryIndex = channelEntries.findIndex(
-                ([channel]) => channel === secondary
+                ([key]) => key === secondary
             );
             const primaryIndex = channelEntries.findIndex(
-                ([channel]) => channel === axis
+                ([key]) => key === channel
             );
             if (secondaryIndex < 0 || primaryIndex <= secondaryIndex) continue;
             const [primary] = channelEntries.splice(primaryIndex, 1);
@@ -728,7 +729,7 @@ export default class WebGLMark {
         }
 
         /** @type {Set<Channel>} */
-        const sharedAxes = new Set();
+        const sharedChannels = new Set();
         for (const [channel, encoder] of channelEntries) {
             if (!shaderChannels.includes(channel)) {
                 continue;
@@ -756,15 +757,15 @@ export default class WebGLMark {
                 const scaleResolution = isChannelWithScale(resolutionChannel)
                     ? this.unitView.getScaleResolution(resolutionChannel)
                     : null;
-                const isAxis = channel === "x" || channel === "y";
-                const shareScale = isAxis
+                const isPrimary = isPrimaryPositionalChannel(channel);
+                const shareScale = isPrimary
                     ? !!this._rendererResources &&
                       scaleResolution?.channel === channel &&
                       this.unitView.resolutions.scale[channel] !==
                           scaleResolution &&
                       (encoders[getSecondaryChannel(channel)]?.scale ??
                           scale) === scale
-                    : sharedAxes.has(getPrimaryChannel(channel));
+                    : sharedChannels.has(getPrimaryChannel(channel));
 
                 const {
                     glsl,
@@ -777,8 +778,8 @@ export default class WebGLMark {
                     paddingUniformName,
                 } = generateScaleGlsl(channel, scale, channelDef, shareScale);
 
-                if (isAxis && sharedBlock) {
-                    sharedAxes.add(channel);
+                if (isPrimary && sharedBlock) {
+                    sharedChannels.add(channel);
                     this.#callAfterShaderCompilation.push(() => {
                         const bind =
                             this.rendererResources.createSharedScaleBinding(
