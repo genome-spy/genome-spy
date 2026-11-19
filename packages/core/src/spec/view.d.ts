@@ -12,10 +12,9 @@ import {
 import { MarkProps, MarkType, RuleProps } from "./mark.js";
 import { ExprRef, Parameter, ParamTransition } from "./parameter.js";
 import { Title } from "./title.js";
-import { GenomeSpyConfig } from "./config.js";
+import { AxisConfig, GenomeSpyConfig } from "./config.js";
 import { ViewBackgroundProps, ZIndexProps } from "./decoration.js";
 import { Scale } from "./scale.js";
-import { Axis, GenomeAxis } from "./axis.js";
 import { Legend } from "./legend.js";
 
 export interface SizeDef {
@@ -323,9 +322,7 @@ export interface ViewSpecBase extends ResolveSpec {
      * descendant that targets the same resolution. Declarations in separate
      * sibling subtrees are ambiguous and cause an error.
      */
-    axes?: Partial<
-        Record<PrimaryPositionalChannel, Partial<Axis & GenomeAxis>>
-    >;
+    axes?: Partial<Record<PrimaryPositionalChannel, AxisConfig>>;
 
     /**
      * Defines properties for legend resolutions used by this view subtree.
