@@ -7,7 +7,9 @@
 
 /**
  * Traces a non-primitive point shape without allocating intermediate geometry.
- * Circles and squares are handled directly by each output backend.
+ * These are the fixed Canvas and SVG point contours. The outset shifts their
+ * edges in parallel for an outside stroke. WebGPU renders its SVG paths directly.
+ * Circles and squares are handled directly by Canvas and SVG.
  *
  * @param {string} shape
  * @param {number} x

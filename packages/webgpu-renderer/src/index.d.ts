@@ -851,6 +851,8 @@ export type PointChannelName =
      * fixed analytic circles do not have this limit.
      */
     | "strokeAlign"
+    /** Optional alignment override for the reserved stroke-only point symbols. */
+    | "strokeOnlyAlign"
     | "minPickingSize";
 
 export type PointChannels = Partial<

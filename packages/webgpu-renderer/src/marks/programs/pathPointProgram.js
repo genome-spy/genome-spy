@@ -96,7 +96,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         strokeWidth = 0.0;
     }
     let entry = pathAtlasEntries[shape];
-    let strokeAlign = getScaled_strokeAlign(i);
+    let strokeAlign = resolveStrokeAlign(i, shape);
     if (pickingEnabled && (strokeWidth <= 0.0 || strokeAlign == 0u)) {
         diameter = max(diameter, 1.0 / globals.dpr);
     }
@@ -259,7 +259,23 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 export default class PathPointProgram extends PointProgram {
     /** @returns {string} */
     get shaderBody() {
-        return PATH_POINT_SHADER_BODY;
+        // The override preserves the compatibility paint of the two reserved
+        // symbols. All filled paths take their alignment from the regular channel.
+        const strokeOnlyShapes = /** @type {number[] | undefined} */ (
+            this._markConfig.strokeOnlyShapes
+        );
+        const isStrokeOnly = strokeOnlyShapes
+            ?.map((index) => `shape == ${index}u`)
+            .join(" || ");
+        return /* wgsl */ `
+fn resolveStrokeAlign(i: u32, shape: u32) -> u32 {
+#if defined(strokeOnlyAlign_DEFINED)
+    ${isStrokeOnly ? `if (${isStrokeOnly}) { return getScaled_strokeOnlyAlign(i); }` : ""}
+#endif
+    return getScaled_strokeAlign(i);
+}
+${PATH_POINT_SHADER_BODY}
+`;
     }
 
     /**

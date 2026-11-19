@@ -1,3 +1,4 @@
+import process from "node:process";
 import { URL } from "node:url";
 import { expect, test } from "playwright/test";
 
@@ -249,3 +250,152 @@ for (const [renderer, dpr] of [
         }
     });
 }
+
+test("WebGPU aligns the supplied point path and keeps line symbols stable", async ({
+    playwright,
+    baseURL,
+}) => {
+    const browser = await playwright.chromium.launch({
+        args: [
+            "--enable-unsafe-webgpu",
+            "--ignore-gpu-blocklist",
+            ...(process.platform === "darwin"
+                ? ["--use-angle=metal"]
+                : [
+                      "--use-angle=swiftshader",
+                      "--enable-unsafe-swiftshader",
+                      "--enable-features=Vulkan",
+                      "--use-vulkan=swiftshader",
+                      "--use-webgpu-adapter=swiftshader",
+                      "--disable-vulkan-surface",
+                  ]),
+        ],
+    });
+    try {
+        const page = await browser.newPage();
+        await page.route("**/webgpu-point-align", (route) =>
+            route.fulfill({
+                contentType: "text/html",
+                body: "<body style='margin:0'></body>",
+            })
+        );
+        await page.goto(new URL("/webgpu-point-align", baseURL).href);
+        const result = await page.evaluate(async () => {
+            const { embed } = await import("/minimal.js");
+            await import("/rendering/webgpu/register.js");
+            const mark = {
+                type: "point",
+                size: 2304,
+                fill: "red",
+                stroke: "blue",
+                strokeWidth: 4,
+                inwardStroke: true,
+            };
+            const x = {
+                field: "x",
+                type: "quantitative",
+                scale: { domain: [0, 240], nice: false, zero: false },
+                axis: null,
+            };
+            const api = await embed(
+                globalThis.document.body,
+                {
+                    width: 240,
+                    height: 80,
+                    padding: 0,
+                    params: [{ name: "alignment", value: "inside" }],
+                    config: {
+                        background: null,
+                        view: { stroke: null },
+                        point: { strokeAlign: { expr: "alignment" } },
+                    },
+                    layer: [
+                        {
+                            data: { values: [{ x: 36 }] },
+                            mark: { ...mark, shape: "circle" },
+                            encoding: { x, y: { value: 0.5 } },
+                        },
+                        {
+                            data: {
+                                values: [
+                                    { x: 99, shape: "M-.9-.6H.45V.6H-.9Z" },
+                                    { x: 157, shape: "+" },
+                                    { x: 209, shape: "x" },
+                                ],
+                            },
+                            mark,
+                            encoding: {
+                                x,
+                                y: { value: 0.5 },
+                                shape: {
+                                    field: "shape",
+                                    type: "nominal",
+                                    scale: null,
+                                },
+                            },
+                        },
+                    ],
+                },
+                {
+                    renderer: "webgpu",
+                    onError: (error) => {
+                        throw error;
+                    },
+                }
+            );
+            try {
+                const png = async () => {
+                    const { blob } = await api.imageExport.raster({
+                        background: null,
+                        pixelRatio: 1,
+                    });
+                    const img = await globalThis.createImageBitmap(blob);
+                    const ctx = new globalThis.OffscreenCanvas(
+                        img.width,
+                        img.height
+                    ).getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    img.close();
+                    return ctx;
+                };
+                const inside = await png();
+                api.params.get("alignment").setValue("outside");
+                const outside = await png();
+                const scan = (ctx, start, end) => {
+                    const { data } = ctx.getImageData(
+                        start,
+                        40,
+                        end - start,
+                        1
+                    );
+                    let right = start;
+                    for (let x = 0; x < end - start; x++)
+                        if (data[4 * x + 3] > 128) right = start + x;
+                    return right;
+                };
+                const before = inside.getImageData(125, 4, 115, 72).data;
+                const after = outside.getImageData(125, 4, 115, 72).data;
+                return {
+                    circle: [scan(inside, 36, 66), scan(outside, 36, 66)],
+                    custom: [scan(inside, 99, 124), scan(outside, 99, 124)],
+                    linePixels: before.some(
+                        (value, index) => index % 4 === 3 && value > 128
+                    ),
+                    linesUnchanged: before.every(
+                        (value, index) => value === after[index]
+                    ),
+                };
+            } finally {
+                api.finalize();
+            }
+        });
+        expect(result.circle[1] - result.circle[0]).toBeGreaterThanOrEqual(3);
+        expect(result.custom[1] - result.custom[0]).toBeGreaterThanOrEqual(2);
+        // The supplied path's right side is much closer to the anchor than a circle's.
+        expect(result.custom[1] - 99).toBeLessThan(result.circle[1] - 36);
+        expect(result.linePixels).toBe(true);
+        expect(result.linesUnchanged).toBe(true);
+    } finally {
+        await browser.close();
+    }
+});

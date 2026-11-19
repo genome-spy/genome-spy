@@ -734,7 +734,6 @@ export interface PointProps
     /**
      * Place the point border inside, centered on, or outside its fill contour.
      * Defaults to center. Stroke-only `x` and `+` shapes ignore alignment.
-     * Supported by WebGL, Canvas, and SVG export.
      */
     strokeAlign?: StrokeAlign | ExprRef;
 
