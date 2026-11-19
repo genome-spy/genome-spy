@@ -134,10 +134,13 @@ void main(void) {
     // Not needed if we would draw rotated quads instead of gl.POINTS
 	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
 
-	float aaPadding = 1.0 / uDevicePixelRatio;
+    bool triangle = vShape == TRIANGLE_UP;
+    // At a 60-degree corner, the stroke and its antialiased edge reach twice
+    // their outward width. Reserve that distance on both axes for rotation.
+    float aaPadding = (triangle && !uInwardStroke && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
 	float rotationPadding = (diameter * roomForRotation) - diameter;
-	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
-	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
+    float strokePaddingFactor = circle ? 1.0 : (triangle ? 2.0 : sqrt(3.0));
+    float strokePadding = uInwardStroke ? 0.0 : strokeWidth * strokePaddingFactor;
 	float padding = rotationPadding + strokePadding + aaPadding;
 
     gl_PointSize = max(
