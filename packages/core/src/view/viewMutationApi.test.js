@@ -1342,7 +1342,14 @@ describe("ViewMutationApi", () => {
             { scope: "variants-1" }
         );
 
-        expect(getLegends(view)).toHaveLength(1);
+        // The shared legend lives outside the inserted subtree.
+        const legends = getLegends(view);
+        expect(legends).toHaveLength(1);
+        expect(
+            legends[0]
+                .getDescendants()
+                .every((descendant) => descendant.isDataInitialized())
+        ).toBe(true);
         expect(getRenderedLegendRegions(renderToLayout(view))).toHaveLength(1);
     });
 
