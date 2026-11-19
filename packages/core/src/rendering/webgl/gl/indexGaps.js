@@ -1,16 +1,23 @@
+import { gapRank } from "../../../genome/indexGapMapping.js";
+
 /** Generate helpers only for structurally enabled scales.
  * @param {string} name
  * @param {boolean} [categorical]
+ * @param {boolean} [shared]
  */
-export function groupingGapGlsl(name, categorical = false) {
+export function groupingGapGlsl(name, categorical = false, shared = false) {
     const axis =
         name === "y"
             ? "(uViewportSize.y * getSampleFacetPos().height)"
             : "uViewportSize.x";
-    const shared = `
+    const helpers = `
 uniform highp usampler2D uGapCuts_${name};
-uniform highp int uGapCount_${name};
-uniform highp vec4 uGapGeometry_${name};
+${
+    shared
+        ? ""
+        : `uniform highp int uGapCount_${name};
+uniform highp vec4 uGapGeometry_${name};`
+}
 
 bool gapFits_${name}(vec2 range) {
     return abs(range.y - range.x) * ${axis} >
@@ -33,7 +40,7 @@ int gapRank_${name}(uvec2 value, bool before) {
 `;
 
     return (
-        shared +
+        helpers +
         `
 float scaleGaps_${name}(uvec2 value, vec3 domain, vec2 range,
     float paddingInner, float paddingOuter, float align, float band, bool before) {
@@ -68,4 +75,31 @@ float scaleBandGaps_${name}(uint value, vec2 domain, vec2 range,
 `
             : "")
     );
+}
+
+/**
+ * @param {import("../../../scales/scaleResolution.js").default} resolution
+ * @param {Float32Array} geometry
+ */
+export function writeGroupingGapGeometry(resolution, geometry) {
+    const scale =
+        /** @type {(import("../../../genome/scaleIndex.js").ScaleIndex | import("../../../scales/scaleBand.js").CategoricalGapScale) & {type: string}} */ (
+            resolution.getScale()
+        );
+    const viewport = "viewport" in scale ? scale.viewport() : null;
+    const domain =
+        scale.type === "band" || scale.type === "point"
+            ? viewport?.interval
+            : scale.domain();
+    const start = domain ? Number(domain[0]) : 0;
+    const end = domain
+        ? Number(domain[1])
+        : resolution.getDomainRef().get().length;
+    const cuts = scale.gapPositions();
+    const ranks = "gapDomain" in scale ? scale.gapDomain() : viewport?.gapRanks;
+    geometry[0] = scale.gapWidth();
+    geometry[1] = ranks?.[0] ?? gapRank(cuts, start);
+    geometry[2] = ranks?.[1] ?? gapRank(cuts, end, true);
+    geometry[3] = ranks ? 1 : 0;
+    return cuts.length;
 }

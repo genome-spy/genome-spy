@@ -8,7 +8,7 @@ import {
     setUniformBlock,
     setUniforms,
 } from "twgl.js";
-import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 import {
     dedupeEncodingFields,
     generateConditionalEncoderGlsl,
@@ -19,7 +19,7 @@ import {
     generateDynamicValueGlslAndUniform,
     generateScaleGlsl,
     getAttributeAndArrayTypes,
-    getDiscretizingDomainForGlsl,
+    readScaleDomainUniform,
     getRangeForGlsl,
     makeAttributeName,
     PARAM_PREFIX,
@@ -29,17 +29,18 @@ import {
     SELECTION_EMPTY_PREFIX,
     SELECTION_MEMBERSHIP_PREFIX,
     splitLargeHighPrecision,
-    toHighPrecisionDomainUniform,
 } from "../gl/glslScaleGenerator.js";
 import {
     findChannelDefWithScale,
+    getPrimaryChannel,
+    getSecondaryChannel,
     isChannelWithScale,
     isDatumDef,
     isExprDef,
     isFieldDef,
     isValueDef,
+    primaryPositionalChannels,
 } from "../../../encoder/encoder.js";
-import { isIndexLikeDomainType } from "../../../scales/indexLikeDomainUtils.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
@@ -67,7 +68,9 @@ import {
     getSelectionPredicateTreeParams,
 } from "../../../selection/selectionPredicateTree.js";
 import { getWebGlTextFont } from "../textFont.js";
-import { gapRank, hasGroupingGaps } from "../../../genome/indexGapMapping.js";
+import { hasGroupingGaps } from "../../../genome/indexGapMapping.js";
+import { writeGroupingGapGeometry } from "../gl/indexGaps.js";
+import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { packCssColor } from "../../color.js";
 
 const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
@@ -112,6 +115,9 @@ export default class WebGLMark {
     #callAfterShaderCompilation = [];
 
     #disposed = false;
+
+    /** @type {(() => void)[]} */
+    #sharedScaleBinds = [];
 
     /**
      * @param {import("../../../marks/mark.js").default} mark
@@ -700,7 +706,24 @@ export default class WebGLMark {
             }
         };
 
-        for (const [channel, encoder] of Object.entries(encoders)) {
+        // Secondary functions use declarations emitted by their primary.
+        const channelEntries = Object.entries(encoders);
+        for (const axis of primaryPositionalChannels) {
+            const secondary = getSecondaryChannel(axis);
+            const secondaryIndex = channelEntries.findIndex(
+                ([channel]) => channel === secondary
+            );
+            const primaryIndex = channelEntries.findIndex(
+                ([channel]) => channel === axis
+            );
+            if (secondaryIndex < 0 || primaryIndex <= secondaryIndex) continue;
+            const [primary] = channelEntries.splice(primaryIndex, 1);
+            channelEntries.splice(secondaryIndex, 0, primary);
+        }
+
+        /** @type {Set<Channel>} */
+        const sharedAxes = new Set();
+        for (const [channel, encoder] of channelEntries) {
             if (!shaderChannels.includes(channel)) {
                 continue;
             }
@@ -727,17 +750,39 @@ export default class WebGLMark {
                 const scaleResolution = isChannelWithScale(resolutionChannel)
                     ? this.unitView.getScaleResolution(resolutionChannel)
                     : null;
+                const isAxis = channel === "x" || channel === "y";
+                const shareScale = isAxis
+                    ? !!this._rendererResources &&
+                      scaleResolution?.channel === channel &&
+                      this.unitView.resolutions.scale[channel] !==
+                          scaleResolution &&
+                      (encoders[getSecondaryChannel(channel)]?.scale ??
+                          scale) === scale
+                    : sharedAxes.has(getPrimaryChannel(channel));
 
                 const {
                     glsl,
+                    sharedBlock,
                     domainUniform,
                     domainUniformName,
                     rangeUniform,
                     rangeUniformName,
                     paddingUniform,
                     paddingUniformName,
-                } = generateScaleGlsl(channel, scale, channelDef);
+                } = generateScaleGlsl(channel, scale, channelDef, shareScale);
 
+                if (isAxis && sharedBlock) {
+                    sharedAxes.add(channel);
+                    this.#callAfterShaderCompilation.push(() => {
+                        const bind =
+                            this.rendererResources.createSharedScaleBinding(
+                                scaleResolution,
+                                this.programInfo.program,
+                                channel
+                            );
+                        if (bind) this.#sharedScaleBinds.push(bind);
+                    });
+                }
                 scaleCode.push(glsl);
 
                 dynamicMarkUniforms.push(domainUniform, rangeUniform);
@@ -754,44 +799,49 @@ export default class WebGLMark {
                         const paddingSetter =
                             paddingUniform &&
                             this.createMarkUniformSetter(paddingUniformName);
+                        /** @type {number[]} */
+                        let previousRange = [];
+                        let previousInner = NaN;
+                        let previousOuter = NaN;
                         /** @param {import("../../../scales/scaleInstanceManager.js").MappingConfiguration} configuration */
                         const set = (configuration) => {
                             const live = configuration.scale;
                             const current =
                                 live.type === scale.type ? live : scale;
-                            if (rangeSetter)
-                                rangeSetter(getRangeForGlsl(current, channel));
+                            if (rangeSetter) {
+                                const range = getRangeForGlsl(current, channel);
+                                if (
+                                    !sharedBlock ||
+                                    !shallowArrayEquals(range, previousRange)
+                                ) {
+                                    previousRange = range;
+                                    rangeSetter(range);
+                                }
+                            }
                             if (paddingSetter) {
                                 const bandScale =
                                     /** @type {import("../../../genome/scaleIndex.js").ScaleIndex} */ (
                                         current
                                     );
-                                paddingSetter([
-                                    bandScale.paddingInner(),
-                                    bandScale.paddingOuter(),
-                                ]);
+                                const inner = bandScale.paddingInner();
+                                const outer = bandScale.paddingOuter();
+                                if (
+                                    !sharedBlock ||
+                                    inner !== previousInner ||
+                                    outer !== previousOuter
+                                ) {
+                                    previousInner = inner;
+                                    previousOuter = outer;
+                                    paddingSetter([inner, outer]);
+                                }
                             }
-                            if (!domainSetter) return;
-                            let domain;
-                            if (isDiscrete(current.type)) {
-                                domain =
-                                    "viewport" in current
-                                        ? /** @type {import("../../../scales/scaleBand.js").CategoricalGapScale} */ (
-                                              current
-                                          ).viewport()?.interval
-                                        : undefined;
-                                domain ??= [0, configuration.domain.length];
-                            } else if (isDiscretizing(current.type)) {
-                                domain = getDiscretizingDomainForGlsl(current);
-                            } else {
-                                domain = current.domain();
-                            }
-
-                            domainSetter(
-                                isIndexLikeDomainType(current.type)
-                                    ? toHighPrecisionDomainUniform(domain)
-                                    : domain
-                            );
+                            if (domainSetter)
+                                domainSetter(
+                                    readScaleDomainUniform(
+                                        configuration,
+                                        current
+                                    )
+                                );
                         };
 
                         const mapping = scaleResolution.getMappingRef();
@@ -1238,6 +1288,7 @@ export default class WebGLMark {
 
             gl.useProgram(this.programInfo.program);
         });
+        ops.push(...this.#sharedScaleBinds);
 
         for (const [channel, encoder] of Object.entries(this.encoders)) {
             if (encoder.scale && isDiscrete(encoder.scale.type)) {
@@ -1262,45 +1313,31 @@ export default class WebGLMark {
                     );
                 }
             }
-            if (
-                (channel === "x" || channel === "y") &&
-                encoder.scale &&
-                hasGroupingGaps(/** @type {any} */ (encoder.scale).props)
-            ) {
-                const resolution = this.unitView.getScaleResolution(channel);
+            if (channel === "x" || channel === "y") {
                 const setCuts = uniformSetters["uGapCuts_" + channel];
                 const setCount = uniformSetters["uGapCount_" + channel];
                 const setGeometry = uniformSetters["uGapGeometry_" + channel];
-                const geometry = new Float32Array(4);
-                ops.push(() => {
-                    const scale =
-                        /** @type {(import("../../../genome/scaleIndex.js").ScaleIndex | import("../../../scales/scaleBand.js").CategoricalGapScale) & {type: string}} */ (
-                            resolution.getScale()
+                if (setCuts || setCount || setGeometry) {
+                    const resolution =
+                        this.unitView.getScaleResolution(channel);
+                    const geometry =
+                        setCount || setGeometry
+                            ? new Float32Array(4)
+                            : undefined;
+                    ops.push(() => {
+                        setCuts?.(
+                            this.rendererResources.getGapTexture(resolution)
                         );
-                    const categorical =
-                        scale.type === "band" || scale.type === "point";
-                    const viewport =
-                        "viewport" in scale ? scale.viewport() : null;
-                    const domain = categorical
-                        ? viewport?.interval
-                        : scale.domain();
-                    const domainStart = domain ? Number(domain[0]) : 0;
-                    const domainEnd = domain
-                        ? Number(domain[1])
-                        : resolution.getDomainRef().get().length;
-                    const cuts = scale.gapPositions();
-                    const ranks =
-                        "gapDomain" in scale
-                            ? scale.gapDomain()
-                            : viewport?.gapRanks;
-                    geometry[0] = scale.gapWidth();
-                    geometry[1] = ranks?.[0] ?? gapRank(cuts, domainStart);
-                    geometry[2] = ranks?.[1] ?? gapRank(cuts, domainEnd, true);
-                    geometry[3] = ranks ? 1 : 0;
-                    setCuts?.(this.rendererResources.getGapTexture(resolution));
-                    setCount?.(cuts.length);
-                    setGeometry?.(geometry);
-                });
+                        if (geometry) {
+                            const count = writeGroupingGapGeometry(
+                                resolution,
+                                geometry
+                            );
+                            setCount?.(count);
+                            setGeometry?.(geometry);
+                        }
+                    });
+                }
             }
             const texture = glHelper.rangeTextures.get(encoder.scale);
             const setRangeTexture =
