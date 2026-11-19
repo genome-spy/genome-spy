@@ -119,6 +119,12 @@ export default class WebGLMark {
     /** @type {(() => void)[]} */
     #sharedScaleBinds = [];
 
+    /** @type {Uint32Array | undefined} */
+    #viewUniformWords;
+
+    /** @type {Uint32Array | undefined} */
+    #uploadedViewUniformWords;
+
     /**
      * @param {import("../../../marks/mark.js").default} mark
      * @param {import("../gl/webGLHelper.js").default} glHelper
@@ -1016,6 +1022,7 @@ export default class WebGLMark {
             this.programInfo,
             "View"
         );
+        this.#viewUniformWords = new Uint32Array(this.viewUniformInfo.array);
 
         this.markUniformInfo = createUniformBlockInfo(
             this.gl,
@@ -1132,6 +1139,8 @@ export default class WebGLMark {
         if (this.viewUniformInfo) {
             this.gl.deleteBuffer(this.viewUniformInfo.buffer);
             this.viewUniformInfo = undefined;
+            this.#viewUniformWords = undefined;
+            this.#uploadedViewUniformWords = undefined;
         }
         if (this.markUniformInfo) {
             this.gl.deleteBuffer(this.markUniformInfo.buffer);
@@ -1621,7 +1630,21 @@ export default class WebGLMark {
             uDevicePixelRatio: dpr,
         });
 
-        setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);
+        // Compare the packed state after both mark preparation and viewport setup.
+        const words = this.#viewUniformWords;
+        const uploaded = this.#uploadedViewUniformWords;
+        if (uploaded) {
+            let i = 0;
+            while (i < words.length && words[i] === uploaded[i]) i++;
+            if (i === words.length) {
+                bindUniformBlock(gl, this.programInfo, this.viewUniformInfo);
+                return true;
+            }
+        }
+
+        setUniformBlock(gl, this.programInfo, this.viewUniformInfo);
+        if (uploaded) uploaded.set(words);
+        else this.#uploadedViewUniformWords = words.slice();
 
         return true;
     }

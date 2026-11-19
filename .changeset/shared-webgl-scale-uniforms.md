@@ -4,5 +4,4 @@
 
 <!-- category: improvement -->
 
-Reduce WebGL uniform updates during navigation when views share a positional
-scale.
+Reduce redundant WebGL uniform uploads during scrolling, panning, and zooming.
