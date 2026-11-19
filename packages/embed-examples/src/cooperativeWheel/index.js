@@ -169,8 +169,8 @@ export const [chartApi, viewportApi, cohortApi] = await Promise.all([
     }),
 ]);
 
-window.addEventListener(
-    "pagehide",
-    () => [chartApi, viewportApi, cohortApi].forEach((api) => api.finalize()),
-    { once: true }
-);
+window.addEventListener("pagehide", (event) => {
+    if (!event.persisted) {
+        [chartApi, viewportApi, cohortApi].forEach((api) => api.finalize());
+    }
+});

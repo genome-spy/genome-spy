@@ -1,3 +1,4 @@
+import { createTestEmbed } from "./embedTestUtils.js";
 import { expect, test, vi } from "vitest";
 import {
     getTopLevelSpecView,
@@ -178,42 +179,41 @@ test("Throws if importing is not allowed", async () => {
     ).rejects.toThrow();
 });
 
-test("ImportSpec.visible overrides imported view visibility", async () => {
-    const context = createTestViewContext({
-        allowImport: true,
-        wrapRoot: false,
-    });
-
-    /** @type {import("../spec/view.js").VConcatSpec} */
-    const spec = {
+test("inserted import resolves visibility in its own scope on a live shared scale", async () => {
+    const { root, views } = await createTestEmbed({
+        params: [{ name: "show", value: false }],
         templates: {
             panel: {
-                name: "panel",
                 mark: "point",
+                params: [{ name: "show", value: true }],
                 visible: true,
+                data: { values: [{ x: 1 }] },
+                encoding: { x: { field: "x", type: "quantitative" } },
             },
         },
-        vconcat: [
-            {
-                import: { template: "panel" },
-                name: "panelHidden",
-                visible: false,
-            },
-            {
-                import: { template: "panel" },
-                name: "panelVisible",
-            },
-        ],
-    };
+        scales: { x: { type: "linear", domain: [0, 100000], zoom: true } },
+        vconcat: [{ import: { template: "panel" }, name: "original" }],
+    });
+    await root.getScaleResolution("x").zoomTo([0, 9000], 0);
 
-    const root = /** @type {import("./containerView.js").default} */ (
-        await context.createOrImportView(spec, null, null, "root")
-    );
-    const hidden = root.findDescendantByName("panelHidden");
-    const visible = root.findDescendantByName("panelVisible");
-
-    expect(hidden.spec.visible).toBe(false);
-    expect(visible.spec.visible).toBe(true);
+    const insertDetail = (/** @type {string} */ name) =>
+        views.insert(views.root(), {
+            import: { template: "panel" },
+            name,
+            visible: { expr: "show && span(domain('x')) < 10000" },
+            params: { show: true },
+        });
+    await insertDetail("detail");
+    const detail = root.getDescendants().find((view) => view.name === "detail");
+    expect(detail.isConfiguredVisible()).toBe(true);
+    expect(detail.flowHandle.collector.getItemCount()).toBe(1);
+    await root.getScaleResolution("x").zoomTo([0, 20000], 0);
+    await detail.paramRuntime.whenPropagated();
+    expect(detail.isConfiguredVisible()).toBe(false);
+    await insertDetail("wide");
+    expect(
+        root.getDescendants().find((view) => view.name === "wide").flowHandle
+    ).toBeUndefined();
 });
 
 test("ImportSpec.zindex overrides imported view zindex", async () => {

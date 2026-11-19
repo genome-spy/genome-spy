@@ -66,4 +66,8 @@ document
                     : "Enter a coordinate or a known contig name.";
         }
     });
-window.addEventListener("pagehide", () => api.finalize(), { once: true });
+window.addEventListener("pagehide", (event) => {
+    if (!event.persisted) {
+        api.finalize();
+    }
+});

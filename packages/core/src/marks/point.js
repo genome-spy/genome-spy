@@ -10,6 +10,15 @@ import {
     compileSelectionPredicateTree,
 } from "../selection/selectionPredicateTree.js";
 
+/** @param {import("../spec/mark.js").StrokeAlign | boolean | undefined} value */
+export function pointStrokeAlign(value) {
+    return value === "outside"
+        ? 2
+        : value === "inside" || value === true
+          ? 0
+          : 1;
+}
+
 /** @extends {Mark<import("../spec/mark.js").PointProps>} */
 export default class PointMark extends Mark {
     #semanticZoomFraction = () => 0;
@@ -31,6 +40,10 @@ export default class PointMark extends Mark {
     /** @param {import("../data/flowNode.js").Datum} datum */
     isPreservedBySelection(datum) {
         return this.#samplingSelections.some((matches) => matches(datum));
+    }
+
+    get strokeAlignSource() {
+        return this.properties.strokeAlign ?? this.properties.inwardStroke;
     }
 
     /** @param {import("../view/unitView.js").default} unitView */

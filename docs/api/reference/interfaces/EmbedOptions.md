@@ -4,6 +4,16 @@
 
 ## Properties
 
+### initialVisibilityOverrides?
+
+> `optional` **initialVisibilityOverrides?**: readonly [`ViewVisibilityOverride`](../type-aliases/ViewVisibilityOverride.md)[]
+
+Saved manual choices to apply once before initial layout and data loading.
+Entries for missing, ambiguous, or expression-controlled views are skipped.
+The last eligible entry for a view wins.
+
+***
+
 ### wheelBehavior?
 
 > `optional` **wheelBehavior?**: `"default"` \| `"cooperative"`

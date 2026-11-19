@@ -126,9 +126,6 @@ export default class ScaleResolution {
     /** @type {Set<() => void>} */
     #disposers = new Set();
 
-    /** @type {Set<ScaleResolutionMember>} */
-    #dataDomainMembers = new Set();
-
     /** @type {DomainRuntime | undefined} */
     #domainRuntime;
 
@@ -198,9 +195,11 @@ export default class ScaleResolution {
     /**
      * @param {Channel} channel
      * @param {import("../view/view.js").default} [hostView]
+     * @param {boolean} [direct] Whether this scale is local pass-through for a mark.
      */
-    constructor(channel, hostView) {
+    constructor(channel, hostView, direct = false) {
         this.channel = channel;
+        this.direct = direct;
         /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
@@ -282,7 +281,7 @@ export default class ScaleResolution {
                     this.channel
                 )
             ]?.type;
-        return !!type && type !== "null";
+        return !!type && type !== "null" && !this.direct;
     }
 
     get #resolutionView() {
@@ -429,15 +428,19 @@ export default class ScaleResolution {
         );
     }
 
+    #getDataMembers(members = this.#members) {
+        return members.values().filter((member) => member.contributesToDomain);
+    }
+
     /**
-     * @param {Set<ScaleResolutionMember>} [members]
+     * @param {Iterable<ScaleResolutionMember>} [members]
      */
     #getActiveMembers(members = this.#members) {
         /** @type {Set<ScaleResolutionMember>} */
         const active = new Set();
         for (const member of members) {
             const view = member.view;
-            if (!view.isConfiguredVisible()) {
+            if (!view.isVisible()) {
                 continue;
             }
             const domain = member.channelDef?.scale?.domain;
@@ -687,9 +690,6 @@ export default class ScaleResolution {
         }
 
         this.#members.add(member);
-        if (member.contributesToDomain) {
-            this.#dataDomainMembers.add(member);
-        }
         return member;
     }
 
@@ -764,7 +764,6 @@ export default class ScaleResolution {
         const snapshots = batchedResolutions.map((resolution) => ({
             resolution,
             members: new Set(resolution.#members),
-            dataDomainMembers: new Set(resolution.#dataDomainMembers),
             type: resolution.type,
             name: resolution.name,
         }));
@@ -791,7 +790,6 @@ export default class ScaleResolution {
             for (const snapshot of snapshots) {
                 const resolution = snapshot.resolution;
                 resolution.#members = snapshot.members;
-                resolution.#dataDomainMembers = snapshot.dataDomainMembers;
                 resolution.type = snapshot.type;
                 resolution.name = snapshot.name;
                 resolution.#registeringMembers = false;
@@ -829,7 +827,6 @@ export default class ScaleResolution {
         return () => {
             const removed = this.#members.delete(registeredMember);
             if (removed) {
-                this.#dataDomainMembers.delete(registeredMember);
                 this.#onMembersChanged();
             }
             return (
@@ -974,7 +971,7 @@ export default class ScaleResolution {
         }
 
         visited.add(resolution);
-        for (const member of resolution.#dataDomainMembers) {
+        for (const member of resolution.#getDataMembers()) {
             for (const channel of primaryPositionalChannels) {
                 const dependency = member.view.getScaleResolution(channel);
                 if (
@@ -1068,15 +1065,9 @@ export default class ScaleResolution {
             return;
 
         const members = new Set(
-            this.#members
-                .values()
-                .filter((member) => member.view.isConfiguredVisible())
+            this.#members.values().filter((member) => member.view.isVisible())
         );
-        const dataMembers = new Set(
-            this.#dataDomainMembers
-                .values()
-                .filter((member) => member.view.isConfiguredVisible())
-        );
+        const dataMembers = new Set(this.#getDataMembers(members));
 
         const props = this.#getMergedScaleProps();
         const link = this.#getLinkedSelectionInfo();
@@ -1220,7 +1211,7 @@ export default class ScaleResolution {
                 this.#createDebugMember(member)
             ),
             activeMemberCount: this.#getActiveMembers().size,
-            dataDomainMemberCount: this.#dataDomainMembers.size,
+            dataDomainMemberCount: Array.from(this.#getDataMembers()).length,
             viewLevelScaleProps: this.#viewLevelScaleProps
                 ? {
                       view: this.#viewLevelScaleProps.view,
@@ -1389,6 +1380,19 @@ export default class ScaleResolution {
             domain,
             this.#hasConfiguredDomain()
         );
+    }
+
+    /** A loaded track can leave or rejoin the domain without publishing new data. */
+    refreshVisibility() {
+        const bound = this.#domainInputs?.members;
+        if (
+            bound &&
+            this.#members
+                .values()
+                .some((member) => bound.has(member) !== member.view.isVisible())
+        ) {
+            this.reconfigure();
+        }
     }
 
     /**
@@ -1640,7 +1644,7 @@ export default class ScaleResolution {
      */
     getDataDomain() {
         if (this.#domainInputs) return this.#domainInputs.readData();
-        const members = this.#getActiveMembers(this.#dataDomainMembers);
+        const members = this.#getActiveMembers(this.#getDataMembers());
         const accessors = (/** @type {ScaleResolutionMember} */ member) =>
             getScaleMemberAccessors(member).filter(
                 (accessor) => !accessor.channelDef.domainInert

@@ -86,10 +86,12 @@ void main(void) {
 
     // Line-only shapes use their width even when the stroke falls back to the
     // fill color. An invisible stroke must not inset other filled shapes.
-    if (strokeOpacity <= 0.0 && vShape != X && vShape != PLUS) {
+    bool lineShape = vShape == X || vShape == PLUS;
+    if (strokeOpacity <= 0.0 && !lineShape) {
         strokeWidth = 0.0;
     }
 
+    float align = lineShape ? (uInwardStroke ? 0.0 : 1.0) : uStrokeAlign;
     float diameter = sqrt(size) *
         uScaleFactor *
         semanticThresholdFactor;
@@ -97,7 +99,7 @@ void main(void) {
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
     float opacity = uViewOpacity;
-	if (strokeWidth <= 0.0 || uInwardStroke) {
+	if (strokeWidth <= 0.0 || align == 0.0) {
 		float minDiameter = 1.0 / uDevicePixelRatio;
 		if (diameter < minDiameter) {
 			// We do some "cheap" gamma correction here. It breaks on dark background, though.
@@ -134,10 +136,13 @@ void main(void) {
     // Not needed if we would draw rotated quads instead of gl.POINTS
 	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
 
-	float aaPadding = 1.0 / uDevicePixelRatio;
+    bool triangle = vShape == TRIANGLE_UP;
+    // At a 60-degree corner, the stroke and its antialiased edge reach twice
+    // their outward width. Reserve that distance on both axes for rotation.
+    float aaPadding = (triangle && align > 0.0 && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
 	float rotationPadding = (diameter * roomForRotation) - diameter;
-	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
-	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
+    float strokePaddingFactor = circle ? 1.0 : (triangle ? 2.0 : sqrt(3.0));
+    float strokePadding = strokeWidth * strokePaddingFactor * align;
 	float padding = rotationPadding + strokePadding + aaPadding;
 
     gl_PointSize = max(

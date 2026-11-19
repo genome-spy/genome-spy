@@ -1,7 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
 
+import Interaction from "../utils/interaction.js";
 import LayerView from "./layerView.js";
 import UnitView from "./unitView.js";
+import Point from "./layout/point.js";
 import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import { createAndInitialize, createTestViewContext } from "./testUtils.js";
@@ -103,9 +105,11 @@ describe("LayerView child zindex", () => {
         ]);
     });
 
-    test("propagates interactions from the topmost child", async () => {
+    test("propagates interactions from the topmost child of a visible layer", async () => {
         const view = await createAndInitialize(
             {
+                params: [{ name: "showLayer", value: true }],
+                visible: { expr: "showLayer" },
                 layer: [
                     { ...makeUnitSpec(), name: "front", zindex: 1 },
                     { ...makeUnitSpec(), name: "back", zindex: -1 },
@@ -123,15 +127,30 @@ describe("LayerView child zindex", () => {
             };
         }
 
-        view.propagateInteraction(
-            /** @type {any} */ ({
-                type: "mousemove",
-                stopped: false,
-                pointedViews: new Map(),
-            })
-        );
-
+        const move = () => {
+            const event = new Interaction(
+                new Point(0, 0),
+                /** @type {UIEvent} */ (new Event("mousemove"))
+            );
+            view.propagateInteraction(event);
+            return event;
+        };
+        move();
         expect(order).toEqual(["front", "middle", "back"]);
+
+        order.length = 0;
+        view.addInteractionListener(
+            "mousemove",
+            (event) => event.stopPropagation(),
+            true
+        );
+        expect(move().pointedViews.has(view)).toBe(true);
+        expect(order).toEqual([]);
+
+        view.paramRuntime.setValue("showLayer", false);
+        await view.paramRuntime.whenPropagated();
+        expect(move().pointedViews.has(view)).toBe(false);
+        expect(order).toEqual([]);
     });
 });
 

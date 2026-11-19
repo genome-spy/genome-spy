@@ -14,7 +14,7 @@ import InputBindingManager from "./genomeSpy/inputBindingManager.js";
 import { calculateCanvasSize } from "./view/viewUtils.js";
 import {
     initializeViewData,
-    initializeVisibleViewData,
+    refreshVisibility,
 } from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
 
@@ -38,7 +38,10 @@ import {
 } from "./rendering/rasterization.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
-import { validateSelectorConstraints } from "./view/viewSelectors.js";
+import {
+    resolveVisibilityOverrides,
+    validateSelectorConstraints,
+} from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
 import { initializeViewGuides } from "./view/gridView/guideViewSync.js";
@@ -517,6 +520,17 @@ export default class GenomeSpy {
         }
     }
 
+    /** @internal Applies saved choices to the constructed startup hierarchy. */
+    initializeViewVisibility() {
+        if (!this.options.initialVisibilityOverrides?.length) return;
+        for (const [view, visible] of resolveVisibilityOverrides(
+            this.viewRoot,
+            this.options.initialVisibilityOverrides
+        )) {
+            view.visibilityOverride = visible;
+        }
+    }
+
     /**
      * @param {import("./types/viewContext.js").default} context
      */
@@ -532,6 +546,8 @@ export default class GenomeSpy {
             null,
             VIEW_ROOT_NAME
         );
+
+        this.initializeViewVisibility();
 
         // Reminder: assemblies must be ensured after view creation (imports and
         // inheritance resolved), but before any code path that may touch scales
@@ -701,18 +717,9 @@ export default class GenomeSpy {
             return;
         }
 
-        await initializeVisibleViewData(
-            this.viewRoot,
-            this.viewRoot.context.dataFlow,
-            this.viewRoot.context.textMetrics
-        );
-
-        // Visibility toggles can change sizes; ensure layout is recomputed even
-        // when callers don't explicitly request it.
-        this.viewRoot._invalidateCacheByPrefix("size", "progeny");
-        this.#surface.invalidateSize();
-        this.computeLayout();
-        this.animator.requestRender();
+        await refreshVisibility(this.viewRoot);
+        if (this.viewRoot?.context.requestVisibilityRefresh)
+            this.computeLayout();
     }
 
     /**

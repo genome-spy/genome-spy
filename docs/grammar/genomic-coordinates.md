@@ -47,8 +47,27 @@ single entry is used as the default assembly.
 
 ## Supported genomes
 
-GenomeSpy bundles a few common built-in genome assemblies: `"hg38"`, `"hg19"`,
-`"hg18"`, `"mm10"`, `"mm9"`, and `"dm6"`.
+The built-in assemblies use UCSC names and lengths for the main chromosomes and
+mitochondrial sequence.
+
+| `assembly` | Organism                      | Reference build                   | UCSC chromosome sizes                                                                             |
+| ---------- | ----------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `hg38`     | Human                         | GRCh38                            | [hg38.chrom.sizes](https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes)      |
+| `hg19`     | Human                         | GRCh37                            | [hg19.chrom.sizes](https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.chrom.sizes)      |
+| `hg18`     | Human                         | NCBI Build 36.1                   | [hg18.chrom.sizes](https://hgdownload.soe.ucsc.edu/goldenPath/hg18/bigZips/hg18.chrom.sizes)      |
+| `hs1`      | Human                         | T2T-CHM13v2.0 (`GCA_009914755.4`) | [hs1.chrom.sizes.txt](https://hgdownload.soe.ucsc.edu/goldenPath/hs1/bigZips/hs1.chrom.sizes.txt) |
+| `mm10`     | Mouse                         | GRCm38                            | [mm10.chrom.sizes](https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.chrom.sizes)      |
+| `mm9`      | Mouse                         | NCBI Build 37                     | [mm9.chrom.sizes](https://hgdownload.soe.ucsc.edu/goldenPath/mm9/bigZips/mm9.chrom.sizes)         |
+| `dm6`      | Fruit fly (_D. melanogaster_) | BDGP Release 6 + ISO1 MT          | [dm6.chrom.sizes](https://hgdownload.soe.ucsc.edu/goldenPath/dm6/bigZips/dm6.chrom.sizes)         |
+
+Human assemblies order `chr1` through `chr22`, and mouse assemblies order `chr1`
+through `chr19`, each followed by `chrX`, `chrY`, and `chrM`. The `dm6` contigs
+are ordered by decreasing length.
+
+When combining alignments, annotations, and reference sequence tracks, use the
+same reference analysis set. Even when chromosome names and lengths match,
+sequence coordinates can differ. If your analysis set uses a different contig
+list or naming scheme, define a [custom genome](#custom-genomes).
 
 ## Custom genomes
 

@@ -1,3 +1,4 @@
+import { pointStrokeAlign } from "../../../marks/point.js";
 import {
     drawBufferInfo,
     setBlockUniforms,
@@ -52,6 +53,14 @@ export default class WebGLPointMark extends WebGLMark {
 
         const props = this.properties;
 
+        const mark = /** @type {import("../../../marks/point.js").default} */ (
+            this.mark
+        );
+        this.registerMarkUniformValue(
+            "uStrokeAlign",
+            mark.strokeAlignSource,
+            pointStrokeAlign
+        );
         this.registerMarkUniformValue(
             "uInwardStroke",
             props.inwardStroke,

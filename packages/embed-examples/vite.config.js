@@ -14,7 +14,7 @@ export default defineConfig({
     build: {
         outDir: "../dist",
         emptyOutDir: true,
-        rollupOptions: {
+        rolldownOptions: {
             // Build every example page so refactors break CI instead of the examples site.
             input: {
                 index: "index.html",
@@ -27,6 +27,7 @@ export default defineConfig({
                 "transformAnalysis/index": "transformAnalysis/index.html",
                 "brushLinkingApi/index": "brushLinkingApi/index.html",
                 "viewMutationApi/index": "viewMutationApi/index.html",
+                "viewVisibilityApi/index": "viewVisibilityApi/index.html",
                 "inspectorOverlay/index": "inspectorOverlay/index.html",
                 "controls/index": "controls/index.html",
                 "cooperativeWheel/index": "cooperativeWheel/index.html",

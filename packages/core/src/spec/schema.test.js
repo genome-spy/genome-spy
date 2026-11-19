@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { beforeAll, describe, expect, test } from "vitest";
-import { createGenerator } from "ts-json-schema-generator";
+import { generateSpecSchema } from "../../../../scripts/generateSpecSchema.mjs";
 import Ajv from "ajv";
 
 const specDir = path.dirname(fileURLToPath(import.meta.url));
@@ -18,18 +18,43 @@ describe("generated core schema", () => {
 
     // Generate and compile once; the tests only read the shared schema.
     beforeAll(() => {
-        schema = createGenerator({
-            path: path.join(packageDir, "src/spec/*.ts"),
-            tsconfig: path.join(repoRoot, "tsconfig.json"),
-            type: "CoreRootSpec",
-            skipTypeCheck: true,
-        }).createSchema("CoreRootSpec");
+        schema = generateSpecSchema("core", { skipTypeCheck: true });
         validate = new Ajv.default({
             allErrors: true,
             strict: false,
             allowUnionTypes: true,
         }).compile(schema);
     }, 30000);
+
+    test("direct encodings can omit the data type", () => {
+        expect(
+            validate({
+                mark: "point",
+                encoding: {
+                    x: { datum: 0.5, scale: null },
+                    xOffset: { field: "jitterPx", scale: null },
+                    size: { expr: "datum.symbolArea", scale: null },
+                    fill: {
+                        condition: {
+                            param: "picked",
+                            field: "cssColor",
+                            scale: null,
+                        },
+                        value: "gray",
+                    },
+                },
+            }),
+            JSON.stringify(validate.errors)
+        ).toBe(true);
+
+        for (const encoding of /** @type {unknown[]} */ ([
+            { xOffset: { field: "jitterPx" } },
+            { size: { expr: "datum.symbolArea", scale: { type: "linear" } } },
+            { shape: { field: "symbol", scale: null } },
+        ])) {
+            expect(validate({ mark: "point", encoding })).toBe(false);
+        }
+    });
 
     test("gradient interval bindings require one color component and encode open initial bounds", () => {
         const parameter = {

@@ -1,3 +1,4 @@
+import { cssColorToRgba } from "../../color.js";
 import { createSvgElement } from "../svgElement.js";
 import {
     resolvePointProperties,
@@ -36,7 +37,7 @@ export function renderPointSvg(baseMark, options) {
         );
     }
     const properties = resolvePointProperties(mark);
-    const { inwardStroke } = properties;
+    const { inwardStroke, outsideStroke } = properties;
 
     const { group, viewOpacity } = options;
     const encoders =
@@ -45,6 +46,9 @@ export function renderPointSvg(baseMark, options) {
         );
     const fillAlpha = getPaintOpacityAccessor(encoders.fill);
     const strokeAlpha = getPaintOpacityAccessor(encoders.stroke);
+    if (outsideStroke) {
+        group.setAttribute("paint-order", "stroke fill");
+    }
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.fill, transform: toPaintString },
         "fill-opacity": {
@@ -58,13 +62,28 @@ export function renderPointSvg(baseMark, options) {
         },
         "stroke-width": {
             encoder: encoders.strokeWidth,
-            transform: (value) => formatSvgNumber(+value),
+            transform: (value) =>
+                formatSvgNumber(+value * (outsideStroke ? 2 : 1)),
         },
     });
     const constantFill = group.getAttribute("fill");
     const constantFillOpacity = group.getAttribute("fill-opacity");
     const constantStroke = group.getAttribute("stroke");
     const constantStrokeOpacity = group.getAttribute("stroke-opacity");
+    /** @type {Map<string, string> | undefined} */
+    let opaqueColors;
+    /** @param {string} paint */
+    function opaqueRgb(paint) {
+        opaqueColors ??= new Map();
+        let opaque = opaqueColors.get(paint);
+        if (opaque === undefined) {
+            const [r, g, b] = cssColorToRgba(paint);
+            opaque = `rgb(${r * 255},${g * 255},${b * 255})`;
+            opaqueColors.set(paint, opaque);
+        }
+        return opaque;
+    }
+
     const pointPathBuilder = createPointPathBuilder();
     return visitPointInstances(mark, properties, options, (instance) => {
         if (options.countOnly) {
@@ -82,6 +101,55 @@ export function renderPointSvg(baseMark, options) {
                 ? getLineShapeStyles(encoders, datum, viewOpacity, strokeAlpha)
                 : {}),
         };
+        if (outsideStroke && !lineShape && strokeWidth > 0) {
+            const stroke = String(styles.stroke ?? constantStroke);
+            const strokePaintAlpha = strokeAlpha(stroke);
+            const borderAlpha =
+                +(styles["stroke-opacity"] ?? constantStrokeOpacity) *
+                strokePaintAlpha;
+            if (borderAlpha > 0) {
+                const fill = String(styles.fill ?? constantFill);
+                const fillPaintAlpha = fillAlpha(fill);
+                const interiorAlpha =
+                    +(styles["fill-opacity"] ?? constantFillOpacity) *
+                    fillPaintAlpha;
+                if (borderAlpha <= interiorAlpha && radius > 0) {
+                    if (interiorAlpha < 1) {
+                        styles.opacity = interiorAlpha;
+                        styles["fill-opacity"] = 1;
+                        styles["stroke-opacity"] = borderAlpha / interiorAlpha;
+                        if (fillPaintAlpha < 1) styles.fill = opaqueRgb(fill);
+                        if (strokePaintAlpha < 1)
+                            styles.stroke = opaqueRgb(stroke);
+                    }
+                } else {
+                    if (interiorAlpha > 0) {
+                        group.appendChild(
+                            createPointElement(
+                                instance,
+                                radius,
+                                { ...styles, stroke: "none" },
+                                pointPathBuilder,
+                                options.warn
+                            )
+                        );
+                    }
+                    styles.fill = "none";
+                    styles["stroke-width"] = formatSvgNumber(strokeWidth);
+                    group.appendChild(
+                        createPointElement(
+                            instance,
+                            radius,
+                            styles,
+                            pointPathBuilder,
+                            options.warn,
+                            strokeWidth / 2
+                        )
+                    );
+                    return;
+                }
+            }
+        }
         // Only inset fill geometry needs the stroke's effective alpha here.
         const strokeOpacity =
             radius == geometryRadius
@@ -153,20 +221,29 @@ export function renderPointSvg(baseMark, options) {
  * @param {import("../../immediate/marks/point.js").PointInstance} instance
  * @param {number} radius
  * @param {Record<string, string | number>} styles
- * @param {{build: (shape: string, x: number, y: number, radius: number) => string | undefined}} pointPathBuilder
+ * @param {{build: (shape: string, x: number, y: number, radius: number, outset?: number) => string | undefined}} pointPathBuilder
  * @param {(message: string) => void} warn
+ * @param {number} [outset]
  * @returns {SVGElement}
  */
-function createPointElement(instance, radius, styles, pointPathBuilder, warn) {
+function createPointElement(
+    instance,
+    radius,
+    styles,
+    pointPathBuilder,
+    warn,
+    outset = 0
+) {
     const { shape, x, y, angle } = instance;
     const cx = formatSvgNumber(x);
     const cy = formatSvgNumber(y);
-    const r = formatSvgNumber(radius);
+    const r = formatSvgNumber(radius + outset);
 
     let element;
     if (shape == "circle") {
         element = createSvgElement("circle", { cx, cy, r, ...styles });
     } else if (shape == "square") {
+        radius += outset;
         element = createSvgElement("rect", {
             x: formatSvgNumber(x - radius),
             y: formatSvgNumber(y - radius),
@@ -175,7 +252,7 @@ function createPointElement(instance, radius, styles, pointPathBuilder, warn) {
             ...styles,
         });
     } else {
-        const path = pointPathBuilder.build(shape, x, y, radius);
+        const path = pointPathBuilder.build(shape, x, y, radius, outset);
         if (path) {
             element = createSvgElement("path", { d: path, ...styles });
         } else {
@@ -196,7 +273,7 @@ function createPointElement(instance, radius, styles, pointPathBuilder, warn) {
 }
 
 /**
- * @returns {{build: (shape: string, x: number, y: number, radius: number) => string | undefined}}
+ * @returns {{build: (shape: string, x: number, y: number, radius: number, outset?: number) => string | undefined}}
  */
 function createPointPathBuilder() {
     let pathData = "";
@@ -215,9 +292,9 @@ function createPointPathBuilder() {
     };
 
     return {
-        build(shape, x, y, radius) {
+        build(shape, x, y, radius, outset) {
             pathData = "";
-            return tracePointPath(shape, x, y, radius, sink)
+            return tracePointPath(shape, x, y, radius, sink, outset)
                 ? pathData
                 : undefined;
         },

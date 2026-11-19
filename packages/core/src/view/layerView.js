@@ -145,7 +145,9 @@ export default class LayerView extends ContainerView {
      * @returns {(LayerView | import("./unitView.js").default)[]}
      */
     #getChildrenInRenderOrder() {
-        return this.#children.toSorted((a, b) => a.getZindex() - b.getZindex());
+        return this.#children
+            .filter((child) => child.isConfiguredVisible())
+            .sort((a, b) => a.getZindex() - b.getZindex());
     }
 
     /**
@@ -161,11 +163,10 @@ export default class LayerView extends ContainerView {
      * @param {import("../types/rendering.js").RenderingOptions} [options]
      */
     arrange(context, coords, options = {}) {
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         context.pushView(this, coords);
 
@@ -180,14 +181,17 @@ export default class LayerView extends ContainerView {
      * @param {import("../utils/interaction.js").default} event
      */
     propagateInteraction(event) {
+        if (!this.isConfiguredVisible()) return;
+
         this.handleInteraction(event, true);
+        if (event.stopped) return;
+
         const children = this.#getChildrenInRenderOrder();
         for (let i = children.length - 1; i >= 0; i--) {
             children[i].propagateInteraction(event);
-            if (event.stopped) {
-                return;
-            }
+            if (event.stopped) return;
         }
+
         this.handleInteraction(event, false);
     }
 }

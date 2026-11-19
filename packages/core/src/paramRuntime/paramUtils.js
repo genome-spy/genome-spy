@@ -361,6 +361,7 @@ export function makeConstantExprRef(value) {
         subscribe: () => () => /** @type {void} */ (undefined),
         invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "constant",
+        scaleBindings: new Map(),
         fields: [],
         globals: [],
         code: JSON.stringify(value),

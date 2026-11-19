@@ -912,13 +912,12 @@ export default class GridView extends ContainerView {
             );
         };
 
-        return this._cache(`size/directionSizes/${direction}`, () =>
-            this.layoutGrid[
+        return this._cache(`size/directionSizes/${direction}`, () => {
+            const visibleChildren = this.visibleChildren;
+            return this.layoutGrid[
                 direction == "column" ? "colIndices" : "rowIndices"
             ].map((col) => {
-                const children = col.map(
-                    (index) => this.visibleChildren[index]
-                );
+                const children = col.map((index) => visibleChildren[index]);
                 const insets = { before: 0, after: 0 };
                 const totals = { before: 0, after: 0 };
 
@@ -969,8 +968,8 @@ export default class GridView extends ContainerView {
                     ),
                     view: structural.size,
                 };
-            })
-        );
+            });
+        });
     }
 
     /** @param {View} _view @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
@@ -1342,11 +1341,10 @@ export default class GridView extends ContainerView {
     arrange(context, coords, options = {}) {
         this._invalidateCacheByPrefix("trackPlotGeometry");
         this._invalidateCacheByPrefix("layoutFootprints");
-        super.arrange(context, coords, options);
-
         if (!this.isConfiguredVisible()) {
             return;
         }
+        super.arrange(context, coords, options);
 
         if (!this.layoutParent) {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
@@ -1706,7 +1704,7 @@ export default class GridView extends ContainerView {
         for (const region of Object.values(this.#sharedLegends)) {
             if (region.isActive()) yield region;
         }
-        for (const child of this.#children) {
+        for (const child of this.visibleChildren) {
             for (const region of Object.values(child.legends)) {
                 if (region.isActive()) yield region;
             }

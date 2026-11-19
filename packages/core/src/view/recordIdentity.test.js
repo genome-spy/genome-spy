@@ -140,29 +140,20 @@ test.each([false, true])(
 );
 
 test("inserted and newly visible consumers infer IDs while preserving explicit ID channels", async () => {
-    const { root, views, context } = await createTestEmbed(
-        {
-            params: [{ name: "selected", value: null }],
-            layer: [
-                {
-                    name: "source",
-                    params: [
-                        { name: "selected", select: "point", push: "outer" },
-                    ],
-                    data: { values: [{ x: 1 }] },
-                    mark: "point",
-                    encoding: {
-                        x: { field: "x", type: "quantitative", axis: null },
-                    },
+    const { root, views, context } = await createTestEmbed({
+        params: [{ name: "selected", value: null }],
+        layer: [
+            {
+                name: "source",
+                params: [{ name: "selected", select: "point", push: "outer" }],
+                data: { values: [{ x: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative", axis: null },
                 },
-            ],
-        },
-        {
-            contextOptions: {
-                isViewConfiguredVisible: (view) => view.spec.visible ?? true,
             },
-        }
-    );
+        ],
+    });
     /** @type {import("../spec/view.js").UnitSpec} */
     const spec = {
         name: "consumer",

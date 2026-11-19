@@ -1,17 +1,43 @@
-#annotation-menu {
-    z-index: 1;
-    padding: 1em;
-    background: white;
-    border: 1px solid #999;
-    box-shadow: 0 2px 8px #0003;
+#add-annotation[aria-disabled="true"] {
+    color: var(--muted-text);
+    cursor: default;
 }
 
-#annotation-menu form,
-#annotation-menu label {
+#annotation-dialog {
+    max-inline-size: min(32rem, calc(100% - 2rem));
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 0.35rem 1.25rem #0002;
+}
+
+#annotation-dialog:modal {
+    overscroll-behavior: contain;
+}
+
+#annotation-dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+#annotation-dialog h2 {
+    margin: 0 0 0.75rem;
+}
+
+#annotation-dialog form,
+#annotation-dialog label {
     display: grid;
     gap: 0.5em;
 }
 
-#annotation-menu form {
+#annotation-dialog form {
     gap: 1em;
+}
+
+#annotation-dialog form > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }

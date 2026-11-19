@@ -1,3 +1,4 @@
+import { pointStrokeAlign } from "../../../marks/point.js";
 import clamp from "../../../utils/clamp.js";
 import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds, isOutsideBounds } from "../bounds.js";
@@ -26,8 +27,16 @@ import {
  * @param {import("../../../marks/point.js").default} mark
  */
 export function resolvePointProperties(mark) {
+    const align = pointStrokeAlign(
+        resolveMarkProperty(mark, mark.strokeAlignSource)
+    );
     return {
-        inwardStroke: resolveMarkProperty(mark, mark.properties.inwardStroke),
+        inwardStroke: align === 0,
+        outsideStroke: align === 2,
+        lineInwardStroke:
+            mark.properties.strokeAlign == null
+                ? align === 0
+                : !!resolveMarkProperty(mark, mark.properties.inwardStroke),
     };
 }
 
@@ -36,7 +45,7 @@ export function resolvePointProperties(mark) {
  * consume each record synchronously and must not retain it.
  *
  * @param {import("../../../marks/point.js").default} mark
- * @param {{inwardStroke: boolean}} properties
+ * @param {ReturnType<typeof resolvePointProperties>} properties
  * @param {{
  *     coords: import("../../../view/layout/rectangle.js").default,
  *     data: object[],
@@ -110,21 +119,27 @@ export function visitPointInstances(mark, properties, options, visitor) {
             continue;
         }
         const radius = Math.sqrt(encodeNumber(encoders.size, datum)) / 2;
-        if (properties.inwardStroke && radius <= 0) {
-            continue;
-        }
         const shape = encodeString(encoders.shape, datum);
         const strokeWidth = encodeNumber(encoders.strokeWidth, datum);
         const lineShape = shape == "x" || shape == "+";
+        const inward = lineShape
+            ? properties.lineInwardStroke
+            : properties.inwardStroke;
+        if (inward && radius <= 0) continue;
         const adjustedStrokeWidth =
-            properties.inwardStroke && !lineShape
-                ? Math.min(strokeWidth, radius)
-                : strokeWidth;
+            inward && !lineShape ? Math.min(strokeWidth, radius) : strokeWidth;
         const geometryRadius =
-            properties.inwardStroke && !lineShape
-                ? radius - adjustedStrokeWidth / 2
-                : radius;
-        const strokePadding = properties.inwardStroke ? 0 : strokeWidth / 2;
+            inward && !lineShape ? radius - adjustedStrokeWidth / 2 : radius;
+        const strokePadding = inward
+            ? 0
+            : properties.outsideStroke && !lineShape
+              ? Math.max(0, strokeWidth) *
+                (shape === "circle"
+                    ? 1
+                    : shape.startsWith("triangle-")
+                      ? 2
+                      : Math.SQRT2)
+              : strokeWidth / 2;
         const conservativeRadius = radius * Math.SQRT2 + strokePadding;
         if (
             !intersectsBounds(

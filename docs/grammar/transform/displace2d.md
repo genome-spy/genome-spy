@@ -32,8 +32,8 @@ The rectangle is centered on its anchor, so the displaced mark should use
 centered alignment. Apply the output fields with unscaled offset channels:
 
 ```json
-"xOffset": { "field": "labelDx", "type": "quantitative", "scale": null },
-"yOffset": { "field": "labelDy", "type": "quantitative", "scale": null }
+"xOffset": { "field": "labelDx", "scale": null },
+"yOffset": { "field": "labelDy", "scale": null }
 ```
 
 `anchorWidth` and `anchorHeight` can reserve a rectangle around each original

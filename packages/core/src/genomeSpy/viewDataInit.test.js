@@ -6,7 +6,11 @@ import NamedSource from "../data/sources/namedSource.js";
 import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
 import MockLazySource from "../data/sources/lazy/mockLazySource.js";
 
-import { createTestViewContext } from "../view/testUtils.js";
+import {
+    createHeadlessEngine,
+    createTestViewContext,
+    renderToLayout,
+} from "../view/testUtils.js";
 import {
     initializeViewData,
     initializeVisibleViewData,
@@ -16,9 +20,251 @@ import Transform from "../data/transforms/transform.js";
 import { loadViewSubtreeData } from "../data/flowInit.js";
 
 describe("viewDataInit", () => {
+    test.each([
+        "threshold > 0",
+        "smoothed > 0",
+        "fromScale > 0",
+        "span(range('x')) > 0",
+        "42",
+    ])("rejects unsupported view visibility: %s", async (expr) => {
+        await expect(
+            createHeadlessEngine({
+                params: [
+                    { name: "threshold", expr: "width / 2", debounce: 1 },
+                    {
+                        name: "smoothed",
+                        expr: "threshold",
+                        transition: { type: "lerp" },
+                    },
+                    { name: "fromScale", expr: "domain('x')[0]" },
+                ],
+                visible: { expr },
+                mark: "point",
+                encoding: { x: { datum: 0, type: "quantitative" } },
+            })
+        ).rejects.toThrow(/visible\.expr/);
+    });
+    test("rejects visibility driven by data contributing to an ancestor scale", async () => {
+        await expect(
+            createHeadlessEngine({
+                scales: { x: { type: "linear" } },
+                vconcat: [
+                    {
+                        visible: { expr: "span(domain('x')) < 10000" },
+                        mark: "point",
+                        data: { values: [{ x: 10 }] },
+                        encoding: { x: { field: "x", type: "quantitative" } },
+                    },
+                ],
+            })
+        ).rejects.toThrow(/visible.expr.*literal domain/);
+    });
+
+    test.each([false, true])(
+        "uses a derived parameter's original binding when a later declaration shadows it (%s)",
+        async (parentUsesLayout) => {
+            const parent = {
+                name: "p",
+                expr: parentUsesLayout ? "width" : "2",
+            };
+            const shadow = {
+                name: "p",
+                expr: parentUsesLayout ? "2" : "width",
+            };
+            const launch = createHeadlessEngine({
+                params: [parent],
+                vconcat: [
+                    {
+                        name: "detail",
+                        params: [{ name: "show", expr: "p > 0" }, shadow],
+                        visible: { expr: "show" },
+                        mark: "point",
+                        data: { values: [{}] },
+                    },
+                ],
+            });
+            if (parentUsesLayout)
+                await expect(launch).rejects.toThrow(/visible.expr/);
+            else {
+                const { view } = await launch;
+                onTestFinished(() => view.disposeSubtree());
+                const detail = view
+                    .getDescendants()
+                    .find((child) => child.name === "detail");
+                expect(detail.isConfiguredVisible()).toBe(true);
+            }
+        }
+    );
+
+    test.each([false, true])(
+        "zooms a sequence track across its visibility threshold (initially visible: %s)",
+        async (initiallyVisible) => {
+            const { view: root } = await createHeadlessEngine({
+                scales: {
+                    x: {
+                        type: "locus",
+                        assembly: { contigs: [{ name: "chr1", size: 100000 }] },
+                        zoom: true,
+                        ...(initiallyVisible ? { domain: [0, 9000] } : {}),
+                    },
+                },
+                params: [{ name: "bases", expr: "span(domain('x'))" }],
+                vconcat: [
+                    {
+                        name: "sequence",
+                        visible: {
+                            expr: initiallyVisible
+                                ? "bases < 10000"
+                                : "span(domain('x')) < 10000",
+                        },
+                        mark: "point",
+                        data: { values: [{}] },
+                    },
+                ],
+            });
+            onTestFinished(() => root.disposeSubtree());
+            const detail = root
+                .getDescendants()
+                .find((view) => view.name === "sequence");
+            expect(detail.isConfiguredVisible()).toBe(initiallyVisible);
+            expect(!!detail.flowHandle).toBe(initiallyVisible);
+            const scale = root.getScaleResolution("x");
+            await scale.zoomTo([0, 5000], 0);
+            await root.paramRuntime.whenPropagated();
+            expect(detail.isConfiguredVisible()).toBe(true);
+            await vi.waitFor(() =>
+                expect(detail.flowHandle?.collector.getItemCount()).toBe(1)
+            );
+            const handle = detail.flowHandle;
+            await scale.zoomTo([0, 9999], 0);
+            expect(scale.getDomain()).toEqual([0, 10000]);
+            await root.paramRuntime.whenPropagated();
+            expect(detail.isConfiguredVisible()).toBe(false);
+            await scale.zoomTo([0, 7000], 0);
+            await root.paramRuntime.whenPropagated();
+            expect(detail.isConfiguredVisible()).toBe(true);
+            expect(detail.flowHandle).toBe(handle);
+        }
+    );
+
+    test("loads a track when zooming its own fixed-domain scale reveals it", async () => {
+        const { view } = await createHeadlessEngine({
+            scales: { x: { type: "linear", domain: [0, 100], zoom: true } },
+            visible: { expr: "span(domain('x')) < 10" },
+            mark: "point",
+            data: { values: [{ x: 2 }] },
+            encoding: { x: { field: "x", type: "quantitative" } },
+        });
+        onTestFinished(() => view.disposeSubtree());
+        expect(view.isConfiguredVisible()).toBe(false);
+        expect(view.flowHandle).toBeUndefined();
+
+        await view.getScaleResolution("x").zoomTo([0, 4], 0);
+        await view.paramRuntime.whenPropagated();
+        expect(view.isConfiguredVisible()).toBe(true);
+        await vi.waitFor(() =>
+            expect(view.flowHandle?.collector.getItemCount()).toBe(1)
+        );
+    });
+
+    test("reveals a track without evaluating expressions under a hidden parent", async () => {
+        const context = createTestViewContext();
+        const reportError = vi.fn();
+        context.reportError = reportError;
+        const { view: root } = await createHeadlessEngine(
+            {
+                params: [{ name: "showPeer", value: false }],
+                vconcat: [
+                    {
+                        visible: false,
+                        vconcat: [{ visible: { expr: "42" }, mark: "point" }],
+                    },
+                    {
+                        name: "peer",
+                        visible: { expr: "showPeer" },
+                        mark: "point",
+                        data: { values: [{ x: 1 }] },
+                    },
+                ],
+            },
+            { context }
+        );
+        onTestFinished(() => root.disposeSubtree());
+        const peer = root.getDescendants().find((view) => view.name === "peer");
+        expect(peer.flowHandle).toBeUndefined();
+
+        root.paramRuntime.setValue("showPeer", true);
+        await vi.waitFor(() =>
+            expect(peer.flowHandle?.collector.getItemCount()).toBe(1)
+        );
+        expect(reportError).not.toHaveBeenCalled();
+    });
+
+    test("restores loaded tracks to the shared domain and clears hidden root bounds", async () => {
+        const { view: root } = await createHeadlessEngine({
+            params: [{ name: "mode", value: "wide" }],
+            visible: { expr: "mode !== 'hidden'" },
+            resolve: { scale: { x: "shared" } },
+            vconcat: [100, 10].map((x, i) => ({
+                visible: {
+                    expr: i === 0 ? "mode !== 'narrow'" : "mode !== 'wide'",
+                },
+                mark: "point",
+                data: { values: [{ x }] },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            })),
+        });
+        onTestFinished(() => root.disposeSubtree());
+        const x = root.getScaleResolution("x");
+        expect(x.getDomain()).toEqual([0, 100]);
+        root.paramRuntime.setValue("mode", "narrow");
+        await vi.waitFor(() => expect(x.getDomain()).toEqual([0, 10]));
+        root.paramRuntime.setValue("mode", "both");
+        await vi.waitFor(() => expect(x.getDomain()).toEqual([0, 100]));
+        renderToLayout(root);
+        expect(root.coords).toBeDefined();
+        root.paramRuntime.setValue("mode", "hidden");
+        await root.paramRuntime.whenPropagated();
+        renderToLayout(root);
+        expect(root.coords).toBeUndefined();
+    });
+
+    test("reconciles visibility changed while startup awaits fonts", async () => {
+        const context = createTestViewContext();
+        const root = await context.createOrImportView(
+            {
+                params: [{ name: "showDetail", value: false }],
+                visible: { expr: "showDetail" },
+                data: { values: [{ value: 1 }] },
+                mark: "point",
+            },
+            null,
+            null,
+            "root"
+        );
+        onTestFinished(() => root.disposeSubtree());
+        const fonts = Promise.withResolvers();
+        vi.spyOn(context.textMetrics, "waitUntilReady").mockReturnValueOnce(
+            fonts.promise
+        );
+        const launch = initializeViewData(
+            root,
+            context.dataFlow,
+            context.textMetrics,
+            () => {}
+        );
+        expect(root.flowHandle).toBeUndefined();
+        root.paramRuntime.setValue("showDetail", true);
+        await root.paramRuntime.whenPropagated();
+        fonts.resolve();
+        await launch;
+        expect(root.flowHandle.collector.getItemCount()).toBe(1);
+    });
+
     test("skips hidden subtrees during initial data initialization", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -69,7 +315,6 @@ describe("viewDataInit", () => {
 
     test("initializes newly visible views without rebuilding existing collectors", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -139,8 +384,6 @@ describe("viewDataInit", () => {
 
         try {
             const context = createTestViewContext();
-            context.isViewConfiguredVisible = (view) =>
-                view.spec.visible ?? true;
 
             /** @type {import("../spec/root.js").RootSpec} */
             const spec = {
@@ -227,7 +470,6 @@ describe("viewDataInit", () => {
     test("shared sources do not add duplicate observers for existing views", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
@@ -441,7 +683,6 @@ describe("viewDataInit", () => {
 
     test("new views join side inputs while replaying completed parent data", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         // Build a minimal concat tree so we can dynamically append a view.
         /** @type {import("../spec/view.js").VConcatSpec} */
@@ -549,7 +790,6 @@ describe("viewDataInit", () => {
 
     test("new views load side inputs before reloading an uncached inherited source", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
         const fetch = vi
             .spyOn(globalThis, "fetch")
             .mockResolvedValue(
@@ -606,7 +846,6 @@ describe("viewDataInit", () => {
 
     test("a branch attached during a load receives all rows after the font wait", async () => {
         const context = createTestViewContext();
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
         const root = /** @type {ConcatView} */ (
             await context.createOrImportView(
                 {
@@ -668,7 +907,6 @@ describe("viewDataInit", () => {
     test("lazy init does not reinitialize existing flow nodes", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
-        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
 
         let initCalls = 0;
 

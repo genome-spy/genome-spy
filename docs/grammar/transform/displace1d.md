@@ -36,11 +36,7 @@ logical pixels and disable the offset scale:
   ],
   "encoding": {
     "x": { "field": "position", "type": "quantitative" },
-    "xOffset": {
-      "field": "xDisplacement",
-      "type": "quantitative",
-      "scale": null
-    }
+    "xOffset": { "field": "xDisplacement", "scale": null }
   }
 }
 ```

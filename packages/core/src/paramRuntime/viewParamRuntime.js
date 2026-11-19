@@ -1176,6 +1176,7 @@ export default class ViewParamRuntime {
             expression(null),
             transition
         );
+        this.#localRefs.get(name).definingExpression = expression;
         const unsubscribe = expression.subscribe(() => {
             this.#setTransitionTarget(name, state, expression(null), {
                 animate: !this.#settleTemporalUpdatesImmediately,
@@ -1198,6 +1199,8 @@ export default class ViewParamRuntime {
             initialValue
         );
         this.#localRefs.set(name, ref);
+
+        ref.definingExpression = expression;
 
         /** @type {DebounceState} */
         const state = {
