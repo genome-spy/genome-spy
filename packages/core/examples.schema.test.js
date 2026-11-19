@@ -1,16 +1,11 @@
-import path from "path";
-import { fileURLToPath } from "url";
 import { describe, expect, test } from "vitest";
 import Ajv from "ajv";
-import { createGenerator } from "ts-json-schema-generator";
+import { generateSpecSchema } from "../../scripts/generateSpecSchema.mjs";
 
 import {
     collectSharedExamplePaths,
     loadSharedExampleSpec,
 } from "./src/spec/exampleFiles.js";
-
-const packageRoot = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(packageRoot, "..", "..");
 
 const validateCoreSpec = createCoreSpecValidator();
 const examplePaths = collectSharedExamplePaths();
@@ -30,12 +25,7 @@ describe("shared example specs", () => {
 });
 
 function createCoreSpecValidator() {
-    const schema = createGenerator({
-        path: path.join(packageRoot, "src/spec/*.ts"),
-        tsconfig: path.join(repoRoot, "tsconfig.json"),
-        type: "CoreRootSpec",
-        skipTypeCheck: true,
-    }).createSchema("CoreRootSpec");
+    const schema = generateSpecSchema("core", { skipTypeCheck: true });
 
     return new Ajv.default({
         allErrors: true,
