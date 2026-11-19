@@ -308,6 +308,16 @@ undeclared components. They read stored values without scanning matching rows.
 
 ### Other functions
 
+<a name="bedColor" href="#bedColor">#</a>
+<b>bedColor</b>(<i>value</i>, <i>fallback?</i>)<br/>
+Converts a [BED](data/eager.md#bed) `itemRgb` value to a CSS hex color. For
+example, `bedColor('123,123,123')` returns `'#7b7b7b'`. The value must be three
+comma-separated integers between 0 and 255, or `0` (as a string or number) for
+black. Malformed values raise an error.
+
+If the value is `null` or `undefined`, the function returns the supplied CSS
+fallback color or `null` if omitted. A null color renders as transparent.
+
 <a name="tickStep" href="#tickStep">#</a>
 <b>tickStep</b>(<i>start</i>, <i>stop</i>, <i>count</i>)<br/>
 Returns a nicely rounded step of `1`, `2`, or `5` times a power of ten for

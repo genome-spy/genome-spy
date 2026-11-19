@@ -19,6 +19,7 @@ describe("createResolutionDebugSnapshot", () => {
                     },
                     {
                         name: "morePoints",
+                        visible: false,
                         data: { values: [{ x: 2, category: "b" }] },
                         mark: "point",
                         encoding: {
@@ -51,6 +52,8 @@ describe("createResolutionDebugSnapshot", () => {
             channel: "color",
             hostViewPath: "viewRoot",
             type: "nominal",
+            activeMemberCount: 1,
+            dataDomainMemberCount: 2,
         });
         expect(color.members).toEqual(
             expect.arrayContaining([
@@ -67,6 +70,7 @@ describe("createResolutionDebugSnapshot", () => {
                     channel: "fill",
                     field: "category",
                     contributesToDomain: true,
+                    active: false,
                 }),
             ])
         );

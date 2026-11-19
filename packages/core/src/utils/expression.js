@@ -13,6 +13,7 @@ import {
 } from "vega-util";
 import { format as d3format } from "d3-format";
 import { tickStep } from "d3-array";
+import bedColor from "../data/formats/bedColor.js";
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
@@ -51,6 +52,7 @@ const functionContext = {
     selectionBounds,
     clamp,
     tickStep,
+    bedColor,
     format(/** @type {number} */ value, /** @type {string} */ format) {
         return d3format(format)(value);
     },

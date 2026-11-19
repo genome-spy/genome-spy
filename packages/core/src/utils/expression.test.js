@@ -117,6 +117,32 @@ describe("expression helpers", () => {
         expect(createFunction("isValid(42)")()).toBe(true);
     });
 
+    test("converts BED RGB values and defaults missing colors to null", () => {
+        const expression = createFunction("bedColor(datum.itemRgb)");
+        expect(expression({ itemRgb: "255,16,1" })).toBe("#ff1001");
+        expect(expression({ itemRgb: "0,0,0" })).toBe("#000000");
+        expect(expression({ itemRgb: 0 })).toBe("#000000");
+        expect(createFunction("bedColor(undefined)")()).toBeNull();
+    });
+
+    test.each(["", "1,2", "1,2,3,4", "1.5,2,3", "256,2,3", "-1,2,3", 1])(
+        "rejects malformed BED color %j even with a fallback",
+        (itemRgb) => {
+            const expression = createFunction(
+                "bedColor(datum.itemRgb, 'steelblue')"
+            );
+            expect(() => expression({ itemRgb })).toThrow(
+                `bedColor() expected 0 or three comma-separated integers from 0 to 255, got ${JSON.stringify(itemRgb)}.`
+            );
+        }
+    );
+
+    test("rejects an invalid CSS fallback when used", () => {
+        expect(() => createFunction("bedColor(null, '1,2,3')")()).toThrow(
+            'bedColor() expected a CSS fallback color, got "1,2,3".'
+        );
+    });
+
     test("matches Vega's inrange helper", () => {
         expect(createFunction("inrange(2, [2, 5])")()).toBe(true);
         expect(createFunction("inrange(5, [2, 5])")()).toBe(true);
