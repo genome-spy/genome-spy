@@ -182,6 +182,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             view.onBeforeRender();
         }
 
+        this.#markAdapter.beginDrawPass();
         // Execute the batch
         for (const op of this.#batch) {
             op();

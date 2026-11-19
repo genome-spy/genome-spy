@@ -17,6 +17,7 @@ describe("BufferedViewRenderingContext", () => {
                 devicePixelRatio: 1,
                 markPredicate,
                 markAdapter: /** @type {any} */ ({
+                    beginDrawPass: vi.fn(),
                     prepareMarks: vi.fn(),
                     hasStructuralChanges: vi.fn(() => false),
                     synchronize: vi.fn(),
@@ -94,6 +95,7 @@ describe("BufferedViewRenderingContext", () => {
         };
         const entry = { graphics, state: "ready" };
         const markAdapter = {
+            beginDrawPass: vi.fn(),
             prepareMarks: vi.fn(),
             hasStructuralChanges: vi.fn(() => false),
             getMarkEntry: () => entry,
@@ -203,6 +205,7 @@ describe("BufferedViewRenderingContext", () => {
             })
         );
         const markAdapter = {
+            beginDrawPass: vi.fn(),
             prepareMarks: vi.fn(),
             hasStructuralChanges: vi.fn(() => false),
             getMarkEntry: () => entry,

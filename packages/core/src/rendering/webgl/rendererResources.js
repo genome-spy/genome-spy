@@ -16,6 +16,11 @@ import WebGLRectMark from "./marks/rect.js";
 import WebGLRuleMark from "./marks/rule.js";
 import WebGLTextMark from "./marks/text.js";
 import { getWebGlTextFont } from "./textFont.js";
+import { readScaleDomainUniform } from "./gl/glslScaleGenerator.js";
+import { writeGroupingGapGeometry } from "./gl/indexGaps.js";
+
+// The View and Mark blocks use the low, program-local points assigned by TWGL.
+const SCALE_BINDINGS = { x: 8, y: 9 };
 
 const markTypes = {
     point: WebGLPointMark,
@@ -41,6 +46,8 @@ export function createWebGLMark(mark, glHelper, rendererResources) {
     return new Mark(mark, glHelper, rendererResources);
 }
 
+/** @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel */
+
 /**
  * @typedef {object} WebGLMarkEntry
  * @prop {import("../../marks/mark.js").default} mark
@@ -61,8 +68,89 @@ export default class WebGLRendererResources {
     /** @type {Map<import("../../marks/mark.js").default, WebGLMarkEntry>} */
     #markEntries = new Map();
 
-    /** @type {Map<import("../../scales/scaleResolution.js").default, {count: number, dispose: () => void}>} */
+    /** @type {Map<import("../../scales/scaleResolution.js").default, {count: number, dispose: () => void, uniforms?: {buffer: WebGLBuffer, refresh: () => void}}>} */
     #scaleResolutionRefs = new Map();
+
+    #drawPass = 0;
+
+    /** @type {Partial<Record<PrimaryPositionalChannel, WebGLBuffer>>} */
+    #boundScaleUniforms = {};
+
+    beginDrawPass() {
+        this.#drawPass++;
+    }
+
+    /**
+     * @param {import("../../scales/scaleResolution.js").default} resolution
+     * @param {WebGLProgram} program
+     * @param {PrimaryPositionalChannel} channel
+     */
+    createSharedScaleBinding(resolution, program, channel) {
+        const gl = this.glHelper.gl;
+        const index = gl.getUniformBlockIndex(
+            program,
+            "SharedScale_" + channel
+        );
+        if (index === gl.INVALID_INDEX) return;
+
+        const binding = SCALE_BINDINGS[channel];
+        gl.uniformBlockBinding(program, index, binding);
+        const retained = this.#scaleResolutionRefs.get(resolution);
+        const { buffer, refresh } = (retained.uniforms ??=
+            this.#createScaleUniforms(resolution));
+        return () => {
+            refresh();
+            if (this.#boundScaleUniforms[channel] !== buffer) {
+                gl.bindBufferBase(gl.UNIFORM_BUFFER, binding, buffer);
+                this.#boundScaleUniforms[channel] = buffer;
+            }
+        };
+    }
+
+    /** @param {import("../../scales/scaleResolution.js").default} resolution */
+    #createScaleUniforms(resolution) {
+        const gl = this.glHelper.gl;
+        const buffer = gl.createBuffer();
+        // std140 places two vec4s before the integer cut count and rounds the block to 48 bytes.
+        const data = new Float32Array(12);
+        const geometry = data.subarray(4, 8);
+        const counts = new Int32Array(data.buffer, 32, 1);
+        const words = new Uint32Array(data.buffer);
+        const uploaded = new Uint32Array(words.length);
+        const mapping = resolution.getMappingRef();
+        let pass = -1;
+        let previous = mapping.get();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, buffer);
+        gl.bufferData(gl.UNIFORM_BUFFER, data.byteLength, gl.DYNAMIC_DRAW);
+
+        return {
+            buffer,
+            refresh: () => {
+                if (pass === this.#drawPass) return;
+                const current = mapping.get();
+                const first = pass < 0;
+                pass = this.#drawPass;
+                if (!first && current === previous) return;
+
+                previous = current;
+                const domain = readScaleDomainUniform(current);
+                data[0] = domain[0];
+                data[1] = domain[1];
+                data[2] = domain[2] ?? 0;
+                if (hasGroupingGaps(current.props)) {
+                    counts[0] = writeGroupingGapGeometry(resolution, geometry);
+                } else {
+                    geometry.fill(0);
+                    counts[0] = 0;
+                }
+                if (first || words.some((word, i) => word !== uploaded[i])) {
+                    gl.bindBuffer(gl.UNIFORM_BUFFER, buffer);
+                    gl.bufferSubData(gl.UNIFORM_BUFFER, 0, data);
+                    uploaded.set(words);
+                }
+            },
+        };
+    }
 
     /** @type {Map<string, {texture: WebGLTexture, ready: Promise<void>}>} */
     #fontTextures = new Map();
@@ -548,6 +636,8 @@ export default class WebGLRendererResources {
             if (retained.count == 0) {
                 retained.dispose();
                 this.#scaleResolutionRefs.delete(resolution);
+                const buffer = retained.uniforms?.buffer;
+                if (buffer) this.glHelper.gl.deleteBuffer(buffer);
                 const gaps = this.#gapTextures.get(resolution);
                 if (gaps) this.glHelper.gl.deleteTexture(gaps.texture);
                 this.#gapTextures.delete(resolution);

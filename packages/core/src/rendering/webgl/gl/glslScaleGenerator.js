@@ -286,8 +286,14 @@ ${attributeType} ${accessorFunctionName}() {
  * @param {Channel} channel
  * @param {any} scale
  * @param {import("../../../spec/channel.js").ChannelDef} channelDef
+ * @param {boolean} [shareScale]
  */
-export function generateScaleGlsl(channel, scale, channelDef) {
+export function generateScaleGlsl(
+    channel,
+    scale,
+    channelDef,
+    shareScale = false
+) {
     scale ??= scaleNull();
 
     const primary = getPrimaryChannel(channel);
@@ -321,6 +327,14 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             ? getDiscretizingDomainForGlsl(scale).length
             : scale.domain().length
         : undefined;
+    const piecewise = isContinuous(scale.type) && domainLength > 2;
+    const needsSlot = isDiscretizing(scale.type) || piecewise;
+    const usesDomain =
+        isContinuous(scale.type) ||
+        isDiscretizing(scale.type) ||
+        ["band", "point"].includes(scale.type);
+    const sharedDomain = shareScale && usesDomain && !needsSlot;
+    const sharedBlock = sharedDomain && channel === primary;
 
     /** @type {string} */
     let domainUniform;
@@ -333,6 +347,13 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
     glsl.push("/".repeat(70));
     glsl.push(`// Channel: ${channel}`);
     glsl.push("");
+    if (sharedBlock) {
+        glsl.push(`layout(std140) uniform SharedScale_${primary} {
+    ${hp ? "highp" : "mediump"} vec4 ${domainUniformName};
+    highp vec4 uGapGeometry_${primary};
+    highp int uGapCount_${primary};
+};`);
+    }
 
     const { transform } = splitScaleType(scale.type);
 
@@ -387,7 +408,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             const peer = getGapPeer(channelDef);
             const peerAccessor = makeAccessorFunctionName(peer, 0);
             if (gaps && channel === primary)
-                glsl.push(groupingGapGlsl(primary));
+                glsl.push(groupingGapGlsl(primary, false, sharedDomain));
             if (gaps && peer) glsl.push(`${attributeType} ${peerAccessor}();`);
             functionCall = makeScaleCall(
                 gaps ? "scaleGaps_" + primary : "scaleBandHp",
@@ -413,7 +434,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
         case "band": {
             const gaps = hasGroupingGaps(scale.props);
             if (gaps && channel === primary)
-                glsl.push(groupingGapGlsl(primary, true));
+                glsl.push(groupingGapGlsl(primary, true, sharedDomain));
             functionCall = makeScaleCall(
                 gaps ? "scaleBandGaps_" + primary : "scaleBand",
                 "domain",
@@ -528,9 +549,6 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
         scaleBody.push("value = slotId - 1u;");
     }
 
-    const piecewise = isContinuous(scale.type) && domainLength > 2;
-    const needsSlot = isDiscretizing(scale.type) || piecewise;
-
     // 1. If scale is piecewise or discretizing, find a matching slot
     scaleBody.push(`int slot = 0;`);
     if (needsSlot) {
@@ -544,16 +562,15 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
         );
     }
 
-    const usesDomain =
-        isContinuous(scale.type) ||
-        isDiscretizing(scale.type) ||
-        ["band", "point"].includes(scale.type);
-
     // 2. transform
     if (functionCall) {
         const name = domainUniformName;
         if (usesDomain) {
-            if (hp) {
+            if (sharedDomain) {
+                scaleBody.push(
+                    `${hp ? "vec3" : "vec2"} domain = ${name}.${hp ? "xyz" : "xy"};`
+                );
+            } else if (hp) {
                 scaleBody.push(`vec3 domain = ${name};`);
             } else {
                 scaleBody.push(
@@ -592,7 +609,7 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
 
     const concatenated = glsl.join("\n");
 
-    if (usesDomain && channel == primary) {
+    if (usesDomain && channel == primary && !sharedBlock) {
         // Band, point, index, and locus scale need the domain extent (the first and last elements).
         const length =
             isContinuous(scale.type) || isDiscretizing(scale.type)
@@ -605,6 +622,7 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
 
     return {
         glsl: concatenated,
+        sharedBlock,
         domainUniformName,
         domainUniform,
         rangeUniformName,
@@ -873,6 +891,27 @@ function exactSplitHighPrecision(x) {
  */
 export function toHighPrecisionDomainUniform(domain) {
     return [...exactSplitHighPrecision(domain[0]), domain[1] - domain[0]];
+}
+
+/**
+ * @param {import("../../../scales/scaleInstanceManager.js").MappingConfiguration} mapping
+ * @param {import("../../../types/encoder.js").VegaScale} [scale]
+ */
+export function readScaleDomainUniform(mapping, scale = mapping.scale) {
+    const viewport =
+        "viewport" in scale
+            ? /** @type {import("../../../scales/scaleBand.js").CategoricalGapScale} */ (
+                  scale
+              ).viewport()
+            : null;
+    const domain = isDiscrete(scale.type)
+        ? (viewport?.interval ?? [0, mapping.domain.length])
+        : isDiscretizing(scale.type)
+          ? getDiscretizingDomainForGlsl(scale)
+          : scale.domain();
+    return isIndexLikeDomainType(scale.type)
+        ? toHighPrecisionDomainUniform(domain)
+        : domain;
 }
 
 /**
