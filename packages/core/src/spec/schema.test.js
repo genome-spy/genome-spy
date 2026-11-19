@@ -26,6 +26,36 @@ describe("generated core schema", () => {
         }).compile(schema);
     }, 30000);
 
+    test("direct encodings can omit the data type", () => {
+        expect(
+            validate({
+                mark: "point",
+                encoding: {
+                    x: { datum: 0.5, scale: null },
+                    xOffset: { field: "jitterPx", scale: null },
+                    size: { expr: "datum.symbolArea", scale: null },
+                    fill: {
+                        condition: {
+                            param: "picked",
+                            field: "cssColor",
+                            scale: null,
+                        },
+                        value: "gray",
+                    },
+                },
+            }),
+            JSON.stringify(validate.errors)
+        ).toBe(true);
+
+        for (const encoding of /** @type {unknown[]} */ ([
+            { xOffset: { field: "jitterPx" } },
+            { size: { expr: "datum.symbolArea", scale: { type: "linear" } } },
+            { shape: { field: "symbol", scale: null } },
+        ])) {
+            expect(validate({ mark: "point", encoding })).toBe(false);
+        }
+    });
+
     test("gradient interval bindings require one color component and encode open initial bounds", () => {
         const parameter = {
             name: "range",

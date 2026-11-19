@@ -8,6 +8,7 @@ import {
     isChannelWithScale,
     isPrimaryPositionalChannel,
     isOffsetChannel,
+    isSecondaryChannel,
 } from "../encoder/encoder.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 
@@ -17,6 +18,7 @@ import { isInChromeSubtree } from "./viewChrome.js";
  * @prop {import("../spec/channel.js").Channel} channel
  * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
  * @prop {import("../spec/channel.js").ChannelWithScale} targetChannel
+ * @prop {boolean} direct
  */
 
 /**
@@ -88,21 +90,6 @@ function getResolutionBehavior(view, type, channel) {
 }
 
 /**
- * @param {import("./unitView.js").default} ownerView
- * @param {import("./view.js").default} resolutionView
- * @param {import("../spec/channel.js").ChannelWithScale} targetChannel
- * @returns {import("../scales/scaleResolution.js").default}
- */
-const ensureScaleResolution = (ownerView, resolutionView, targetChannel) => {
-    if (!resolutionView.resolutions.scale[targetChannel]) {
-        const resolution = new ScaleResolution(targetChannel, resolutionView);
-        resolutionView.resolutions.scale[targetChannel] = resolution;
-    }
-
-    return resolutionView.resolutions.scale[targetChannel];
-};
-
-/**
  * @param {import("./unitView.js").default} view
  * @param {ResolutionPlannerTarget} type
  * @param {import("../spec/channel.js").Channel} channel
@@ -122,6 +109,15 @@ const getResolutionMember = (view, type, channel, channelDef) => {
         return undefined;
     }
 
+    const direct =
+        channelDefWithScale.scale === null ||
+        (isSecondaryChannel(channel) &&
+            findChannelDefWithScale(view.mark.encoding[targetChannel])
+                ?.scale === null);
+    if (direct && type !== "scale") {
+        return undefined;
+    }
+
     if (type == "axis" && !isPositionalChannel(targetChannel)) {
         return undefined;
     }
@@ -132,10 +128,11 @@ const getResolutionMember = (view, type, channel, channelDef) => {
         return undefined;
     }
     return {
-        view: getResolutionView(view, type, targetChannel),
+        view: direct ? view : getResolutionView(view, type, targetChannel),
         channel,
         channelDef: channelDefWithScale,
         targetChannel,
+        direct,
     };
 };
 
@@ -191,11 +188,9 @@ const collectScaleResolutionMembers = (view) => {
             return;
         }
 
-        const resolution = ensureScaleResolution(
-            view,
-            member.view,
-            member.targetChannel
-        );
+        const { view: host, targetChannel, direct } = member;
+        const resolution = (host.resolutions.scale[targetChannel] ??=
+            new ScaleResolution(targetChannel, host, direct));
         const members = scaleMembersByResolution.get(resolution);
         if (members) {
             members.push(member);

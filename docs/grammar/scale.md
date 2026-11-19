@@ -49,8 +49,17 @@ generally applies to GenomeSpy as well.
 The supported scales are: `"identity"`, `"linear"`, `"pow"`, `"sqrt"`,
 `"symlog"`, `"log"`, `"ordinal"`, `"band"`, `"point"`, `"quantize"`,
 `"threshold"`, and `"sequential"`. The `"sequential"` type is retained for
-backwards compatibility. Set `scale` to `null` to use data values directly on
-channels such as `x` and `opacity`.
+backwards compatibility.
+
+Set `scale` to `null` to use data values directly on numeric and color channels.
+You can omit `type` on these encodings. For example, an `xOffset` definition of
+`{"field": "jitterPx", "scale": null}` uses the field in pixels. A disabled
+scale applies to its own encoding, leaving sibling scales in a composed view
+available.
+
+A field or expression on a secondary endpoint uses its primary channel's
+scale when enabled. With `scale: null` on `x`, `x2` uses fractions of the view
+width. With `scale: null` on `xOffset`, `x2Offset` uses pixel offsets.
 
 On `color`, `fill`, and `stroke`, a disabled scale uses the color strings in the
 field directly. GenomeSpy accepts colors supported by

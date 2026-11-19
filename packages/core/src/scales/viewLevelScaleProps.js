@@ -64,7 +64,12 @@ export function attachViewLevelScaleProps(root) {
             channel,
             props
         ).resolution;
-        if (!mapping.resolution && props.type && props.type !== "null") {
+        if (
+            !mapping.resolution &&
+            !view.resolutions.scale[channel] &&
+            props.type &&
+            props.type !== "null"
+        ) {
             const resolution = new ScaleResolution(channel, view);
             resolution.type =
                 props.type === "locus" || props.type === "index"
@@ -144,7 +149,7 @@ function collectVisibleScaleResolutions(view, channel) {
     /** @type {Set<ScaleResolution>} */
     const resolutions = new Set();
     const owned = view.resolutions.scale[channel];
-    if (owned) resolutions.add(owned);
+    if (owned && !owned.direct) resolutions.add(owned);
 
     visitNonChromeViews(view, (descendant) => {
         if (
@@ -159,7 +164,7 @@ function collectVisibleScaleResolutions(view, channel) {
         }
 
         const resolution = descendant.getScaleResolution(channel);
-        if (resolution) {
+        if (resolution && !resolution.direct) {
             resolutions.add(resolution);
         }
     });
