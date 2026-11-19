@@ -37,7 +37,6 @@
         "x2": { "chrom": "chrom", "pos": "chromEnd" },
         "color": {
           "expr": "bedColor(datum.itemRgb, fallbackColor)",
-          "type": "nominal",
           "scale": null
         }
       }
