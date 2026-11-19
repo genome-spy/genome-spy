@@ -47,6 +47,28 @@ describe("shared examples", () => {
         ]);
     });
 
+    test("encodes item colors from BED3, BED9, and BED12 with one template", async () => {
+        const { view } = await initializeExample(
+            "examples/docs/grammar/data/eager/bed-item-colors.json"
+        );
+        const tracks = view
+            .getDescendants()
+            .filter((child) => child instanceof UnitView);
+
+        for (const [name, colors] of Object.entries({
+            bed3: ["#4c78a8", "#4c78a8"],
+            bed9: ["#e87026", "#000000"],
+            bed12: ["#27826b", "#7b7b7b"],
+        })) {
+            const track = tracks.find((child) => child.name === name);
+            expect(
+                Array.from(track.getCollector().getData(), (datum) =>
+                    track.mark.encoders.fill(datum)
+                )
+            ).toEqual(colors);
+        }
+    });
+
     test("resolves relative data URLs from the curated base URL", async () => {
         const { view, context } = await initializeExample(
             "examples/core/first.json"

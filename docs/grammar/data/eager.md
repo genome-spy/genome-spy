@@ -364,16 +364,18 @@ such as `.wig.gz`.
 ### BED
 
 [BED](https://genome.ucsc.edu/FAQ/FAQformat#format1) parsing is based on
-[@gmod/bed](https://github.com/GMOD/bed-js) and supports BED3-BED12 fields.
-Output uses standard BED field names such as `chrom`, `chromStart`, `chromEnd`,
-and optional BED/BED12 fields.
+[@gmod/bed](https://github.com/GMOD/bed-js) and supports tab-delimited
+BED3-BED12 files. Output uses standard BED field names such as `chrom`,
+`chromStart`, and `chromEnd`.
 
 Behavior details:
 
 - Leading `browser`, `track`, and `#` lines are skipped before the first data
   row.
 - BED12 rows use BED12 field names (for example `thickStart`, `thickEnd`,
-  `itemRgb`, `blockCount`, `blockSizes`, `blockStarts`).
+  `blockCount`, `blockSizes`, `blockStarts`).
+- `itemRgb` contains the raw text from column 9, or `null` when the column is
+  absent or contains `.`.
 - `strand` is normalized to numeric codes: `"+"` -> `1`, `"-"` -> `-1`, and
   any other value -> `0`.
 - `blockSizes` and `blockStarts` are parsed from comma-separated text into
@@ -383,6 +385,15 @@ Behavior details:
 #### Example
 
 EXAMPLE examples/docs/grammar/data/eager/bed.json height=160
+
+#### Reusable interval track with item colors
+
+Use [`bedColor()`](../expressions.md#bedColor) with `scale: null` to apply each
+item's color to its mark. The same named template draws BED3, BED9, and BED12
+intervals. Set `bedUrl` when importing the template to load your own file and
+`fallbackColor` to style intervals without an item color.
+
+EXAMPLE examples/docs/grammar/data/eager/bed-item-colors.json height=190
 
 For larger BED files, consider using the lazy [BigBed data
 source](lazy.md#bigbed) instead of the eager `url` source.

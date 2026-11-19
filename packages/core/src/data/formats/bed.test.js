@@ -10,6 +10,7 @@ test("parses BED rows without canonical interval fields", async () => {
             name: "featureA",
             score: 5,
             strand: 1,
+            itemRgb: null,
         },
     ]);
 });
@@ -27,6 +28,7 @@ chr19\t49302000\t49302300`;
             chromStart: 49302000,
             chromEnd: 49302300,
             strand: 0,
+            itemRgb: null,
         },
     ]);
 });
@@ -47,6 +49,7 @@ test("keeps fallback fieldN names from parser output", async () => {
             field8: "255,0,0",
             field9: "2",
             field10: "4,6,",
+            itemRgb: "255,0,0",
         },
     ]);
 });
@@ -72,6 +75,13 @@ test("parses BED12 rows with BED12 field names", async () => {
     ]);
 });
 
+test("exposes the dot placeholder as a missing color in BED9 and BED12", async () => {
+    const bed9 = "chr1\t0\t10\titem\t7\t+\t1\t9\t.";
+    const bed12 = bed9 + "\t2\t4,6,\t0,4,";
+    expect((await bed(bed9))[0]).toMatchObject({ field8: ".", itemRgb: null });
+    expect((await bed(bed12))[0]).toMatchObject({ itemRgb: null });
+});
+
 test("keeps malformed percent escapes in chromosome names", async () => {
     expect(await bed("chr1%ZZ\t0\t10")).toEqual([
         {
@@ -79,6 +89,7 @@ test("keeps malformed percent escapes in chromosome names", async () => {
             chromStart: 0,
             chromEnd: 10,
             strand: 0,
+            itemRgb: null,
         },
     ]);
 });
@@ -94,6 +105,7 @@ test("skips trailing empty lines at end of input", async () => {
             name: "featureA",
             score: 5,
             strand: 1,
+            itemRgb: null,
         },
     ]);
 });
