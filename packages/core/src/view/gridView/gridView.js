@@ -912,13 +912,12 @@ export default class GridView extends ContainerView {
             );
         };
 
-        return this._cache(`size/directionSizes/${direction}`, () =>
-            this.layoutGrid[
+        return this._cache(`size/directionSizes/${direction}`, () => {
+            const visibleChildren = this.visibleChildren;
+            return this.layoutGrid[
                 direction == "column" ? "colIndices" : "rowIndices"
             ].map((col) => {
-                const children = col.map(
-                    (index) => this.visibleChildren[index]
-                );
+                const children = col.map((index) => visibleChildren[index]);
                 const insets = { before: 0, after: 0 };
                 const totals = { before: 0, after: 0 };
 
@@ -969,8 +968,8 @@ export default class GridView extends ContainerView {
                     ),
                     view: structural.size,
                 };
-            })
-        );
+            });
+        });
     }
 
     /** @param {View} _view @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
