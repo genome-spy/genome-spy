@@ -40,6 +40,7 @@ import {
     isChannelWithScale,
     isDatumDef,
     isValueDef,
+    positionalChannels,
 } from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
@@ -274,6 +275,16 @@ function createTranslation(definition, config, mark) {
  */
 export function getWebGpuMarkConfigRevision(mark) {
     return mark.getRenderingRevision("configuration");
+}
+
+/** @param {import("../../marks/mark.js").default} mark */
+export function getWebGpuMarkGapKey(mark) {
+    let key = 0;
+    for (let index = 0; index < positionalChannels.length; index++) {
+        const scale = mark.encoders[positionalChannels[index]]?.scale;
+        if (scale && hasGroupingGaps(scale.props)) key |= 1 << index;
+    }
+    return key;
 }
 
 /**
@@ -1252,9 +1263,9 @@ function retainBandScaleProperties(target, scale, channel, peer) {
         scale.type === "band" || scale.type === "index"
             ? ["paddingInner", "paddingOuter"]
             : [];
-    if (hasGroupingGaps(scale.props)) {
+    target.gapEnabled = hasGroupingGaps(scale.props);
+    if (target.gapEnabled) {
         Object.assign(target, {
-            gapEnabled: true,
             gapAxis: channel[0] === "y" ? "y" : "x",
         });
         properties.push("gapPositions", "gapWidth");

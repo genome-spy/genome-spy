@@ -1381,6 +1381,7 @@ describe("WebGPU mark adapter", () => {
                 paddingOuter: 0.1,
                 align: 0.5,
                 band: 0.25,
+                gapEnabled: false,
             },
         });
     });

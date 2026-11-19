@@ -13,6 +13,7 @@ import {
 import {
     createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision,
+    getWebGpuMarkGapKey,
     getWebGpuMarkResourceRevision,
 } from "./webGpuMarkAdapter.js";
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
@@ -154,6 +155,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 config: undefined,
                 properties: undefined,
                 configRevision: -1,
+                gapKey: -1,
                 resourceRevision: -1,
                 resourcesDirty: true,
                 configX: NaN,
@@ -425,6 +427,13 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const configRevision = getWebGpuMarkConfigRevision(state.mark);
+        const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
+        const gapKey =
+            resourceRevision === undefined ||
+            resourceRevision !== state.resourceRevision
+                ? getWebGpuMarkGapKey(state.mark)
+                : state.gapKey;
+        const gapModeChanged = state.gapKey !== gapKey;
         const packedChanged = state.packed !== packed;
         const expressionChanged = state.configRevision !== configRevision;
         // Positional channels are translated into the owner's coordinate
@@ -442,13 +451,20 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.configY !== configY ||
             state.configWidth !== configWidth ||
             state.configHeight !== configHeight;
-        if (packedChanged || expressionChanged || geometryChanged) {
+        if (
+            packedChanged ||
+            expressionChanged ||
+            geometryChanged ||
+            gapModeChanged
+        ) {
             countPerformance(
                 packedChanged
                     ? "markConfigurationPackedMiss"
                     : expressionChanged
                       ? "markConfigurationExpressionMiss"
-                      : "markConfigurationGeometryMiss"
+                      : geometryChanged
+                        ? "markConfigurationGeometryMiss"
+                        : "markConfigurationGapModeMiss"
             );
             const first = state.occurrences[0];
             const configCoords = state.source
@@ -473,6 +489,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.config = translated?.config;
             state.properties = translated?.properties;
             state.configRevision = configRevision;
+            state.gapKey = gapKey;
             state.configX = configX;
             state.configY = configY;
             state.configWidth = configWidth;
@@ -487,12 +504,12 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 );
             }
         }
-        const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
         state.resourcesDirty ||=
             resourceRevision === undefined ||
             packedChanged ||
             expressionChanged ||
             geometryChanged ||
+            gapModeChanged ||
             state.resourceRevision !== resourceRevision;
         state.resourceRevision = resourceRevision ?? -1;
         state.active = !!state.config;
@@ -627,7 +644,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                             state.mark,
                             state.definition,
                             state.config,
-                            state.properties ?? {}
+                            state.properties ?? {},
+                            state.gapKey
                         )
                 );
                 state.resourcesDirty = false;
@@ -966,6 +984,7 @@ function writeScopeBounds(command, target) {
  * @property {object | undefined} config
  * @property {Record<string, {value: any}> | undefined} properties
  * @property {number} configRevision
+ * @property {number} gapKey
  * @property {number} resourceRevision
  * @property {boolean} resourcesDirty
  * @property {number} configX

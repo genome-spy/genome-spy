@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("./webGpuMarkAdapter.js", () => ({
     createWebGpuMarkConfig: mocks.createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision: mocks.getWebGpuMarkConfigRevision,
+    getWebGpuMarkGapKey: () => 0,
     getWebGpuMarkResourceRevision: mocks.getWebGpuMarkResourceRevision,
 }));
 
@@ -534,7 +535,13 @@ describe("WebGpuViewRenderingContext", () => {
             ]).toEqual([20.5, 30.5, 100, 80]);
             expect(adapterCalls[0][3]).toBe(mocks.packed.data);
 
-            expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+            expect(surface.updateMark).toHaveBeenCalledWith(
+                mark,
+                {},
+                {},
+                {},
+                0
+            );
             expect(surface.prepareDraw).toHaveBeenCalledWith(
                 mark,
                 expect.objectContaining({
@@ -583,7 +590,7 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
         context.render();
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {}, 0);
         expect(surface.prepareDraw).toHaveBeenCalledWith(
             mark,
             expect.objectContaining({

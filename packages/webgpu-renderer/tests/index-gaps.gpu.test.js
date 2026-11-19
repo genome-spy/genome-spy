@@ -2,12 +2,18 @@
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
-for (const base of [0, 2 ** 35]) {
-    test(`fixed pixel gaps survive navigation and unequal placements at ${base}`, async ({
+for (const [base, sharedCuts] of /** @type {const} */ ([
+    [0, false],
+    [2 ** 35, false],
+    [2 ** 35, true],
+])) {
+    test(`fixed pixel gaps survive navigation and unequal placements at ${base} (shared: ${sharedCuts})`, async ({
         page,
     }) => {
         await ensureWebGPU(page);
-        const result = await page.evaluate(async (base) => {
+        const fixture = { base, sharedCuts };
+        const result = await page.evaluate(async (fixture) => {
+            const { base, sharedCuts } = fixture;
             const [
                 { createRenderer },
                 { rectMark },
@@ -32,6 +38,13 @@ for (const base of [0, 2 ** 35]) {
                     0, 0, 0.5, 0.5, 0.5, 0.5, 0.25, 0.5,
                 ]),
             });
+            const gap = { gapPositions: [base + 10], gapWidth: 6 };
+            const shared = sharedCuts
+                ? renderer.createSharedPositionScale(
+                      indexScale({ gapEnabled: true })
+                  )
+                : undefined;
+            shared?.update({ start: base, end: base + 20, ...gap });
             /** @param {number[]} values @param {string} peer */
             const endpoint = (values, peer) => ({
                 data: base
@@ -43,8 +56,7 @@ for (const base of [0, 2 ** 35]) {
                     domain: [base, base + 20],
                     range: [0, 200],
                     band: 0,
-                    gapPositions: [base + 10],
-                    gapWidth: 6,
+                    ...(shared ? { sharedPosition: shared } : gap),
                     gapPeer: peer,
                 }),
             });
@@ -52,7 +64,10 @@ for (const base of [0, 2 ** 35]) {
                 count: 2,
                 placementIndex: { source: "draw" },
                 channels: {
-                    uniqueId: { data: new Uint32Array([1, 2]), type: "u32" },
+                    uniqueId: {
+                        data: new Uint32Array([1, 2]),
+                        type: "u32",
+                    },
                     x: endpoint([base, base + 10], "x2"),
                     x2: endpoint([base + 10, base + 20], "x"),
                     y: { value: 0, scale: identityScale() },
@@ -85,8 +100,11 @@ for (const base of [0, 2 ** 35]) {
                 );
             draw();
             const initial = await sample();
-            for (const axis of ["x", "x2"])
-                mark.scales[axis].setDomain([base + 5, base + 15]);
+            if (shared)
+                shared.update({ start: base + 5, end: base + 15, ...gap });
+            else
+                for (const channel of ["x", "x2"])
+                    mark.scales[channel].setDomain([base + 5, base + 15]);
             draw();
             const zoomed = await sample();
             placements.replace({
@@ -103,13 +121,22 @@ for (const base of [0, 2 ** 35]) {
             });
             draw();
             const recovered = await sample();
-            for (const axis of ["x", "x2"]) mark.scales[axis].setGapWidth(0);
+            if (shared)
+                shared.update({
+                    start: base + 5,
+                    end: base + 15,
+                    ...gap,
+                    gapWidth: 0,
+                });
+            else
+                for (const channel of ["x", "x2"])
+                    mark.scales[channel].setGapWidth(0);
             draw();
             const closed = await renderer.pick(50, 25);
             renderer.destroy();
             canvas.remove();
             return { initial, zoomed, exhausted, recovered, closed };
-        }, base);
+        }, fixture);
         expect(result).toEqual({
             initial: [1, null, 2, 1, null, 2],
             zoomed: [1, null, 2, 1, null, 2],

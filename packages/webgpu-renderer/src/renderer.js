@@ -649,7 +649,7 @@ export class Renderer {
         if (!supportsSharedPositionScale(scale)) return;
         this._assertAlive();
         return this._ownResource(
-            createSharedPositionScale(this, scale.definition, (handle) =>
+            createSharedPositionScale(this, scale, (handle) =>
                 this.#ownedResources.delete(handle)
             )
         );

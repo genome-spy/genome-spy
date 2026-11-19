@@ -1,5 +1,4 @@
 import deepEqual from "../../utils/deepEqual.js";
-import { groupingGapKey } from "../../genome/indexGapMapping.js";
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 import {
     getPrimaryChannel,
@@ -10,6 +9,7 @@ import { isCategoricalPositionScale } from "../../scales/scaleRules.js";
 import { shallowArrayEquals } from "../../utils/arrayUtils.js";
 import {
     getWebGpuCategorySelectionBinding,
+    getWebGpuMarkGapKey,
     isWebGpuScaleDependentValue,
 } from "./webGpuMarkAdapter.js";
 
@@ -318,9 +318,16 @@ export default class WebGpuSurface {
      * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
      * @param {any} config
      * @param {Record<string, {value: any, dynamic?: boolean}>} [properties]
+     * @param {number} [gapKey]
      * @returns {number} Number of retained resource writes.
      */
-    updateMark(mark, definition, config, properties = EMPTY_PROPERTIES) {
+    updateMark(
+        mark,
+        definition,
+        config,
+        properties = EMPTY_PROPERTIES,
+        gapKey = getWebGpuMarkGapKey(mark)
+    ) {
         if (!this.#renderer) {
             throw new Error("The WebGPU surface has not been initialized.");
         }
@@ -338,7 +345,6 @@ export default class WebGpuSurface {
             retained?.definition === definition && retained.config === config
                 ? retained.programKey
                 : definition.getProgramKey?.(config);
-        const gapKey = groupingGapKey(mark.encoders);
         if (
             !retained ||
             retained.definition !== definition ||
@@ -477,9 +483,9 @@ export default class WebGpuSurface {
             const mapping = shared.read();
             if (mapping === shared.previous) continue;
             const viewport = mapping.viewport;
-            const { categorical } = shared;
+            const { categorical, handle } = shared;
             writes += Number(
-                shared.handle.update({
+                handle.update({
                     start:
                         viewport?.interval[0] ??
                         (categorical ? 0 : +mapping.domain[0]),
@@ -796,18 +802,17 @@ function compileChannelBindings(add, key, scaleSlot, valueSlot, channel) {
                 true
             );
         }
-        if (channel.scale.gapEnabled) {
+        if (channel.scale.gapEnabled && !shared) {
             addScale(
                 key + ":gapPositions",
                 () => channel.scale.gapPositions,
                 (value) => scaleSlot.setGapPositions(value)
             );
-            if (!shared)
-                addScale(
-                    key + ":gapWidth",
-                    () => channel.scale.gapWidth,
-                    (value) => scaleSlot.setGapWidth(value)
-                );
+            addScale(
+                key + ":gapWidth",
+                () => channel.scale.gapWidth,
+                (value) => scaleSlot.setGapWidth(value)
+            );
         }
     }
 

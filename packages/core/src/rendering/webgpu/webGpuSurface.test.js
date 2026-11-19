@@ -37,8 +37,11 @@ const mocks = vi.hoisted(() => {
         createMark: vi.fn(() => handle),
         createPlacementSet: vi.fn(() => placementHandle),
         createSharedPositionScale: vi.fn(
-            /** @returns {import("@genome-spy/webgpu-renderer").SharedPositionScaleHandle | undefined} */
-            () => undefined
+            /**
+             * @param {import("@genome-spy/webgpu-renderer").ChannelScale} _scale
+             * @returns {import("@genome-spy/webgpu-renderer").SharedPositionScaleHandle | undefined}
+             */
+            (_scale) => undefined
         ),
         updateGlobals: vi.fn(),
         destroyMark: vi.fn(),
@@ -155,6 +158,93 @@ function configureMockMark(mark, definition) {
 }
 
 describe("WebGpuSurface", () => {
+    test("shares cut updates and recompiles borrowers when static gap mode changes", async () => {
+        const scale = {
+            type: /** @type {const} */ ("index"),
+            domain: [0, 16],
+            gapPositions: [8],
+            gapWidth: 0,
+        };
+        const { view } = await createHeadlessEngine({
+            scales: { x: scale },
+            data: { values: [{ start: 0, end: 16 }] },
+            encoding: {
+                x: { field: "start", type: "index", axis: null },
+                x2: { field: "end" },
+                fill: { value: "black" },
+                stroke: { value: null },
+            },
+            layer: [{ mark: "rect" }, { mark: "rect" }],
+        });
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => {
+            view.disposeSubtree();
+            surface.finalize();
+        });
+        const shared = {
+            gapEnabled: false,
+            update: vi.fn(() => true),
+            destroy: vi.fn(),
+        };
+        mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
+        const units = Array.from(
+            view.getDescendants().filter((child) => child instanceof UnitView)
+        );
+        const resolution = units[0].getScaleResolution("x");
+        const frame = new WebGpuViewRenderingContext({ surface });
+        for (const unit of units) {
+            frame.pushView(unit, Rectangle.create(0, 0, 100, 50));
+            frame.renderMark(unit.mark, {});
+            frame.popView(unit);
+        }
+        frame.finish();
+        frame.render();
+        expect(shared.update).toHaveBeenCalledOnce();
+
+        const changeGaps = (
+            /** @type {number} */ gapWidth,
+            /** @type {number[]} */ gapPositions
+        ) =>
+            resolution.attachViewLevelScaleProps(view, {
+                ...scale,
+                gapWidth,
+                gapPositions,
+            });
+        changeGaps(6, [8]);
+        frame.render();
+        expect(shared.update).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                gapPositions: [8],
+                gapWidth: 6,
+            })
+        );
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(4);
+
+        changeGaps(6, [4, 8]);
+        frame.renderPicking();
+        expect(shared.update).toHaveBeenLastCalledWith(
+            expect.objectContaining({ gapPositions: [4, 8], gapWidth: 6 })
+        );
+        expect(
+            mocks.handle.scales.x.default.setGapPositions
+        ).not.toHaveBeenCalled();
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(4);
+
+        changeGaps(0, [4, 8]);
+        frame.render();
+        expect(mocks.renderer.createSharedPositionScale).toHaveBeenCalledOnce();
+        expect(shared.update).toHaveBeenLastCalledWith(
+            expect.objectContaining({ gapPositions: [], gapWidth: 0 })
+        );
+        expect(mocks.renderer.createMark).toHaveBeenCalledTimes(6);
+    });
+
     test.each([
         { type: /** @type {const} */ ("linear"), shares: true },
         { type: /** @type {const} */ ("null"), shares: false },
@@ -183,7 +273,11 @@ describe("WebGpuSurface", () => {
             );
             await surface.initialize();
             onTestFinished(() => surface.finalize());
-            const shared = { update: vi.fn(() => true), destroy: vi.fn() };
+            const shared = {
+                gapEnabled: false,
+                update: vi.fn(() => true),
+                destroy: vi.fn(),
+            };
             mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
 
             const endpoints = [];

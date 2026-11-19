@@ -16,6 +16,7 @@ import {
     scalarSlotUniformName,
 } from "../../shaders/visibilityPredicate.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
+import { hasGroupingGaps } from "../../scales/groupingGaps.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import {
@@ -233,6 +234,9 @@ export default class BaseProgram {
     /** @type {GPUBindGroup} */
     #bindGroup;
 
+    /** @type {(() => void)[]} */
+    #releaseSharedCuts = [];
+
     /** @type {import("./pipelineBuilder.js").ProgramTemplate["getPipeline"]} */
     #getPipeline;
 
@@ -410,6 +414,7 @@ export default class BaseProgram {
         const sharedPositions = new Map();
         /** @type {Map<string, string>} */
         const sharedPositionNames = new Map();
+        const cutSubscriptions = new Set();
         for (const {
             name,
             channel,
@@ -443,6 +448,8 @@ export default class BaseProgram {
                 });
             }
             sharedPositionNames.set(name, bindingName);
+            if (hasGroupingGaps(scale))
+                cutSubscriptions.add(entry.cutListeners);
         }
         const {
             bindGroupLayout,
@@ -506,6 +513,12 @@ export default class BaseProgram {
             ),
             this.count
         );
+        const refreshCuts = () =>
+            this._queueSlotUpdate(this.#scaleResources.refreshGapCuts());
+        for (const listeners of cutSubscriptions) {
+            listeners.add(refreshCuts);
+            this.#releaseSharedCuts.push(() => listeners.delete(refreshCuts));
+        }
     }
 
     /**
@@ -1284,6 +1297,8 @@ export default class BaseProgram {
         this.#uniformBuffer.destroy();
         this._seriesBuffers.destroy();
         this.#scaleResources.destroy();
+        for (const release of this.#releaseSharedCuts) release();
+        this.#releaseSharedCuts.length = 0;
         for (const [name, buffer] of this._extraBuffers) {
             if (!this._borrowedExtraBuffers.has(name)) {
                 buffer.destroy();

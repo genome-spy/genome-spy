@@ -30,6 +30,7 @@ import {
     normalizeGapWidth,
     writeGapGeometry,
 } from "../../scales/groupingGaps.js";
+import { sharedPositionScaleBuffers } from "./sharedPositionScale.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -40,12 +41,13 @@ import {
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
  * @typedef {object} GapScaleState
- * @property {readonly number[]} cuts
+ * @property {readonly number[] | undefined} cuts
+ * @property {import("./sharedPositionScale.js").SharedPositionResources | undefined} shared
  * @property {readonly number[]} domain
  * @property {number} width
  * @property {readonly number[] | undefined} ranks
  * @property {number[]} geometry Scratch consumed synchronously by writeGeometry.
- * @property {import("../../../utils/uniformBuffer.js").UniformSetter} writeGeometry
+ * @property {import("../../../utils/uniformBuffer.js").UniformSetter | undefined} writeGeometry
  */
 
 /**
@@ -242,10 +244,17 @@ export class ScaleResourceManager {
      */
     addScaleUniforms(layout, name, channel) {
         if (hasGroupingGaps(channel.scale)) {
-            layout.push(
-                { name: "gapTable_" + name, type: "u32", components: 2 },
-                { name: "gapGeometry_" + name, type: "f32", components: 4 }
-            );
+            layout.push({
+                name: "gapTable_" + name,
+                type: "u32",
+                components: 2,
+            });
+            if (!channel.scale.sharedPosition)
+                layout.push({
+                    name: "gapGeometry_" + name,
+                    type: "f32",
+                    components: 4,
+                });
         }
         const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
@@ -315,22 +324,30 @@ export class ScaleResourceManager {
      */
     initializeScale(name, channel, scale) {
         if (hasGroupingGaps(scale)) {
+            const shared = sharedPositionScaleBuffers.get(scale.sharedPosition);
             this.#gapScales.set(name, {
-                cuts: normalizeCuts(scale.gapPositions),
+                shared,
+                cuts: shared ? undefined : normalizeCuts(scale.gapPositions),
                 domain:
                     scale.type === "band"
                         ? [0, scale.domain?.length ?? 0]
                         : this.#unpackDomain(scale.domain ?? [0, 1]),
-                width: scale.gapWidth === undefined ? 6 : (scale.gapWidth ?? 0),
-                ranks: scale.type === "index" ? scale.gapDomain : undefined,
+                width: shared
+                    ? 0
+                    : normalizeGapWidth(
+                          scale.gapWidth === undefined ? 6 : scale.gapWidth
+                      ),
+                ranks:
+                    !shared && scale.type === "index"
+                        ? scale.gapDomain
+                        : undefined,
                 geometry: [0, 0, 0, 0],
-                writeGeometry: this.#getUniformSetter("gapGeometry_" + name),
+                writeGeometry: shared
+                    ? undefined
+                    : this.#getUniformSetter("gapGeometry_" + name),
             });
-            this.#updateGapCuts();
-            this.updateGapWidth(
-                name,
-                scale.gapWidth === undefined ? 6 : scale.gapWidth
-            );
+            this.refreshGapCuts();
+            if (!shared) this.#updateGapGeometry(this.#gapScales.get(name));
         }
         const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
@@ -719,6 +736,10 @@ export class ScaleResourceManager {
             throw new Error(
                 `Scale "${name}" was created without grouping gaps.`
             );
+        if (state.shared)
+            throw new Error(
+                `Update grouping gaps on the shared scale for "${name}".`
+            );
         return state;
     }
 
@@ -732,7 +753,7 @@ export class ScaleResourceManager {
         )
             return false;
         gaps.cuts = cuts;
-        const rebind = this.#updateGapCuts();
+        const rebind = this.refreshGapCuts();
         this.#updateGapGeometry(gaps);
         return rebind;
     }
@@ -746,19 +767,21 @@ export class ScaleResourceManager {
 
     /** @param {GapScaleState} gaps */
     #updateGapGeometry(gaps) {
-        const { width, cuts, domain, ranks, geometry } = gaps;
+        const { width, cuts, domain, ranks, geometry, writeGeometry } = gaps;
+        if (!writeGeometry) return;
         writeGapGeometry(geometry, width, cuts, domain[0], domain[1], ranks);
-        gaps.writeGeometry(geometry);
+        writeGeometry(geometry);
     }
 
-    #updateGapCuts() {
+    refreshGapCuts() {
         /** @type {number[]} */
         const packed = [];
         /** @type {{cuts: readonly number[], offset: number}[]} */
         const tables = [];
         /** @type {Array<{name: string, offset: number, length: number}>} */
         const slices = [];
-        for (const [name, { cuts }] of this.#gapScales) {
+        for (const [name, gaps] of this.#gapScales) {
+            const cuts = gaps.shared?.cuts ?? gaps.cuts;
             const previous = tables.find(
                 (table) =>
                     table.cuts.length === cuts.length &&

@@ -11,13 +11,11 @@ test("marks share position buffers across endpoints and keep independent ranges"
             { createRenderer },
             { rectMark },
             { bandScale },
-            { identityScale },
             { linearScale },
         ] = await Promise.all([
             import("/src/index.js"),
             import("/src/marks/rect.js"),
             import("/src/scales/band.js"),
-            import("/src/scales/identity.js"),
             import("/src/scales/linear.js"),
         ]);
         const canvas = document.createElement("canvas");
@@ -28,15 +26,24 @@ test("marks share position buffers across endpoints and keep independent ranges"
         const renderer = await createRenderer(canvas);
         renderer.updateGlobals({ width: 200, height: 100, dpr: 1 });
         renderer.device.pushErrorScope("validation");
-        const domain = [200, 5];
-        const gapPositions = [1];
-        const band = bandScale({ domain, gapPositions, gapWidth: 8 });
+        const domain = [200, 5, 900];
+        const band = bandScale({ domain });
         const linear = linearScale({ domain: [0, 1], range: [0, 100] });
-        const sharedX = renderer.createSharedPositionScale(band);
+        const sharedX = renderer.createSharedPositionScale(
+            bandScale({ gapEnabled: true })
+        );
         const sharedY = renderer.createSharedPositionScale(linear);
-        const bandExtent = { start: 0, end: 2, gapPositions, gapWidth: 8 };
+        const bandExtent = { start: 0, end: 3, gapPositions: [1], gapWidth: 8 };
         sharedX.update(bandExtent);
         sharedY.update({ start: 0, end: 1 });
+        const createBindGroup = renderer.device.createBindGroup.bind(
+            renderer.device
+        );
+        let bindGroups = 0;
+        renderer.device.createBindGroup = (descriptor) => {
+            bindGroups++;
+            return createBindGroup(descriptor);
+        };
 
         /** @param {number} offset @param {boolean} shareY */
         const createRects = (offset, shareY) => {
@@ -58,12 +65,25 @@ test("marks share position buffers across endpoints and keep independent ranges"
                           value: position,
                           scale: { ...linear, sharedPosition: sharedY },
                       }
-                    : { value: position * 100, scale: identityScale() };
+                    : {
+                          value: 9,
+                          type: "u32",
+                          scale: bandScale({
+                              domain: [9],
+                              range: [25, 75],
+                              band: position < 0.5 ? 0 : 1,
+                              gapPositions: [2],
+                              gapWidth: 8,
+                          }),
+                      };
             return renderer.createMark(rectMark, {
-                count: 2,
+                count: domain.length,
                 channels: {
                     uniqueId: {
-                        data: new Uint32Array([offset + 1, offset + 2]),
+                        data: Uint32Array.from(
+                            domain,
+                            (_, i) => offset + i + 1
+                        ),
                         type: "u32",
                     },
                     x: x(0),
@@ -81,9 +101,9 @@ test("marks share position buffers across endpoints and keep independent ranges"
         const picks = () =>
             Promise.all([
                 renderer.pick(20, 50),
-                renderer.pick(50, 50),
+                renderer.pick(34, 50),
                 renderer.pick(120, 50),
-                renderer.pick(150, 50),
+                renderer.pick(134, 50),
                 renderer.pick(20, 10),
                 renderer.pick(120, 10),
             ]);
@@ -94,24 +114,59 @@ test("marks share position buffers across endpoints and keep independent ranges"
         const unchanged = sharedX.update({ ...bandExtent });
         // Picking observes a shared update even before another visible render.
         const yMoved = await picks();
+        const initialBindings = bindGroups;
+        // Moving a cut keeps the bounds and ranks identical and still invalidates picks.
+        const moved = sharedX.update({ ...bandExtent, gapPositions: [2] });
+        const movedCut = await picks();
+        const inPlaceBindings = bindGroups - initialBindings;
+        sharedX.update({ ...bandExtent, gapPositions: [1, 2] });
+        const grown = await picks();
+        const grownBindings = bindGroups - initialBindings;
+        sharedX.update({ ...bandExtent, gapPositions: [] });
+        const empty = await picks();
+        const emptyBindings = bindGroups - initialBindings;
         sharedX.update({ ...bandExtent, gapWidth: 120 });
         draw();
         const exhausted = await picks();
         renderer.destroyMark(first.markId);
-        sharedX.update(bandExtent);
+        const survivingBindings = bindGroups;
+        sharedX.update({ ...bandExtent, gapPositions: [1, 2, 3] });
         draw([second]);
         const surviving = await renderer.pick(120, 50);
         const error = (await renderer.device.popErrorScope())?.message;
         renderer.destroy();
-        return { initial, unchanged, yMoved, exhausted, surviving, error };
+        return {
+            initial,
+            unchanged,
+            yMoved,
+            moved,
+            movedCut,
+            inPlaceBindings,
+            grown,
+            grownBindings,
+            empty,
+            emptyBindings,
+            exhausted,
+            surviving,
+            survivingRebinds: bindGroups - survivingBindings,
+            error,
+        };
     });
 
     expect(result).toEqual({
         initial: [1, null, 101, null, null, null],
         unchanged: false,
         yMoved: [1, null, 101, null, 1, null],
+        moved: true,
+        movedCut: [1, 2, 101, 102, 1, null],
+        inPlaceBindings: 0,
+        grown: [1, null, 101, null, 1, null],
+        grownBindings: 2,
+        empty: [1, 2, 101, 102, 1, null],
+        emptyBindings: 2,
         exhausted: [null, null, null, null, null, null],
         surviving: 101,
+        survivingRebinds: 1,
         error: undefined,
     });
 });

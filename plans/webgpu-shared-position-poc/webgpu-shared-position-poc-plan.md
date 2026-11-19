@@ -91,3 +91,35 @@ produced one shared write per changed frame and matched the reduced-resolution
 baseline exports. The verification zoom generated 71 frames, with 24 mark
 uniform uploads per frame on the baseline and zero on the PoC. All 363 targeted
 unit tests, both Chrome GPU tests, and both type checks passed.
+
+## Give the cuts one source of truth
+
+The shared handle owns the canonical cuts and derives its gap geometry from
+them. Core publishes one mapping per resolution. Static mode changes still
+retranslate mark configs because the adapter derives half-open interval anchors
+and peers from that mode.
+
+A mark reads the handle's cuts when packing its existing scale table. It
+registers one refresh callback per handle, including when both endpoints borrow
+it, and releases that callback when the mark is destroyed. The existing table
+allocator handles growth and rebinding. Shared marks refresh their derived
+tables when cuts change. Navigation keeps the single shared uniform upload and
+uses the normal shader bindings. This avoids introducing a second binding layout
+or allocation path for cuts.
+
+Verify local and shared gaps in the same mark, high-precision endpoints,
+cut-only edits that preserve the uniform bytes, table growth, and disposal of
+one borrower. Compare SampleView and the track fixture with the merged baseline.
+Tentative commit `refactor(webgpu): publish cuts from shared scales`.
+
+The reviewed version adds 318 net runtime lines against `a560ccaa3` and 47
+against the committed PoC. It consolidates the normal and packed index WGSL
+projections, removing 44 net lines from that file versus the PoC.
+
+Chrome recorded 40 shared uniform writes, zero scale-table writes, and zero
+bind-group rebuilds across 40 SampleView scroll frames. Regrouping refreshed
+derived mark tables. Track pan and zoom also performed zero scale-table writes
+during navigation. Both reduced-resolution raster comparisons matched the
+baseline exactly. The 364 unit tests, 26 GPU tests, and both type checks passed.
+The local diagnostics are in
+`output/webgpu-shared-position-poc/diagnostics-derived-cuts.json`.

@@ -3,6 +3,7 @@ export function hasGroupingGaps(scale) {
     return (
         (scale?.type === "index" || scale?.type === "band") &&
         (scale.gapEnabled ??
+            scale.sharedPosition?.gapEnabled ??
             (scale.gapWidth !== 0 &&
                 scale.gapWidth !== null &&
                 (scale.gapPositions?.length ?? 0) > 0))
