@@ -6,6 +6,7 @@ import UnitView from "./unitView.js";
 
 /**
  * @typedef {import("../view/view.js").default} View
+ * @typedef {import("../data/flowNode.js").default} FlowNode
  * @typedef {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest
  */
 
@@ -64,8 +65,7 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
 }
 
 /**
- * Checks readiness for lazy data sources under the subtree. Non-lazy sources
- * are ignored so they do not block readiness checks.
+ * Checks publication and domain coverage for outputs with lazy dependencies.
  *
  * @param {View} subtreeRoot
  * @param {DataReadinessRequest | undefined} readinessRequest
@@ -73,29 +73,40 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
  * @returns {boolean}
  */
 export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
-    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
-        const sources = Array.from(iterateDataDependencies(collector)).filter(
-            (node) => node instanceof SingleAxisLazySource
-        );
-        // Keep the lazy-only contract for App waits: wholly eager branches
-        // do not participate, but an eager primary with a lazy lookup does.
-        if (
-            sources.length &&
-            (!isDataReady(collector) ||
-                sources.some(
-                    (source) => !isLazySourceReady(source, readinessRequest)
-                ))
-        ) {
-            return false;
-        }
-    }
-
-    return true;
+    return iterateLazyBranches(subtreeRoot, viewFilter).every((nodes) =>
+        isLazyBranchReady(nodes, readinessRequest)
+    );
 }
 
 /**
- * Waits until lazy data sources under the subtree satisfy the readiness request.
- * Non-lazy sources are ignored so they do not block readiness checks.
+ * @param {View} subtreeRoot
+ * @param {(view: View) => boolean} [viewFilter]
+ */
+function* iterateLazyBranches(subtreeRoot, viewFilter) {
+    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
+        const nodes = Array.from(iterateDataDependencies(collector));
+        if (nodes.some((node) => node instanceof SingleAxisLazySource))
+            yield nodes;
+    }
+}
+
+/**
+ * @param {FlowNode[]} nodes
+ * @param {DataReadinessRequest | undefined} readinessRequest
+ */
+function isLazyBranchReady(nodes, readinessRequest) {
+    return (
+        nodes.every((node) => node.isDataReady()) &&
+        nodes.every(
+            (node) =>
+                !(node instanceof SingleAxisLazySource) ||
+                isLazySourceReady(node, readinessRequest)
+        )
+    );
+}
+
+/**
+ * Waits for outputs with lazy dependencies to satisfy the readiness request.
  *
  * @param {import("../types/viewContext.js").default} context
  * @param {View} subtreeRoot
@@ -143,16 +154,13 @@ export function awaitSubtreeLazyReady(
         const checkReady = () => {
             if (settled) return true;
             try {
+                const branches = Array.from(
+                    iterateLazyBranches(subtreeRoot, shouldConsiderView)
+                );
                 if (
-                    !areSubtreeSourcesSettled(
-                        context,
-                        subtreeRoot,
-                        shouldConsiderView
-                    ) ||
-                    !isSubtreeLazyReady(
-                        subtreeRoot,
-                        readinessRequest,
-                        shouldConsiderView
+                    !areSubtreeSourcesSettled(context, branches) ||
+                    !branches.every((nodes) =>
+                        isLazyBranchReady(nodes, readinessRequest)
                     )
                 )
                     return false;
@@ -223,33 +231,24 @@ export function awaitSubtreeLazyReady(
 }
 
 /**
- * Only branches with lazy dependencies participate in lazy waits. Failures on
- * their eager primary or side inputs are relevant too. Collector notifications
- * can precede transaction-end processing, so loading attempts must settle first.
+ * Collector notifications can precede transaction-end processing. Check every
+ * relevant source, including eager inputs, so loading cannot mask a failure.
  *
  * @param {import("../types/viewContext.js").default} context
- * @param {View} subtreeRoot
- * @param {(view: View) => boolean} viewFilter
+ * @param {FlowNode[][]} branches
  */
-function areSubtreeSourcesSettled(context, subtreeRoot, viewFilter) {
+function areSubtreeSourcesSettled(context, branches) {
     let loading = false;
-    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
-        const sources = Array.from(iterateDataDependencies(collector)).filter(
-            (node) => node instanceof DataSource
-        );
-        if (!sources.some((source) => source instanceof SingleAxisLazySource))
-            continue;
+    for (const source of branches.values().flatMap((nodes) => nodes)) {
+        if (!(source instanceof DataSource)) continue;
 
-        for (const source of sources) {
-            const entry =
-                context.dataFlow.loadingStatusRegistry.getSource(source);
-            if (entry?.status === "error") {
-                throw new Error(
-                    `Data loading failed at "${entry.viewPath}": ${entry.message ?? entry.sourceId}`
-                );
-            }
-            loading ||= entry?.status === "loading";
+        const entry = context.dataFlow.loadingStatusRegistry.getSource(source);
+        if (entry?.status === "error") {
+            throw new Error(
+                `Data loading failed at "${entry.viewPath}": ${entry.message ?? entry.sourceId}`
+            );
         }
+        loading ||= entry?.status === "loading";
     }
     return !loading;
 }
