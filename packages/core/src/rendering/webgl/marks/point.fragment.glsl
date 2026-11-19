@@ -105,21 +105,21 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / max(vRadius, 0.0001));
 
         float fillCoverage = distanceToRatio(-d);
         fragColor = fillColor * fillCoverage;
         if (!lineShape && vHalfStrokeWidth > 0.0) {
-            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerWidth = (2.0 - uStrokeAlign) * vHalfStrokeWidth;
             float innerCoverage = distanceToRatio(-d - innerWidth);
-            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            float outerCoverage = distanceToRatio(vHalfStrokeWidth * uStrokeAlign - d);
             fragColor = innerCoverage * fillColor
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
         fragColor *= vOpacityFactor;
 
-	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
+	} else if (d - (lineShape ? 0.0 : max(1.0, uStrokeAlign) * vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
 
 	} else {

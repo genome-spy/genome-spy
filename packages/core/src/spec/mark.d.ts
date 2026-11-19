@@ -732,11 +732,17 @@ export interface PointProps
     shape?: string | ExprRef;
 
     /**
-     * Should the stroke only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-     * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-     * geometric zoom, etc.
+     * Place the point border inside, centered on, or outside its fill contour.
+     * Defaults to center. Stroke-only `x` and `+` shapes ignore alignment.
+     * Supported by WebGL, Canvas, and SVG export.
+     */
+    strokeAlign?: StrokeAlign | ExprRef;
+
+    /**
+     * The legacy value `true` maps to inside and `false` maps to center.
+     * An explicit or configured `strokeAlign` takes precedence.
      *
-     * **Default value:** `false`
+     * @deprecated Use `strokeAlign` instead.
      */
     inwardStroke?: boolean | ExprRef;
 

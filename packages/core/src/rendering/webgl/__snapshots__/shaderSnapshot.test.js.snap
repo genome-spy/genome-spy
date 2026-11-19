@@ -2865,12 +2865,8 @@ precision highp int;
 // view: viewRoot
 
 layout(std140) uniform Mark {
-    /**
-    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-    * geometric zoom, etc.
-    */
-    uniform bool uInwardStroke;
+    uniform float uStrokeAlign;
+    uniform bool uInwardStroke; // Legacy sizing of stroke-only points.
 
     /** The minimum point size in pixels when rendering into the picking buffer */
     uniform float uMinPickingSize;
@@ -3144,21 +3140,21 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / max(vRadius, 0.0001));
 
         float fillCoverage = distanceToRatio(-d);
         fragColor = fillColor * fillCoverage;
         if (!lineShape && vHalfStrokeWidth > 0.0) {
-            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerWidth = (2.0 - uStrokeAlign) * vHalfStrokeWidth;
             float innerCoverage = distanceToRatio(-d - innerWidth);
-            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            float outerCoverage = distanceToRatio(vHalfStrokeWidth * uStrokeAlign - d);
             fragColor = innerCoverage * fillColor
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
         fragColor *= vOpacityFactor;
 
-	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
+	} else if (d - (lineShape ? 0.0 : max(1.0, uStrokeAlign) * vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
 
 	} else {
@@ -3172,12 +3168,8 @@ precision highp int;
 // view: viewRoot
 
 layout(std140) uniform Mark {
-    /**
-    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-    * geometric zoom, etc.
-    */
-    uniform bool uInwardStroke;
+    uniform float uStrokeAlign;
+    uniform bool uInwardStroke; // Legacy sizing of stroke-only points.
 
     /** The minimum point size in pixels when rendering into the picking buffer */
     uniform float uMinPickingSize;
@@ -3925,10 +3917,12 @@ void main(void) {
 
     // Line-only shapes use their width even when the stroke falls back to the
     // fill color. An invisible stroke must not inset other filled shapes.
-    if (strokeOpacity <= 0.0 && vShape != X && vShape != PLUS) {
+    bool lineShape = vShape == X || vShape == PLUS;
+    if (strokeOpacity <= 0.0 && !lineShape) {
         strokeWidth = 0.0;
     }
 
+    float align = lineShape ? (uInwardStroke ? 0.0 : 1.0) : uStrokeAlign;
     float diameter = sqrt(size) *
         uScaleFactor *
         semanticThresholdFactor;
@@ -3936,7 +3930,7 @@ void main(void) {
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
     float opacity = uViewOpacity;
-	if (strokeWidth <= 0.0 || uInwardStroke) {
+	if (strokeWidth <= 0.0 || align == 0.0) {
 		float minDiameter = 1.0 / uDevicePixelRatio;
 		if (diameter < minDiameter) {
 			// We do some "cheap" gamma correction here. It breaks on dark background, though.
@@ -3976,10 +3970,10 @@ void main(void) {
     bool triangle = vShape == TRIANGLE_UP;
     // At a 60-degree corner, the stroke and its antialiased edge reach twice
     // their outward width. Reserve that distance on both axes for rotation.
-    float aaPadding = (triangle && !uInwardStroke && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
+    float aaPadding = (triangle && align > 0.0 && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
 	float rotationPadding = (diameter * roomForRotation) - diameter;
     float strokePaddingFactor = circle ? 1.0 : (triangle ? 2.0 : sqrt(3.0));
-    float strokePadding = uInwardStroke ? 0.0 : strokeWidth * strokePaddingFactor;
+    float strokePadding = strokeWidth * strokePaddingFactor * align;
 	float padding = rotationPadding + strokePadding + aaPadding;
 
     gl_PointSize = max(
@@ -5281,12 +5275,8 @@ precision highp int;
 // view: viewRoot/scatterPlot
 
 layout(std140) uniform Mark {
-    /**
-    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-    * geometric zoom, etc.
-    */
-    uniform bool uInwardStroke;
+    uniform float uStrokeAlign;
+    uniform bool uInwardStroke; // Legacy sizing of stroke-only points.
 
     /** The minimum point size in pixels when rendering into the picking buffer */
     uniform float uMinPickingSize;
@@ -5566,21 +5556,21 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / max(vRadius, 0.0001));
 
         float fillCoverage = distanceToRatio(-d);
         fragColor = fillColor * fillCoverage;
         if (!lineShape && vHalfStrokeWidth > 0.0) {
-            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerWidth = (2.0 - uStrokeAlign) * vHalfStrokeWidth;
             float innerCoverage = distanceToRatio(-d - innerWidth);
-            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            float outerCoverage = distanceToRatio(vHalfStrokeWidth * uStrokeAlign - d);
             fragColor = innerCoverage * fillColor
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
         fragColor *= vOpacityFactor;
 
-	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
+	} else if (d - (lineShape ? 0.0 : max(1.0, uStrokeAlign) * vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
 
 	} else {
@@ -5594,12 +5584,8 @@ precision highp int;
 // view: viewRoot/scatterPlot
 
 layout(std140) uniform Mark {
-    /**
-    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-    * geometric zoom, etc.
-    */
-    uniform bool uInwardStroke;
+    uniform float uStrokeAlign;
+    uniform bool uInwardStroke; // Legacy sizing of stroke-only points.
 
     /** The minimum point size in pixels when rendering into the picking buffer */
     uniform float uMinPickingSize;
@@ -6398,10 +6384,12 @@ void main(void) {
 
     // Line-only shapes use their width even when the stroke falls back to the
     // fill color. An invisible stroke must not inset other filled shapes.
-    if (strokeOpacity <= 0.0 && vShape != X && vShape != PLUS) {
+    bool lineShape = vShape == X || vShape == PLUS;
+    if (strokeOpacity <= 0.0 && !lineShape) {
         strokeWidth = 0.0;
     }
 
+    float align = lineShape ? (uInwardStroke ? 0.0 : 1.0) : uStrokeAlign;
     float diameter = sqrt(size) *
         uScaleFactor *
         semanticThresholdFactor;
@@ -6409,7 +6397,7 @@ void main(void) {
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
     float opacity = uViewOpacity;
-	if (strokeWidth <= 0.0 || uInwardStroke) {
+	if (strokeWidth <= 0.0 || align == 0.0) {
 		float minDiameter = 1.0 / uDevicePixelRatio;
 		if (diameter < minDiameter) {
 			// We do some "cheap" gamma correction here. It breaks on dark background, though.
@@ -6449,10 +6437,10 @@ void main(void) {
     bool triangle = vShape == TRIANGLE_UP;
     // At a 60-degree corner, the stroke and its antialiased edge reach twice
     // their outward width. Reserve that distance on both axes for rotation.
-    float aaPadding = (triangle && !uInwardStroke && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
+    float aaPadding = (triangle && align > 0.0 && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
 	float rotationPadding = (diameter * roomForRotation) - diameter;
     float strokePaddingFactor = circle ? 1.0 : (triangle ? 2.0 : sqrt(3.0));
-    float strokePadding = uInwardStroke ? 0.0 : strokeWidth * strokePaddingFactor;
+    float strokePadding = strokeWidth * strokePaddingFactor * align;
 	float padding = rotationPadding + strokePadding + aaPadding;
 
     gl_PointSize = max(
@@ -6482,12 +6470,8 @@ precision highp int;
 // view: viewRoot
 
 layout(std140) uniform Mark {
-    /**
-    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-    * geometric zoom, etc.
-    */
-    uniform bool uInwardStroke;
+    uniform float uStrokeAlign;
+    uniform bool uInwardStroke; // Legacy sizing of stroke-only points.
 
     /** The minimum point size in pixels when rendering into the picking buffer */
     uniform float uMinPickingSize;
@@ -6761,21 +6745,21 @@ void main() {
 	if (!uPickingEnabled) {
 		lowp vec4 fillColor = lineShape
             ? (vStrokeColor.a > 0.0 ? vStrokeColor : vFillColor)
-            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / vRadius);
+            : mix(vFillColor, white * vFillColor.a, -d * uGradientStrength / max(vRadius, 0.0001));
 
         float fillCoverage = distanceToRatio(-d);
         fragColor = fillColor * fillCoverage;
         if (!lineShape && vHalfStrokeWidth > 0.0) {
-            float innerWidth = uInwardStroke ? 2.0 * vHalfStrokeWidth : vHalfStrokeWidth;
+            float innerWidth = (2.0 - uStrokeAlign) * vHalfStrokeWidth;
             float innerCoverage = distanceToRatio(-d - innerWidth);
-            float outerCoverage = uInwardStroke ? fillCoverage : distanceToRatio(vHalfStrokeWidth - d);
+            float outerCoverage = distanceToRatio(vHalfStrokeWidth * uStrokeAlign - d);
             fragColor = innerCoverage * fillColor
                 + (fillCoverage - innerCoverage) * (vStrokeColor + (1.0 - vStrokeColor.a) * fillColor)
                 + (outerCoverage - fillCoverage) * vStrokeColor;
         }
         fragColor *= vOpacityFactor;
 
-	} else if (d - (lineShape ? 0.0 : vHalfStrokeWidth) <= 0.0) {
+	} else if (d - (lineShape ? 0.0 : max(1.0, uStrokeAlign) * vHalfStrokeWidth) <= 0.0) {
         fragColor = vPickingColor;
 
 	} else {
@@ -6789,12 +6773,8 @@ precision highp int;
 // view: viewRoot
 
 layout(std140) uniform Mark {
-    /**
-    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
-    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
-    * geometric zoom, etc.
-    */
-    uniform bool uInwardStroke;
+    uniform float uStrokeAlign;
+    uniform bool uInwardStroke; // Legacy sizing of stroke-only points.
 
     /** The minimum point size in pixels when rendering into the picking buffer */
     uniform float uMinPickingSize;
@@ -7544,10 +7524,12 @@ void main(void) {
 
     // Line-only shapes use their width even when the stroke falls back to the
     // fill color. An invisible stroke must not inset other filled shapes.
-    if (strokeOpacity <= 0.0 && vShape != X && vShape != PLUS) {
+    bool lineShape = vShape == X || vShape == PLUS;
+    if (strokeOpacity <= 0.0 && !lineShape) {
         strokeWidth = 0.0;
     }
 
+    float align = lineShape ? (uInwardStroke ? 0.0 : 1.0) : uStrokeAlign;
     float diameter = sqrt(size) *
         uScaleFactor *
         semanticThresholdFactor;
@@ -7555,7 +7537,7 @@ void main(void) {
     // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
     // no flickering etc.
     float opacity = uViewOpacity;
-	if (strokeWidth <= 0.0 || uInwardStroke) {
+	if (strokeWidth <= 0.0 || align == 0.0) {
 		float minDiameter = 1.0 / uDevicePixelRatio;
 		if (diameter < minDiameter) {
 			// We do some "cheap" gamma correction here. It breaks on dark background, though.
@@ -7595,10 +7577,10 @@ void main(void) {
     bool triangle = vShape == TRIANGLE_UP;
     // At a 60-degree corner, the stroke and its antialiased edge reach twice
     // their outward width. Reserve that distance on both axes for rotation.
-    float aaPadding = (triangle && !uInwardStroke && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
+    float aaPadding = (triangle && align > 0.0 && strokeWidth > 0.0 ? 2.0 : 1.0) / uDevicePixelRatio;
 	float rotationPadding = (diameter * roomForRotation) - diameter;
     float strokePaddingFactor = circle ? 1.0 : (triangle ? 2.0 : sqrt(3.0));
-    float strokePadding = uInwardStroke ? 0.0 : strokeWidth * strokePaddingFactor;
+    float strokePadding = strokeWidth * strokePaddingFactor * align;
 	float padding = rotationPadding + strokePadding + aaPadding;
 
     gl_PointSize = max(

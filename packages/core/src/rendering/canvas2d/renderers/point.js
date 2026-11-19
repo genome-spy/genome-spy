@@ -46,6 +46,16 @@ export function renderPointCanvas(baseMark, options) {
     /** @type {string | undefined} */
     let strokeStyle;
 
+    /** @param {string} fill @param {number} alpha */
+    function drawFill(fill, alpha) {
+        if (fillStyle != fill) {
+            context.fillStyle = fill;
+            fillStyle = fill;
+        }
+        setAlpha(context, alpha);
+        context.fill();
+    }
+
     return visitPointInstances(mark, properties, options, (instance) => {
         const datum = instance.datum;
         const lineShape = instance.lineShape;
@@ -65,29 +75,41 @@ export function renderPointCanvas(baseMark, options) {
             effectiveStrokeOpacity = fillOpacity * fillAlpha(fill);
         }
 
-        const hasFill = !lineShape && fillOpacity * fillAlpha(fill) > 0;
+        const fillPaintOpacity = lineShape ? 0 : fillOpacity * fillAlpha(fill);
+        const hasFill = fillPaintOpacity > 0;
+        const outside =
+            properties.outsideStroke &&
+            !lineShape &&
+            effectiveStrokeOpacity > 0;
+        const strokeFirst =
+            outside && fillPaintOpacity === 1 && instance.radius > 0;
         const fillRadius =
             effectiveStrokeOpacity < 1
                 ? instance.radius
                 : instance.geometryRadius;
-        tracePointCanvas(
-            context,
-            instance,
-            hasFill ? fillRadius : instance.geometryRadius,
-            options.warn
-        );
+        if (hasFill || !outside) {
+            tracePointCanvas(
+                context,
+                instance,
+                hasFill ? fillRadius : instance.geometryRadius,
+                options.warn
+            );
+        }
 
-        if (hasFill) {
-            if (fillStyle != fill) {
-                context.fillStyle = fill;
-                fillStyle = fill;
-            }
-            setAlpha(context, fillOpacity);
-            context.fill();
+        if (hasFill && !strokeFirst) {
+            drawFill(fill, fillOpacity);
         }
         if (effectiveStrokeOpacity > 0 && instance.strokeWidth > 0) {
             // Opaque strokes and centered points reuse the fill path.
-            if (hasFill && fillRadius != instance.geometryRadius) {
+            if (outside && !strokeFirst) {
+                tracePointCanvas(
+                    context,
+                    instance,
+                    instance.radius,
+                    options.warn,
+                    instance.strokeWidth / 2
+                );
+            } else if (hasFill && fillRadius != instance.geometryRadius) {
                 tracePointCanvas(
                     context,
                     instance,
@@ -103,9 +125,13 @@ export function renderPointCanvas(baseMark, options) {
                 strokeStyle = stroke;
             }
             setAlpha(context, strokeOpacity);
-            setLineWidth(context, instance.strokeWidth);
+            setLineWidth(
+                context,
+                strokeFirst ? 2 * instance.strokeWidth : instance.strokeWidth
+            );
             context.stroke();
         }
+        if (strokeFirst) drawFill(fill, fillOpacity);
     });
 }
 
@@ -114,8 +140,9 @@ export function renderPointCanvas(baseMark, options) {
  * @param {import("../../immediate/marks/point.js").PointInstance} instance
  * @param {number} radius
  * @param {(message: string) => void} warn
+ * @param {number} [outset]
  */
-function tracePointCanvas(context, instance, radius, warn) {
+function tracePointCanvas(context, instance, radius, warn, outset = 0) {
     context.beginPath();
     const rotated = instance.angle != 0 && instance.shape != "circle";
     if (rotated) {
@@ -128,11 +155,19 @@ function tracePointCanvas(context, instance, radius, warn) {
     const y = rotated ? 0 : instance.y;
     let supported = true;
     if (instance.shape == "circle") {
-        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.arc(x, y, radius + outset, 0, Math.PI * 2);
     } else if (instance.shape == "square") {
+        radius += outset;
         context.rect(x - radius, y - radius, radius * 2, radius * 2);
     } else {
-        supported = tracePointPath(instance.shape, x, y, radius, context);
+        supported = tracePointPath(
+            instance.shape,
+            x,
+            y,
+            radius,
+            context,
+            outset
+        );
     }
     if (rotated) {
         context.restore();
@@ -142,7 +177,7 @@ function tracePointCanvas(context, instance, radius, warn) {
         warn(
             `Canvas2D rendered unsupported point shape "${instance.shape}" as a circle.`
         );
-        context.arc(instance.x, instance.y, radius, 0, Math.PI * 2);
+        context.arc(instance.x, instance.y, radius + outset, 0, Math.PI * 2);
     }
 }
 
