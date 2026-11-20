@@ -51,26 +51,6 @@
       "types": "./dist/styles.d.ts",
       "default": "./src/styles.js"
     },
-    "./define/splitPanel": {
-      "types": "./dist/define/splitPanel.d.ts",
-      "default": "./src/define/splitPanel.js"
-    },
-    "./define/tabs": {
-      "types": "./dist/define/tabs.d.ts",
-      "default": "./src/define/tabs.js"
-    },
-    "./define/filePicker": {
-      "types": "./dist/define/filePicker.d.ts",
-      "default": "./src/define/filePicker.js"
-    },
-    "./define/dropZone": {
-      "types": "./dist/define/dropZone.d.ts",
-      "default": "./src/define/dropZone.js"
-    },
-    "./define/messageDialog": {
-      "types": "./dist/define/messageDialog.d.ts",
-      "default": "./src/define/messageDialog.js"
-    },
     "./customSelect": {
       "types": "./dist/customSelect.d.ts",
       "default": "./src/customSelect.js"
@@ -115,37 +95,9 @@
       "types": "./dist/dialogWizardController.d.ts",
       "default": "./src/dialogWizardController.js"
     },
-    "./define/customSelect": {
-      "types": "./dist/define/customSelect.d.ts",
-      "default": "./src/define/customSelect.js"
-    },
-    "./define/multiSelect": {
-      "types": "./dist/define/multiSelect.d.ts",
-      "default": "./src/define/multiSelect.js"
-    },
-    "./define/searchableCheckboxList": {
-      "types": "./dist/define/searchableCheckboxList.d.ts",
-      "default": "./src/define/searchableCheckboxList.js"
-    },
-    "./define/dataGrid": {
-      "types": "./dist/define/dataGrid.d.ts",
-      "default": "./src/define/dataGrid.js"
-    },
-    "./define/histogram": {
-      "types": "./dist/define/histogram.d.ts",
-      "default": "./src/define/histogram.js"
-    },
-    "./define/jobProgress": {
-      "types": "./dist/define/jobProgress.d.ts",
-      "default": "./src/define/jobProgress.js"
-    },
-    "./define/segmentedControl": {
-      "types": "./dist/define/segmentedControl.d.ts",
-      "default": "./src/define/segmentedControl.js"
-    },
-    "./define/thresholdComparisonInput": {
-      "types": "./dist/define/thresholdComparisonInput.d.ts",
-      "default": "./src/define/thresholdComparisonInput.js"
+    "./define/*": {
+      "types": "./dist/define/*.d.ts",
+      "default": "./src/define/*.js"
     }
   },
   "sideEffects": [
