@@ -1,0 +1,79 @@
+:where(.gs-form)
+    :where(
+        input:not(
+            [type="button"],
+            [type="checkbox"],
+            [type="color"],
+            [type="file"],
+            [type="hidden"],
+            [type="image"],
+            [type="radio"],
+            [type="range"],
+            [type="reset"],
+            [type="submit"]
+        ),
+        select,
+        textarea
+    ) {
+    box-sizing: border-box;
+    max-inline-size: 100%;
+    padding: 0.375em 0.75em;
+    font: inherit;
+    line-height: 1.5;
+    color: var(--gs-control-text, #212529);
+    background-color: var(--gs-control-background, #fff);
+    border: 1px solid var(--gs-control-border, #ced4da);
+    border-radius: var(--gs-control-radius, 0.25em);
+}
+
+:where(.gs-form)
+    :where(
+        button,
+        input[type="button"],
+        input[type="submit"],
+        input[type="reset"]
+    ) {
+    padding: 4px 12px;
+    font: inherit;
+    line-height: 20px;
+    color: var(--gs-control-text, #333);
+    background: var(--gs-button-background, #fff);
+    border: 1px solid var(--gs-control-border, #b3b3b3);
+    border-radius: var(--gs-control-radius, 4px);
+    box-shadow: var(--gs-button-shadow, none);
+
+    &:enabled {
+        cursor: pointer;
+    }
+
+    &:where(:enabled:hover) {
+        background: var(
+            --gs-button-hover-background,
+            var(--gs-hover-background, var(--gs-button-background, #f0f2f4))
+        );
+    }
+
+    &:where(:enabled:active) {
+        background: var(
+            --gs-button-selected-background,
+            var(--gs-selected-background, #dfe5eb)
+        );
+        box-shadow: var(--gs-button-selected-shadow, none);
+    }
+}
+
+:where(.gs-form) :where(button, input, select, textarea):where(:disabled) {
+    color: var(--gs-disabled-text, #a0a0a0);
+    background: var(--gs-disabled-background, #f4f4f4);
+    box-shadow: none;
+}
+
+:where(.gs-form) :where(button, input, select, textarea):where(:focus-visible) {
+    outline: 2px solid var(--gs-focus-color, #2563a6);
+    outline-offset: 2px;
+}
+
+:where(.gs-form)
+    :where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+    accent-color: var(--gs-theme-primary, #2563a6);
+}

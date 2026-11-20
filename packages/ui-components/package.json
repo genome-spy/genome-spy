@@ -15,6 +15,7 @@
       "default": "./src/contextMenu.js"
     },
     "./contextMenu.css": "./src/contextMenu.css",
+    "./form.css": "./src/form.css",
     "./custom-elements.json": "./dist/custom-elements.json",
     "./splitPanel": {
       "types": "./dist/splitPanel.d.ts",
@@ -143,11 +144,13 @@
   },
   "sideEffects": [
     "./src/define/*.js",
-    "./src/contextMenu.css"
+    "./src/contextMenu.css",
+    "./src/form.css"
   ],
   "files": [
     "src/*.js",
     "src/contextMenu.css",
+    "src/form.css",
     "src/define/",
     "!src/*.test.js",
     "dist/"

@@ -27,7 +27,7 @@
     display: none;
 }
 
-.theme-example > button {
+section.theme-example > button {
     justify-self: start;
     padding: 0.4em 0.7em;
     border: 1px solid var(--gs-control-border, #ced4da);
@@ -38,7 +38,7 @@
     cursor: pointer;
 }
 
-.theme-example > button:focus-visible {
+section.theme-example > button:focus-visible {
     outline: 2px solid var(--gs-focus-color, currentColor);
     outline-offset: 2px;
 }
@@ -58,4 +58,18 @@
     border-radius: 4px;
     background: #f5f6f7;
     overflow: auto;
+}
+
+.theme-example.gs-form label {
+    display: grid;
+    gap: 0.35em;
+}
+
+.theme-example.gs-form label:has(> input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+}
+
+.theme-example.gs-form > button {
+    justify-self: start;
 }

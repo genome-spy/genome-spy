@@ -33,7 +33,7 @@ export const decorators = [
 export const parameters = {
     options: {
         storySort: {
-            order: ["Overview", "Components", "Theming"],
+            order: ["Overview", "Components", "Utilities", "Theming"],
         },
     },
     docs: {

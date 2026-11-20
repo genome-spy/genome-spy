@@ -88,6 +88,28 @@ Subclass `BaseDialog` from `/dialog`, register the subclass, and call
 persistent dialogs, set `openOnConnect` to false and call `openDialog()` after
 the element's first render.
 
+## Style native forms
+
+Import the optional stylesheet and add `gs-form` to a form or a wrapper around
+several forms.
+
+```js
+import "@genome-spy/ui-components/form.css";
+```
+
+```html
+<form class="gs-form">
+  <label>Dataset name <input name="dataset" /></label>
+  <button type="submit">Save</button>
+</form>
+```
+
+Native fields and buttons under `.gs-form` use the same `--gs-*` theme as the
+components. For a form rendered inside a Lit shadow root, add the exported
+`formStyles` from `@genome-spy/ui-components/styles` to the element’s
+`static styles`. See **Theming → Scoped palettes → Native Form Controls** in
+Storybook to compare the two kinds of controls.
+
 ## Context menus and dropdowns
 
 Import the controller and its stylesheet. Use one controller for a group of

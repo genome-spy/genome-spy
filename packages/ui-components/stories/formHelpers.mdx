@@ -1,0 +1,86 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+import * as DialogStories from "./dialog.stories.js";
+
+<Meta title="Utilities/Form Helpers" />
+
+# Form helpers
+
+Use `FormController` and `formField` to bind native fields to reactive
+properties on a Lit host and display validation errors. Add
+`DialogWizardController` when the form spans multiple dialog pages.
+
+## Bind and validate a field
+
+Define fields once in the constructor. A validator receives a string and returns
+an error message or `null` when the value is valid.
+
+```js
+import { LitElement, html } from "lit";
+import { FormController, formField } from "@genome-spy/ui-components";
+import { formStyles } from "@genome-spy/ui-components/styles";
+
+class DatasetNameField extends LitElement {
+    static properties = { datasetName: { state: true } };
+    static styles = formStyles;
+
+    constructor() {
+        super();
+        this.datasetName = "";
+        this.form = new FormController(this);
+        this.form.defineField("name", {
+            valueKey: "datasetName",
+            validate: (value) =>
+                value.trim() ? null : "Enter a dataset name.",
+        });
+    }
+
+    render() {
+        return html`
+            <div class="gs-form-group">
+                <label for="dataset-name">Dataset name</label>
+                <input
+                    id="dataset-name"
+                    type="text"
+                    aria-describedby="dataset-name-feedback"
+                    ${formField(this.form, "name")}
+                />
+                <div id="dataset-name-feedback" aria-live="polite">
+                    ${this.form.feedback("name")}
+                </div>
+            </div>
+        `;
+    }
+}
+
+customElements.define("dataset-name-field", DatasetNameField);
+```
+
+- **`formField(form, name, options?)`** binds the string `.value` of an input,
+  textarea, or select and sets `aria-invalid` from the current error. It
+  validates on blur and as the user edits an invalid field. Set
+  `validateOnInput: "always"` to validate each edit.
+- **`FormController`** accepts an `affects` list of other field names when
+  validation depends on another value. On submit, call `validateAll()` to show
+  errors and guard submission. Its return value is `true` when errors are
+  present. `hasErrors()` checks validity without updating feedback.
+- **Styling.** `formStyles` styles fields and feedback inside `.gs-form-group`.
+  `BaseDialog` already includes it. For controls in ordinary HTML, import
+  `@genome-spy/ui-components/form.css` and add `gs-form` to the form. See
+  **Theming → Scoped palettes → Native Form Controls**.
+
+## Validate a dialog step
+
+`DialogWizardController` takes a Lit host with a reactive numeric `_page`
+initialized to `0`, plus an array of pages with `render()` functions. Render
+`wizard.currentPage` and build the footer using `wizard.isFirstPage` and
+`wizard.isLastPage`.
+
+Use `wizard.advance(1)` or `wizard.advance(-1)` to move between pages. A page's
+`onAdvance` can return `false` to block forward navigation. For a validated
+step, set `onAdvance: () => !this.form.validateAll()`. The dialog owns the
+buttons and decides when to finish.
+
+Try **Next** with an empty name to see the validation gate. Enter a name to
+continue to the review step.
+
+<Canvas of={DialogStories.FormWizard} meta={DialogStories} sourceState="none" />

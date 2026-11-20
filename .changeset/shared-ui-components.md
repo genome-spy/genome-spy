@@ -16,3 +16,6 @@ dialogs. App's dialog exports work alongside the new package.
 
 App’s context menus and toolbar dropdowns use the shared menu controller and
 stylesheet, which can be imported separately.
+
+Import `@genome-spy/ui-components/form.css` and add `gs-form` to theme native
+fields and buttons alongside the shared components.

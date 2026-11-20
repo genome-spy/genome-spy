@@ -3,12 +3,15 @@ import { showMessageDialog } from "@genome-spy/ui-components/messageDialog";
 import "@genome-spy/ui-components/define/segmentedControl";
 import "@genome-spy/ui-components/define/multiSelect";
 import "@genome-spy/ui-components/define/dropZone";
+import "@genome-spy/ui-components/define/filePicker";
 import "../.storybook/preview.css";
 import themeCss from "../.storybook/preview.css?raw";
 import "../../app/src/styles/componentTheme.css";
 import appThemeCss from "../../app/src/styles/componentTheme.css?raw";
 import { showSelectedFiles } from "./fileSelection.js";
 import "./theming.css";
+import "@genome-spy/ui-components/form.css";
+import nativeFormCss from "@genome-spy/ui-components/form.css?raw";
 
 const columns = ["Sample", "Group", "Score", "Status"];
 const displayModes = [
@@ -107,4 +110,64 @@ export const SideBySide = {
 
 export const ButtonStyles = {
     render: () => renderPalettes([defaultTheme, genomeSpyApp], appThemeCss),
+};
+
+export const NativeFormControls = {
+    render: () => html`
+        <div class="theme-showcase">
+            <form
+                class="theme-example gs-form"
+                aria-labelledby="native-form-title"
+                @submit=${(/** @type {SubmitEvent} */ event) => event.preventDefault()}
+            >
+                <h2 id="native-form-title">Native HTML form</h2>
+                <label>
+                    Dataset name
+                    <input name="dataset" type="text" value="Sample cohort" />
+                </label>
+                <label>
+                    Delimiter
+                    <select name="delimiter">
+                        <option value="comma">Comma</option>
+                        <option value="tab">Tab</option>
+                    </select>
+                </label>
+                <label>
+                    Notes
+                    <textarea name="notes" rows="2"></textarea>
+                </label>
+                <label>
+                    <input name="header" type="checkbox" checked />
+                    First row contains column names
+                </label>
+                <button type="reset">Reset form</button>
+            </form>
+            <section class="theme-example">
+                <h2>GenomeSpy components</h2>
+                <gs-multi-select
+                    placeholder="Search columns"
+                    .selectedValues=${["Sample"]}
+                    .search=${searchColumns}
+                ></gs-multi-select>
+                <div>
+                    <gs-file-picker
+                        accept=".csv,.tsv"
+                        @gs-files-chosen=${showSelectedFiles}
+                        >Choose dataset</gs-file-picker
+                    >
+                    <output></output>
+                </div>
+            </section>
+        </div>
+        <details class="theme-code">
+            <summary>Native form CSS</summary>
+            <p>
+                Import <code>@genome-spy/ui-components/form.css</code> and put
+                <code>gs-form</code> on your form or a wrapper. Switch the Theme
+                toolbar to see the native fields and the components share a
+                palette.
+            </p>
+            <pre><code>${nativeFormCss.trim()}</code></pre>
+        </details>
+    `,
 };
