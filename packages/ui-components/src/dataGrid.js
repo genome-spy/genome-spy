@@ -73,6 +73,8 @@ export default class DataGrid extends LitElement {
         }
 
         .grid-root {
+            background-color: var(--gs-control-background, transparent);
+            color: var(--gs-control-text, inherit);
             border: 1px solid var(--dg-border);
             border-radius: var(
                 --gs-control-radius,
@@ -101,7 +103,7 @@ export default class DataGrid extends LitElement {
             padding: 0 0.5rem;
             height: var(--_row-height);
             box-sizing: border-box;
-            border-bottom: 1px solid var(--dg-border);
+            border-bottom: 1px solid var(--gs-divider-color, var(--dg-border));
             font-weight: 600;
         }
 
@@ -120,7 +122,8 @@ export default class DataGrid extends LitElement {
         .body-table td {
             padding: 0 0.5rem;
             box-sizing: border-box;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+            border-bottom: 1px solid
+                var(--gs-divider-color, rgba(0, 0, 0, 0.03));
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;

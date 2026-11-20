@@ -120,8 +120,8 @@ export default class MultiSelect extends LitElement {
                 align-items: center;
                 gap: 0.35em;
                 max-width: 100%;
-                background: #edf2f7;
-                border: 1px solid #d4dce4;
+                background: var(--gs-selected-background, #edf2f7);
+                border: 1px solid var(--gs-control-border, #d4dce4);
                 border-radius: 999px;
                 padding: 0.1em 0.55em;
                 font-size: 0.93em;
@@ -138,7 +138,7 @@ export default class MultiSelect extends LitElement {
             .pill-remove {
                 border: 0;
                 background: transparent;
-                color: #495057;
+                color: var(--gs-muted-text, #495057);
                 font-size: 1.1em;
                 line-height: 1;
                 padding: 0;
@@ -159,7 +159,7 @@ export default class MultiSelect extends LitElement {
             }
 
             .query::placeholder {
-                color: #a0a0a0;
+                color: var(--gs-muted-text, #a0a0a0);
             }
 
             .dropdown {
@@ -182,19 +182,20 @@ export default class MultiSelect extends LitElement {
             }
 
             .option.active {
-                background: #eef3ff;
+                background: var(--gs-selected-background, #eef3ff);
                 outline: 2px solid var(--gs-focus-color, #c6dbff);
                 outline-offset: -2px;
             }
 
             .status {
                 padding: 0.35em 0.75em;
-                color: #6c757d;
+                color: var(--gs-muted-text, #6c757d);
                 font-size: 0.92em;
             }
 
             .control.disabled {
-                background-color: #f4f4f4;
+                background-color: var(--gs-disabled-background, #f4f4f4);
+                color: var(--gs-disabled-text, var(--form-control-color));
                 cursor: default;
             }
 
@@ -837,10 +838,11 @@ export default class MultiSelect extends LitElement {
             >
                 ${this.selectedValues.map(
                     (value) =>
-                        html`<span class="pill">
+                        html`<span class="pill" part="chip">
                             <span class="pill-label">${value}</span>
                             <button
                                 class="pill-remove"
+                                part="remove-button"
                                 type="button"
                                 aria-label=${"Remove " + value}
                                 ?disabled=${this.disabled}
@@ -909,6 +911,7 @@ export default class MultiSelect extends LitElement {
                                 index === this._activeIndex ? "active" : ""
                             }"
                             role="option"
+                            part="option"
                             aria-selected=${
                                 index === this._activeIndex ? "true" : "false"
                             }

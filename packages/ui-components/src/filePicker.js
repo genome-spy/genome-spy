@@ -16,12 +16,36 @@ export default class FilePicker extends LitElement {
             padding: var(--gs-file-picker-padding, 4px 12px);
             border: 1px solid var(--gs-control-border, #b3b3b3);
             border-radius: var(--gs-control-radius, 4px);
-            background: var(--gs-file-picker-background, white);
+            background: var(
+                --gs-file-picker-background,
+                var(--gs-button-background, #fff)
+            );
+            box-shadow: var(--gs-button-shadow, none);
             cursor: pointer;
         }
 
         button:hover {
-            background: var(--gs-file-picker-hover, #f0f0f0);
+            background: var(
+                --gs-file-picker-hover,
+                var(
+                    --gs-button-hover-background,
+                    var(
+                        --gs-hover-background,
+                        var(
+                            --gs-file-picker-background,
+                            var(--gs-button-background, #f0f2f4)
+                        )
+                    )
+                )
+            );
+        }
+
+        button:active {
+            background: var(
+                --gs-button-selected-background,
+                var(--gs-selected-background, #dfe5eb)
+            );
+            box-shadow: var(--gs-button-selected-shadow, none);
         }
 
         button:focus-visible {

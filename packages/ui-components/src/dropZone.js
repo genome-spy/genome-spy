@@ -31,20 +31,6 @@ export default class UploadDropZone extends LitElement {
                 font-family: inherit;
             }
 
-            gs-file-picker::part(button) {
-                background: var(
-                    --gs-file-picker-background,
-                    linear-gradient(to bottom, #fff, #e6e6e6)
-                );
-            }
-
-            gs-file-picker::part(button):hover {
-                background: var(
-                    --gs-file-picker-hover,
-                    linear-gradient(to bottom, #f8f8f8, #d8d8d8)
-                );
-            }
-
             .drop-zone {
                 border: 2px dashed var(--gs-control-border, #ced4da);
                 border-radius: var(--gs-drop-zone-radius, 8px);

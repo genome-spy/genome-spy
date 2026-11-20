@@ -152,7 +152,10 @@ export default class ThresholdComparisonInput extends LitElement {
                               .values=${numericValues}
                               .thresholds=${getSingleThresholds(this.operand)}
                               .operators=${[this.operator]}
-                              .colors=${["#1f77b4", "#ddd"]}
+                              .colors=${[
+                                  "var(--gs-theme-primary, #1f77b4)",
+                                  "var(--gs-control-border, #ddd)",
+                              ]}
                               .showThresholdNumbers=${false}
                               @add=${(
                                   /** @type {import("./histogram.js").ThresholdEvent} */ event

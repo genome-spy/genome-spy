@@ -96,7 +96,8 @@ export default class SplitPanel extends LitElement {
             touch-action: pan-y pinch-zoom;
         }
         :host([orientation="horizontal"]) .resizable:not(:last-child) {
-            border-right: 1px solid var(--gs-split-panel-divider, #e0e0e0);
+            border-right: 1px solid
+                var(--gs-split-panel-divider, var(--gs-divider-color, #e0e0e0));
         }
 
         :host([orientation="vertical"]) .container {
@@ -113,7 +114,8 @@ export default class SplitPanel extends LitElement {
         }
 
         :host([orientation="vertical"]) .resizable:not(:last-child) {
-            border-bottom: 1px solid var(--gs-split-panel-divider, #e0e0e0);
+            border-bottom: 1px solid
+                var(--gs-split-panel-divider, var(--gs-divider-color, #e0e0e0));
         }
         :host(.resizing[orientation="horizontal"]) {
             cursor: ew-resize;

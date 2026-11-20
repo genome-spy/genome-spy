@@ -64,7 +64,7 @@ export default class SearchableCheckboxList extends LitElement {
             }
 
             input[type="text"]::placeholder {
-                color: #a0a0a0;
+                color: var(--gs-muted-text, #a0a0a0);
             }
 
             .checkbox-list-wrapper {
@@ -78,7 +78,7 @@ export default class SearchableCheckboxList extends LitElement {
                 justify-content: center;
                 align-content: center;
 
-                color: #808080;
+                color: var(--gs-muted-text, #808080);
                 font-size: 85%;
 
                 pointer-events: none;
@@ -91,6 +91,7 @@ export default class SearchableCheckboxList extends LitElement {
 
             .checkbox-list {
                 color: var(--form-control-color);
+                background-color: var(--gs-control-background, transparent);
                 border: var(--form-control-border);
                 border-radius: var(--form-control-border-radius);
                 overflow: auto;
@@ -113,17 +114,21 @@ export default class SearchableCheckboxList extends LitElement {
                 list-style: none;
             }
 
+            input[type="checkbox"] {
+                accent-color: var(--gs-theme-primary, auto);
+            }
+
             label.checkbox {
                 display: block;
 
                 &:hover {
-                    background-color: #f4f4f4;
+                    background-color: var(--gs-hover-background, #f4f4f4);
                 }
             }
 
             small {
                 display: block;
-                color: #606060;
+                color: var(--gs-muted-text, #606060);
                 text-box-edge: cap alphabetic;
                 text-box-trim: trim-both;
             }

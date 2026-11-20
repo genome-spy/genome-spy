@@ -14,7 +14,7 @@ const histogramStyles = css`
     .histogram-widget {
         position: relative;
 
-        --grid-color: #333;
+        --grid-color: var(--gs-divider-color, #333);
         --background-color: var(--gs-histogram-background, #f0f0f0);
     }
 
@@ -33,7 +33,7 @@ const histogramStyles = css`
 
         > div {
             position: absolute;
-            background-color: #808080;
+            background-color: var(--gs-theme-primary, #808080);
         }
     }
 
@@ -48,7 +48,7 @@ const histogramStyles = css`
         position: absolute;
         width: 1px;
         height: 100%;
-        background-color: black;
+        background-color: var(--gs-control-text, black);
     }
 
     .histogram-knob {
@@ -60,8 +60,8 @@ const histogramStyles = css`
         height: var(--size);
         border-radius: var(--size);
 
-        background: black;
-        color: white;
+        background: var(--gs-control-text, black);
+        color: var(--gs-control-background, white);
 
         font-size: 80%;
         text-align: center;
@@ -119,7 +119,7 @@ const histogramStyles = css`
                 var(--background-color) 70%,
                 transparent
             );
-            color: #333;
+            color: var(--gs-muted-text, #333);
             cursor: default;
         }
     }
@@ -361,7 +361,7 @@ export default class Histogram extends LitElement {
                         backgroundColor:
                             typeof b.group == "number"
                                 ? this.colors[b.group % this.colors.length]
-                                : "default",
+                                : undefined,
                     })}
                 ></div>`
         );

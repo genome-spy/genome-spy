@@ -136,7 +136,11 @@ export default class BaseDialog extends LitElement {
             }
 
             footer {
-                border-top: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                border-top: 1px solid
+                    var(
+                        --gs-dialog-stroke-color,
+                        var(--gs-divider-color, #d0d0d0)
+                    );
                 padding: var(--gs-basic-spacing, 10px);
 
                 > div {
@@ -147,54 +151,41 @@ export default class BaseDialog extends LitElement {
             }
 
             footer .btn.btn-primary {
-                --gs-dialog-primary-bg: var(--gs-theme-primary, #6c82ab);
-                --gs-dialog-primary-bg-hi: oklch(
-                    from var(--gs-dialog-primary-bg) calc(l + 0.07) c h
-                );
-                --gs-dialog-primary-bg-lo: oklch(
-                    from var(--gs-dialog-primary-bg) calc(l - 0.07) c h
-                );
-                background-color: var(--gs-dialog-primary-bg);
-                background-image: linear-gradient(
-                    to bottom,
-                    var(--gs-dialog-primary-bg-hi),
-                    var(--gs-dialog-primary-bg-lo)
+                --gs-dialog-primary-bg: var(--gs-theme-primary, #51678d);
+                background: var(
+                    --gs-primary-button-background,
+                    var(--gs-dialog-primary-bg)
                 );
                 border-color: oklch(
                     from var(--gs-dialog-primary-bg) calc(l - 0.08) c h
                 );
                 color: var(--gs-theme-on-primary, #ffffff);
-                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
             }
 
             footer .btn.btn-primary:hover:not(:disabled) {
-                background-image: linear-gradient(
-                    to bottom,
-                    oklch(from var(--gs-dialog-primary-bg) calc(l + 0.1) c h),
-                    oklch(from var(--gs-dialog-primary-bg) calc(l - 0.04) c h)
+                background: var(
+                    --gs-primary-button-hover-background,
+                    var(
+                        --gs-primary-button-background,
+                        oklch(
+                            from var(--gs-dialog-primary-bg) calc(l - 0.05) c h
+                        )
+                    )
                 );
-            }
-
-            footer .btn.btn-primary svg {
-                filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
             }
 
             footer .btn.btn-primary:disabled {
-                background-color: oklch(
-                    from var(--gs-dialog-primary-bg) calc(l + 0.08) c h
+                background: var(
+                    --gs-disabled-background,
+                    oklch(from var(--gs-dialog-primary-bg) calc(l + 0.08) c h)
                 );
-                background-image: none;
                 border-color: oklch(
                     from var(--gs-dialog-primary-bg) calc(l - 0.02) c h
                 );
-                color: oklch(
-                    from var(--gs-theme-on-primary, #ffffff) l c h / 0.6
+                color: var(
+                    --gs-disabled-text,
+                    oklch(from var(--gs-theme-on-primary, #ffffff) l c h / 0.6)
                 );
-                text-shadow: none;
-            }
-
-            footer .btn.btn-primary:disabled svg {
-                filter: none;
             }
         `,
     ];
@@ -482,6 +473,7 @@ export default class BaseDialog extends LitElement {
         }
         return html`<button
             class=${classNames.join(" ")}
+            part=${isPrimary ? "button primary-button" : "button"}
             type="button"
             title=${title}
             ?disabled=${disabled}

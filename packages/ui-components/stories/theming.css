@@ -1,0 +1,61 @@
+.theme-showcase {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 23rem), 1fr));
+    align-items: start;
+    gap: 1rem;
+    max-inline-size: 66rem;
+}
+
+.theme-example {
+    display: grid;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1px solid var(--gs-control-border, #ced4da);
+    border-radius: var(--gs-control-radius, 4px);
+    background: var(--gs-dialog-background, #fff);
+    color: var(--gs-dialog-text, #212529);
+    font-size: var(--gs-font-size, 14px);
+}
+
+.theme-example h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.theme-example output:empty {
+    display: none;
+}
+
+.theme-example > button {
+    justify-self: start;
+    padding: 0.4em 0.7em;
+    border: 1px solid var(--gs-control-border, #ced4da);
+    border-radius: var(--gs-control-radius, 4px);
+    background: var(--gs-control-background, #fff);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.theme-example > button:focus-visible {
+    outline: 2px solid var(--gs-focus-color, currentColor);
+    outline-offset: 2px;
+}
+
+.theme-code {
+    margin-block-start: 1rem;
+    max-inline-size: 66rem;
+}
+
+.theme-code summary {
+    cursor: pointer;
+}
+
+.theme-code pre {
+    padding: 0.75rem;
+    border: 1px solid #e2e6eb;
+    border-radius: 4px;
+    background: #f5f6f7;
+    overflow: auto;
+}

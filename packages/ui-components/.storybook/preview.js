@@ -21,7 +21,7 @@ export const initialGlobals = { theme: "default" };
 /** @type {import("@storybook/web-components-vite").Decorator[]} */
 export const decorators = [
     (story, context) => html`
-        <div class="gs-story" data-theme=${context.globals.theme}>
+        <div class="gs-story gs-theme" data-theme=${context.globals.theme}>
             ${story()}
         </div>
     `,

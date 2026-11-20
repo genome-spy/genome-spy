@@ -1,26 +1,51 @@
-.gs-story {
+.gs-theme {
     --gs-basic-spacing: 10px;
     --gs-font-family: system-ui, sans-serif;
     font-family: var(--gs-font-family);
 }
 
-.gs-story[data-theme="playground"] {
+.gs-theme[data-theme="playground"] {
+    --gs-basic-spacing: 12px;
+    --gs-font-size: 14px;
     --gs-theme-primary: #548fcc;
     --gs-theme-on-primary: #fff;
     --gs-focus-color: #437eb9;
+    --gs-control-text: #242a31;
     --gs-control-border: #cdd3da;
+    --gs-divider-color: #e2e6eb;
+    --gs-button-background: #fff;
+    --gs-hover-background: #edf0f3;
+    --gs-selected-background: #e8f0f9;
     --gs-control-background: #f5f6f7;
+    --gs-control-radius: 4px;
+    --gs-dialog-background: #fff;
+    --gs-dialog-text: #242a31;
+    --gs-dialog-backdrop: rgb(17 24 39 / 35%);
+    --gs-dialog-radius: 4px;
+    --gs-drop-zone-active-background: #e8f0f9;
+    --gs-drop-zone-radius: 4px;
     --gs-split-panel-divider: #e2e6eb;
     --gs-file-picker-background: #edf0f3;
 }
 
-.gs-story[data-theme="focused-app"] {
+.gs-theme[data-theme="focused-app"] {
     --gs-theme-primary: #255f68;
     --gs-theme-on-primary: #fff;
     --gs-focus-color: #357f89;
-    --gs-control-border: #aac7ce;
+    --gs-control-text: #22313a;
+    --gs-control-border: #cdd8dd;
+    --gs-divider-color: #aac7ce;
+    --gs-button-background: #fff;
+    --gs-hover-background: #e5f1f1;
+    --gs-selected-background: #dcebee;
     --gs-control-background: #f0f7f7;
+    --gs-control-radius: 6px;
     --gs-dialog-background: #f0f7f7;
+    --gs-dialog-text: #22313a;
+    --gs-dialog-backdrop: rgb(17 24 39 / 35%);
+    --gs-dialog-radius: 6px;
+    --gs-drop-zone-active-background: #e5f1f1;
+    --gs-drop-zone-radius: 14px;
     --gs-split-panel-divider: #aac7ce;
     --gs-file-picker-background: #e5f1f1;
 }

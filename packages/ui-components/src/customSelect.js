@@ -152,15 +152,15 @@ export default class CustomSelect extends LitElement {
             }
 
             .option:hover {
-                background-color: #f3f4f6;
+                background-color: var(--gs-hover-background, #f3f4f6);
             }
 
             .option[aria-selected="true"] {
-                background-color: #e9ecef;
+                background-color: var(--gs-selected-background, #e9ecef);
             }
 
             .option.active {
-                background-color: #eef3ff;
+                background-color: var(--gs-selected-background, #eef3ff);
                 outline: 2px solid var(--gs-focus-color, #c6dbff);
                 outline-offset: -2px;
             }

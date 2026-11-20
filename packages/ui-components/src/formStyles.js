@@ -6,7 +6,7 @@ export const formStyles = css`
         --form-control-color: var(--gs-control-text, #212529);
         --form-control-border-color: var(--gs-control-border, #ced4da);
         --form-control-border: 1px solid var(--form-control-border-color);
-        --form-control-border-radius: 0.25em;
+        --form-control-border-radius: var(--gs-control-radius, 0.25em);
     }
 
     .btn {
@@ -24,32 +24,39 @@ export const formStyles = css`
         margin: 0;
         font-size: 1em;
         line-height: 20px;
-        color: #333333;
+        color: var(--gs-control-text, #333333);
         text-align: center;
-        text-shadow: 0 1px 1px rgb(255 255 255 / 75%);
         vertical-align: middle;
-        background-image: linear-gradient(to bottom, #ffffff, #e6e6e6);
-        border: 1px solid #cccccc;
-        border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
-        border-bottom-color: #b3b3b3;
-        border-radius: 4px;
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 20%),
-            0 1px 2px rgb(0 0 0 / 5%);
-
-        transition: all 0.015s;
+        background: var(--gs-button-background, #fff);
+        border: 1px solid var(--gs-control-border, #b3b3b3);
+        border-radius: var(--gs-control-radius, 4px);
+        box-shadow: var(--gs-button-shadow, none);
 
         &:hover:not(:disabled) {
-            background-image: linear-gradient(to bottom, #f8f8f8, #d8d8d8);
+            background: var(
+                --gs-button-hover-background,
+                var(--gs-hover-background, var(--gs-button-background, #f0f2f4))
+            );
         }
 
-        &:active {
-            border-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.2)
-                rgba(0, 0, 0, 0.5);
+        &:active:not(:disabled),
+        &.chosen:not(:disabled) {
+            background: var(
+                --gs-button-selected-background,
+                var(--gs-selected-background, #dfe5eb)
+            );
+            box-shadow: var(--gs-button-selected-shadow, none);
         }
 
         &:disabled {
-            color: #a0a0a0;
+            color: var(--gs-disabled-text, #a0a0a0);
+            background: var(--gs-disabled-background, #f4f4f4);
+            box-shadow: none;
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--gs-focus-color, #2563a6);
+            outline-offset: 2px;
         }
 
         &:not(:disabled) {
@@ -79,6 +86,10 @@ export const formStyles = css`
 
         .btn {
             flex-grow: 1;
+
+            &:focus-visible {
+                z-index: 1;
+            }
         }
 
         .btn:not(:first-child) {
@@ -89,11 +100,6 @@ export const formStyles = css`
         .btn:not(:last-child) {
             border-top-right-radius: 0;
             border-bottom-right-radius: 0;
-        }
-
-        .btn.chosen {
-            background-image: linear-gradient(to bottom, #f0f0f0, #d8d8d8);
-            box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.3);
         }
     }
 
@@ -151,7 +157,11 @@ export const formStyles = css`
         */
 
             &::placeholder {
-                color: #a0a0a0;
+                color: var(--gs-muted-text, #a0a0a0);
+            }
+
+            &:focus-visible {
+                outline-color: var(--gs-focus-color, revert);
             }
         }
 
@@ -167,7 +177,7 @@ export const formStyles = css`
         :is(input, select, textarea, div, label) + small {
             display: block;
             margin-top: 0.3em;
-            color: #606060;
+            color: var(--gs-muted-text, #606060);
         }
 
         label + small {
@@ -295,24 +305,37 @@ export const formStyles = css`
                 flex-grow: 1;
                 content: "";
                 display: block;
-                border-bottom: 1px solid var(--form-control-border-color);
+                border-bottom: 1px solid
+                    var(--gs-divider-color, var(--form-control-border-color));
             }
 
             button {
                 font-size: 1em;
-                background-color: transparent;
+                background: var(--gs-control-background, transparent);
+                color: var(--gs-control-text, ButtonText);
                 align-items: center;
                 padding: 0.6em var(--basic-spacing);
 
                 border: 1px solid var(--form-control-border-color);
 
-                --radius: 5px;
+                --radius: var(--gs-control-radius, 5px);
                 border-top-left-radius: var(--radius);
                 border-top-right-radius: var(--radius);
                 border-bottom-left-radius: 0;
                 border-bottom-right-radius: 0;
 
                 cursor: pointer;
+
+                &:hover:not(:disabled) {
+                    background: var(
+                        --gs-hover-background,
+                        var(--gs-control-background, transparent)
+                    );
+                }
+
+                &:focus-visible {
+                    outline-color: var(--gs-focus-color, revert);
+                }
             }
 
             > li:not(:first-child) > button {
@@ -320,12 +343,19 @@ export const formStyles = css`
             }
 
             .active-tab button {
+                background: var(
+                    --gs-selected-background,
+                    var(--gs-control-background, transparent)
+                );
                 border-bottom-color: transparent;
             }
 
             :not(.active-tab) button {
                 border-color: transparent;
-                border-bottom-color: var(--form-control-border-color);
+                border-bottom-color: var(
+                    --gs-divider-color,
+                    var(--form-control-border-color)
+                );
             }
         }
 
