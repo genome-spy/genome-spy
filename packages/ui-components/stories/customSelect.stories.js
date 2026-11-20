@@ -106,6 +106,7 @@ export const ColorSchemeDropdown = () => {
 
     return html` <div style="padding: 1rem; display: grid; gap: 1rem;">
         <gs-custom-select
+            aria-label="Color scheme"
             .options=${schemes}
             .value=${schemes[0].name}
             .getValue=${(/** @type {{name: string}} */ s) => s.name}
@@ -162,6 +163,7 @@ class CustomSelectDemo extends LitElement {
         return html`
             <div class="row">
                 <gs-custom-select
+                    aria-label="Color scheme"
                     .options=${schemes}
                     .value=${this.value}
                     .getValue=${(/** @type {{name: string}} */ s) => s.name}

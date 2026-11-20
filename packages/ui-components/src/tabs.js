@@ -164,6 +164,7 @@ export default class Tabs extends LitElement {
         this.#activate(next);
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         return html`
             <div part="tablist" role="tablist" aria-label=${this.label}>

@@ -425,6 +425,7 @@ export default class BaseDialog extends LitElement {
 
     /**
      * @protected
+     * @returns {import("lit").HTMLTemplateResult}
      */
     renderHeader() {
         return html`${
@@ -436,6 +437,7 @@ export default class BaseDialog extends LitElement {
 
     /**
      * @protected
+     * @returns {import("lit").HTMLTemplateResult}
      */
     renderBody() {
         return html``;
@@ -443,6 +445,7 @@ export default class BaseDialog extends LitElement {
 
     /**
      * @protected
+     * @returns {import("lit").HTMLTemplateResult | typeof nothing}
      */
     renderFooter() {
         const buttons = this.renderButtons();
@@ -455,6 +458,7 @@ export default class BaseDialog extends LitElement {
 
     /**
      * @protected
+     * @returns {import("lit").HTMLTemplateResult[]}
      */
     renderButtons() {
         return [this.makeCloseButton()];
@@ -473,6 +477,7 @@ export default class BaseDialog extends LitElement {
      *  isPrimary?: boolean,
      * }} [options]
      * @protected
+     * @returns {import("lit").HTMLTemplateResult}
      */
     makeButton(title, callback, options = {}) {
         const {
@@ -516,6 +521,7 @@ export default class BaseDialog extends LitElement {
 
     /**
      * @protected
+     * @returns {import("lit").HTMLTemplateResult}
      */
     makeCloseButton(label = "Close") {
         return this.makeButton(
@@ -528,7 +534,10 @@ export default class BaseDialog extends LitElement {
         );
     }
 
-    /** @protected */
+    /**
+     * @protected
+     * @returns {import("lit").HTMLTemplateResult}
+     */
     renderDialogContent() {
         const header = this.renderHeader();
         const footer = this.renderFooter();
@@ -539,6 +548,7 @@ export default class BaseDialog extends LitElement {
         `;
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         return html`
             ${
@@ -565,7 +575,7 @@ export default class BaseDialog extends LitElement {
  */
 
 /**
- * Open any dialog element that extends BaseDialog
+ * Open a dialog and resolve to its result or a cancellation on close.
  *
  * @template {BaseDialog} T
  * @param {string} tagName - Custom element name, e.g. "gs-upload-dialog".
@@ -612,6 +622,8 @@ export function showDialogOk(tagName, configure, options) {
 
 /**
  * Open any dialog element that extends BaseDialog and return the element.
+ * If the dialog closes without reporting a result, the promise resolves
+ * to a cancellation.
  *
  * @template {BaseDialog} T
  * @param {string} tagName - Custom element name, e.g. "gs-upload-dialog".
@@ -635,13 +647,17 @@ export function showDialogWithElement(
                 resolve(event.detail);
             }
         };
+        /** @param {Event} event */
+        const close = (event) => {
+            if (event.composedPath()[0] === el) {
+                el.removeEventListener("gs-dialog-finished", finish);
+                el.removeEventListener("gs-dialog-closed", close);
+                el.remove();
+                resolve({ ok: false, reason: "cancel" });
+            }
+        };
         el.addEventListener("gs-dialog-finished", finish);
-    });
-
-    el.addEventListener("gs-dialog-closed", (event) => {
-        if (event.composedPath()[0] === el) {
-            el.remove();
-        }
+        el.addEventListener("gs-dialog-closed", close);
     });
 
     mount.appendChild(el);

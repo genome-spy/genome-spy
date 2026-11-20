@@ -205,10 +205,18 @@ uses `--gs-theme-primary` and `--gs-divider-color`. Set
 | `ThresholdComparisonInput` | `gs-threshold-comparison-input` | Enter a threshold with a histogram   |
 
 Each element has a `define/` entry, such as
-`@genome-spy/ui-components/define/multiSelect`. Set a height on the grid so it
-can virtualize the visible rows. Its `rowHeight` property sets the height of
-each row in pixels. Use `FormController` and `formField` to validate input
-within a Lit component, and `DialogWizardController` to manage dialog steps.
+`@genome-spy/ui-components/define/multiSelect`. Set `aria-label` or the `label`
+property to name a `MultiSelect`, `CustomSelect`, `ThresholdComparisonInput`, or
+`DataGrid`. For example, give a column search the label “Select columns”.
+`MultiSelect` reports a failed search and can retry when the query changes or
+when you call `refreshSuggestions()`.
+
+Give the data preview a bounded height for row virtualization. Its `rowHeight`
+property sets the row height in pixels. The preview is a keyboard-scrollable
+table with sticky column headers.
+
+Use `FormController` and `formField` to validate input within a Lit component,
+and `DialogWizardController` to manage dialog steps.
 
 - Use `--gs-control-text`, `--gs-control-background`, `--gs-control-border`, and
   `--gs-control-radius` for common control styling. `--gs-divider-color` applies

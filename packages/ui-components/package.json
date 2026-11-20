@@ -14,8 +14,14 @@
       "types": "./dist/contextMenu.d.ts",
       "default": "./src/contextMenu.js"
     },
-    "./contextMenu.css": "./src/contextMenu.css",
-    "./form.css": "./src/form.css",
+    "./contextMenu.css": {
+      "types": "./src/stylesheet.d.ts",
+      "default": "./src/contextMenu.css"
+    },
+    "./form.css": {
+      "types": "./src/stylesheet.d.ts",
+      "default": "./src/form.css"
+    },
     "./custom-elements.json": "./dist/custom-elements.json",
     "./splitPanel": {
       "types": "./dist/splitPanel.d.ts",
@@ -151,6 +157,7 @@
     "src/*.js",
     "src/contextMenu.css",
     "src/form.css",
+    "src/stylesheet.d.ts",
     "src/define/",
     "!src/*.test.js",
     "dist/"
@@ -163,6 +170,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly && npm run build:manifest",
     "build:manifest": "cem analyze",
+    "test:packed-consumer": "node scripts/testPackedConsumer.mjs",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "storybook": "npm run build:manifest && storybook dev -p 6010",
     "build-storybook": "npm run build:manifest && storybook build -o build/storybook"

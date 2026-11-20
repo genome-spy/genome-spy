@@ -125,9 +125,11 @@ class FormFieldDirective extends Directive {
  * `;
  * ```
  *
- * @param {import("./formController.js").FormController} form
- * @param {string} name
- * @param {FormFieldOptions} [options]
+ * @type {(
+ *   form: import("./formController.js").FormController,
+ *   name: string,
+ *   options?: FormFieldOptions
+ * ) => import("lit/directive.js").DirectiveResult<typeof FormFieldDirective>}
  */
 export const formField = directive(FormFieldDirective);
 

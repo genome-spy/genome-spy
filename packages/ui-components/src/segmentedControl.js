@@ -82,6 +82,7 @@ export default class SegmentedControl extends LitElement {
         this.dispatchEvent(new SegmentedControlChangeEvent(this.value));
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         return html`<div
             class="btn-group"

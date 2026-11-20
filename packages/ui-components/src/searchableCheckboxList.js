@@ -290,6 +290,7 @@ export default class SearchableCheckboxList extends LitElement {
         }
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         const selectedValues = new Set(this.selectedValues);
         const filteredItems = this.getFilteredItems();

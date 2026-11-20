@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html, css, nothing } from "lit";
 
 /**
  * Preview an array of records with a sticky header and virtualized rows.
@@ -29,6 +29,7 @@ export default class DataGrid extends LitElement {
     /** */
     static properties = {
         items: { type: Array },
+        label: { type: String, attribute: "aria-label" },
         rowHeight: { type: Number },
         buffer: { type: Number },
         blockMultiplier: { type: Number },
@@ -55,6 +56,8 @@ export default class DataGrid extends LitElement {
         super();
         /** @type {Item[]} Records to preview. The grid derives columns from the data. */
         this.items = [];
+        /** Accessible name of the keyboard-scrollable preview. */
+        this.label = "Data preview";
         /** Fixed row height in pixels. */
         this.rowHeight = 32;
         /** Extra rows to render above and below the visible range. */
@@ -85,62 +88,63 @@ export default class DataGrid extends LitElement {
                 --gs-control-radius,
                 var(--form-control-border-radius, 4px)
             );
-            overflow-x: auto;
+            display: flex;
+            overflow: hidden;
             position: absolute;
             inset: 0;
         }
 
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
+        .grid-body {
+            flex: 1;
+            min-width: 0;
+            overflow: auto;
         }
 
-        .header-table,
-        .body-table {
+        .grid-body:focus-visible {
+            outline: 2px solid var(--gs-focus-color, #2563a6);
+            outline-offset: -2px;
+        }
+
+        table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             table-layout: fixed;
         }
 
-        .header-table th {
+        th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: var(--gs-control-background, Canvas);
             text-align: left;
-            padding: 0 0.5rem;
             height: var(--_row-height);
-            box-sizing: border-box;
             border-bottom: 1px solid var(--gs-divider-color, var(--dg-border));
             font-weight: 600;
         }
 
-        .grid-body {
-            overflow-y: auto;
-            flex-grow: 1;
-            position: relative;
-            contain: content;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .body-table tr {
+        tbody tr:not(.spacer) {
             height: var(--_row-height);
         }
 
-        .body-table td {
-            padding: 0 0.5rem;
-            box-sizing: border-box;
+        td.cell {
             border-bottom: 1px solid
                 var(--gs-divider-color, rgba(0, 0, 0, 0.03));
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
         }
 
-        .body-table td.numeric,
-        .header-table th.numeric {
+        .spacer td {
+            padding: 0;
+            border: 0;
+        }
+
+        .cell.numeric {
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
 
         .cell {
+            padding: 0 0.5rem;
+            box-sizing: border-box;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -246,12 +250,16 @@ export default class DataGrid extends LitElement {
     #recomputeVisible() {
         if (!this.#body) return;
         const rowH = this.rowHeight;
-        const items = this.items;
-        const total = items.length;
-        const vh = this.#body.clientHeight ?? 0;
-        const viewportRows = Math.max(1, Math.ceil(vh / rowH));
-        const scrollTop = this.#body.scrollTop ?? 0;
-        const firstVisible = Math.floor(scrollTop / rowH);
+        const total = this.items?.length ?? 0;
+        // The sticky header occupies the first row of the viewport.
+        const viewportRows = Math.max(
+            1,
+            Math.ceil((this.#body.clientHeight - rowH) / rowH)
+        );
+        const firstVisible = Math.min(
+            Math.floor(this.#body.scrollTop / rowH),
+            Math.max(0, total - viewportRows)
+        );
 
         const multiplier = this.blockMultiplier ?? 1;
         const blockSize = Math.max(1, Math.ceil(viewportRows * multiplier));
@@ -259,10 +267,10 @@ export default class DataGrid extends LitElement {
 
         const buffer = this.buffer ?? 0;
         const start = Math.max(0, startBlock - buffer);
-        const visible = Math.max(
-            0,
-            Math.min(total - start, blockSize + 2 * buffer)
-        );
+        const end =
+            Math.max(startBlock + blockSize, firstVisible + viewportRows) +
+            buffer;
+        const visible = Math.max(0, Math.min(total, end) - start);
 
         const changed =
             this.#startIndex !== start || this.#visibleCount !== visible;
@@ -298,7 +306,10 @@ export default class DataGrid extends LitElement {
     #renderHeader(columnsMeta) {
         return html`${columnsMeta.map(
             (c) =>
-                html`<th class="cell ${c.isNumeric ? "numeric" : ""}">
+                html`<th
+                    scope="col"
+                    class="cell ${c.isNumeric ? "numeric" : ""}"
+                >
                     ${c.label}
                 </th>`
         )}`;
@@ -326,6 +337,7 @@ export default class DataGrid extends LitElement {
         return html`${String(value)}`;
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         const items = this.items ?? /** @type {Item[]} */ ([]);
         const columns = items.length ? Object.keys(items[0]) : [];
@@ -363,56 +375,57 @@ export default class DataGrid extends LitElement {
                 this.#cols.reduce((s, c) => s + (c.width ?? 0), 0)) ||
             null;
 
-        const headerTable = html`
-            <table class="header-table" role="table">
-                ${colgroup}
-                <thead>
-                    <tr role="row">
-                        ${this.#renderHeader(colsMeta)}
-                    </tr>
-                </thead>
-            </table>
-        `;
-
-        const bodyTable = html`
-            <table class="body-table">
-                ${colgroup}
-                <tbody>
-                    <tr style="height:${topSpacer}px">
-                        <td colspan="${colsMeta.length}"></td>
-                    </tr>
-                    ${slice.map(
-                        (item, i) =>
-                            html`<tr role="row">
-                                ${this.#renderRow(item, colsMeta)}
-                            </tr>`
-                    )}
-                    <tr style="height:${bottomSpacer}px">
-                        <td colspan="${colsMeta.length}"></td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
-
         return html`
             <div class="grid-root" part="grid">
                 <div
-                    class="container"
-                    style="--_row-height:${this.rowHeight}px;min-width:${
-                        totalTableWidth ? totalTableWidth + "px" : "100%"
-                    }"
+                    class="grid-body"
+                    part="body"
+                    role="region"
+                    aria-label=${this.label || "Data preview"}
+                    tabindex="0"
+                    @scroll=${this.#recomputeVisible}
                 >
-                    ${headerTable}
-                    <div
-                        class="grid-body"
-                        part="body"
-                        role="grid"
-                        @scroll=${this.#recomputeVisible}
+                    <table
+                        aria-rowcount=${items.length + 1}
+                        style="--_row-height:${this.rowHeight}px;min-width:${
+                            totalTableWidth ? totalTableWidth + "px" : "100%"
+                        }"
                     >
-                        ${bodyTable}
-                    </div>
+                        ${colgroup}
+                        <thead>
+                            <tr aria-rowindex="1">
+                                ${this.#renderHeader(colsMeta)}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.#renderSpacer(topSpacer, colsMeta.length)}
+                            ${slice.map(
+                                (item, i) =>
+                                    html`<tr aria-rowindex=${start + i + 2}>
+                                        ${this.#renderRow(item, colsMeta)}
+                                    </tr>`
+                            )}
+                            ${this.#renderSpacer(bottomSpacer, colsMeta.length)}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * @param {number} height
+     * @param {number} columns
+     */
+    #renderSpacer(height, columns) {
+        return height > 0
+            ? html`<tr
+                  class="spacer"
+                  aria-hidden="true"
+                  style="height:${height}px"
+              >
+                  <td colspan=${columns}></td>
+              </tr>`
+            : nothing;
     }
 }

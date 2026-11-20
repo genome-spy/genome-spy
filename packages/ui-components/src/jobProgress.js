@@ -237,6 +237,7 @@ export default class JobProgress extends LitElement {
         }
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         const percent = Number.isFinite(this.progress)
             ? Math.max(0, Math.min(100, this.progress * 100))

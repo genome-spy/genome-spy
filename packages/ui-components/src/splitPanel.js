@@ -145,6 +145,7 @@ export default class SplitPanel extends LitElement {
         }
     `;
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         return html`<div class="container">${this.#renderChildren()}</div>`;
     }

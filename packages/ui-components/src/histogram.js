@@ -362,6 +362,7 @@ export default class Histogram extends LitElement {
         return bars;
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         const s = this.#scale;
         const w = 100 / this.#bins.length;

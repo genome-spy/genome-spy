@@ -90,6 +90,7 @@ if (!customElements.get("gs-multi-select-demo")) {
             return html`
                 <div class="stack">
                     <gs-multi-select
+                        aria-label="Select columns"
                         .selectedValues=${this._selected}
                         .search=${(/** @type {string} */ query) =>
                             this.#search(query)}

@@ -22,6 +22,7 @@ export default class CustomSelect extends LitElement {
         options: { type: Array },
         /** Selected value (compared via getValue(option)) */
         value: {},
+        label: { type: String, attribute: "aria-label" },
         /** Disable interaction */
         disabled: { type: Boolean },
         /** Custom renderer for both trigger and list options */
@@ -57,6 +58,8 @@ export default class CustomSelect extends LitElement {
         this.options = [];
         /** @type {unknown} Selected value, compared with getValue(option). */
         this.value = null;
+        /** Accessible field name. The trigger also announces the selected option. */
+        this.label = "Choose an option";
         /** Disable the trigger and option selection. */
         this.disabled = false;
         /** @type {((opt: unknown) => unknown) | null} Optional Lit renderer for the trigger and list options. */
@@ -414,8 +417,12 @@ export default class CustomSelect extends LitElement {
         `;
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         const selected = this.#selectedOption();
+        const label = this.label || "Choose an option";
+        const triggerLabel =
+            selected == null ? label : `${label}: ${this.getLabel(selected)}`;
         const activeId =
             this._activeIndex >= 0
                 ? `${this._popoverId}-opt-${this._activeIndex}`
@@ -429,6 +436,7 @@ export default class CustomSelect extends LitElement {
                     type="button"
                     popovertarget=${this._popoverId}
                     aria-haspopup="listbox"
+                    aria-label=${triggerLabel}
                     aria-expanded=${this._open}
                     ?disabled=${this.disabled}
                     @click=${(/** @type {MouseEvent} */ e) =>
@@ -445,6 +453,7 @@ export default class CustomSelect extends LitElement {
                     part="panel"
                     popover="auto"
                     role="listbox"
+                    aria-label=${label}
                     tabindex="0"
                     aria-activedescendant=${activeId}
                     @keydown=${(/** @type {KeyboardEvent} */ e) =>

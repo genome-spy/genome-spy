@@ -98,6 +98,7 @@ export default class FilePicker extends LitElement {
         input.value = "";
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         return html`
             <button type="button" part="button" @click=${this.openPicker}>

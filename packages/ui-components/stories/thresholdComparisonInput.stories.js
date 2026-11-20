@@ -62,6 +62,7 @@ if (!customElements.get("gs-threshold-comparison-input-demo")) {
             return html`
                 <div class="stack" style="max-width: ${this.width}px">
                     <gs-threshold-comparison-input
+                        aria-label="Comparison threshold"
                         ?autofocus=${this.autofocus}
                         .values=${VALUES}
                         .operator=${this.operator}

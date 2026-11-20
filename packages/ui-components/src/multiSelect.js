@@ -74,6 +74,7 @@ export default class MultiSelect extends LitElement {
         selectedValues: { attribute: false },
         search: { attribute: false },
         commitDelimiters: { attribute: false },
+        label: { type: String, attribute: "aria-label" },
         placeholder: { type: String },
         disabled: { type: Boolean },
         allowUnknown: { type: Boolean, attribute: "allow-unknown" },
@@ -81,6 +82,7 @@ export default class MultiSelect extends LitElement {
         maxSuggestions: { type: Number, attribute: "max-suggestions" },
         _query: { state: true },
         _loading: { state: true },
+        _searchFailed: { state: true },
         _open: { state: true },
         _activeIndex: { state: true },
         _suggestions: { state: true },
@@ -235,6 +237,8 @@ export default class MultiSelect extends LitElement {
         this.search = null;
         /** @type {string[]} Extra key values that commit the current query, such as a comma. */
         this.commitDelimiters = [];
+        /** Accessible name for the search field and its suggestions. */
+        this.label = "Choose options";
         /** Prompt in the empty search field. */
         this.placeholder = "Type to search";
         /** Disable input and removal of selected values. */
@@ -247,6 +251,7 @@ export default class MultiSelect extends LitElement {
         this.maxSuggestions = 50;
         this._query = "";
         this._loading = false;
+        this._searchFailed = false;
         this._open = false;
         this._activeIndex = -1;
         /** @type {MultiSelectOption[]} */
@@ -335,6 +340,7 @@ export default class MultiSelect extends LitElement {
         this._suggestions = [];
         this._activeIndex = -1;
         this._loading = !!this.search;
+        this._searchFailed = false;
 
         this.#debounceTimer = window.setTimeout(() => {
             this.#debounceTimer = null;
@@ -386,6 +392,10 @@ export default class MultiSelect extends LitElement {
             this._suggestions = suggestions;
             this._activeIndex = suggestions.length > 0 ? 0 : -1;
             this._open = this._inputHasFocus;
+        } catch {
+            if (version === this.#searchVersion) {
+                this._searchFailed = true;
+            }
         } finally {
             if (version === this.#searchVersion) {
                 this._loading = false;
@@ -838,7 +848,9 @@ export default class MultiSelect extends LitElement {
         this.#focusInput();
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
+        const label = this.label || "Choose options";
         const activeId =
             this._activeIndex >= 0
                 ? this.#optionDomId(String(this._activeIndex))
@@ -876,6 +888,7 @@ export default class MultiSelect extends LitElement {
                     part="input"
                     type="text"
                     role="combobox"
+                    aria-label=${label}
                     aria-controls=${this.#listboxId}
                     aria-expanded=${this._open ? "true" : "false"}
                     aria-autocomplete="list"
@@ -901,6 +914,7 @@ export default class MultiSelect extends LitElement {
                 popover="auto"
                 ?hidden=${!this._open}
                 role="listbox"
+                aria-label=${label}
                 @toggle=${(/** @type {ToggleEvent} */ event) => {
                     if (event.newState === "closed" && this._open) {
                         this._open = false;
@@ -914,9 +928,13 @@ export default class MultiSelect extends LitElement {
                         : nothing
                 }
                 ${
-                    !this._loading && this._suggestions.length === 0
-                        ? html`<div class="status">No matches</div>`
-                        : nothing
+                    this._searchFailed
+                        ? html`<div class="status" role="status">
+                              Search failed. Edit the query to retry.
+                          </div>`
+                        : !this._loading && this._suggestions.length === 0
+                          ? html`<div class="status">No matches</div>`
+                          : nothing
                 }
                 ${this._suggestions.map(
                     (suggestion, index) =>

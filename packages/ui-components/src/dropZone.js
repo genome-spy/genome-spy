@@ -85,6 +85,7 @@ export default class UploadDropZone extends LitElement {
         `,
     ];
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         return html`
             <div

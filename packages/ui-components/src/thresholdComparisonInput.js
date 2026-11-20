@@ -62,6 +62,7 @@ export default class ThresholdComparisonInput extends LitElement {
         operator: { type: String },
         operand: { type: Number },
         autofocus: { type: Boolean, reflect: true },
+        label: { type: String, attribute: "aria-label" },
         placeholder: { type: String },
     };
 
@@ -93,6 +94,8 @@ export default class ThresholdComparisonInput extends LitElement {
         this.operand = undefined;
         /** Mark this control as an autofocus target for the containing dialog. */
         this.autofocus = false;
+        /** Accessible name for the numeric threshold field. */
+        this.label = "Threshold value";
         /** Prompt in the empty numeric field. */
         this.placeholder = "... or enter a numeric value here";
     }
@@ -153,6 +156,7 @@ export default class ThresholdComparisonInput extends LitElement {
         input?.focus(options);
     }
 
+    /** @returns {import("lit").HTMLTemplateResult} */
     render() {
         const numericValues = this.#numericValues;
 
@@ -192,6 +196,7 @@ export default class ThresholdComparisonInput extends LitElement {
                 <input
                     type="number"
                     part="input"
+                    aria-label=${this.label || "Threshold value"}
                     placeholder=${this.placeholder}
                     .value=${
                         isFiniteNumber(this.operand) ? String(this.operand) : ""
