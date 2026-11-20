@@ -13,44 +13,42 @@ const successfulRun = {
 
 afterEach(() => vi.unstubAllGlobals());
 
-/** @param {Record<string, unknown>[][]} results */
-function stubRuns(...results) {
-    const fetch = vi.fn();
-    for (const runs of results) {
-        fetch.mockResolvedValueOnce(
+/** @param {Record<string, unknown>[]} runs */
+function stubRuns(runs) {
+    const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(
             new globalThis.Response(JSON.stringify({ workflow_runs: runs }))
         );
-    }
     vi.stubGlobal("fetch", fetch);
     return fetch;
 }
 
 describe("release CI prerequisite", () => {
-    test("requires both workflow runs for the exact master-push commit", async () => {
-        const fetch = stubRuns([successfulRun], [successfulRun]);
+    test("requires the consolidated CI run for the exact master-push commit", async () => {
+        const fetch = stubRuns([successfulRun]);
 
         await verifyReleaseCi(repository, sha, "test-token");
 
-        const urls = fetch.mock.calls.map(([url]) => new globalThis.URL(url));
-        expect(urls.map((url) => url.pathname.split("/").at(-2))).toEqual([
-            "node.js.yml",
-            "changesets.yml",
-        ]);
-        for (const url of urls) {
-            expect(Object.fromEntries(url.searchParams)).toMatchObject({
-                head_sha: sha,
-                branch: "master",
-                event: "push",
-            });
-        }
+        expect(fetch).toHaveBeenCalledTimes(1);
+        const url = new globalThis.URL(fetch.mock.calls[0][0]);
+        expect(url.pathname).toBe(
+            `/repos/${repository}/actions/workflows/node.js.yml/runs`
+        );
+        expect(Object.fromEntries(url.searchParams)).toEqual({
+            head_sha: sha,
+            branch: "master",
+            event: "push",
+            per_page: "1",
+        });
     });
 
-    test("rejects a missing second workflow", async () => {
-        stubRuns([successfulRun], []);
+    test("rejects a missing CI run", async () => {
+        stubRuns([]);
 
         await expect(
             verifyReleaseCi(repository, sha, "test-token")
-        ).rejects.toThrow("changesets.yml");
+        ).rejects.toThrow("Publication requires successful node.js.yml");
     });
 
     test.each([

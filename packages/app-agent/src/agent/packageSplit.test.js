@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
+import process from "node:process";
 import { readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -27,24 +28,34 @@ vi.spyOn(customElements, "define").mockImplementation(
 );
 
 beforeAll(() => {
-    // Build the bundled JS entry points so the smoke test imports dist files.
+    if (process.env.GENOMESPY_TEST_PREBUILT_BUNDLES === "1") {
+        return;
+    }
+
+    // Build the bundles when the smoke test runs on its own.
     const viteBin = resolve(repoRoot, "node_modules/vite/bin/vite.js");
+    /** @type {import("node:child_process").ExecFileSyncOptions} */
+    const buildOptions = {
+        // Vitest sets NODE_ENV=test, which would enable Vite's dev-only code.
+        env: { ...process.env, NODE_ENV: "production" },
+        stdio: ["ignore", "ignore", "inherit"],
+    };
 
     execFileSync(process.execPath, [viteBin, "build"], {
         cwd: resolve(repoRoot, "packages/app"),
-        stdio: ["ignore", "ignore", "inherit"],
+        ...buildOptions,
     });
     execFileSync(
         process.execPath,
         [viteBin, "build", "--config", "vite.agent-subpaths.config.js"],
         {
             cwd: resolve(repoRoot, "packages/app"),
-            stdio: ["ignore", "ignore", "inherit"],
+            ...buildOptions,
         }
     );
     execFileSync(process.execPath, [viteBin, "build"], {
         cwd: resolve(repoRoot, "packages/app-agent"),
-        stdio: ["ignore", "ignore", "inherit"],
+        ...buildOptions,
     });
 });
 
@@ -140,11 +151,13 @@ describe("bundled package split", () => {
         const app = plugin.install.mock.calls[0][0];
         expect(app.getAgentApi).toBeTypeOf("function");
         expect(app.ui.registerToolbarButton).toHaveBeenCalledTimes(1);
-        expect(app.ui.registerToolbarMenuItem).toHaveBeenCalledTimes(3);
+        expect(app.ui.registerToolbarMenuItem).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ label: "Clear chat history" })
+        );
 
         handle.finalize();
 
-        expect(disposeUi).toHaveBeenCalledTimes(4);
+        expect(disposeUi).toHaveBeenCalledTimes(2);
         expect(launchSpy).toHaveBeenCalledTimes(1);
         expect(destroySpy).toHaveBeenCalledTimes(1);
     });

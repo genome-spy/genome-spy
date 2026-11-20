@@ -27,9 +27,16 @@ function run(command, args, { print = true } = {}) {
     return result.stdout;
 }
 
-run("npm", ["run", "test:tsc"]);
+const staticChecksDone =
+    process.env.GENOMESPY_WEBGPU_STATIC_CHECKS_DONE === "1";
+if (staticChecksDone) {
+    // The CI build has already checked types and linted src/.
+    run("npm", ["run", "lint", "--", "--ignore-pattern", "src/**"]);
+} else {
+    run("npm", ["run", "test:tsc"]);
+    run("npm", ["run", "lint"]);
+}
 run("npm", ["run", "test:bundle"]);
-run("npm", ["run", "lint"]);
 
 const packJson = run(
     "npm",
