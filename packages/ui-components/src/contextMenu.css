@@ -40,6 +40,7 @@
     }
 
     > li + li,
+    .menu-group > ul > li + li,
     > ul > li + li {
         margin-block-start: var(--gs-menu-item-gap, 0);
     }
@@ -53,32 +54,28 @@
         &.active > :is(a:first-child, .submenu-item) {
             background-color: var(--gs-selected-background, #e8e8e8);
         }
-        > :is(a:first-child, label, .submenu-item):hover,
-        > :is(button.choice-item, button.submenu-item):hover {
+        > :is(a:first-child, label, .choice-item, .submenu-item):hover:not(
+                [aria-disabled="true"]
+            ) {
             background-color: var(--gs-hover-background, #e0e0e0);
         }
 
-        > :is(
-            button[role="menuitem"],
-            button.choice-item,
-            button.submenu-item
-        ) {
-            border-radius: var(--gs-menu-item-radius, 0);
-        }
-
-        > :is(button.choice-item, button.submenu-item):hover {
+        > :is(.choice-item, .submenu-item):hover:not([aria-disabled="true"]) {
             color: var(--gs-menu-hover-text, inherit);
         }
 
-        > button[role="menuitem"] {
+        > :is(button, a)[role^="menuitem"] {
+            box-sizing: border-box;
             width: 100%;
             border: 0;
+            border-radius: var(--gs-menu-item-radius, 0);
             padding-block: var(--gs-menu-item-padding-block, 0);
             background: transparent;
             color: inherit;
             font: inherit;
             line-height: inherit;
             text-align: left;
+            text-decoration: none;
             cursor: default;
 
             &[aria-disabled="true"] {
@@ -98,7 +95,8 @@
         }
 
         > span.disabled-item,
-        > a:first-child {
+        > a:first-child:not([role="menuitem"]),
+        > a.disabled-item {
             display: block;
 
             svg:first-child {
@@ -111,6 +109,10 @@
             width: 1em;
             margin-right: 0.2em;
         }
+    }
+
+    .menu-item-row {
+        padding-inline: var(--gs-menu-item-inset, 0);
     }
 
     .context {
@@ -132,13 +134,42 @@
 
     .menu-header,
     li > :is(span.disabled-item, a:first-child, .submenu-item, label),
-    li > button[role="menuitem"] {
+    li > button[role^="menuitem"] {
         padding-inline: var(--gs-menu-item-padding-inline, 15px);
     }
 
     .menu-header {
         font-size: 12px;
-        color: #666;
+        color: var(--gs-muted-text, #666);
+    }
+
+    .menu-group {
+        margin-block: 5px;
+        padding-block: 4px;
+        border-block: 1px solid var(--gs-divider-color, #e0e0e0);
+
+        > .menu-header {
+            margin-inline: var(--gs-menu-item-inset, 0);
+        }
+
+        > ul {
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    .menu-item-leading {
+        display: inline-block;
+        width: 1em;
+        margin-inline-end: 0.2em;
+
+        > svg {
+            width: 1em;
+        }
+    }
+
+    .menu-check {
+        color: var(--gs-focus-color, #2459a6);
     }
 
     li {
@@ -190,7 +221,7 @@
 
         position: absolute;
         top: var(--gs-menu-item-padding-block, 0);
-        right: 7.5px;
+        inset-inline-end: calc(7.5px + var(--gs-menu-item-inset, 0px));
         width: 22px;
         height: 22px;
 
@@ -246,7 +277,9 @@
 }
 
 .gs-context-menu {
+    box-sizing: border-box;
     position: fixed;
+    max-width: calc(100vw - 8px);
     z-index: 100;
 }
 
@@ -265,6 +298,11 @@
         font: inherit;
         line-height: inherit;
         cursor: pointer;
+
+        &:disabled {
+            color: var(--gs-disabled-text, #999);
+            cursor: default;
+        }
 
         &:focus-visible {
             outline: 2px solid var(--gs-focus-color, #2459a6);
@@ -318,6 +356,7 @@
     .submenu-item {
         width: 100%;
         min-height: 22px;
+        border-radius: var(--gs-menu-item-radius, 0);
         padding-block: var(--gs-menu-item-padding-block, 0);
         padding-inline: var(--gs-menu-item-padding-inline, 15px);
         text-align: left;

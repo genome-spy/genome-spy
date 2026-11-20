@@ -2,6 +2,7 @@ import { html } from "lit";
 import { ref } from "lit/directives/ref.js";
 import {
     faArrowDownWideShort,
+    faBug,
     faDownload,
     faEllipsisV,
     faFileCode,
@@ -342,6 +343,112 @@ export const SequenceDesigner = {
                 <summary>Sequence Designer theme CSS</summary>
                 <pre><code>${sequenceDesignerMenuCss.trim()}</code></pre>
             </details>
+        `;
+    },
+};
+
+export const Toolbar = {
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    "Combine checkboxes, grouped radio actions, and native links in a command menu. " +
+                    "Supply the checked state when building the menu. With light dismissal, an outside click can activate the control it lands on.",
+            },
+        },
+    },
+    render() {
+        let inspector = false;
+        let renderer = "Canvas";
+        const status = () => renderer + (inspector ? " · Inspector open" : "");
+        /** @type {HTMLElement} */
+        let mount;
+        /** @type {ReturnType<typeof createMenuController>} */
+        let menu;
+
+        const setMount = (/** @type {HTMLElement | undefined} */ element) => {
+            if (element) {
+                mount = element;
+                menu = createMenuController({ mount, lightDismiss: true });
+            } else {
+                menu?.dismissDropdownMenu();
+            }
+        };
+
+        /** @param {MouseEvent} event */
+        const toggleMenu = (event) => {
+            const trigger = /** @type {HTMLButtonElement} */ (
+                event.currentTarget
+            );
+            if (menu.isDropdownOpenFor(trigger)) {
+                menu.dismissDropdownMenu();
+                return;
+            }
+            /** @type {import("@genome-spy/ui-components/contextMenu").MenuItem[]} */
+            const renderers = ["WebGL", "Canvas"].map((label) => ({
+                type: "radio",
+                label,
+                checked: renderer === label,
+                callback: () => {
+                    renderer = label;
+                    mount.querySelector("output").value = status();
+                },
+            }));
+
+            menu.dropdownMenu(
+                {
+                    label: "More",
+                    mode: "command",
+                    items: [
+                        {
+                            label: "Inspector",
+                            type: "checkbox",
+                            icon: faBug,
+                            checked: inspector,
+                            callback: () => {
+                                inspector = !inspector;
+                                mount.querySelector("output").value = status();
+                            },
+                        },
+                        { label: "Renderer", type: "group", items: renderers },
+                        {
+                            label: "Documentation",
+                            type: "link",
+                            href: "https://genomespy.app/docs/",
+                            target: "_blank",
+                        },
+                    ],
+                },
+                trigger
+            );
+        };
+
+        return html`
+            <div
+                ${ref(setMount)}
+                class="gs-form"
+                style="--gs-menu-background: var(--gs-control-background, white); --gs-menu-border: 1px solid var(--gs-divider-color, #cdd3da); --gs-menu-radius: 4px; --gs-menu-item-padding-block: 0.35rem; --gs-menu-item-inset: 0.3rem; --gs-menu-item-radius: 4px"
+            >
+                <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    @click=${toggleMenu}
+                >
+                    More
+                </button>
+                <button
+                    type="button"
+                    @click=${() => {
+                        inspector = false;
+                        renderer = "Canvas";
+                        mount.querySelector("output").value = status();
+                    }}
+                >
+                    Reset
+                </button>
+                <p><output>${status()}</output></p>
+            </div>
         `;
     },
 };

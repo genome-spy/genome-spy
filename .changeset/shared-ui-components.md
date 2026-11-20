@@ -18,8 +18,9 @@ App and Playground share PNG and SVG export dialogs. Playground offers separate
 Save PNG and Save SVG actions, with PNG background controls and a preview of
 which SVG layers will be rasterized.
 
-App’s context menus and toolbar dropdowns use the shared menu controller and
-stylesheet, which can be imported separately. Themes can customize the menu
+App’s context menus and toolbar dropdowns and Playground’s Export, Renderer, and
+More menus use the shared menu controller and stylesheet. Command menus support
+checked choices, native links, and named groups. Themes can customize the menu
 surface, row spacing, and interaction colors.
 
 Import `@genome-spy/ui-components/form.css` and add `gs-form` to theme native

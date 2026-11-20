@@ -1,25 +1,43 @@
 import { html, nothing, render } from "lit";
-import { computePosition, flip, offset } from "@floating-ui/dom";
+import {
+    autoUpdate,
+    computePosition,
+    flip,
+    offset,
+    shift,
+} from "@floating-ui/dom";
 import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { renderIcon } from "./icon.js";
 
 /**
- * @typedef {Object} MenuItem
+ * @typedef {Object} MenuItemContent
  * @prop {import("lit").TemplateResult} [customContent] Content for controls mode.
  * @prop {string | import("lit").TemplateResult} [label]
  * @prop {() => void} [callback] Runs after the popup closes.
  * @prop {string} [shortcut] Shortcut key. Just for displaying.
  * @prop {MenuItem[]} [ellipsisSubmenu] Secondary actions for the same item.
  * @prop {boolean} [current] Current item in a history menu.
- * @prop {"divider" | "header"} [type]
+ * @prop {boolean} [disabled] Disable the row's generated actions.
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  * @prop {MenuItem[] | (() => MenuItem[] | Promise<MenuItem[]>)} [submenu]
- * @prop {string} [key] Stable identity for controls that can be re-rendered.
+ * @prop {string} [key] Unique identity within a popup level for preserving focus on updates.
+ *
+ * Plain actions, headings, and dividers work in both modes. Groups, checkable
+ * actions, and native links belong to command menus.
+ *
+ * @typedef {MenuItemContent & (
+ *     | {type?: "divider" | "header"}
+ *     | {type: "group", label: string, items: MenuItem[], callback?: never, submenu?: never, ellipsisSubmenu?: never}
+ *     | {type: "radio" | "checkbox", checked: boolean, submenu?: never}
+ *     | {type: "link", href: string, target?: string, callback?: never, submenu?: never, ellipsisSubmenu?: never}
+ * )} MenuItem
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
  * @prop {"command" | "controls"} [mode] Anchored popups default to controls.
  * @prop {string} [label] Accessible name for the popup.
+ * @prop {"first" | "last" | "checked"} [initialFocus] Where command menus place focus on opening.
+ * If no item is checked, "checked" focuses the first item.
  * @prop {HTMLElement} [interactionBoundary] Focus can move into this element
  * without dismissing the popup. Place its controls above the backdrop to keep
  * them clickable while the popup is open.
@@ -44,8 +62,14 @@ let nextMenuId = 0;
  * `dismissDropdownMenu()` before removing a custom mount.
  * @param {() => (() => void) | void} [options.onOpen] Called when a root popup
  * opens. Return a cleanup function to run on dismissal, before focus returns.
+ * @param {boolean} [options.lightDismiss] Dismiss on outside pointer presses and
+ * allow the pressed control to receive the interaction.
  */
-export function createMenuController({ mount, onOpen } = {}) {
+export function createMenuController({
+    mount,
+    onOpen,
+    lightDismiss = false,
+} = {}) {
     /** @type {HTMLElement} */
     let backdropElement;
 
@@ -79,6 +103,9 @@ export function createMenuController({ mount, onOpen } = {}) {
     /** @type {(() => void) | void} */
     let onClose;
 
+    /** @type {WeakMap<HTMLElement, () => void>} */
+    const positionCleanups = new WeakMap();
+
     /** @param {() => void} callback */
     function scheduleSubmenu(callback) {
         clearTimeout(submenuTimeout);
@@ -102,9 +129,7 @@ export function createMenuController({ mount, onOpen } = {}) {
 
         if (backdropElement) {
             clearTimeout(submenuTimeout);
-            closeSubmenus(1);
-            levels.length = 0;
-            triggers.length = 0;
+            closeSubmenus(0);
             rootTrigger?.setAttribute("aria-expanded", "false");
             rootTrigger?.removeAttribute("aria-controls");
             rootTrigger = null;
@@ -115,6 +140,11 @@ export function createMenuController({ mount, onOpen } = {}) {
             backdropElement = undefined;
             document.removeEventListener("focusin", handleOutsideFocus);
             document.removeEventListener("keydown", handleDocumentKeydown);
+            document.removeEventListener(
+                "pointerdown",
+                handleOutsidePointer,
+                true
+            );
             lastOpener = undefined;
             currentMode = undefined;
 
@@ -133,14 +163,21 @@ export function createMenuController({ mount, onOpen } = {}) {
 
     /** @param {FocusEvent} event */
     function handleOutsideFocus(event) {
+        const path = event.composedPath();
         if (
             backdropElement &&
-            event.target !== rootTrigger &&
-            !interactionBoundary?.contains(
-                /** @type {Node} */ (event.target)
-            ) &&
-            !popupLayerElement.contains(/** @type {Node} */ (event.target))
+            !path.includes(rootTrigger) &&
+            !path.includes(interactionBoundary) &&
+            !path.includes(popupLayerElement)
         ) {
+            clearMenu();
+        }
+    }
+
+    /** @param {PointerEvent} event */
+    function handleOutsidePointer(event) {
+        const path = event.composedPath();
+        if (!path.includes(rootTrigger) && !path.includes(popupLayerElement)) {
             clearMenu();
         }
     }
@@ -178,22 +215,37 @@ export function createMenuController({ mount, onOpen } = {}) {
         backdropElement = document.createElement("div");
         backdropElement.classList.add("gs-context-menu-backdrop");
 
-        backdropElement.addEventListener("click", clearMenu);
-        backdropElement.addEventListener("contextmenu", clearMenu);
-
-        backdropElement.addEventListener(
-            "mouseup",
-            () => {
-                if (performance.now() - openedAt > 500) {
-                    clearMenu();
-                }
-            },
-            { once: true }
-        );
+        if (lightDismiss) {
+            backdropElement.style.pointerEvents = "none";
+            document.addEventListener(
+                "pointerdown",
+                handleOutsidePointer,
+                true
+            );
+        } else {
+            backdropElement.addEventListener("click", clearMenu);
+            backdropElement.addEventListener("contextmenu", clearMenu);
+            backdropElement.addEventListener(
+                "mouseup",
+                () => {
+                    if (performance.now() - openedAt > 500) {
+                        clearMenu();
+                    }
+                },
+                { once: true }
+            );
+        }
         container.appendChild(backdropElement);
         popupLayerElement = document.createElement("div");
         popupLayerElement.className = "gs-context-menu-popup-layer";
-        popupLayerElement.addEventListener("contextmenu", clearMenu);
+        popupLayerElement.addEventListener("contextmenu", (event) => {
+            if (!(
+                event.target instanceof Element &&
+                event.target.closest("a[href]")
+            )) {
+                clearMenu(event);
+            }
+        });
         container.appendChild(popupLayerElement);
         document.addEventListener("focusin", handleOutsideFocus);
         document.addEventListener("keydown", handleDocumentKeydown);
@@ -207,7 +259,12 @@ export function createMenuController({ mount, onOpen } = {}) {
             return;
         }
         for (let level = fromLevel; level < levels.length; level++) {
-            levels[level]?.remove();
+            const popup = levels[level];
+            if (popup) {
+                positionCleanups.get(popup)?.();
+                positionCleanups.delete(popup);
+                popup.remove();
+            }
             const trigger = triggers[level];
             if (trigger) {
                 submenuRequests.delete(trigger);
@@ -236,34 +293,69 @@ export function createMenuController({ mount, onOpen } = {}) {
         popupLayerElement.append(popup);
 
         const adjust = !/^(top|bottom)/.test(placement);
-        computePosition(opener, popup, {
-            strategy: "fixed",
-            placement,
-            middleware: level === 0 && adjust ? [offset(2), flip()] : [flip()],
-        }).then(({ x, y }) => {
-            if (!popup.isConnected) {
-                return;
-            }
-            const first = /** @type {HTMLElement | null} */ (
-                popup.querySelector("li")
-            );
-            if (first && adjust) {
-                y -= first.getBoundingClientRect().top;
-            }
-            popup.style.left = `${x}px`;
-            popup.style.top = `${y}px`;
-        });
+        const middleware =
+            level === 0 && adjust ? [offset(2), flip()] : [flip()];
+        if (!adjust) {
+            middleware.push(shift({ padding: 4 }));
+        }
+        const update = () => {
+            void computePosition(opener, popup, {
+                strategy: "fixed",
+                placement,
+                middleware,
+            }).then(({ x, y }) => {
+                if (!popup.isConnected) {
+                    return;
+                }
+                const first = popup.querySelector("li");
+                if (first && adjust) {
+                    y -=
+                        first.getBoundingClientRect().top -
+                        popup.getBoundingClientRect().top +
+                        popup.scrollTop;
+                }
+                popup.style.left = `${x}px`;
+                popup.style.top = `${y}px`;
+            });
+        };
+        if (opener instanceof HTMLElement) {
+            positionCleanups.set(popup, autoUpdate(opener, popup, update));
+        } else {
+            update();
+        }
+    }
+
+    /** @param {HTMLElement} menu */
+    function commandItems(menu) {
+        return Array.from(
+            menu.querySelectorAll(
+                "[role='menuitem'], [role='menuitemradio'], [role='menuitemcheckbox']"
+            )
+        );
+    }
+
+    /** @param {Element} item */
+    function commandLabel(item) {
+        return (
+            item.getAttribute("aria-label") ??
+            item.querySelector(".menu-item-label")?.textContent?.trim()
+        );
     }
 
     /**
      * @param {HTMLElement} menu
-     * @param {"first" | "last"} [end]
+     * @param {MenuOptions["initialFocus"]} [initialFocus]
      */
-    function focusCommandItem(menu, end = "first") {
-        const items = Array.from(
-            menu.querySelectorAll(":scope > li > [role='menuitem']")
-        );
-        const item = end === "first" ? items[0] : items.at(-1);
+    function focusCommandItem(menu, initialFocus = "first") {
+        const items = commandItems(menu);
+        const item =
+            initialFocus === "last"
+                ? items.at(-1)
+                : initialFocus === "checked"
+                  ? (items.find(
+                        (item) => item.getAttribute("aria-checked") === "true"
+                    ) ?? items[0])
+                  : items[0];
         if (item instanceof HTMLElement) {
             item.focus();
         } else {
@@ -274,6 +366,7 @@ export function createMenuController({ mount, onOpen } = {}) {
     /**
      * @param {MenuItem} item
      * @param {number} level
+     * @returns {import("lit").HTMLTemplateResult}
      */
     function commandItemToTemplate(item, level) {
         if (item.type === "divider") {
@@ -294,14 +387,72 @@ export function createMenuController({ mount, onOpen } = {}) {
             </li>`;
         }
 
+        if (item.type === "group") {
+            if (typeof item.label !== "string" || !Array.isArray(item.items)) {
+                throw new TypeError(
+                    "A menu group requires a text label and an items array."
+                );
+            }
+            return html`
+                <li role="none" class="menu-group">
+                    <div class="menu-header" aria-hidden="true">
+                        ${item.label}
+                    </div>
+                    <ul role="group" aria-label=${item.label}>
+                        ${item.items.map((child) => commandItemToTemplate(child, level))}
+                    </ul>
+                </li>
+            `;
+        }
+
         const label = item.label || "-";
         const submenu = Boolean(item.submenu);
-        const disabled = !submenu && !item.callback;
+        const checkable = item.type === "radio" || item.type === "checkbox";
+        const leading =
+            checkable && item.checked
+                ? html`<span class="menu-check">✓</span>`
+                : item.icon
+                  ? renderIcon(item.icon)
+                  : nothing;
+        const content = html`
+            <span>
+                ${
+                    checkable || item.icon
+                        ? html`<span
+                              class="menu-item-leading"
+                              aria-hidden="true"
+                              >${leading}</span
+                          >`
+                        : nothing
+                }
+                <span class="menu-item-label">${label}</span>
+            </span>
+        `;
+        if (item.type === "link") {
+            return html`
+                <li role="none" class="menu-item-row">
+                    <a
+                        class=${item.disabled ? "disabled-item" : "choice-item"}
+                        role="menuitem"
+                        tabindex="-1"
+                        data-menu-key=${item.key ?? nothing}
+                        href=${item.disabled ? nothing : item.href}
+                        target=${item.target ?? nothing}
+                        rel=${item.target === "_blank" ? "noopener" : nothing}
+                        aria-disabled=${item.disabled ? "true" : nothing}
+                        @click=${dismissAfterLinkActivation}
+                        @auxclick=${dismissAfterLinkActivation}
+                        >${content}</a
+                    >
+                </li>
+            `;
+        }
+        const disabled = item.disabled || (!submenu && !item.callback);
         return html`
-            <li role="none">
+            <li role="none" class="menu-item-row">
                 <button
                     type="button"
-                    role="menuitem"
+                    role=${checkable ? "menuitem" + item.type : "menuitem"}
                     class=${
                         submenu
                             ? "submenu-item"
@@ -310,25 +461,25 @@ export function createMenuController({ mount, onOpen } = {}) {
                               : "choice-item"
                     }
                     tabindex="-1"
+                    data-menu-key=${item.key ?? nothing}
                     aria-haspopup=${submenu ? "menu" : nothing}
                     aria-expanded=${submenu ? "false" : nothing}
                     aria-disabled=${disabled ? "true" : nothing}
+                    aria-checked=${checkable ? String(!!item.checked) : nothing}
                     aria-current=${item.current ? "step" : nothing}
                     @mouseenter=${
-                        submenu
+                        submenu && !disabled
                             ? (/** @type {MouseEvent} */ event) => {
                                   const trigger = /** @type {HTMLElement} */ (
                                       event.currentTarget
                                   );
                                   scheduleSubmenu(() => {
-                                      if (trigger.isConnected) {
-                                          void openCommandSubmenu(
-                                              item,
-                                              trigger,
-                                              level + 1,
-                                              false
-                                          );
-                                      }
+                                      void openSubmenu(
+                                          item,
+                                          trigger,
+                                          level + 1,
+                                          false
+                                      );
                                   });
                               }
                             : nothing
@@ -353,7 +504,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                             return;
                         }
                         if (submenu) {
-                            void openCommandSubmenu(
+                            void openSubmenu(
                                 item,
                                 /** @type {HTMLElement} */ (
                                     event.currentTarget
@@ -367,18 +518,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                         }
                     }}
                 >
-                    <span>
-                        ${
-                            item.icon
-                                ? html`<span
-                                      class="menu-item-icon"
-                                      aria-hidden="true"
-                                      >${renderIcon(item.icon)}</span
-                                  >`
-                                : nothing
-                        }
-                        ${label}
-                    </span>
+                    ${content}
                     ${
                         item.shortcut
                             ? html`<span class="kbd-shortcut" aria-hidden="true"
@@ -388,7 +528,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                     }
                 </button>
                 ${
-                    item.ellipsisSubmenu
+                    item.ellipsisSubmenu && !item.disabled
                         ? html`<button
                               type="button"
                               role="menuitem"
@@ -398,7 +538,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                               aria-haspopup="menu"
                               aria-expanded="false"
                               @click=${(/** @type {MouseEvent} */ event) => {
-                                  void openCommandSubmenu(
+                                  void openSubmenu(
                                       {
                                           label: `Actions for ${label}`,
                                           submenu: item.ellipsisSubmenu,
@@ -421,13 +561,28 @@ export function createMenuController({ mount, onOpen } = {}) {
         `;
     }
 
+    /** @param {MouseEvent} event */
+    function dismissAfterLinkActivation(event) {
+        const link = /** @type {HTMLAnchorElement} */ (event.currentTarget);
+        if (event.button > 1 || !link.hasAttribute("href")) {
+            return;
+        }
+        const layer = popupLayerElement;
+        // Let the anchor perform its native navigation before removing it.
+        setTimeout(() => {
+            if (popupLayerElement === layer) {
+                clearMenu(undefined, true);
+            }
+        }, 0);
+    }
+
     /**
      * @param {MenuItem[]} items
      * @param {HTMLElement | VirtualElement} opener
      * @param {number} level
      * @param {string} label
      * @param {import("@floating-ui/dom").Placement} placement
-     * @param {boolean} focus
+     * @param {false | MenuOptions["initialFocus"]} focus
      */
     function renderCommandLevel(items, opener, level, label, placement, focus) {
         closeSubmenus(level);
@@ -449,7 +604,7 @@ export function createMenuController({ mount, onOpen } = {}) {
         levels[level] = menu;
 
         if (focus) {
-            focusCommandItem(menu);
+            focusCommandItem(menu, focus);
         }
         return menu;
     }
@@ -460,74 +615,100 @@ export function createMenuController({ mount, onOpen } = {}) {
      * @param {number} level
      * @param {boolean} focus
      */
-    async function openCommandSubmenu(item, trigger, level, focus) {
+    async function openSubmenu(item, trigger, level, focus) {
+        if (
+            !trigger.isConnected ||
+            trigger.matches(':disabled, [aria-disabled="true"]')
+        ) {
+            return;
+        }
+
+        const command = currentMode === "command";
+        const focusItem = command ? focusCommandItem : focusControl;
         if (triggers[level] === trigger && levels[level]) {
             if (focus) {
-                focusCommandItem(levels[level]);
+                focusItem(levels[level]);
             }
             return;
         }
 
         const request = Symbol();
         submenuRequests.set(trigger, request);
+        const label = command
+            ? commandLabel(trigger)?.replace(/\s+/g, " ") || "Submenu"
+            : String(item.label || "Settings");
+        const unavailable = [
+            {
+                label: command
+                    ? "Could not open submenu."
+                    : "Could not open settings.",
+            },
+        ];
+
+        /** @param {MenuItem[]} items */
+        const mount = (items) =>
+            command
+                ? renderCommandLevel(
+                      items,
+                      trigger,
+                      level,
+                      label,
+                      "right-start",
+                      focus ? "first" : false
+                  )
+                : renderControlLevel(
+                      items,
+                      trigger,
+                      level,
+                      label,
+                      "right-start",
+                      focus
+                  );
+
         /** @type {MenuItem[] | Promise<MenuItem[]>} */
         let source;
+        /** @type {HTMLElement} */
+        let popup;
         try {
             source =
                 typeof item.submenu === "function"
                     ? item.submenu()
                     : item.submenu;
+            popup = mount(
+                source instanceof Promise ? [{ label: "Loading..." }] : source
+            );
         } catch {
-            source = Promise.reject(new Error("Could not open submenu."));
+            source = unavailable;
+            popup = mount(unavailable);
         }
-        const asyncSource = source instanceof Promise;
-        const menu = renderCommandLevel(
-            asyncSource
-                ? [{ label: "Loading..." }]
-                : /** @type {MenuItem[]} */ (source),
-            trigger,
-            level,
-            trigger.getAttribute("aria-label") ||
-                trigger.firstElementChild?.textContent
-                    ?.replace(/\s+/g, " ")
-                    .trim() ||
-                "Submenu",
-            "right-start",
-            focus
-        );
+
         triggers[level] = trigger;
         trigger.setAttribute("aria-expanded", "true");
-        trigger.setAttribute("aria-controls", menu.id);
+        trigger.setAttribute("aria-controls", popup.id);
         trigger.closest("li")?.classList.add("active");
 
-        if (!asyncSource) {
+        if (!(source instanceof Promise)) {
             return;
         }
 
+        const items = await source.catch(() => unavailable);
+        if (submenuRequests.get(trigger) !== request || !popup.isConnected) {
+            return;
+        }
+
+        /** @param {MenuItem[]} items */
+        const content = (items) =>
+            command
+                ? items.map((child) => commandItemToTemplate(child, level))
+                : controlPanelContent(items, level);
+        const focusWasInside = popup.contains(document.activeElement);
         try {
-            const items = await source;
-            if (submenuRequests.get(trigger) !== request || !menu.isConnected) {
-                return;
-            }
-            const focusWasInside = menu.contains(document.activeElement);
-            render(
-                items.map((child) => commandItemToTemplate(child, level)),
-                menu
-            );
-            if (focusWasInside) {
-                focusCommandItem(menu);
-            }
+            render(content(items), popup);
         } catch {
-            if (submenuRequests.get(trigger) !== request || !menu.isConnected) {
-                return;
-            }
-            render(
-                commandItemToTemplate(
-                    { label: "Could not open submenu." },
-                    level
-                ),
-                menu
-            );
+            render(content(unavailable), popup);
+        }
+        if (focusWasInside) {
+            focusItem(popup);
         }
     }
 
@@ -537,15 +718,12 @@ export function createMenuController({ mount, onOpen } = {}) {
      */
     function handleCommandKeydown(event, level) {
         const menu = levels[level];
-        const items = Array.from(
-            menu.querySelectorAll(":scope > li > [role='menuitem']")
-        );
+        const items = commandItems(menu);
         const index = items.indexOf(document.activeElement);
         const focused = /** @type {HTMLElement | undefined} */ (items[index]);
 
         if (event.key === "Tab") {
-            event.preventDefault();
-            moveFocusOutsideMenu(event.shiftKey);
+            moveFocusOutsideMenu(event);
             return;
         }
         if (
@@ -582,15 +760,25 @@ export function createMenuController({ mount, onOpen } = {}) {
         ) {
             event.preventDefault();
             focused.click();
-        } else if (event.key === "Enter" || event.key === " ") {
+        } else if (
+            event.key === " " ||
+            (event.key === "Enter" && !(focused instanceof HTMLAnchorElement))
+        ) {
             event.preventDefault();
             focused?.click();
         }
     }
 
-    /** @param {boolean} backwards */
-    function moveFocusOutsideMenu(backwards) {
+    /** @param {KeyboardEvent} event */
+    function moveFocusOutsideMenu(event) {
         const anchor = rootTrigger ?? returnFocus;
+        if (anchor?.getRootNode() instanceof ShadowRoot) {
+            // From the shadow trigger, the browser can follow the composed tab order.
+            clearMenu(undefined, true);
+            return;
+        }
+        event.preventDefault();
+        const backwards = event.shiftKey;
         const candidates = Array.from(
             document.querySelectorAll(
                 "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex='0']"
@@ -649,6 +837,11 @@ export function createMenuController({ mount, onOpen } = {}) {
         if (item.type === "header") {
             return html`<li class="menu-header">${item.label || "-"}</li>`;
         }
+        if (item.type !== undefined) {
+            throw new TypeError(
+                `Menu item type "${item.type}" requires command mode.`
+            );
+        }
 
         const submenu = Boolean(item.submenu);
         const disabled = !submenu && !item.callback && !item.customContent;
@@ -668,8 +861,12 @@ export function createMenuController({ mount, onOpen } = {}) {
                   }
                   aria-haspopup="dialog"
                   aria-expanded="false"
+                  ?disabled=${item.disabled}
                   @click=${(/** @type {MouseEvent} */ event) => {
-                      void openControlSubmenu(
+                      if (item.disabled) {
+                          return;
+                      }
+                      void openSubmenu(
                           item,
                           /** @type {HTMLElement} */ (event.currentTarget),
                           level + 1,
@@ -684,7 +881,7 @@ export function createMenuController({ mount, onOpen } = {}) {
         return html`<li
             class=${submenu ? "control-submenu-row" : nothing}
             @mouseenter=${
-                submenu
+                submenu && !item.disabled
                     ? (/** @type {MouseEvent} */ event) => {
                           const trigger = /** @type {HTMLElement} */ (
                               /** @type {HTMLElement} */ (
@@ -692,14 +889,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                               ).querySelector("button[aria-haspopup='dialog']")
                           );
                           scheduleSubmenu(() => {
-                              if (trigger.isConnected) {
-                                  void openControlSubmenu(
-                                      item,
-                                      trigger,
-                                      level + 1,
-                                      false
-                                  );
-                              }
+                              void openSubmenu(item, trigger, level + 1, false);
                           });
                       }
                     : nothing
@@ -724,7 +914,11 @@ export function createMenuController({ mount, onOpen } = {}) {
                             type="button"
                             class="choice-item"
                             data-control-key=${item.key ?? nothing}
+                            ?disabled=${item.disabled}
                             @click=${() => {
+                                if (item.disabled) {
+                                    return;
+                                }
                                 clearMenu(undefined, true);
                                 item.callback();
                             }}
@@ -792,82 +986,6 @@ export function createMenuController({ mount, onOpen } = {}) {
     }
 
     /**
-     * @param {MenuItem} item
-     * @param {HTMLElement} trigger
-     * @param {number} level
-     * @param {boolean} focus
-     */
-    async function openControlSubmenu(item, trigger, level, focus) {
-        if (triggers[level] === trigger && levels[level]) {
-            if (focus) {
-                focusControl(levels[level]);
-            }
-            return;
-        }
-
-        const request = Symbol();
-        submenuRequests.set(trigger, request);
-        /** @type {MenuItem[] | Promise<MenuItem[]>} */
-        let source;
-        try {
-            source =
-                typeof item.submenu === "function"
-                    ? item.submenu()
-                    : item.submenu;
-        } catch {
-            source = Promise.reject(new Error("Could not open settings."));
-        }
-        const asyncSource = source instanceof Promise;
-        const label = String(item.label || "Settings");
-        const panel = renderControlLevel(
-            asyncSource
-                ? [{ label: "Loading..." }]
-                : /** @type {MenuItem[]} */ (source),
-            trigger,
-            level,
-            label,
-            "right-start",
-            focus
-        );
-        triggers[level] = trigger;
-        trigger.setAttribute("aria-expanded", "true");
-        trigger.setAttribute("aria-controls", panel.id);
-        trigger.closest("li")?.classList.add("active");
-
-        if (!asyncSource) {
-            return;
-        }
-        try {
-            const items = await source;
-            if (
-                submenuRequests.get(trigger) !== request ||
-                !panel.isConnected
-            ) {
-                return;
-            }
-            const focusWasInside = panel.contains(document.activeElement);
-            render(controlPanelContent(items, level), panel);
-            if (focusWasInside) {
-                focusControl(panel);
-            }
-        } catch {
-            if (
-                submenuRequests.get(trigger) !== request ||
-                !panel.isConnected
-            ) {
-                return;
-            }
-            render(
-                controlPanelContent(
-                    [{ label: "Could not open settings." }],
-                    level
-                ),
-                panel
-            );
-        }
-    }
-
-    /**
      * @param {KeyboardEvent} event
      * @param {number} level
      */
@@ -913,8 +1031,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                 (event.shiftKey && current === 0) ||
                 (!event.shiftKey && current === focusables.length - 1)
             ) {
-                event.preventDefault();
-                moveFocusOutsideMenu(event.shiftKey);
+                moveFocusOutsideMenu(event);
             }
         }
     }
@@ -946,46 +1063,53 @@ export function createMenuController({ mount, onOpen } = {}) {
                     : document.activeElement instanceof HTMLElement
                       ? document.activeElement
                       : null;
-            prepareMenuLayers();
-            if (mode === "command") {
+            try {
+                prepareMenuLayers();
                 if (openerElement instanceof HTMLElement) {
                     rootTrigger = openerElement;
-                    rootTrigger.setAttribute("aria-haspopup", "menu");
+                    rootTrigger.setAttribute(
+                        "aria-haspopup",
+                        mode === "command" ? "menu" : "dialog"
+                    );
                     rootTrigger.setAttribute("aria-expanded", "true");
                 }
-                const menu = renderCommandLevel(
-                    options.items,
-                    openerElement,
-                    0,
-                    options.label ??
-                        rootTrigger?.getAttribute("aria-label") ??
-                        rootTrigger?.getAttribute("title") ??
-                        rootTrigger?.textContent?.trim() ??
-                        "Context menu",
-                    placement,
-                    true
-                );
-                rootTrigger?.setAttribute("aria-controls", menu.id);
-            } else {
-                if (openerElement instanceof HTMLElement) {
-                    rootTrigger = openerElement;
-                    rootTrigger.setAttribute("aria-haspopup", "dialog");
-                    rootTrigger.setAttribute("aria-expanded", "true");
+                const popup =
+                    mode === "command"
+                        ? renderCommandLevel(
+                              options.items,
+                              openerElement,
+                              0,
+                              options.label ??
+                                  rootTrigger?.getAttribute("aria-label") ??
+                                  rootTrigger?.getAttribute("title") ??
+                                  rootTrigger?.textContent?.trim() ??
+                                  "Context menu",
+                              placement,
+                              options.initialFocus ?? "first"
+                          )
+                        : renderControlLevel(
+                              options.items,
+                              openerElement,
+                              0,
+                              options.label ?? "Settings",
+                              placement,
+                              true
+                          );
+                if (rootTrigger?.getRootNode() === popup.getRootNode()) {
+                    rootTrigger.setAttribute("aria-controls", popup.id);
                 }
-                const panel = renderControlLevel(
-                    options.items,
-                    openerElement,
-                    0,
-                    options.label ?? "Settings",
-                    placement,
-                    true
-                );
-                rootTrigger?.setAttribute("aria-controls", panel.id);
+            } catch (error) {
+                clearMenu(undefined, true);
+                throw error;
             }
         } else {
-            // Update existing menu
+            // Updates can change the availability of a pending hover action.
+            clearTimeout(submenuTimeout);
             interactionBoundary = options.interactionBoundary ?? null;
             const level = 0;
+            if (options.label) {
+                levels[0].setAttribute("aria-label", options.label);
+            }
             if (mode === "command") {
                 const focusedInMenu = levels[0].contains(
                     document.activeElement
@@ -993,9 +1117,9 @@ export function createMenuController({ mount, onOpen } = {}) {
                 const focusedInChild = levels
                     .slice(1)
                     .some((menu) => menu.contains(document.activeElement));
-                const activeLabel = focusedInMenu
-                    ? document.activeElement?.textContent?.trim()
-                    : undefined;
+                const active = focusedInMenu ? document.activeElement : null;
+                const activeKey = active?.getAttribute("data-menu-key");
+                const activeLabel = active ? commandLabel(active) : undefined;
                 closeSubmenus(1);
                 render(
                     options.items.map((item) =>
@@ -1003,16 +1127,17 @@ export function createMenuController({ mount, onOpen } = {}) {
                     ),
                     levels[0]
                 );
-                const replacement = Array.from(
-                    levels[0].querySelectorAll(
-                        ":scope > li > [role='menuitem']"
-                    )
-                ).find((item) => item.textContent?.trim() === activeLabel);
+                const replacement = commandItems(levels[0]).find((item) =>
+                    activeKey !== null && activeKey !== undefined
+                        ? item.getAttribute("data-menu-key") === activeKey
+                        : activeLabel !== undefined &&
+                          commandLabel(item) === activeLabel
+                );
                 if (focusedInMenu || focusedInChild) {
                     if (replacement instanceof HTMLElement) {
                         replacement.focus();
                     } else {
-                        focusCommandItem(levels[0]);
+                        focusCommandItem(levels[0], options.initialFocus);
                     }
                 }
             } else {
@@ -1031,7 +1156,10 @@ export function createMenuController({ mount, onOpen } = {}) {
                             /** @type {HTMLElement} */ (element).dataset
                                 .controlKey === focusedKey
                     );
-                    if (replacement instanceof HTMLElement) {
+                    if (
+                        replacement instanceof HTMLElement &&
+                        !replacement.matches(":disabled")
+                    ) {
                         replacement.focus();
                     } else {
                         focusControl(panel);

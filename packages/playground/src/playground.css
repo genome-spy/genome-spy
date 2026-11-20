@@ -61,6 +61,29 @@ gs-split-panel {
     }
 }
 
+#playground-layout .gs-context-menu {
+    --gs-menu-background: var(--playground-surface);
+    --gs-menu-border: 1px solid var(--playground-border);
+    --gs-menu-radius: var(--playground-radius);
+    --gs-menu-shadow: var(--playground-shadow);
+    --gs-menu-padding: 0.3rem 0;
+    --gs-menu-font-size: 0.85rem;
+    --gs-menu-item-padding-block: 0.4rem;
+    --gs-menu-item-padding-inline: 0.6rem;
+    --gs-menu-item-inset: 0.3rem;
+    --gs-menu-item-radius: var(--playground-radius);
+    --gs-control-text: var(--playground-text);
+    --gs-muted-text: var(--playground-muted);
+    --gs-disabled-text: color-mix(
+        in srgb,
+        var(--playground-text) 55%,
+        var(--playground-surface)
+    );
+    --gs-hover-background: var(--playground-selected);
+    --gs-selected-background: var(--playground-selected);
+    --gs-divider-color: var(--playground-border);
+}
+
 #genome-spy-container,
 #workspace-pane,
 gs-playground-workspace,

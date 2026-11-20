@@ -9,6 +9,11 @@ const { computePosition } = vi.hoisted(() => ({
 
 vi.mock("@floating-ui/dom", () => ({
     computePosition,
+    autoUpdate: (_opener, _menu, update) => {
+        update();
+        return () => {};
+    },
+    shift: () => undefined,
     flip: () => undefined,
     offset: () => undefined,
 }));

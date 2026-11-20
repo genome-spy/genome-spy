@@ -657,38 +657,41 @@ async function updateVisualization(force) {
 }
 
 const toolbarTemplate = () => {
-    /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+    /** @type {import("@genome-spy/ui-components/contextMenu").MenuItem[]} */
     const actions = [
-        { label: "Toggle layout", icon: faColumns, onClick: toggleLayout },
+        { label: "Toggle layout", icon: faColumns, callback: toggleLayout },
         {
             label: "Format code",
             icon: faIndent,
-            onClick: () => void formatWithPrettier(),
+            callback: () => void formatWithPrettier(),
         },
         {
             label: "Inspector",
+            type: "checkbox",
             icon: faBug,
-            onClick: toggleInspector,
+            callback: toggleInspector,
             checked: sidePane === "inspector",
         },
         {
             label: "Docs",
+            type: "link",
             icon: faQuestionCircle,
             href: "https://genomespy.app/docs/",
+            target: "_blank",
         },
     ];
-    /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+    /** @type {import("@genome-spy/ui-components/contextMenu").MenuItem[]} */
     const exportActions = [
         {
             label: "Save PNG",
             icon: faFileImage,
-            onClick: () => void pngExportDialogRef.value.show(),
+            callback: () => void pngExportDialogRef.value.show(),
             disabled: !embedResult,
         },
         {
             label: "Save SVG",
             icon: faFileCode,
-            onClick: () => void svgExportDialogRef.value.show(),
+            callback: () => void svgExportDialogRef.value.show(),
             disabled: !embedResult,
         },
     ];

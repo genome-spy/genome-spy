@@ -163,3 +163,43 @@ container, the Playground toolbar in desktop and compact modes, and both export
 stories. The release package resolves both entry points in a strict TypeScript
 consumer with the published dependencies. App, Playground, and Storybook
 production builds passed.
+
+## Share the Playground toolbar menus
+
+Migrate Export, Renderer, and compact More in a single change. Playground owns
+its toolbar layout, commands, selection state, and palette. The ui-components
+menu controller owns popup rendering, positioning, focus, and dismissal. App
+continues to use the same command and controls APIs.
+
+- Add native links, checked radio and checkbox actions, and named groups to
+  command menus. Use the existing item model and activation path. Match ARIA
+  roles to the action and let the host supply checked state. Expose first, last,
+  or checked initial focus for anchored command menus.
+- Anchor the shared popup to the toolbar's shadow buttons and mount it in
+  Playground's light DOM layout. Use the browser's sequential focus order when
+  leaving a shadow trigger's popup. Keep focus restoration before command
+  callbacks so opening an export dialog still works. Add opt-in pointer light
+  dismissal so switching triggers takes one click and other outside clicks reach
+  their targets. The existing backdrop behavior remains the default.
+- Keep anchored popups aligned and inside the viewport, including at compact
+  sizes. Dismiss when a trigger becomes hidden or the toolbar disconnects. Map
+  existing Playground variables to the shared menu surface and row styles.
+  Remove the local popover rendering, positioning, and navigation code.
+- Verify menu focus and dismissal, renderer selection and grouping, checkable
+  actions, native new-tab links, viewport bounds, and real export downloads.
+  Check existing shared menu examples and App consumers. Document the added menu
+  options and show them together in Storybook.
+
+The W3C [menu pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/) and
+[link example](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/examples/menu-button-links/)
+guide the keyboard and native link semantics.
+
+Verified the complete migration in Chromium, with keyboard, native-link, and
+download flows also passing in Firefox and WebKit. App's command and controls
+menus, tooltip suppression, the four menu stories, and the packed consumer
+passed their checks. The compact group divider reaches the menu's border.
+
+The independent API review added typed command item variants, consistent
+disabled and submenu error behavior, and focus preservation for keyed rows.
+Checks and icons share a leading slot, and the command row inset keeps the focus
+highlight away from the border.

@@ -174,6 +174,24 @@ default to `mode: "controls"`. Pass a Lit template as an item’s `customContent
 to embed form controls. The **Context Menu → Controls** story demonstrates Tab
 navigation and focus return.
 
+For command menus, use `type: "radio"` or `"checkbox"` with `checked` and a
+`callback`. Supply the latest checked state when opening or updating the menu. A
+checkmark takes the place of the icon on checked rows. A `type: "group"` row
+with a text `label` and `items` groups related choices. Use `type: "link"` with
+`href` and an optional `target` for native links. Set `initialFocus` to
+`"first"`, `"last"`, or `"checked"` when opening an anchored command menu. If no
+item is checked, the first item receives focus. **Context Menu → Toolbar**
+demonstrates these options.
+
+Set `disabled: true` to disable the row's generated actions. For custom controls
+in a Lit template, set their disabled state directly. Use a unique `key` on
+items whose labels can change while the menu is open to preserve focus on
+updates.
+
+`createMenuController({ lightDismiss: true })` closes the popup on an outside
+pointer press and allows that press to reach the underlying control. This lets
+users switch toolbar menus with one click.
+
 Call `dropdownMenu()` again with the same anchor and mode to update it in place.
 Pass an `interactionBoundary` for related controls that can receive focus while
 the popup stays open. To make those controls clickable, position them above the
@@ -194,10 +212,11 @@ coordinate the layers with other UI.
 For a compact toolbar menu, set `--gs-menu-border`, `--gs-menu-radius`,
 `--gs-menu-shadow`, `--gs-menu-padding`, and `--gs-menu-font-size` on the mount.
 Use `--gs-menu-item-padding-inline`, `--gs-menu-item-padding-block`,
-`--gs-menu-item-gap`, and `--gs-menu-item-radius` for the rows.
-`--gs-menu-hover-text` and the shared `--gs-disabled-text` set the text colors
-for those states. **Context Menu → Sequence Designer** shows a scoped theme with
-copyable CSS.
+`--gs-menu-item-gap`, and `--gs-menu-item-radius` for the rows. In command
+menus, `--gs-menu-item-inset` adds space between rows and the side borders while
+keeping dividers full width. `--gs-menu-hover-text` and the shared
+`--gs-disabled-text` set the text colors for those states. **Context Menu →
+Sequence Designer** shows a scoped theme with copyable CSS.
 
 ## Job progress
 
