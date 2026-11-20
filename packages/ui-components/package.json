@@ -15,6 +15,10 @@
       "types": "./dist/splitPanel.d.ts",
       "default": "./src/splitPanel.js"
     },
+    "./tabs": {
+      "types": "./dist/tabs.d.ts",
+      "default": "./src/tabs.js"
+    },
     "./filePicker": {
       "types": "./dist/filePicker.d.ts",
       "default": "./src/filePicker.js"
@@ -38,6 +42,10 @@
     "./define/splitPanel": {
       "types": "./dist/define/splitPanel.d.ts",
       "default": "./src/define/splitPanel.js"
+    },
+    "./define/tabs": {
+      "types": "./dist/define/tabs.d.ts",
+      "default": "./src/define/tabs.js"
     },
     "./define/filePicker": {
       "types": "./dist/define/filePicker.d.ts",

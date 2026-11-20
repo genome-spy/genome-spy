@@ -26,6 +26,10 @@ import "@genome-spy/ui-components/define/filePicker";
 Split panel children use unique named slots. Set `orientation="vertical"` to
 stack panes and `reverse` to reverse their display order.
 
+`<gs-tabs>` uses a `.tabs` array of `{ value, label }` entries. Give each panel
+a `slot` matching its tab's value and give the tab list an accessible `label`.
+Import `@genome-spy/ui-components/define/tabs` to register it.
+
 The file picker emits a bubbling, composed `gs-files-chosen` event with a
 `FileList` in `event.detail.files`. It also exposes `openPicker()` for opening
 the picker from a user gesture. Use `define/dropZone` for

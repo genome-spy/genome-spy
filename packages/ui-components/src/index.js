@@ -1,4 +1,5 @@
 export { default as SplitPanel } from "./splitPanel.js";
+export { default as Tabs } from "./tabs.js";
 export { default as FilePicker } from "./filePicker.js";
 export { default as UploadDropZone } from "./dropZone.js";
 export {
