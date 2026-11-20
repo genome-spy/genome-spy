@@ -14,6 +14,10 @@ App and Playground use the shared components, which have flat buttons by
 default. App preserves its beveled buttons in its own theme, including in
 dialogs. App's dialog exports work alongside the new package.
 
+App and Playground share PNG and SVG export dialogs. Playground offers separate
+Save PNG and Save SVG actions, with PNG background controls and a preview of
+which SVG layers will be rasterized.
+
 App’s context menus and toolbar dropdowns use the shared menu controller and
 stylesheet, which can be imported separately. Themes can customize the menu
 surface, row spacing, and interaction colors.

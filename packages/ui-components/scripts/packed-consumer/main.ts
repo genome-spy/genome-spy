@@ -15,6 +15,20 @@ import "@genome-spy/ui-components/define/customSelect";
 import "@genome-spy/ui-components/define/thresholdComparisonInput";
 import "@genome-spy/ui-components/define/dataGrid";
 import "@genome-spy/ui-components/define/dropZone";
+import "@genome-spy/ui-components/define/imageExportDialog";
+import {
+    PngExportDialog,
+    SvgExportDialog,
+} from "@genome-spy/ui-components/imageExportDialog";
+
+if (
+    customElements.get("gs-save-image-dialog") !== PngExportDialog ||
+    customElements.get("gs-save-svg-dialog") !== SvgExportDialog
+) {
+    throw new Error(
+        "The image export dialog entry points must share the same elements."
+    );
+}
 
 class FixtureDialog extends BaseDialog {
     renderButtons() {

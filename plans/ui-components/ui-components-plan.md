@@ -130,3 +130,36 @@ selection, checkbox filtering, threshold composition, grid scrolling after
 reconnect, and the validated dialog wizard. The packed snapshot resolved in an
 isolated TypeScript consumer. A single component registration retained its
 required dependencies, and package class imports registered no elements.
+
+## Share image export dialogs
+
+App currently owns separate PNG and SVG forms. Playground embeds a simpler
+combined dialog. Move App's two forms into the shared package and give
+Playground the same **Save PNG** and **Save SVG** commands in its desktop Export
+menu and its compact More menu.
+
+- Keep rendering and layer analysis in Core. The shared UI receives the size
+  getter and `imageExport` methods from a small structurally typed source.
+  Playground already has this shape on its embed result. App binds its current
+  Core instance to the same shape.
+- Expose the classes through an opt-in subpath and register the existing App
+  tags through a scoped definition entry. App continues mounting a fresh dialog
+  under its theme. Playground keeps one dialog for each format to retain the
+  chosen settings and supplies the current embed when it opens.
+- Retain App's PNG scale and background controls and its even-size policy. Let
+  Playground start with the visualization background and use its actual canvas
+  size. Keep SVG layer analysis, density options, and preview checks. Guard
+  analysis results and downloads when a session closes or its source changes.
+  Observe the host visualization for size changes during SVG export setup and
+  remove those listeners when the dialog closes.
+- Keep the existing native dialog focus and download behavior. Bound the export
+  dialogs to the viewport so the full forms work on compact layouts. Move the
+  tests for the shared controls with their implementation and cover the two
+  Playground commands, settings retained on reopen, and real PNG and SVG
+  downloads. Build both hosts and the package and show both forms in Storybook.
+
+Implementation verified in Chromium with the App embedded in a clipped
+container, the Playground toolbar in desktop and compact modes, and both export
+stories. The release package resolves both entry points in a strict TypeScript
+consumer with the published dependencies. App, Playground, and Storybook
+production builds passed.

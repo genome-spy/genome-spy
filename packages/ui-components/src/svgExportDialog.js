@@ -1,34 +1,35 @@
 import { css, html } from "lit";
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faDownload, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 
-import BaseDialog from "../generic/baseDialog.js";
-import { showMessageDialog } from "../generic/messageDialog.js";
-import { createInputListener } from "./saveImageDialog.js";
+import ImageExportDialog, { inputListener } from "./imageExportSupport.js";
+import { renderIcon } from "./icon.js";
 
-export default class SaveSvgDialog extends BaseDialog {
+/**
+ * SVG export settings with controls for rasterizing dense marks and a live preview of affected layers.
+ *
+ * @customElement gs-save-svg-dialog
+ * @extends {ImageExportDialog<import("./imageExportSupport.js").SvgExportSource>}
+ */
+export default class SvgExportDialog extends ImageExportDialog {
     static properties = {
         ...super.properties,
-        genomeSpy: { type: Object },
-        logicalWidth: { type: Number },
-        logicalHeight: { type: Number },
-        rasterizeDenseMarks: { type: Boolean },
-        maxVectorInstances: { type: Number },
-        previewMaxVectorInstances: { state: true },
-        rasterPixelRatio: { type: Number },
-        saving: { type: Boolean },
-        analyzing: { type: Boolean },
-        analysisError: { type: String },
-        layers: { attribute: false },
+        resizeTarget: { attribute: false },
+        _dimensions: { state: true },
+        rasterizeDenseMarks: {
+            type: Boolean,
+            attribute: "rasterize-dense-marks",
+        },
+        maxVectorInstances: { type: Number, attribute: "max-vector-instances" },
+        _previewMaxVectorInstances: { state: true },
+        rasterPixelRatio: { type: Number, attribute: "raster-scale-factor" },
+        _analyzing: { state: true },
+        _analysisError: { state: true },
+        _layers: { state: true },
     };
 
     static styles = [
         ...super.styles,
         css`
-            dialog {
-                min-width: 500px;
-            }
-
             .checkbox-row {
                 display: flex;
                 align-items: center;
@@ -41,7 +42,7 @@ export default class SaveSvgDialog extends BaseDialog {
                 padding: 0.6em 0.75em;
                 border: var(--form-control-border);
                 border-radius: var(--form-control-border-radius);
-                background: #f8f8f8;
+                background: var(--gs-control-background, #f8f8f8);
             }
 
             .raster-preview ul {
@@ -68,7 +69,7 @@ export default class SaveSvgDialog extends BaseDialog {
 
             .layer-details {
                 flex: none;
-                color: #606060;
+                color: var(--gs-muted-text, #606060);
                 font-variant-numeric: tabular-nums;
             }
         `,
@@ -77,22 +78,27 @@ export default class SaveSvgDialog extends BaseDialog {
     constructor() {
         super();
 
-        /** @type {import("@genome-spy/core/genomeSpy.js").default} */
-        this.genomeSpy = null;
+        /** @type {Element | undefined} Optional element to observe for changes to canvas dimensions. */
+        this.resizeTarget = undefined;
 
         this.dialogTitle = "Save Visualization as SVG";
-        this.logicalWidth = 0;
-        this.logicalHeight = 0;
-        this.rasterizeDenseMarks = true;
-        this.maxVectorInstances = 5_000;
-        this.previewMaxVectorInstances = 5_000;
-        this.rasterPixelRatio = 2;
-        this.saving = false;
-        this.analyzing = false;
-        this.analysisError = "";
+        this._dimensions = { logicalWidth: 0, logicalHeight: 0 };
 
-        /** @type {import("@genome-spy/core/types/embedApi.js").SvgExportLayerInfo[]} */
-        this.layers = [];
+        /** Allow dense layers to be embedded as raster images. */
+        this.rasterizeDenseMarks = true;
+
+        /** Rasterize visible mark layers with more instances than this threshold. */
+        this.maxVectorInstances = 5_000;
+        this._previewMaxVectorInstances = this.maxVectorInstances;
+
+        /** Physical pixels per logical pixel in embedded raster layers. */
+        this.rasterPixelRatio = 2;
+        this.filename = "genomespy-visualization.svg";
+        this._analyzing = false;
+        this._analysisError = "";
+
+        /** @type {import("./imageExportSupport.js").SvgExportLayer[]} */
+        this._layers = [];
     }
 
     /** @type {number | undefined} */
@@ -104,53 +110,57 @@ export default class SaveSvgDialog extends BaseDialog {
     /** @type {ResizeObserver | undefined} */
     #resizeObserver;
 
-    connectedCallback() {
-        super.connectedCallback();
+    #analysisRequest = 0;
 
+    onExportOpen() {
+        this._previewMaxVectorInstances = this.maxVectorInstances;
+        this._layers = [];
         this.#updateCanvasSize();
         void this.#analyzeLayers();
 
-        if (typeof ResizeObserver === "function") {
+        if (this.resizeTarget && typeof ResizeObserver === "function") {
             this.#resizeObserver = new ResizeObserver(() => {
-                if (this.#updateCanvasSize()) {
+                if (
+                    this.isCurrentSession(this.session) &&
+                    this.#updateCanvasSize()
+                ) {
                     this.#scheduleLayerAnalysis();
                 }
             });
-            this.#resizeObserver.observe(this.genomeSpy.container);
+            this.#resizeObserver.observe(this.resizeTarget);
         }
     }
 
-    disconnectedCallback() {
-        super.disconnectedCallback();
-
+    resetSession() {
+        super.resetSession();
+        this.#analysisRequest++;
         this.#resizeObserver?.disconnect();
         this.#resizeObserver = undefined;
-
-        if (this.#previewThresholdTimeout !== undefined) {
-            window.clearTimeout(this.#previewThresholdTimeout);
-            this.#previewThresholdTimeout = undefined;
-        }
-        if (this.#resizeAnalysisTimeout !== undefined) {
-            window.clearTimeout(this.#resizeAnalysisTimeout);
-            this.#resizeAnalysisTimeout = undefined;
-        }
+        window.clearTimeout(this.#previewThresholdTimeout);
+        window.clearTimeout(this.#resizeAnalysisTimeout);
+        this.#previewThresholdTimeout = undefined;
+        this.#resizeAnalysisTimeout = undefined;
+        this._analyzing = false;
     }
 
     /** @returns {boolean} Whether the dimensions changed. */
     #updateCanvasSize() {
-        const { width, height } = this.genomeSpy.getLogicalCanvasSize();
+        const { width, height } = this.session.source.getLogicalCanvasSize();
         const logicalWidth = Math.round(width);
         const logicalHeight = Math.round(height);
         const changed =
-            logicalWidth != this.logicalWidth ||
-            logicalHeight != this.logicalHeight;
+            logicalWidth !== this._dimensions.logicalWidth ||
+            logicalHeight !== this._dimensions.logicalHeight;
 
-        this.logicalWidth = logicalWidth;
-        this.logicalHeight = logicalHeight;
+        if (changed) {
+            this._dimensions = { logicalWidth, logicalHeight };
+        }
         return changed;
     }
 
     #scheduleLayerAnalysis() {
+        this.#analysisRequest++;
+        this._analyzing = true;
         if (this.#resizeAnalysisTimeout !== undefined) {
             window.clearTimeout(this.#resizeAnalysisTimeout);
         }
@@ -160,33 +170,36 @@ export default class SaveSvgDialog extends BaseDialog {
         }, 500);
     }
 
-    /** @returns {import("@genome-spy/core/types/embedApi.js").SvgExportOptions} */
+    /** @returns {import("./imageExportSupport.js").SvgExportOptions} */
     getExportOptions() {
-        return this.rasterizeDenseMarks
-            ? {
-                  rasterization: {
-                      maxVectorInstances: this.maxVectorInstances,
-                      pixelRatio: this.rasterPixelRatio,
-                  },
-              }
-            : {};
+        return {
+            ...this._dimensions,
+            ...(this.rasterizeDenseMarks && {
+                rasterization: {
+                    maxVectorInstances: this.maxVectorInstances,
+                    pixelRatio: this.rasterPixelRatio,
+                },
+            }),
+        };
     }
 
-    /** @returns {import("@genome-spy/core/types/embedApi.js").SvgExportLayerInfo[]} */
+    /** @returns {import("./imageExportSupport.js").SvgExportLayer[]} */
     getRasterizedLayers() {
         return this.rasterizeDenseMarks &&
-            Number.isFinite(this.previewMaxVectorInstances)
-            ? this.layers.filter(
+            Number.isFinite(this._previewMaxVectorInstances)
+            ? this._layers.filter(
                   (layer) =>
-                      layer.instanceCount > this.previewMaxVectorInstances
+                      layer.instanceCount > this._previewMaxVectorInstances
               )
             : [];
     }
 
     renderBody() {
+        const { logicalWidth, logicalHeight } = this._dimensions;
+
         return html`
             <div class="gs-alert info">
-                ${icon(faInfoCircle).node[0]}
+                ${renderIcon(faInfoCircle)}
                 <span>
                     SVG export keeps the image as editable vector graphics.
                     Dense layers can be embedded as raster images to keep the
@@ -194,17 +207,19 @@ export default class SaveSvgDialog extends BaseDialog {
                 </span>
             </div>
 
+            ${this.renderExportError()}
+
             <div class="gs-form-group">
                 <label for="svgDimensions">Visualization dimensions</label>
                 <input
                     type="text"
                     id="svgDimensions"
-                    .value=${`${this.logicalWidth} x ${this.logicalHeight}`}
+                    .value=${`${logicalWidth} x ${logicalHeight}`}
                     disabled
                 />
                 <small
                     >Dimensions are based on the current canvas size. Resize the
-                    window to change them.</small
+                    visualization area to change them.</small
                 >
             </div>
 
@@ -214,8 +229,8 @@ export default class SaveSvgDialog extends BaseDialog {
                         type="checkbox"
                         id="svgRasterizeDenseMarks"
                         ?checked=${this.rasterizeDenseMarks}
-                        ?disabled=${this.saving}
-                        @change=${createInputListener((input) => {
+                        ?disabled=${this._saving}
+                        @change=${inputListener((input) => {
                             this.rasterizeDenseMarks = input.checked;
                         })}
                     />
@@ -237,8 +252,8 @@ export default class SaveSvgDialog extends BaseDialog {
                     min="1"
                     step="1000"
                     .value=${"" + this.maxVectorInstances}
-                    ?disabled=${!this.rasterizeDenseMarks || this.saving}
-                    @input=${createInputListener((input) => {
+                    ?disabled=${!this.rasterizeDenseMarks || this._saving}
+                    @input=${inputListener((input) => {
                         this.#setMaxVectorInstances(input.valueAsNumber);
                     })}
                 />
@@ -258,8 +273,8 @@ export default class SaveSvgDialog extends BaseDialog {
                         max="4"
                         step="0.5"
                         .value=${"" + this.rasterPixelRatio}
-                        ?disabled=${!this.rasterizeDenseMarks || this.saving}
-                        @input=${createInputListener((input) => {
+                        ?disabled=${!this.rasterizeDenseMarks || this._saving}
+                        @input=${inputListener((input) => {
                             this.rasterPixelRatio = input.valueAsNumber;
                         })}
                     />
@@ -276,7 +291,7 @@ export default class SaveSvgDialog extends BaseDialog {
 
             <div class="gs-form-group">
                 <div class="label">Rasterization preview</div>
-                ${this.#renderRasterizationPreview()}
+                <div role="status">${this.#renderRasterizationPreview()}</div>
             </div>
         `;
     }
@@ -289,7 +304,7 @@ export default class SaveSvgDialog extends BaseDialog {
             window.clearTimeout(this.#previewThresholdTimeout);
         }
         this.#previewThresholdTimeout = window.setTimeout(() => {
-            this.previewMaxVectorInstances = value;
+            this._previewMaxVectorInstances = value;
             this.#previewThresholdTimeout = undefined;
         }, 500);
     }
@@ -299,13 +314,13 @@ export default class SaveSvgDialog extends BaseDialog {
             return html`<div class="raster-preview">
                 All layers will remain vector.
             </div>`;
-        } else if (this.analyzing) {
+        } else if (this._analyzing) {
             return html`<div class="raster-preview">
                 Analyzing visible layers…
             </div>`;
-        } else if (this.analysisError) {
+        } else if (this._analysisError) {
             return html`<div class="raster-preview">
-                Layer analysis failed: ${this.analysisError}
+                Layer analysis failed: ${this._analysisError}
             </div>`;
         }
 
@@ -343,19 +358,32 @@ export default class SaveSvgDialog extends BaseDialog {
     }
 
     async #analyzeLayers() {
-        this.analyzing = true;
-        this.analysisError = "";
+        const session = this.session;
+        if (!this.isCurrentSession(session)) {
+            return;
+        }
+        const request = ++this.#analysisRequest;
+        const isCurrent = () =>
+            request === this.#analysisRequest && this.isCurrentSession(session);
+
+        this._analyzing = true;
+        this._analysisError = "";
         try {
-            const analysis = await this.genomeSpy.analyzeSvgExport({
-                logicalWidth: this.logicalWidth,
-                logicalHeight: this.logicalHeight,
-            });
-            this.layers = analysis.layers;
+            const analysis = await session.source.imageExport.analyzeSvg(
+                this._dimensions
+            );
+            if (isCurrent()) {
+                this._layers = analysis.layers;
+            }
         } catch (error) {
-            this.analysisError =
-                error instanceof Error ? error.message : String(error);
+            if (isCurrent()) {
+                this._analysisError =
+                    error instanceof Error ? error.message : String(error);
+            }
         } finally {
-            this.analyzing = false;
+            if (isCurrent()) {
+                this._analyzing = false;
+            }
         }
     }
 
@@ -369,49 +397,28 @@ export default class SaveSvgDialog extends BaseDialog {
                 iconDef: faDownload,
                 isPrimary: true,
                 disabled:
-                    this.saving ||
+                    this._saving ||
                     (this.rasterizeDenseMarks && invalidThreshold),
             }),
         ];
     }
 
-    /** @returns {Promise<boolean>} */
-    async #downloadSvg() {
-        this.saving = true;
-        try {
-            const { blob, warnings, rasterized } =
-                await this.genomeSpy.exportSvg(this.getExportOptions());
-            warnings.forEach((warning) => console.warn(warning));
-
-            const link = document.createElement("a");
-            link.href =
-                "data:image/svg+xml;charset=utf-8," +
-                encodeURIComponent(await blob.text());
-            link.download = "genomespy-visualization.svg";
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-
-            this.finish({ ok: true, data: { warnings, rasterized } });
-            return false;
-        } catch (error) {
-            await showMessageDialog(
-                `SVG export failed: ${
-                    error instanceof Error ? error.message : String(error)
-                }`,
-                { title: "SVG export", type: "error" }
+    #downloadSvg() {
+        return this.download(async (source) => {
+            if (this.#updateCanvasSize()) {
+                this.#scheduleLayerAnalysis();
+            }
+            const { blob, warnings, rasterized } = await source.imageExport.svg(
+                this.getExportOptions()
             );
-            return true;
-        } finally {
-            this.saving = false;
-        }
+            warnings.forEach((warning) => console.warn(warning));
+            return { blob, data: { warnings, rasterized } };
+        });
     }
 }
 
-customElements.define("gs-save-svg-dialog", SaveSvgDialog);
-
 /**
- * @param {import("@genome-spy/core/types/embedApi.js").SvgExportLayerInfo} layer
+ * @param {import("./imageExportSupport.js").SvgExportLayer} layer
  */
 function getLayerDisplayName(layer) {
     return layer.viewTitle || layer.viewPath.replace(/^viewRoot\//, "");

@@ -2,10 +2,18 @@
 
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
-import SaveSvgDialog from "./saveSvgDialog.js";
+import SvgExportDialog from "./svgExportDialog.js";
+import "./define/imageExportDialog.js";
 
 beforeAll(() => {
-    HTMLDialogElement.prototype.showModal = vi.fn();
+    HTMLDialogElement.prototype.showModal = function () {
+        this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function () {
+        this.open = false;
+        this.dispatchEvent(new Event("close"));
+    };
+    HTMLDialogElement.prototype.getAnimations = () => [];
 });
 
 afterEach(() => {
@@ -15,7 +23,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe("SaveSvgDialog", () => {
+describe("SvgExportDialog", () => {
     test("enables rasterization by default and allows disabling it", async () => {
         const dialog = createDialog();
         document.body.appendChild(dialog);
@@ -29,6 +37,8 @@ describe("SaveSvgDialog", () => {
         expect(threshold.disabled).toBe(false);
         expect(pixelRatio.disabled).toBe(false);
         expect(dialog.getExportOptions()).toEqual({
+            logicalWidth: 800,
+            logicalHeight: 600,
             rasterization: {
                 maxVectorInstances: 5_000,
                 pixelRatio: 2,
@@ -40,22 +50,23 @@ describe("SaveSvgDialog", () => {
 
         expect(threshold.disabled).toBe(true);
         expect(pixelRatio.disabled).toBe(true);
-        expect(dialog.getExportOptions()).toEqual({});
+        expect(dialog.getExportOptions()).toEqual({
+            logicalWidth: 800,
+            logicalHeight: 600,
+        });
     });
 
     test("passes rasterization options to SVG export", async () => {
         const click = vi
             .spyOn(HTMLAnchorElement.prototype, "click")
             .mockImplementation(() => undefined);
-        const blob = /** @type {Blob} */ (
-            /** @type {unknown} */ ({ text: async () => "<svg/>" })
-        );
+        const blob = new Blob(["<svg/>"], { type: "image/svg+xml" });
 
         const dialog = createDialog();
         dialog.rasterizeDenseMarks = true;
         dialog.maxVectorInstances = 2500;
         dialog.rasterPixelRatio = 3;
-        const exportSvg = vi.mocked(dialog.genomeSpy.exportSvg);
+        const exportSvg = vi.mocked(dialog.source.imageExport.svg);
         exportSvg.mockResolvedValue({ blob, warnings: [], rasterized: [] });
         document.body.appendChild(dialog);
         await dialog.updateComplete;
@@ -67,6 +78,8 @@ describe("SaveSvgDialog", () => {
 
         await vi.waitFor(() => {
             expect(exportSvg).toHaveBeenCalledWith({
+                logicalWidth: 800,
+                logicalHeight: 600,
                 rasterization: {
                     maxVectorInstances: 2500,
                     pixelRatio: 3,
@@ -83,11 +96,9 @@ describe("SaveSvgDialog", () => {
             .mockImplementation(() => undefined);
         const dialog = createDialog();
         dialog.rasterizeDenseMarks = false;
-        const exportSvg = vi.mocked(dialog.genomeSpy.exportSvg);
+        const exportSvg = vi.mocked(dialog.source.imageExport.svg);
         exportSvg.mockResolvedValue({
-            blob: /** @type {Blob} */ (
-                /** @type {unknown} */ ({ text: async () => "<svg/>" })
-            ),
+            blob: new Blob(["<svg/>"], { type: "image/svg+xml" }),
             warnings: [],
             rasterized: [],
         });
@@ -100,7 +111,10 @@ describe("SaveSvgDialog", () => {
         saveButton.click();
 
         await vi.waitFor(() => {
-            expect(exportSvg).toHaveBeenCalledWith({});
+            expect(exportSvg).toHaveBeenCalledWith({
+                logicalWidth: 800,
+                logicalHeight: 600,
+            });
             expect(click).toHaveBeenCalledOnce();
             expect(document.querySelector("a[download]")).toBeNull();
         });
@@ -108,7 +122,9 @@ describe("SaveSvgDialog", () => {
 
     test("debounces preview updates without reanalyzing", async () => {
         const dialog = createDialog();
-        const analyzeSvgExport = vi.mocked(dialog.genomeSpy.analyzeSvgExport);
+        const analyzeSvgExport = vi.mocked(
+            dialog.source.imageExport.analyzeSvg
+        );
         analyzeSvgExport.mockResolvedValue({
             layers: [
                 createLayer("small", "point", 5_000),
@@ -134,6 +150,8 @@ describe("SaveSvgDialog", () => {
         await dialog.updateComplete;
 
         expect(dialog.getExportOptions()).toEqual({
+            logicalWidth: 800,
+            logicalHeight: 600,
             rasterization: {
                 maxVectorInstances: 8_000,
                 pixelRatio: 2,
@@ -185,9 +203,11 @@ describe("SaveSvgDialog", () => {
 
         let size = { width: 800, height: 600 };
         const dialog = createDialog();
-        dialog.genomeSpy.getLogicalCanvasSize = () => size;
-        dialog.genomeSpy.container = document.createElement("div");
-        const analyzeSvgExport = vi.mocked(dialog.genomeSpy.analyzeSvgExport);
+        dialog.source.getLogicalCanvasSize = () => size;
+        dialog.resizeTarget = document.createElement("div");
+        const analyzeSvgExport = vi.mocked(
+            dialog.source.imageExport.analyzeSvg
+        );
         document.body.appendChild(dialog);
 
         await vi.waitFor(() => {
@@ -214,19 +234,21 @@ describe("SaveSvgDialog", () => {
     });
 });
 
-/** @returns {SaveSvgDialog} */
+/** @returns {SvgExportDialog} */
 function createDialog() {
-    const dialog = new SaveSvgDialog();
-    dialog.genomeSpy = /** @type {any} */ ({
+    const dialog = new SvgExportDialog();
+    dialog.source = /** @type {any} */ ({
         getLogicalCanvasSize: () => ({ width: 800, height: 600 }),
-        exportSvg: vi.fn(),
-        analyzeSvgExport: vi.fn().mockResolvedValue({ layers: [] }),
+        imageExport: {
+            svg: vi.fn(),
+            analyzeSvg: vi.fn().mockResolvedValue({ layers: [] }),
+        },
     });
     return dialog;
 }
 
 /**
- * @param {SaveSvgDialog} dialog
+ * @param {SvgExportDialog} dialog
  * @param {string} id
  */
 function getInput(dialog, id) {
@@ -235,7 +257,7 @@ function getInput(dialog, id) {
     );
 }
 
-/** @param {SaveSvgDialog} dialog */
+/** @param {SvgExportDialog} dialog */
 function getPreviewText(dialog) {
     return dialog.renderRoot
         .querySelector(".raster-preview")
@@ -248,11 +270,10 @@ function getPreviewText(dialog) {
  * @param {string} markType
  * @param {number} instanceCount
  * @param {string} [viewTitle]
- * @returns {import("@genome-spy/core/types/embedApi.js").SvgExportLayerInfo}
+ * @returns {import("./imageExportSupport.js").SvgExportLayer}
  */
 function createLayer(viewName, markType, instanceCount, viewTitle) {
     return {
-        viewName,
         viewTitle,
         viewPath: `viewRoot/${viewName}`,
         markType,

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 test("keeps compact toolbar actions accessible by keyboard", async ({
     page,
@@ -39,24 +40,36 @@ test("keeps compact toolbar actions accessible by keyboard", async ({
 
     // Closing the menu must not steal focus from a dialog opened by an action.
     await more.click();
-    const exportImage = menu.getByRole("menuitem", { name: "Export image" });
-    await expect(exportImage).toBeEnabled();
-    await exportImage.click();
+    const savePng = menu.getByRole("menuitem", { name: "Save PNG" });
+    const dialog = page.getByRole("dialog", {
+        name: "Save Visualization as PNG Image",
+    });
+    await expect(savePng).toBeEnabled();
+    await expect(
+        menu.getByRole("menuitem", { name: "Save SVG" })
+    ).toBeEnabled();
+    await savePng.click();
     await expect(menu).toBeHidden();
-    const dialog = page.getByRole("dialog", { name: "Export image" });
-    await expect(dialog).toBeVisible();
+    await expect(dialog).toBeInViewport({ ratio: 1 });
     await expect
         .poll(() =>
             dialog.evaluate((element) => element.matches(":focus-within"))
         )
         .toBe(true);
-    await dialog.getByRole("radio", { name: "PNG" }).check();
+    await expect(dialog.getByLabel("Background", { exact: true })).toHaveValue(
+        "visualization"
+    );
+    await dialog
+        .getByRole("slider", { name: "Scale factor" })
+        .press("ArrowRight");
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toBeHidden();
 
     await more.click();
-    await exportImage.click();
-    await expect(dialog.getByRole("radio", { name: "PNG" })).toBeChecked();
+    await savePng.click();
+    await expect(
+        dialog.getByRole("slider", { name: "Scale factor" })
+    ).toHaveValue("2.5");
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(more).toBeFocused();
@@ -147,3 +160,58 @@ for (const { width, label } of [
         expect(geometry.right).toBeGreaterThan(geometry.anchorLeft);
     });
 }
+
+test("downloads PNG and SVG from separate toolbar actions", async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1280, height: 740 });
+    await page.goto("/?renderer=canvas");
+
+    const exportButton = page.getByRole("button", {
+        name: "Export",
+        exact: true,
+    });
+    const menu = page.getByRole("menu", { name: "Export", exact: true });
+    await expect(exportButton).toBeEnabled();
+    for (const { format, title, extension } of [
+        {
+            format: "PNG",
+            title: "Save Visualization as PNG Image",
+            extension: "png",
+        },
+        { format: "SVG", title: "Save Visualization as SVG", extension: "svg" },
+    ]) {
+        const label = "Save " + format;
+        await exportButton.click();
+        await menu.getByRole("menuitem", { name: label, exact: true }).click();
+        const dialog = page.getByRole("dialog", { name: title });
+        await expect(dialog).toBeVisible();
+        if (format === "SVG") {
+            await expect(dialog.getByRole("status")).toContainText(
+                /layers? will be rasterized|No visible layers exceed the threshold/
+            );
+            await dialog
+                .getByRole("checkbox", { name: "Rasterize dense marks" })
+                .uncheck();
+            await expect(dialog.getByRole("status")).toHaveText(
+                "All layers will remain vector."
+            );
+        }
+        const downloaded = page.waitForEvent("download");
+        await dialog.getByRole("button", { name: label, exact: true }).click();
+        const file = await downloaded;
+        expect(file.suggestedFilename()).toBe(
+            "genomespy-visualization." + extension
+        );
+        const content = await readFile(await file.path());
+        if (format === "PNG") {
+            expect(content.subarray(0, 8).toString("hex")).toBe(
+                "89504e470d0a1a0a"
+            );
+        } else {
+            expect(content.toString("utf8")).toContain("<svg");
+        }
+        await expect(dialog).toBeHidden();
+        await expect(exportButton).toBeFocused();
+    }
+});

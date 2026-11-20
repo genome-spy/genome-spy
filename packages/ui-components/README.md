@@ -91,6 +91,34 @@ the element's first render.
 The `faStyles` export from `@genome-spy/ui-components/styles` provides baseline
 sizing and alignment for inline Font Awesome SVGs in a Lit shadow root.
 
+## Export visualization images
+
+Register the PNG and SVG dialogs with
+`@genome-spy/ui-components/define/imageExportDialog`. Pass a GenomeSpy embed
+result as the source.
+
+```js
+import "@genome-spy/ui-components/define/imageExportDialog";
+import { showDialog } from "@genome-spy/ui-components/dialog";
+
+await showDialog(
+  "gs-save-svg-dialog",
+  (
+    /** @type {import("@genome-spy/ui-components/imageExportDialog").SvgExportDialog} */ dialog
+  ) => {
+    dialog.source = embedResult;
+    dialog.resizeTarget = visualizationContainer;
+  },
+  { mount: document.querySelector(".workspace") }
+);
+```
+
+Use `gs-save-image-dialog` for PNG. The PNG form offers scale and background
+settings. The SVG form previews which layers exceed the rasterization threshold.
+Both accept a `filename`. Set `openOnConnect = false` before mounting and call
+`show()` on an existing dialog to retain its settings between exports. See
+**Components → Image Export Dialogs** in Storybook for examples.
+
 ## Style native forms
 
 Import the optional stylesheet and add `gs-form` to a form or a wrapper around

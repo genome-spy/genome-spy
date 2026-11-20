@@ -43,6 +43,10 @@
       "types": "./dist/dialog.d.ts",
       "default": "./src/dialog.js"
     },
+    "./imageExportDialog": {
+      "types": "./dist/imageExportDialog.d.ts",
+      "default": "./src/imageExportDialog.js"
+    },
     "./messageDialog": {
       "types": "./dist/messageDialog.d.ts",
       "default": "./src/messageDialog.js"

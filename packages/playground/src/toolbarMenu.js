@@ -60,6 +60,7 @@ export function toolbarAction(action, inMenu) {
  * @param {import("lit").TemplateResult} options.buttonContent
  * @param {import("lit").TemplateResult} options.items
  * @param {string} options.className
+ * @param {boolean} [options.disabled]
  * @param {string} [options.initialFocusSelector]
  */
 export function toolbarMenu({
@@ -68,6 +69,7 @@ export function toolbarMenu({
     buttonContent,
     items,
     className,
+    disabled = false,
     initialFocusSelector = '[role^="menuitem"]:not(:disabled)',
 }) {
     return html`
@@ -80,6 +82,7 @@ export function toolbarMenu({
                 aria-expanded="false"
                 aria-controls=${id}
                 popovertarget=${id}
+                ?disabled=${disabled}
                 @keydown=${(/** @type {KeyboardEvent} */ event) => {
                     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                         event.preventDefault();
@@ -115,7 +118,7 @@ export function toolbarMenu({
                         const initialItem = /** @type {HTMLElement} */ (
                             menu.querySelector(initialFocusSelector)
                         );
-                        initialItem.focus();
+                        initialItem?.focus();
                     }
                 }}
                 @click=${{
@@ -179,5 +182,5 @@ function handleMenuKeydown(event) {
             return;
     }
     event.preventDefault();
-    /** @type {HTMLElement} */ (items[nextIndex]).focus();
+    /** @type {HTMLElement | undefined} */ (items[nextIndex])?.focus();
 }

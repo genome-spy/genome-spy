@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faDownload,
     faFolderOpen,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
@@ -12,6 +13,7 @@ import { rendererMenu, rendererMenuItems } from "./rendererMenu.js";
 class PlaygroundToolbar extends LitElement {
     static properties = {
         actions: { attribute: false },
+        exportActions: { attribute: false },
         renderer: { type: String },
         visTitle: { type: String },
         version: { type: String },
@@ -22,6 +24,8 @@ class PlaygroundToolbar extends LitElement {
         super();
         /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
         this.actions = [];
+        /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+        this.exportActions = [];
         /** @type {import("./rendererMenu.js").Renderer} */
         this.renderer = "webgl";
         this.visTitle = "";
@@ -340,9 +344,21 @@ class PlaygroundToolbar extends LitElement {
                     />
                 </a>
                 <h1 class="title">GenomeSpy Playground</h1>
-                ${this.actions.slice(0, 3).map((action) => toolbarAction(action, false))}
+                ${this.actions.slice(0, 2).map((action) => toolbarAction(action, false))}
+                ${toolbarMenu({
+                    id: "export-menu",
+                    label: "Export",
+                    className: "hide-mobile",
+                    disabled: this.exportActions.every(
+                        (action) => action.disabled
+                    ),
+                    buttonContent: html`${icon(faDownload).node[0]}<span
+                            >Export ▾</span
+                        >`,
+                    items: html`${this.exportActions.map((action) => toolbarAction(action, true))}`,
+                })}
                 ${rendererMenu(this.renderer, (renderer) => this.#selectRenderer(renderer))}
-                ${this.actions.slice(3).map((action) => toolbarAction(action, false))}
+                ${this.actions.slice(2).map((action) => toolbarAction(action, false))}
                 <span class="vis-title">
                     <span class="hide-mobile">${this.visTitle}</span>
                 </span>
@@ -367,7 +383,9 @@ class PlaygroundToolbar extends LitElement {
                             >More</span
                         >`,
                     items: html`
-                        ${this.actions.map((action) => toolbarAction(action, true))}
+                        ${this.actions.slice(0, 2).map((action) => toolbarAction(action, true))}
+                        ${this.exportActions.map((action) => toolbarAction(action, true))}
+                        ${this.actions.slice(2).map((action) => toolbarAction(action, true))}
                         <div
                             role="group"
                             aria-label="Renderer"
