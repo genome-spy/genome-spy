@@ -345,6 +345,7 @@ export type LazyDataParams =
     | LegendGradientData
     | LegendGradientTicksData
     | AxisGenomeData
+    | HiGlassData
     | IndexedFastaData
     | BigWigData
     | FigWigData
@@ -353,6 +354,17 @@ export type LazyDataParams =
     | TabixTsvData
     | Gff3Data
     | VcfData;
+
+/** Fetches a HiGlass contact matrix as regular two-dimensional raster tiles. */
+export interface HiGlassData {
+    type: "higlass";
+
+    /** Base URL of the HiGlass API, for example `https://higlass.io/api/v1/`. */
+    url: string;
+
+    /** HiGlass tileset UID. */
+    tileset: string;
+}
 
 /** Generates group endpoints from resolved positional band/point/index/locus scales. */
 export interface ScaleGroupsData {

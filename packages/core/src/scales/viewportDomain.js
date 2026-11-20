@@ -1,3 +1,4 @@
+import RasterMark from "../marks/raster.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import {
     getEncoderAccessors,
@@ -320,4 +321,3 @@ function getViewportAccessor(encoder) {
         getEncoderAccessors(encoder).find(isScaleAccessor)
     );
 }
-import RasterMark from "../marks/raster.js";

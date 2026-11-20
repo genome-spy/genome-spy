@@ -52,3 +52,59 @@ missing and constant color extents and late arrivals.
 - The initial input contract uses row-major values with the x-bound dimension
   contiguous. RGB, categorical fields, per-cell opacity, explicit image bounds,
   and fixed-size icons remain test cases for the grammar design.
+
+## HiGlass and live navigation
+
+- The public server serves Rao et al.'s GM12878 MboI all-replicate dataset on
+  hg19. The browser requests its metadata and visible tiles directly. The
+  metadata reports 256 × 256 cells per tile and levels 0 through 14. The grid
+  step is `max_width / (2 ** level * bins_per_dimension)` base pairs. Both axes
+  must use the tileset's chromosome names, lengths, and concatenation order.
+  [Dataset metadata](https://higlass.io/api/v1/tileset_info/?d=CQMd6V_cRw6iCI_-Unl3PQ)
+- Public tile responses confirmed that the default symmetric matrix stores tiles
+  with x ≤ y and the lower half of diagonal tiles. The source transposes
+  off-diagonal requests for display, mirrors the diagonal data in place before
+  caching it, and decodes both HiGlass float payload sizes. NaN cells are
+  transparent and a zero remains a valid contact value.
+- Chrome on macOS loaded level 10 at the initial chr1 viewport, approximately
+  49.15–57.34 Mb on both axes. Wheel zoom loaded level 11. A drag shifted the
+  viewport and reverse wheel zoom widened it again. The color-domain maximum was
+  0.054339 initially, 0.054331 after zooming, and 0.053823 after dragging. The
+  viewport scale retains its existing 150 ms debounce. A tile-readiness promise
+  can resolve before the legend settles. The live smoke test used the public
+  endpoint and is kept outside the automated suite. The deterministic tests
+  cover stale responses, the viewport intersection on both axes, and color
+  domains for constant and missing-only grids.
+
+## Measurements and decisions
+
+- A 256 × 256 tile takes one dataflow record, six vertex invocations, and 256
+  KiB of GPU cell-buffer storage. The initial viewport spans 2 × 2 tiles and
+  takes 1 MiB of cell-buffer storage plus the per-tile attributes. The source
+  cache retains at most 96 canonical float32 tiles, or 24 MiB at this tile size,
+  excluding mirrors, packed upload buffers, and network payloads. These are
+  storage calculations. Frame time and upload throughput remain unmeasured.
+- The source coalesces x/y changes from the same turn, selects a level from the
+  coarser bases-per-pixel of the two axes, and cancels superseded requests. It
+  retains the previous publication while fetching the next complete window. This
+  can leave newly exposed areas blank on a slow connection. A parent-tile
+  fallback or incremental publication would trade simpler readiness for
+  continuity. Profile decoding, transposition, visible-cell reduction, and
+  uploads during rapid panning before placing them in a worker or on the GPU.
+- Regular grid coordinates are independent of the values. That separation can
+  support aligned `value` and `variance` fields or `base` and `quality` fields.
+  A third spatial dimension also needs an explicit slice or projection and a
+  documented axis order and stride. The PoC implicitly treats x as contiguous
+  and accepts `dimension` through the shared position type. Tighten the
+  raster-specific encoding contract and choose an explicit layout rule before
+  stabilizing the grammar.
+- Screen-sized icons could take scale anchors and pixel width and height.
+  Stretching a tile to x/x2 and y/y2 could use the same texture coordinates.
+  Direct RGBA and palette-indexed input need typed formats and per-cell encoder
+  support. These placements and formats can share the dense storage contract
+  without tying it to any particular mark name.
+- The HiGlass adapter covers the power-of-two, square-bin format. HiGlass
+  tilesets with explicit resolution lists need a different level selector.
+  Core's generated schema recognizes the experimental grammar while WebGPU
+  remains unpublished. Review how to expose the grammar when preparing a
+  release. This branch adds no release fragment for the PoC.

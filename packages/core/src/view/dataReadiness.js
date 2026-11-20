@@ -2,6 +2,7 @@ import Collector from "../data/collector.js";
 import { isDataReady, iterateDataDependencies } from "../data/dataReadiness.js";
 import DataSource from "../data/sources/dataSource.js";
 import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
+import HiGlassSource from "../data/sources/lazy/hiGlassSource.js";
 import UnitView from "./unitView.js";
 
 /**
@@ -85,7 +86,13 @@ export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
 function* iterateLazyBranches(subtreeRoot, viewFilter) {
     for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
         const nodes = Array.from(iterateDataDependencies(collector));
-        if (nodes.some((node) => node instanceof SingleAxisLazySource))
+        if (
+            nodes.some(
+                (node) =>
+                    node instanceof SingleAxisLazySource ||
+                    node instanceof HiGlassSource
+            )
+        )
             yield nodes;
     }
 }
@@ -97,11 +104,15 @@ function* iterateLazyBranches(subtreeRoot, viewFilter) {
 function isLazyBranchReady(nodes, readinessRequest) {
     return (
         nodes.every((node) => node.isDataReady()) &&
-        nodes.every(
-            (node) =>
+        nodes.every((node) => {
+            if (node instanceof HiGlassSource) {
+                return node.isDataReadyForDomain(readinessRequest ?? {});
+            }
+            return (
                 !(node instanceof SingleAxisLazySource) ||
                 isLazySourceReady(node, readinessRequest)
-        )
+            );
+        })
     );
 }
 
@@ -256,14 +267,17 @@ function areSubtreeSourcesSettled(context, branches) {
 /**
  * @param {View} subtreeRoot
  * @param {(view: View) => boolean} [viewFilter]
- * @returns {Set<SingleAxisLazySource>}
+ * @returns {Set<SingleAxisLazySource | HiGlassSource>}
  */
 function collectLazyDataSources(subtreeRoot, viewFilter) {
-    /** @type {Set<SingleAxisLazySource>} */
+    /** @type {Set<SingleAxisLazySource | HiGlassSource>} */
     const dataSources = new Set();
     for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
         for (const node of iterateDataDependencies(collector)) {
-            if (node instanceof SingleAxisLazySource) {
+            if (
+                node instanceof SingleAxisLazySource ||
+                node instanceof HiGlassSource
+            ) {
                 dataSources.add(node);
             }
         }
@@ -309,6 +323,10 @@ export function isEffectivelyVisible(view) {
  */
 function requestUnavailableLazyData(subtreeRoot, readinessRequest, viewFilter) {
     for (const dataSource of collectLazyDataSources(subtreeRoot, viewFilter)) {
+        if (dataSource instanceof HiGlassSource) {
+            dataSource.requestVisibleTiles();
+            continue;
+        }
         const domain = getLazySourceReadinessDomain(
             dataSource,
             readinessRequest

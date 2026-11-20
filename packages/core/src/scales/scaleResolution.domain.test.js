@@ -985,6 +985,64 @@ describe("Scale resolution domain handling", () => {
         expect(getScaleDomain(view, "y")).toEqual([0, 3]);
     });
 
+    test("raster color scales follow visible cells on both axes", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        {
+                            dimensions: {
+                                column: { origin: 0, step: 1, count: 3 },
+                                row: { origin: 0, step: 1, count: 3 },
+                            },
+                            fields: {
+                                value: [2, 3, 80, 4, 4, 90, 100, 110, null],
+                            },
+                        },
+                    ],
+                },
+                mark: "raster",
+                encoding: {
+                    x: {
+                        dimension: "column",
+                        type: "quantitative",
+                        scale: { domain: [0.5, 2] },
+                    },
+                    y: {
+                        dimension: "row",
+                        type: "quantitative",
+                        scale: { domain: [0.5, 2], reverse: true },
+                    },
+                    color: {
+                        field: "value",
+                        type: "quantitative",
+                        scale: { domain: { source: "viewport" }, zero: false },
+                    },
+                },
+            },
+            UnitView
+        );
+        view.onBeforeRender();
+        const x = getRequiredScaleResolution(view, "x").getScale();
+        const y = getRequiredScaleResolution(view, "y").getScale();
+        expect(r(getScaleDomain(view, "color"))).toEqual([2, 4]);
+
+        vi.useFakeTimers();
+        try {
+            x.domain([1, 2]);
+            y.domain([1, 2]);
+            await vi.advanceTimersByTimeAsync(150);
+            expect(r(getScaleDomain(view, "color"))).toEqual([4, 4]);
+
+            x.domain([2, 3]);
+            y.domain([2, 3]);
+            await vi.advanceTimersByTimeAsync(150);
+            expect(r(getScaleDomain(view, "color"))).toEqual([4, 4]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test("visible y domains use the current x viewport", async () => {
         const view = await initView(
             {

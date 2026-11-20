@@ -1,3 +1,4 @@
+import RasterMark from "../marks/raster.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
@@ -597,4 +598,3 @@ export function getScaleMemberAccessors(member) {
     const encoder = member.view.mark.encoders?.[member.channel];
     return encoder ? getEncoderAccessors(encoder).filter(isScaleAccessor) : [];
 }
-import RasterMark from "../marks/raster.js";
