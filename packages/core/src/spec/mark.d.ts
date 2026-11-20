@@ -285,6 +285,18 @@ export interface RectProps
     type: "rect";
 
     /**
+     * Position of the full-width stroke relative to the rectangle boundary.
+     * The fill keeps its original bounds.
+     *
+     * Minimum sizes apply first. Zero-area rectangles have empty inside borders
+     * and expanded outside borders; centered behavior remains renderer-specific.
+     * Canvas/SVG may show a faint seam within one output pixel of a border edge.
+     *
+     * __Default value:__ `"center"`
+     */
+    strokeAlign?: StrokeAlign | ExprRef;
+
+    /**
      * Clamps the minimum size-dependent opacity. The property does not affect the
      * `opacity` channel. Valid values are between `0` and `1`.
      *

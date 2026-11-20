@@ -632,16 +632,20 @@ test.each(
             const domain = scale.getDomain();
             const selection = params.getSelection("brush");
             const selected = selection.getValue();
-            const selector = '[data-name="selectionRectRect"] [stroke]';
+            // Rectangle borders are filled bands; inspect their actual paint.
+            const selector =
+                '[data-name="selectionRectRect"] path[fill-rule="evenodd"]';
+            const fillSelector =
+                '[data-name="selectionRectRect"] [data-mark-type="rect"]';
             const initial = await render();
-            expectColor(initial, selector, "stroke", before);
-            expectColor(initial, selector, "fill", "#808080");
-            expectColor(initial, selector, "stroke-opacity", "0.2");
-            expectColor(initial, selector, "stroke-width", "1");
+            expectColor(initial, selector, "fill", before);
+            expectColor(initial, fillSelector, "fill", "#808080");
+            expectColor(initial, selector, "fill-opacity", "0.2");
+            expectColor(initial, fillSelector, "stroke-width", "1");
 
             palette.setValue({ ...darkColors });
             await view.paramRuntime.whenPropagated();
-            expectColor(await render(), selector, "stroke", after);
+            expectColor(await render(), selector, "fill", after);
             expect(scale.getDomain()).toEqual(domain);
             expect(selection.getValue()).toEqual(selected);
         } finally {
@@ -688,22 +692,25 @@ test("explicit brush colors override shared styles and update through expression
         },
     });
     try {
-        const selector = '[data-name="selectionRectRect"] [stroke]';
+        const selector =
+            '[data-name="selectionRectRect"] path[fill-rule="evenodd"]';
+        const fillSelector =
+            '[data-name="selectionRectRect"] [data-mark-type="rect"]';
         const initial = await render();
-        expectColor(initial, selector, "stroke", "red");
-        expectColor(initial, selector, "fill", "pink");
-        expectColor(initial, selector, "stroke-opacity", "1");
+        expectColor(initial, selector, "fill", "red");
+        expectColor(initial, fillSelector, "fill", "pink");
+        expectColor(initial, selector, "fill-opacity", "1");
         palette.setValue({ ...darkColors });
         await view.paramRuntime.whenPropagated();
-        expectColor(await render(), selector, "stroke", "red");
+        expectColor(await render(), selector, "fill", "red");
 
         /** @type {import("../types/embedApi.js").ParamApi<{stroke: string, fill: string}>} */
         const paint = params.get("paint");
         paint.setValue({ stroke: "green", fill: "yellow" });
         await view.paramRuntime.whenPropagated();
         const changed = await render();
-        expectColor(changed, selector, "stroke", "green");
-        expectColor(changed, selector, "fill", "yellow");
+        expectColor(changed, selector, "fill", "green");
+        expectColor(changed, fillSelector, "fill", "yellow");
     } finally {
         view.disposeSubtree();
     }
@@ -736,9 +743,9 @@ test.each(/** @type {const} */ ([undefined, "dark"]))(
             const selection = params.getSelection("range");
             const selected = selection.getValue();
             const selector =
-                '[data-name="gradientBrush"] [stroke]:not([filter])';
+                '[data-name="gradientBrush"] path[fill-rule="evenodd"]';
             const initial = await render();
-            expectColor(initial, selector, "stroke", theme ? "#fff" : "black");
+            expectColor(initial, selector, "fill", theme ? "#fff" : "black");
             expectColor(
                 initial,
                 '[data-name="gradientBrush"] [filter]',
@@ -751,7 +758,7 @@ test.each(/** @type {const} */ ([undefined, "dark"]))(
             expectColor(
                 dark,
                 selector,
-                "stroke",
+                "fill",
                 theme ? "#fff" : darkColors.foreground
             );
             expectColor(
@@ -765,7 +772,7 @@ test.each(/** @type {const} */ ([undefined, "dark"]))(
             expectColor(
                 await render(),
                 selector,
-                "stroke",
+                "fill",
                 theme ? "#fff" : "black"
             );
             expect(selection.getValue()).toEqual(selected);

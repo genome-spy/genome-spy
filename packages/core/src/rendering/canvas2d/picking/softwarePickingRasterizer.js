@@ -111,10 +111,11 @@ export default class SoftwarePickingRasterizer {
      * @param {number} y
      * @param {number} width
      * @param {number} height
+     * @param {(x: number, y: number) => boolean} [contains] Optional pixel-center coverage test.
      */
-    fillRect(id, x, y, width, height) {
+    fillRect(id, x, y, width, height, contains) {
         this.#rectangles++;
-        this.#fillRect(id, x, y, width, height);
+        this.#fillRect(id, x, y, width, height, contains);
     }
 
     /**
@@ -123,8 +124,9 @@ export default class SoftwarePickingRasterizer {
      * @param {number} y
      * @param {number} width
      * @param {number} height
+     * @param {(x: number, y: number) => boolean} [contains]
      */
-    #fillRect(id, x, y, width, height) {
+    #fillRect(id, x, y, width, height, contains) {
         const x2 = x + width;
         const y2 = y + height;
         if (
@@ -145,7 +147,17 @@ export default class SoftwarePickingRasterizer {
         }
 
         for (let row = top; row < bottom; row++) {
-            this.#fillSpan(id, row, left, right);
+            if (contains) {
+                this.#spans++;
+                for (let column = left; column < right; column++) {
+                    if (contains(column + 0.5, row + 0.5)) {
+                        this.buffer.ids[row * this.buffer.width + column] =
+                            id >>> 0;
+                    }
+                }
+            } else {
+                this.#fillSpan(id, row, left, right);
+            }
         }
     }
 

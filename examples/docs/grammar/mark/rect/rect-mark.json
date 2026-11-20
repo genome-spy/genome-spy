@@ -1,6 +1,19 @@
 {
   "description": "Rect mark example.",
 
+  "params": [
+    {
+      "name": "strokeAlign",
+      "value": "center",
+      "bind": { "input": "select", "options": ["inside", "center", "outside"] }
+    },
+    {
+      "name": "strokeWidth",
+      "value": 2,
+      "bind": { "input": "range", "min": 0, "max": 16, "step": 0.5 }
+    }
+  ],
+
   "data": {
     "sequence": { "start": 0, "stop": 20, "as": "z" }
   },
@@ -14,7 +27,8 @@
 
   "mark": {
     "type": "rect",
-    "strokeWidth": 2,
+    "strokeWidth": { "expr": "strokeWidth" },
+    "strokeAlign": { "expr": "strokeAlign" },
     "stroke": "#404040",
     "cornerRadius": 5
   },
