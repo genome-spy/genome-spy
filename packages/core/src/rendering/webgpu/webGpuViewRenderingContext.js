@@ -151,6 +151,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 updated: false,
                 active: false,
                 ownerCoords: undefined,
+                validatedTopologyRevision: undefined,
                 definition: undefined,
                 config: undefined,
                 properties: undefined,
@@ -512,6 +513,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const topologyRevision = state.source.getSnapshot().topology.revision;
+        if (state.validatedTopologyRevision === topologyRevision) return;
         for (const occurrence of state.occurrences) {
             const captured = occurrence.options.placement?.topologyRevision;
             if (captured !== undefined && captured !== topologyRevision) {
@@ -521,6 +523,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 );
             }
         }
+        state.validatedTopologyRevision = topologyRevision;
     }
 
     /**
@@ -549,55 +552,28 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (!draw) {
             throw new Error("Occurrence draw has not been compiled.");
         }
-        const scissor = draw.scissor;
-        if (scissor) {
-            const clip = occurrence.clip;
-            const markClip = occurrence.markClip;
-            scissor.x = clip?.clipX ? clip.rect.x : 0;
-            scissor.y = clip?.clipY ? clip.rect.y : 0;
-            scissor.width = clip?.clipX ? clip.rect.width : canvas.width;
-            scissor.height = clip?.clipY ? clip.rect.height : canvas.height;
-            if (markClip === true || markClip === "x") {
-                const x = occurrence.coords.x;
-                const width = occurrence.coords.width;
-                const left = clip?.clipX ? Math.max(scissor.x, x) : x;
-                scissor.width = clip?.clipX
-                    ? Math.min(scissor.x + scissor.width, x + width) - left
-                    : width;
-                scissor.x = left;
-            }
-            if (markClip === true || markClip === "y") {
-                const y = occurrence.coords.y;
-                const height = occurrence.coords.height;
-                const top = clip?.clipY ? Math.max(scissor.y, y) : y;
-                scissor.height = clip?.clipY
-                    ? Math.min(scissor.y + scissor.height, y + height) - top
-                    : height;
-                scissor.y = top;
-            }
-        }
-
         const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        if (state.source && placementIndex === undefined) {
-            throw createViewError(
-                state.mark,
-                "Draw-level placement requires a resolved placement index."
-            );
-        }
-        if (
-            state.source &&
-            placementIndex !== undefined &&
-            !isPlacementVisible(
-                state.source,
-                placementIndex,
-                state.viewport,
-                draw.scissor,
-                canvas
-            )
-        ) {
-            return undefined;
+        if (state.source) {
+            if (placementIndex === undefined) {
+                throw createViewError(
+                    state.mark,
+                    "Draw-level placement requires a resolved placement index."
+                );
+            }
+            if (
+                !preparePlacementScissor(
+                    occurrence,
+                    placementIndex,
+                    draw.scissor,
+                    canvas
+                )
+            ) {
+                return undefined;
+            }
+        } else if (draw.scissor) {
+            writeOccurrenceScissor(occurrence, draw.scissor, canvas);
         }
 
         let firstInstance = range.firstInstance;
@@ -895,40 +871,72 @@ function writeOccurrencePlacements(state, canvas, rectangles) {
 }
 
 /**
- * Resolves draw-index visibility using only dense placement geometry.
+ * @param {Occurrence} occurrence
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} scissor
+ * @param {{width: number, height: number}} canvas
+ */
+function writeOccurrenceScissor(occurrence, scissor, canvas) {
+    const clip = occurrence.clip;
+    const markClip = occurrence.markClip;
+    scissor.x = clip?.clipX ? clip.rect.x : 0;
+    scissor.y = clip?.clipY ? clip.rect.y : 0;
+    scissor.width = clip?.clipX ? clip.rect.width : canvas.width;
+    scissor.height = clip?.clipY ? clip.rect.height : canvas.height;
+    if (markClip === true || markClip === "x") {
+        const x = occurrence.coords.x;
+        const width = occurrence.coords.width;
+        const left = clip?.clipX ? Math.max(scissor.x, x) : x;
+        scissor.width = clip?.clipX
+            ? Math.min(scissor.x + scissor.width, x + width) - left
+            : width;
+        scissor.x = left;
+    }
+    if (markClip === true || markClip === "y") {
+        const y = occurrence.coords.y;
+        const height = occurrence.coords.height;
+        const top = clip?.clipY ? Math.max(scissor.y, y) : y;
+        scissor.height = clip?.clipY
+            ? Math.min(scissor.y + scissor.height, y + height) - top
+            : height;
+        scissor.y = top;
+    }
+}
+
+/**
+ * Rejects offscreen placements before reading their live clip rectangles.
  *
- * @param {import("../../view/layout/placementSource.js").default} source
+ * @param {Occurrence} occurrence
  * @param {number} index
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} owner
  * @param {import("@genome-spy/webgpu-renderer").DrawRect | undefined} scissor
  * @param {{width: number, height: number}} canvas
  */
-function isPlacementVisible(source, index, owner, scissor, canvas) {
+function preparePlacementScissor(occurrence, index, scissor, canvas) {
+    const { source, viewport: owner } = occurrence.state;
     const rectangles = source.getSnapshot().rectangles;
     const offset = index * 4;
-    if (offset + 3 >= rectangles.length) {
-        return false;
-    }
+    if (offset + 3 >= rectangles.length) return false;
 
-    const x = owner.x + rectangles[offset] * owner.width;
     const y = owner.y + rectangles[offset + 1] * owner.height;
-    const width = rectangles[offset + 2] * owner.width;
     const height = rectangles[offset + 3] * owner.height;
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
+    if (!(height > 0 && y < canvas.height && y + height > 0)) return false;
+    const x = owner.x + rectangles[offset] * owner.width;
+    const width = rectangles[offset + 2] * owner.width;
+    if (!(width > 0 && x < canvas.width && x + width > 0)) return false;
 
-    const x1 = Math.max(0, scissor?.x ?? 0);
-    const y1 = Math.max(0, scissor?.y ?? 0);
-    const x2 = Math.min(
-        canvas.width,
-        scissor ? scissor.x + scissor.width : canvas.width
+    if (!scissor) return canvas.width > 0 && canvas.height > 0;
+    writeOccurrenceScissor(occurrence, scissor, canvas);
+    const x1 = Math.max(0, scissor.x);
+    const y1 = Math.max(0, scissor.y);
+    const x2 = Math.min(canvas.width, scissor.x + scissor.width);
+    const y2 = Math.min(canvas.height, scissor.y + scissor.height);
+    return (
+        x1 < x2 &&
+        y1 < y2 &&
+        x < x2 &&
+        y < y2 &&
+        x + width > x1 &&
+        y + height > y1
     );
-    const y2 = Math.min(
-        canvas.height,
-        scissor ? scissor.y + scissor.height : canvas.height
-    );
-    return x < x2 && y < y2 && x + width > x1 && y + height > y1;
 }
 
 /**
@@ -969,6 +977,7 @@ function writeScopeBounds(command, target) {
  * @property {boolean} updated
  * @property {boolean} active
  * @property {Rectangle | undefined} ownerCoords
+ * @property {number | undefined} validatedTopologyRevision
  * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
  * @property {object | undefined} config
  * @property {Record<string, {value: any}> | undefined} properties

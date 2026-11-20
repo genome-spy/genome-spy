@@ -1265,10 +1265,9 @@ describe("WebGpuViewRenderingContext", () => {
         rectangles.set([0, 0.99, 1, 0.02], 4);
         rectangles.set([0, -0.01, 1, 0.02], 8);
         const source = new PlacementSource();
-        source.replaceTopology(
-            Array.from({ length: count }, (_, index) => [index]),
-            rectangles
-        );
+        const facetIds = Array.from({ length: count }, (_, index) => [index]);
+        source.replaceTopology(facetIds, rectangles);
+        const { revision: topologyRevision } = source.getSnapshot().topology;
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
@@ -1281,10 +1280,11 @@ describe("WebGpuViewRenderingContext", () => {
             encoders: {},
             getType: () => "point",
             isPickingParticipant: () => true,
-            properties: { clip: "never", cullByVisibleRange: "x" },
+            properties: { cullByVisibleRange: "x" },
             unitView: {
                 getEffectiveOpacity: () => 1,
                 getCollector: () => ({}),
+                getPathString: () => "root/test-view",
             },
         };
         const coords = Rectangle.create(0, 0, 100, 100);
@@ -1293,7 +1293,7 @@ describe("WebGpuViewRenderingContext", () => {
             context.pushView(/** @type {any} */ (view), coords);
             context.renderMark(/** @type {any} */ (mark), {
                 clip,
-                placement: { source, index },
+                placement: { source, index, topologyRevision },
             });
             context.popView(/** @type {any} */ (view));
         }
@@ -1312,11 +1312,20 @@ describe("WebGpuViewRenderingContext", () => {
         // A previously rejected occurrence must use current bounds on reentry.
         const next = rectangles.slice();
         next.set([0.25, 0.25, 0.5, 0.5], 12);
+        next.set([0, 0.4, 0.1, 0.2], 16);
         source.replaceGeometry(next);
         clipX = 20;
-        expect(collectDraws(context.render()).at(-1)).toMatchObject({
+        const draws = collectDraws(context.render());
+        expect(draws.map((draw) => draw.placement.index)).toEqual([1, 2, 3]);
+        expect(draws.at(-1)).toMatchObject({
             placement: { index: 3 },
+            scissor: { x: 20, width: 80 },
             visibleRange: { x1: 19.5, x2: 99.5 },
         });
+
+        source.replaceTopology(facetIds, next);
+        expect(() => context.render()).toThrow(
+            "Placement topology changed after layout completion."
+        );
     });
 });
