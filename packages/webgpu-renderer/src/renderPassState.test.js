@@ -32,23 +32,16 @@ describe("RenderPassState", () => {
         ]);
     });
 
-    test("compares effective viewport and scissor values", () => {
+    test("compares effective scissor values", () => {
         const pass = createPass();
         const state = new RenderPassState(
             /** @type {GPURenderPassEncoder} */ (/** @type {unknown} */ (pass))
         );
 
-        state.setViewport(1, 2, 30, 40, 0, 1);
-        state.setViewport(1, 2, 30, 40, 0, 1);
-        state.setViewport(1, 2, 31, 40, 0, 1);
         state.setScissorRect(3, 4, 50, 60);
         state.setScissorRect(3, 4, 50, 60);
         state.setScissorRect(3, 5, 50, 60);
 
-        expect(pass.setViewport.mock.calls).toEqual([
-            [1, 2, 30, 40, 0, 1],
-            [1, 2, 31, 40, 0, 1],
-        ]);
         expect(pass.setScissorRect.mock.calls).toEqual([
             [3, 4, 50, 60],
             [3, 5, 50, 60],
@@ -60,7 +53,6 @@ function createPass() {
     return {
         setPipeline: vi.fn(),
         setBindGroup: vi.fn(),
-        setViewport: vi.fn(),
         setScissorRect: vi.fn(),
     };
 }

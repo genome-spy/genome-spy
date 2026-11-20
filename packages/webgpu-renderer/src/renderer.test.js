@@ -739,15 +739,7 @@ describe("Renderer mark definitions", () => {
         expect(renderPassDescriptors[1].label).toBe(
             "viewRoot/samples/copy-ratios: group composite pass"
         );
-        expect(pass.setViewport).toHaveBeenNthCalledWith(
-            1,
-            -15,
-            -8,
-            150,
-            75,
-            0,
-            1
-        );
+        expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 31, 16, 0, 1);
         expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 3, 1, 24, 12);
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             2,

@@ -27,7 +27,7 @@ test("multisampled group applies opacity once after overlap", async ({
             alphaMode: "premultiplied",
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
-        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        renderer.updateGlobals({ width: 32, height: 32, dpr: 2 });
 
         const createRect = (x, y, x2, y2, fill) =>
             renderer.createMark(rectMark, {
@@ -41,17 +41,27 @@ test("multisampled group applies opacity once after overlap", async ({
                     strokeWidth: { value: 0 },
                 },
             });
-        const red = createRect(8, 8, 40, 40, [1, 0, 0, 1]);
-        const blue = createRect(24, 24, 56, 56, [0, 0, 1, 1]);
+        const viewport = { x: 4, y: 4, width: 24, height: 24 };
+        const red = createRect(0, 0, 16, 16, [1, 0, 0, 1]);
+        const blue = createRect(8, 8, 24, 24, [0, 0, 1, 1]);
         const canvasTexture = renderer.context.getCurrentTexture();
         renderer.device.pushErrorScope("validation");
         renderer.render({
             clearColor: { r: 0, g: 0, b: 0, a: 0 },
             items: [
                 {
-                    bounds: { x: 8, y: 8, width: 48, height: 48 },
+                    bounds: viewport,
                     opacity: 0.5,
-                    items: [{ mark: red }, { mark: blue }],
+                    items: [
+                        { mark: red, viewport },
+                        { mark: blue, viewport },
+                        // A draw scissor outside the crop must leave the pass valid.
+                        {
+                            mark: red,
+                            viewport,
+                            scissor: { x: 29, y: 29, width: 2, height: 2 },
+                        },
+                    ],
                 },
             ],
         });

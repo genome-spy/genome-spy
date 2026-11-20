@@ -618,11 +618,7 @@ ${effectSetup}
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(
-        applyTextPlacementClip(clip, i),
-        0.0,
-        1.0
-    );
+    out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.uv = (metrics.texRect.xy - vec2<f32>(0.5) + local * tileSize) *
         params.uAtlasScale;
     out.color = layerColor;

@@ -16,16 +16,12 @@ export default class RenderPassState {
     #dynamicOffsets = [];
 
     /** @type {number[]} */
-    #viewport;
-
-    /** @type {number[]} */
     #scissor;
 
     /** @param {GPURenderPassEncoder} pass */
     constructor(pass) {
         this.#pass = pass;
 
-        this.#viewport = [NaN, NaN, NaN, NaN, NaN, NaN];
         this.#scissor = [NaN, NaN, NaN, NaN];
     }
 
@@ -58,35 +54,6 @@ export default class RenderPassState {
         }
         this.#bindGroups[index] = bindGroup;
         this.#dynamicOffsets[index] = dynamicOffsets;
-    }
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} width
-     * @param {number} height
-     * @param {number} minDepth
-     * @param {number} maxDepth
-     */
-    setViewport(x, y, width, height, minDepth, maxDepth) {
-        const values = this.#viewport;
-        if (
-            values[0] === x &&
-            values[1] === y &&
-            values[2] === width &&
-            values[3] === height &&
-            values[4] === minDepth &&
-            values[5] === maxDepth
-        ) {
-            return;
-        }
-        this.#pass.setViewport(x, y, width, height, minDepth, maxDepth);
-        values[0] = x;
-        values[1] = y;
-        values[2] = width;
-        values[3] = height;
-        values[4] = minDepth;
-        values[5] = maxDepth;
     }
 
     /**

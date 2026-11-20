@@ -841,13 +841,15 @@ struct Globals {
     placementClipMode: u32,
     placementCount: u32,
     orderPass: u32,
+    renderTargetOrigin: vec2<f32>,
+    renderTargetSize: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
 
-// Project into the canvas clip volume so an unclipped draw can extend past its viewport.
+// A draw can extend past its logical viewport. Project into the active attachment.
 fn localPixelToClip(pixel: vec2<f32>) -> vec2<f32> {
-    let unit = (globals.viewportOrigin + pixel) / globals.canvasSize;
+    let unit = (globals.viewportOrigin + pixel - globals.renderTargetOrigin) / globals.renderTargetSize;
     return unit * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0);
 }
 
@@ -900,14 +902,6 @@ fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
     return rect.xy * vec2<f32>(globals.width, globals.height) + pixel * rect.zw;
 }
 
-fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
-
-fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
-
 fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
     // TODO: Add the crop origin before comparing against canvas-space bounds.
     // An offset opacity group can lose marks with clipToPlacement enabled.
@@ -928,13 +922,6 @@ fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
     return pixel;
 }
 
-fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
-
-fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
 #endif
 
 fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {
