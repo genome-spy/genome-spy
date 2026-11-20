@@ -378,7 +378,10 @@ class ViewSettingsButton extends LitElement {
         if (!sampleView) {
             throw new Error("Cannot upload metadata without SampleView");
         } else {
-            showUploadMetadataDialog(sampleView);
+            showUploadMetadataDialog(
+                sampleView,
+                this.closest(".genome-spy-app")
+            );
         }
     }
 }

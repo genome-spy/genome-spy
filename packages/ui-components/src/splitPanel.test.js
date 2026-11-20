@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, test } from "vitest";
-import "./splitPanel.js";
+import "./define/splitPanel.js";
 
 afterEach(() => {
     document.body.replaceChildren();
 });
 
-describe("split-panel", () => {
+describe("gs-split-panel", () => {
     test("updates its resizable regions when a child is added", async () => {
         const panel = /** @type {import("lit").LitElement} */ (
-            document.createElement("split-panel")
+            document.createElement("gs-split-panel")
         );
         panel.append(createSlottedChild("1"), createSlottedChild("2"));
         document.body.append(panel);
@@ -27,7 +27,7 @@ describe("split-panel", () => {
 
     test("only the captured pointer resizes until capture is lost", async () => {
         const panel = /** @type {import("lit").LitElement} */ (
-            document.createElement("split-panel")
+            document.createElement("gs-split-panel")
         );
         panel.getBoundingClientRect = () => new DOMRect(0, 0, 200, 100);
         panel.append(createSlottedChild("1"), createSlottedChild("2"));

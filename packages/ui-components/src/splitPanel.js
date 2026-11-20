@@ -3,7 +3,7 @@ import { LitElement, html, css } from "lit";
 /**
  * A resizable split panel component.
  */
-class SplitPanel extends LitElement {
+export default class SplitPanel extends LitElement {
     static properties = {
         orientation: { type: String, reflect: true },
         reverse: { type: Boolean, reflect: true },
@@ -52,8 +52,6 @@ class SplitPanel extends LitElement {
         :host {
             display: block;
             position: relative;
-            --border-color: #e0e0e0;
-            --handle-hover-color: rgba(255, 0, 0, 0.1);
         }
         .container {
             display: flex;
@@ -79,11 +77,14 @@ class SplitPanel extends LitElement {
         }
 
         .resizable-handle:hover {
-            background-color: var(--handle-hover-color);
+            background-color: var(
+                --gs-split-panel-handle-hover,
+                rgba(255, 0, 0, 0.1)
+            );
         }
 
         .resizable-handle:focus-visible {
-            outline: 2px solid currentColor;
+            outline: 2px solid var(--gs-focus-color, currentColor);
         }
 
         :host([orientation="horizontal"]) .resizable-handle {
@@ -95,7 +96,7 @@ class SplitPanel extends LitElement {
             touch-action: pan-y pinch-zoom;
         }
         :host([orientation="horizontal"]) .resizable:not(:last-child) {
-            border-right: 1px solid var(--border-color);
+            border-right: 1px solid var(--gs-split-panel-divider, #e0e0e0);
         }
 
         :host([orientation="vertical"]) .container {
@@ -112,7 +113,7 @@ class SplitPanel extends LitElement {
         }
 
         :host([orientation="vertical"]) .resizable:not(:last-child) {
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--gs-split-panel-divider, #e0e0e0);
         }
         :host(.resizing[orientation="horizontal"]) {
             cursor: ew-resize;
@@ -161,6 +162,7 @@ class SplitPanel extends LitElement {
                     ${
                         index < children.length - 1
                             ? html`<div
+                                  part="handle"
                                   class="resizable-handle"
                                   role="separator"
                                   tabindex="0"
@@ -272,5 +274,3 @@ class SplitPanel extends LitElement {
         );
     }
 }
-
-customElements.define("split-panel", SplitPanel);

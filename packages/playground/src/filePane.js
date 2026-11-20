@@ -1,3 +1,4 @@
+import "@genome-spy/ui-components/define/filePicker";
 import { html, LitElement, css, nothing } from "lit";
 import { playgroundComponentStyles } from "./componentStyles.js";
 import { map } from "lit/directives/map.js";
@@ -72,6 +73,13 @@ export default class FilePane extends LitElement {
                 flex: 1;
                 overflow: auto;
                 padding: var(--playground-spacing);
+            }
+
+            gs-file-picker {
+                --gs-control-border: var(--playground-accent);
+                --gs-control-text: white;
+                --gs-file-picker-background: var(--playground-accent);
+                --gs-file-picker-hover: var(--playground-accent-hover);
             }
 
             .upload-form {
@@ -244,24 +252,12 @@ export default class FilePane extends LitElement {
     #renderUploadForm() {
         return html`
             <div class="upload-form">
-                <input
-                    type="file"
+                <gs-file-picker
                     multiple
                     accept=".csv,.tsv,.txt,.json"
-                    id="fileInput"
-                    hidden
-                    @change=${this._handleFiles}
-                />
-                <button
-                    type="button"
-                    class="button primary"
-                    @click=${() =>
-                        /** @type {HTMLInputElement} */ (
-                            this.renderRoot.querySelector("#fileInput")
-                        ).click()}
+                    @gs-files-chosen=${this._handleFiles}
+                    >Choose files</gs-file-picker
                 >
-                    Choose files
-                </button>
                 <p>
                     The added file becomes a named datasource, which can be
                     accessed as follows:
@@ -278,11 +274,9 @@ export default class FilePane extends LitElement {
         `;
     }
 
-    /** @param {Event} event */
+    /** @param {import("@genome-spy/ui-components/filePicker").FilesChosenEvent} event */
     async _handleFiles(event) {
-        const target = /** @type {HTMLInputElement} */ (event.target);
-        const selected = Array.from(target.files);
-        target.value = "";
+        const selected = Array.from(event.detail.files);
 
         this.#uploadErrors = [];
         this.requestUpdate();

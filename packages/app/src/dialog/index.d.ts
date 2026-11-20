@@ -1,5 +1,5 @@
 export {
     default as BaseDialog,
     showDialog,
-} from "../components/generic/baseDialog.js";
-export { showMessageDialog } from "../components/generic/messageDialog.js";
+} from "@genome-spy/ui-components/dialog";
+export { showMessageDialog } from "@genome-spy/ui-components/messageDialog";

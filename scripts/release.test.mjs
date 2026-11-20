@@ -183,7 +183,7 @@ describe("fixed post-1.0 releases", () => {
             );
             const baseline = git(cwd, ["rev-parse", "HEAD"]);
             const plan = await readReleasePlan(cwd);
-            expect(plan.releases).toHaveLength(8);
+            expect(plan.releases).toHaveLength(9);
             expect(
                 new Set(plan.releases.map((release) => release.newVersion))
             ).toEqual(new Set([version]));
@@ -259,7 +259,7 @@ describe("fixed post-1.0 releases", () => {
         manifest.private = false;
         await writeJson(filename, manifest);
         await expect(checkChangesets(cwd)).rejects.toThrow(
-            "Only App, Core, Inspector, and React"
+            "Only App, Core, Inspector, React, and UI Components"
         );
     });
 });
@@ -614,6 +614,7 @@ test("verifies public archives, Core's packing lifecycle, and missing build outp
         "@genome-spy/core",
         "@genome-spy/inspector",
         "@genome-spy/react-component",
+        "@genome-spy/ui-components",
     ]);
     const core = packed.find((pkg) => pkg.name === "@genome-spy/core");
     expect(core.files.map((file) => file.path)).toEqual([

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import process from "node:process";
 import { readdirSync } from "node:fs";
@@ -11,22 +11,6 @@ const srcDir = dirname(testDir);
 const packageDir = dirname(srcDir);
 const packagesDir = dirname(packageDir);
 const repoRoot = dirname(packagesDir);
-const defineCustomElement = customElements.define.bind(customElements);
-
-vi.spyOn(customElements, "define").mockImplementation(
-    /** @type {typeof customElements.define} */ (
-        name,
-        constructor,
-        options
-    ) => {
-        if (customElements.get(name)) {
-            return;
-        }
-
-        defineCustomElement(name, constructor, options);
-    }
-);
-
 beforeAll(() => {
     if (process.env.GENOMESPY_TEST_PREBUILT_BUNDLES === "1") {
         return;
@@ -59,10 +43,6 @@ beforeAll(() => {
     });
 });
 
-afterAll(() => {
-    vi.restoreAllMocks();
-});
-
 describe("bundled package split", () => {
     it("keeps app agent production imports on app subpath bundles", () => {
         const appDistFiles = readdirSync(
@@ -74,6 +54,7 @@ describe("bundled package split", () => {
 
         expect(appDistFiles).toEqual(
             expect.arrayContaining([
+                "app.es.js",
                 "agentApi.es.js",
                 "agentShared.es.js",
                 "dialog.es.js",
@@ -92,8 +73,16 @@ describe("bundled package split", () => {
 
     it("loads the packaged app and agent bundles together", async () => {
         const appModule = await import(
-            pathToFileURL(resolve(repoRoot, "packages/app/dist/index.es.js"))
+            pathToFileURL(resolve(repoRoot, "packages/app/dist/app.es.js")).href
+        );
+        const dialogModule = await import(
+            pathToFileURL(resolve(repoRoot, "packages/app/dist/dialog.es.js"))
                 .href
+        );
+        const uiModule = await import(
+            pathToFileURL(
+                resolve(repoRoot, "packages/ui-components/src/dialog.js")
+            ).href
         );
         const appAgentModule = await import(
             pathToFileURL(
@@ -103,7 +92,8 @@ describe("bundled package split", () => {
 
         expect(appModule.embed).toBeTypeOf("function");
         expect(appModule.createAgentApi).toBeTypeOf("function");
-        expect(appModule.BaseDialog).toBeTypeOf("function");
+        expect(appModule.BaseDialog).toBe(dialogModule.BaseDialog);
+        expect(appModule.BaseDialog).toBe(uiModule.default);
 
         const launchSpy = vi
             .spyOn(appModule.GenomeSpyApp.prototype, "launch")

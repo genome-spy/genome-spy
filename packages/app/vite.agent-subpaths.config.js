@@ -37,7 +37,9 @@ export default defineConfig({
         emptyOutDir: false,
         lib: {
             formats: ["es"],
+            cssFileName: "style",
             entry: {
+                app: "index.js",
                 agentApi: "agentApi/index.js",
                 agentShared: "agentShared/index.js",
                 dialog: "dialog/index.js",
@@ -45,6 +47,9 @@ export default defineConfig({
             fileName: (_format, entryName) => `${entryName}.es.js`,
         },
         rollupOptions: {
+            // npm consumers share UI constructors and Lit with plugins. The
+            // standalone browser and UMD entries are built by vite.config.js.
+            external: [/^@genome-spy\/ui-components(?:\/|$)/, /^lit(?:\/|$)/],
             plugins: [
                 replace({
                     preventAssignment: true,

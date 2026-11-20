@@ -43,14 +43,23 @@ test("keeps compact toolbar actions accessible by keyboard", async ({
     await expect(exportImage).toBeEnabled();
     await exportImage.click();
     await expect(menu).toBeHidden();
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog", { name: "Export image" });
     await expect(dialog).toBeVisible();
     await expect
         .poll(() =>
             dialog.evaluate((element) => element.matches(":focus-within"))
         )
         .toBe(true);
+    await dialog.getByRole("radio", { name: "PNG" }).check();
     await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+
+    await more.click();
+    await exportImage.click();
+    await expect(dialog.getByRole("radio", { name: "PNG" })).toBeChecked();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(more).toBeFocused();
 
     await examples.click();
     await expect(

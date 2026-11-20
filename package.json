@@ -51,7 +51,7 @@
     "vitest": "^5.0.5"
   },
   "scripts": {
-    "build": "npm run build --if-present -w @genome-spy/webgpu-renderer -w @genome-spy/core -w @genome-spy/inspector -w @genome-spy/app-agent -w @genome-spy/app -w @genome-spy/doc-embed -w @genome-spy/react-component -w @genome-spy/embed-examples -w @genome-spy/playground",
+    "build": "npm run build --if-present -w @genome-spy/ui-components -w @genome-spy/webgpu-renderer -w @genome-spy/core -w @genome-spy/inspector -w @genome-spy/app-agent -w @genome-spy/app -w @genome-spy/doc-embed -w @genome-spy/react-component -w @genome-spy/embed-examples -w @genome-spy/playground",
     "build:schemas": "npm -w @genome-spy/core run build:schema && npm -w @genome-spy/app run build:schema",
     "build:docs:prepare": "npm -w @genome-spy/app run build && npm -w @genome-spy/doc-embed run build && npm -w @genome-spy/core run build:schema && node scripts/prepare-docs-assets.mjs && npm run generate:api-docs && npm run generate:doc-types",
     "build:docs": "npm run build:docs:prepare && uv run --group docs zensical build --clean",
@@ -77,7 +77,7 @@
     "release:publish": "npm run release:verify && changeset publish --no-git-tag",
     "release:plan": "changeset publish-plan",
     "release:verify": "node scripts/release.mjs verify",
-    "release:pack": "npm pack -w @genome-spy/core -w @genome-spy/app -w @genome-spy/inspector -w @genome-spy/react-component"
+    "release:pack": "npm pack -w @genome-spy/core -w @genome-spy/app -w @genome-spy/inspector -w @genome-spy/react-component -w @genome-spy/ui-components"
   },
   "workspaces": [
     "./packages/*"

@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "paths": {
+      "@genome-spy/ui-components/*": ["../../packages/ui-components/src/*.js"]
+    },
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "target": "esnext",

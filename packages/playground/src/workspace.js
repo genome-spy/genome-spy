@@ -174,7 +174,7 @@ export default class PlaygroundWorkspace extends LitElement {
 
                 &:hover,
                 &:active {
-                    background: var(--handle-hover-color);
+                    background: var(--gs-split-panel-handle-hover);
                 }
                 &:focus-visible {
                     outline: 2px solid var(--playground-accent);

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
+      "@genome-spy/ui-components/*": ["./packages/ui-components/src/*.js"],
       "@genome-spy/app": ["./packages/app/src/index.d.ts"],
       "@genome-spy/app/*": ["./packages/app/src/*"],
       "@genome-spy/app-agent": ["./packages/app-agent/src/index.d.ts"],

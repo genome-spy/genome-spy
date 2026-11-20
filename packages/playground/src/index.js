@@ -20,7 +20,7 @@ import inferSpecBaseUrl, {
 import defaultSpec from "./defaultspec.json?raw";
 
 import packageJson from "../package.json";
-import "./splitPanel.js";
+import "@genome-spy/ui-components/define/splitPanel";
 import "./editor/codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
@@ -791,7 +791,7 @@ const layoutTemplate = () => html`
             .api=${embedResult}
         ></gs-playground-image-export-dialog>
         ${toolbarTemplate()}
-        <split-panel
+        <gs-split-panel
             .orientation=${layout}
             .reverse=${layout != "vertical"}
             id="main-panel"
@@ -810,7 +810,7 @@ const layoutTemplate = () => html`
                     ?hidden=${sidePane !== "inspector"}
                 ></section>
             </section>
-        </split-panel>
+        </gs-split-panel>
     </section>
 `;
 

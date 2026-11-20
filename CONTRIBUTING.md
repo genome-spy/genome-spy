@@ -265,7 +265,7 @@ This section is for maintainers preparing and publishing releases. Direct
 commits to `master` or `main` follow the same release-note policy as pull
 requests. Version commits consume fragments and need no additional fragment.
 
-The eight release packages share one fixed version, so selecting a single
+The nine release packages share one fixed version, so selecting a single
 affected package propagates the bump to the group. Only Core, App, Inspector,
 and the React component are published. Private applications are versioned but
 never published or tagged; the WebGPU prototype remains outside the group.
@@ -313,8 +313,7 @@ using remote data require network access.
 
 ### Set up npm trusted publishing once
 
-For each of `@genome-spy/core`, `@genome-spy/app`, `@genome-spy/inspector`, and
-`@genome-spy/react-component`, open its npm package settings and add a GitHub
+For each public release package, open its npm package settings and add a GitHub
 Actions trusted publisher with:
 
 - Organization: `genome-spy`
@@ -362,7 +361,7 @@ For failed runs:
 
 ### Publish a package preview
 
-The [preview workflow](.github/workflows/preview.yml) publishes the four public
+The [preview workflow](.github/workflows/preview.yml) publishes the five public
 packages to [pkg.pr.new](https://pkg.pr.new/) for testing. Install the
 [pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new) on the repository
 first.
@@ -397,7 +396,7 @@ node scripts/verifyPackedPackages.mjs /tmp/genomespy-pack/packed-packages.json
 git diff --exit-code -- packages/*/package.json
 ```
 
-Packing runs the actual `prepack`/`postpack` lifecycle and writes only the four
+Packing runs the actual `prepack`/`postpack` lifecycle and writes only the five
 public tarballs. Inspect their manifests and entry files before release.
 `npm run release:publish` performs a real publication; do not run it, push tags,
 or create GitHub releases during rehearsal.

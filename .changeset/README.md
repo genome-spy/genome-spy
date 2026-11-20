@@ -5,7 +5,7 @@ changelogs are the baseline; pre-1.0 changes are not reconstructed.
 
 For each user-visible change, run `npm run changeset` and commit the generated
 Markdown fragment with the change. Select the directly affected packages and
-write a note for users. The fixed group in `config.json` synchronizes the eight
+write a note for users. The fixed group in `config.json` synchronizes the nine
 release packages automatically. The private WebGPU prototype is outside that
 group and remains unpublished.
 

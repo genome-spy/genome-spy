@@ -34,17 +34,27 @@ body {
     background: var(--playground-surface);
 }
 
-split-panel {
-    --border-color: var(--playground-divider);
-    --handle-hover-color: rgb(84 143 204 / 15%);
+gs-split-panel {
+    --gs-split-panel-divider: var(--playground-divider);
+    --gs-split-panel-handle-hover: rgb(84 143 204 / 15%);
 }
 
 #playground-layout {
+    --gs-font-family: var(--playground-font-family);
+    --gs-font-size: var(--playground-font-size);
+    --gs-theme-primary: var(--playground-accent);
+    --gs-focus-color: var(--playground-accent);
+    --gs-control-border: var(--playground-border);
+    --gs-control-radius: var(--playground-radius);
+    --gs-dialog-background: var(--playground-surface);
+    --gs-dialog-text: var(--playground-text);
+    --gs-dialog-backdrop: var(--playground-backdrop);
+    --gs-dialog-radius: var(--playground-radius);
     display: flex;
     height: 100dvh;
     flex-direction: column;
 
-    > split-panel {
+    > gs-split-panel {
         flex: 1;
         min-height: 0;
         isolation: isolate;

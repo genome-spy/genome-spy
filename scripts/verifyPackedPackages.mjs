@@ -30,7 +30,7 @@ export async function verifyPackedPackages(cwd, packedFile) {
         packed.length !== publicPackages.length ||
         publicPackages.some((name) => !names.has(name))
     ) {
-        throw new Error("Pack exactly the four public release packages.");
+        throw new Error("Pack exactly the public release packages.");
     }
     const version = await releaseVersion(cwd);
     for (const pkg of packed) {
@@ -90,6 +90,6 @@ export async function verifyPackedPackages(cwd, packedFile) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     await verifyPackedPackages(process.cwd(), path.resolve(process.argv[2]));
     process.stdout.write(
-        "All four package archives contain their runtime and type entries.\n"
+        "All public package archives contain their runtime and type entries.\n"
     );
 }

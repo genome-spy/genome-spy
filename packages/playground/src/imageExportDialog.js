@@ -1,10 +1,12 @@
-import { LitElement, css, html, nothing } from "lit";
+import { css, html, nothing } from "lit";
+import BaseDialog from "@genome-spy/ui-components/dialog";
 import { playgroundComponentStyles } from "./componentStyles.js";
 
 const numberFormat = new Intl.NumberFormat("en-US");
 
-export default class ImageExportDialog extends LitElement {
+export default class ImageExportDialog extends BaseDialog {
     static properties = {
+        ...super.properties,
         api: { attribute: false },
         format: { state: true },
         pngPixelRatio: { state: true },
@@ -19,6 +21,7 @@ export default class ImageExportDialog extends LitElement {
     };
 
     static styles = [
+        ...super.styles,
         playgroundComponentStyles,
         css`
             dialog {
@@ -27,14 +30,7 @@ export default class ImageExportDialog extends LitElement {
                 padding: 0;
                 overflow: hidden;
                 border: 1px solid var(--playground-border);
-                border-radius: var(--playground-radius);
-                background: var(--playground-surface);
-                color: inherit;
                 box-shadow: var(--playground-shadow);
-            }
-
-            dialog::backdrop {
-                background: var(--playground-backdrop);
             }
 
             form {
@@ -50,6 +46,7 @@ export default class ImageExportDialog extends LitElement {
             }
 
             header {
+                font-weight: inherit;
                 border-bottom: 1px solid var(--playground-divider);
             }
 
@@ -119,6 +116,8 @@ export default class ImageExportDialog extends LitElement {
 
     constructor() {
         super();
+        this.openOnConnect = false;
+        this.dialogTitle = "Export image";
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined} */
         this.api = undefined;
@@ -138,9 +137,7 @@ export default class ImageExportDialog extends LitElement {
     async show() {
         await this.updateComplete;
         this.exportError = "";
-        /** @type {HTMLDialogElement} */ (
-            this.renderRoot.querySelector("dialog")
-        ).showModal();
+        this.openDialog();
         await this.#analyzeSvg();
     }
 
@@ -214,9 +211,7 @@ export default class ImageExportDialog extends LitElement {
                 await downloadBlob(blob, "genomespy-visualization.svg");
             }
 
-            /** @type {HTMLDialogElement} */ (
-                this.renderRoot.querySelector("dialog")
-            ).close();
+            this.triggerClose();
         } catch (error) {
             this.exportError =
                 error instanceof Error ? error.message : String(error);
@@ -318,77 +313,69 @@ export default class ImageExportDialog extends LitElement {
         `;
     }
 
-    render() {
+    renderDialogContent() {
         return html`
-            <dialog
-                aria-labelledby="image-export-title"
-                @cancel=${() => (this.exportError = "")}
+            <form
+                @submit=${(/** @type {SubmitEvent} */ event) => {
+                    event.preventDefault();
+                    void this.#exportImage();
+                }}
             >
-                <form
-                    @submit=${(/** @type {SubmitEvent} */ event) => {
-                        event.preventDefault();
-                        void this.#exportImage();
-                    }}
-                >
-                    <header>
-                        <h2 id="image-export-title">Export image</h2>
-                    </header>
-                    <main>
-                        <fieldset>
-                            <legend>Format</legend>
-                            <div class="format-options">
-                                <label>
-                                    <input
-                                        type="radio"
-                                        name="imageFormat"
-                                        value="png"
-                                        .checked=${this.format == "png"}
-                                        @change=${() => (this.format = "png")}
-                                    />
-                                    PNG
-                                </label>
-                                <label>
-                                    <input
-                                        type="radio"
-                                        name="imageFormat"
-                                        value="svg"
-                                        .checked=${this.format == "svg"}
-                                        @change=${() => (this.format = "svg")}
-                                    />
-                                    SVG
-                                </label>
-                            </div>
-                        </fieldset>
-                        ${this.#renderSettings()}
-                        ${
-                            this.exportError
-                                ? html`<p class="error">
-                                      Export failed: ${this.exportError}
-                                  </p>`
-                                : nothing
-                        }
-                    </main>
-                    <footer>
-                        <button
-                            type="button"
-                            class="button"
-                            @click=${() =>
-                                /** @type {HTMLDialogElement} */ (
-                                    this.renderRoot.querySelector("dialog")
-                                ).close()}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            class="button primary"
-                            type="submit"
-                            ?disabled=${this.saving}
-                        >
-                            ${this.saving ? "Exporting…" : "Export"}
-                        </button>
-                    </footer>
-                </form>
-            </dialog>
+                <header part="header">
+                    <h2 id="dialog-title">Export image</h2>
+                </header>
+                <main part="body">
+                    <fieldset>
+                        <legend>Format</legend>
+                        <div class="format-options">
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="imageFormat"
+                                    value="png"
+                                    .checked=${this.format == "png"}
+                                    @change=${() => (this.format = "png")}
+                                />
+                                PNG
+                            </label>
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="imageFormat"
+                                    value="svg"
+                                    .checked=${this.format == "svg"}
+                                    @change=${() => (this.format = "svg")}
+                                />
+                                SVG
+                            </label>
+                        </div>
+                    </fieldset>
+                    ${this.#renderSettings()}
+                    ${
+                        this.exportError
+                            ? html`<p class="error">
+                                  Export failed: ${this.exportError}
+                              </p>`
+                            : nothing
+                    }
+                </main>
+                <footer part="footer">
+                    <button
+                        type="button"
+                        class="button"
+                        @click=${() => this.triggerClose()}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        class="button primary"
+                        type="submit"
+                        ?disabled=${this.saving}
+                    >
+                        ${this.saving ? "Exporting…" : "Export"}
+                    </button>
+                </footer>
+            </form>
         `;
     }
 }

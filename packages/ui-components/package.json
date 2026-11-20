@@ -1,0 +1,78 @@
+{
+  "name": "@genome-spy/ui-components",
+  "version": "1.3.0",
+  "description": "Reusable GenomeSpy web components.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./splitPanel": {
+      "types": "./dist/splitPanel.d.ts",
+      "default": "./src/splitPanel.js"
+    },
+    "./filePicker": {
+      "types": "./dist/filePicker.d.ts",
+      "default": "./src/filePicker.js"
+    },
+    "./dropZone": {
+      "types": "./dist/dropZone.d.ts",
+      "default": "./src/dropZone.js"
+    },
+    "./dialog": {
+      "types": "./dist/dialog.d.ts",
+      "default": "./src/dialog.js"
+    },
+    "./messageDialog": {
+      "types": "./dist/messageDialog.d.ts",
+      "default": "./src/messageDialog.js"
+    },
+    "./styles": {
+      "types": "./dist/styles.d.ts",
+      "default": "./src/styles.js"
+    },
+    "./define/splitPanel": {
+      "types": "./dist/define/splitPanel.d.ts",
+      "default": "./src/define/splitPanel.js"
+    },
+    "./define/filePicker": {
+      "types": "./dist/define/filePicker.d.ts",
+      "default": "./src/define/filePicker.js"
+    },
+    "./define/dropZone": {
+      "types": "./dist/define/dropZone.d.ts",
+      "default": "./src/define/dropZone.js"
+    },
+    "./define/messageDialog": {
+      "types": "./dist/define/messageDialog.d.ts",
+      "default": "./src/define/messageDialog.js"
+    }
+  },
+  "sideEffects": [
+    "./src/define/*.js"
+  ],
+  "files": [
+    "src/*.js",
+    "src/define/",
+    "!src/*.test.js",
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/genome-spy/genome-spy.git",
+    "directory": "packages/ui-components"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly",
+    "test:tsc": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "lit": "^3.3.0"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.4.2",
+    "@fortawesome/free-solid-svg-icons": "^6.4.2"
+  }
+}
