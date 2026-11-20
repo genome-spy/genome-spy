@@ -2,8 +2,17 @@ import { LitElement, css, html, nothing } from "lit";
 import { formStyles } from "./formStyles.js";
 
 /**
- * @typedef {import("./comparisonOperatorButtons.js").ComparisonOperatorType} ComparisonOperatorType
+ * @typedef {"lt" | "lte" | "eq" | "gte" | "gt"} ComparisonOperatorType
  */
+
+/** @satisfies {{ value: ComparisonOperatorType, label: string, ariaLabel: string }[]} */
+const operatorOptions = [
+    { value: "lt", label: "<", ariaLabel: "Less than" },
+    { value: "lte", label: "≤", ariaLabel: "Less than or equal to" },
+    { value: "eq", label: "=", ariaLabel: "Equal to" },
+    { value: "gte", label: "≥", ariaLabel: "Greater than or equal to" },
+    { value: "gt", label: ">", ariaLabel: "Greater than" },
+];
 
 /**
  * @param {string} value
@@ -37,7 +46,15 @@ export function updateOperandFromAddedThreshold(operand, threshold) {
 }
 
 /**
- * Single-threshold comparison input with a histogram-backed threshold picker.
+ * Edit a comparison operator and one numeric threshold. Finite sample values
+ * add an interactive histogram to the numeric input.
+ *
+ * @tag gs-threshold-comparison-input
+ * @fires {ThresholdComparisonInputChangeEvent} change - Bubbles across shadow roots with `event.operator` and `event.operand`.
+ * @csspart input - Numeric threshold field.
+ * @cssprop --gs-theme-primary - Highlight color for matching values in the histogram.
+ * @cssprop --gs-control-border - Field border and color for the other histogram bars.
+ * @cssprop --gs-histogram-background - Histogram surface.
  */
 export default class ThresholdComparisonInput extends LitElement {
     static properties = {
@@ -57,6 +74,7 @@ export default class ThresholdComparisonInput extends LitElement {
 
             .operator {
                 margin-bottom: 1em;
+                font-size: 1.3em;
             }
 
             input {
@@ -67,13 +85,15 @@ export default class ThresholdComparisonInput extends LitElement {
 
     constructor() {
         super();
-        /** @type {unknown[]} */
+        /** @type {unknown[]} Samples for the histogram. The component uses finite numbers. */
         this.values = [];
-        /** @type {ComparisonOperatorType} */
+        /** @type {ComparisonOperatorType} Active comparison operator. */
         this.operator = "lt";
-        /** @type {number | undefined} */
+        /** @type {number | undefined} Numeric threshold. Undefined displays an empty field. */
         this.operand = undefined;
+        /** Mark this control as an autofocus target for the containing dialog. */
         this.autofocus = false;
+        /** Prompt in the empty numeric field. */
         this.placeholder = "... or enter a numeric value here";
     }
 
@@ -82,10 +102,10 @@ export default class ThresholdComparisonInput extends LitElement {
         return this.values.filter(isFiniteNumber);
     }
 
-    /** @param {import("./comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} event */
+    /** @param {import("./segmentedControl.js").SegmentedControlChangeEvent} event */
     #operatorChanged(event) {
         event.stopPropagation();
-        this.operator = event.value;
+        this.operator = /** @type {ComparisonOperatorType} */ (event.value);
         this.#dispatchChange();
     }
 
@@ -138,13 +158,15 @@ export default class ThresholdComparisonInput extends LitElement {
 
         return html`
             <div class="gs-form-group">
-                <gs-comparison-operator-buttons
+                <gs-segmented-control
                     class="operator"
+                    label="Comparison operator"
+                    .options=${operatorOptions}
                     .value=${this.operator}
                     @change=${(
-                        /** @type {import("./comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
+                        /** @type {import("./segmentedControl.js").SegmentedControlChangeEvent} */ event
                     ) => this.#operatorChanged(event)}
-                ></gs-comparison-operator-buttons>
+                ></gs-segmented-control>
 
                 ${
                     numericValues.length

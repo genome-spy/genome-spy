@@ -17,7 +17,16 @@ import { formStyles } from "./formStyles.js";
  */
 
 /**
- * Searchable checkbox list for selecting multiple values from a finite domain.
+ * Select multiple values from a supplied list with client-side text filtering.
+ *
+ * @tag gs-searchable-checkbox-list
+ * @fires {SearchableCheckboxListChangeEvent} change - Bubbles across shadow roots with selected values on `event.values`.
+ * @csspart input - Text field for filtering the options.
+ * @csspart list - Scrollable list of checkboxes.
+ * @cssprop --gs-theme-primary - Checkbox accent color.
+ * @cssprop --gs-control-background - Field and list surfaces.
+ * @cssprop --gs-control-border - Field and list borders.
+ * @cssprop --gs-hover-background - Hovered checkbox row fill.
  */
 export default class SearchableCheckboxList extends LitElement {
     static properties = {
@@ -137,18 +146,22 @@ export default class SearchableCheckboxList extends LitElement {
 
     constructor() {
         super();
-        /** @type {SearchableCheckboxListItem[]} */
+        /** @type {SearchableCheckboxListItem[]} Options with value, label, and optional searchText. */
         this.items = [];
-        /** @type {Scalar[]} */
+        /** @type {Scalar[]} Selected values from items. Assign a new array to update the selection. */
         this.selectedValues = [];
+        /** Prompt in the empty filter field. */
         this.placeholder = "Type something to filter the list";
+        /** Plural noun used in the selection count. */
         this.selectedItemName = "items";
-        /** @type {(value: Scalar) => import("lit").TemplateResult | typeof nothing} */
+        /** @type {(value: Scalar) => import("lit").TemplateResult | typeof nothing} Render an optional marker beside an option. */
         this.itemMarker = () => nothing;
+        /** @private */
         this.search = "";
     }
 
     /**
+     * Return the items matching the current filter text.
      * @returns {SearchableCheckboxListItem[]}
      */
     getFilteredItems() {

@@ -26,8 +26,26 @@ const DEFAULT_ACTION_INPUT_TYPES = new Set([
  */
 
 /**
- * Base class for GenomeSpy dialogs.
- * Subclasses can override the header, body, and footer templates.
+ * Base class for native dialogs. Subclasses supply content and actions through
+ * renderBody() and renderButtons(), and can also override the header and footer.
+ *
+ * @fires {CustomEvent<DialogFinishDetail>} gs-dialog-finished - Reports the outcome in event.detail.
+ * @fires {CustomEvent} gs-dialog-closed - Fires after the native dialog closes.
+ * @csspart dialog - Native dialog frame.
+ * @csspart header - Title area.
+ * @csspart body - Content area.
+ * @csspart footer - Action area.
+ * @csspart button - Action created by makeButton().
+ * @csspart primary-button - Primary action created by makeButton().
+ * @cssprop --gs-dialog-background - Dialog surface.
+ * @cssprop --gs-dialog-text - Dialog text color.
+ * @cssprop --gs-dialog-backdrop - Modal backdrop color.
+ * @cssprop --gs-dialog-radius - Dialog corner radius.
+ * @cssprop --gs-dialog-stroke-color - Footer separator color.
+ * @cssprop --gs-theme-primary - Primary action fill color.
+ * @cssprop --gs-theme-on-primary - Primary action text color.
+ * @cssprop --gs-primary-button-background - Custom primary action fill or gradient.
+ * @cssprop --gs-primary-button-hover-background - Custom hovered primary action fill or gradient.
  */
 export default class BaseDialog extends LitElement {
     static properties = {
@@ -193,9 +211,10 @@ export default class BaseDialog extends LitElement {
     constructor() {
         super();
 
-        /** @type {string | import("lit").TemplateResult} */
+        /** @type {string | import("lit").TemplateResult} Title text or Lit markup. */
         this.dialogTitle = null;
 
+        /** Open in the browser's modal top layer. Defaults to true. */
         this.modal = true;
 
         this.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
@@ -540,7 +559,10 @@ export default class BaseDialog extends LitElement {
     }
 }
 
-/** @typedef {{mount?: HTMLElement | ShadowRoot}} DialogOptions */
+/**
+ * @typedef {object} DialogOptions
+ * @property {HTMLElement | ShadowRoot} [mount] Element or shadow root supplying the dialog's theme. Defaults to document.body.
+ */
 
 /**
  * Open any dialog element that extends BaseDialog

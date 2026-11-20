@@ -22,6 +22,7 @@ const COLUMNS = [
 
 export default {
     title: "Components/MultiSelect",
+    component: "gs-multi-select",
     tags: ["autodocs"],
     args: {
         allowUnknown: false,

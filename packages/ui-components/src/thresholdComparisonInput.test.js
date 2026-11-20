@@ -58,31 +58,29 @@ describe("ThresholdComparisonInput", () => {
     });
 
     it("dispatches only the wrapper change event when the operator changes", async () => {
-        const component = document.createElement(
-            "gs-threshold-comparison-input"
+        const component = /** @type {ThresholdComparisonInput} */ (
+            document.createElement("gs-threshold-comparison-input")
         );
+        component.operand = 10;
         document.body.append(component);
-        await /** @type {ThresholdComparisonInput} */ (component)
-            .updateComplete;
+        await component.updateComplete;
 
-        const events = [];
-        component.addEventListener("change", (event) => {
-            events.push(
-                event instanceof CustomEvent
-                    ? "custom"
-                    : /** @type {any} */ (event).operator
-            );
-        });
-        const buttons = component.shadowRoot.querySelector(
-            "gs-comparison-operator-buttons"
+        const listener = vi.fn();
+        component.addEventListener("change", listener);
+        const control = /** @type {import("./segmentedControl.js").default} */ (
+            component.shadowRoot.querySelector("gs-segmented-control")
         );
-        const button = /** @type {HTMLButtonElement} */ (
-            buttons.shadowRoot.querySelector("button[value='gte']")
+        await control.updateComplete;
+        const option = /** @type {HTMLInputElement} */ (
+            control.shadowRoot.querySelector('input[value="gte"]')
         );
 
-        button.click();
+        option.click();
 
-        expect(events).toEqual(["gte"]);
+        expect(component.operator).toBe("gte");
+        expect(listener).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ operator: "gte", operand: 10 })
+        );
         component.remove();
     });
 

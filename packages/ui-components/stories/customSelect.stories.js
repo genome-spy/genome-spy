@@ -6,6 +6,8 @@ import "@genome-spy/ui-components/define/customSelect";
  */
 export default {
     title: "Components/CustomSelect",
+    component: "gs-custom-select",
+    tags: ["autodocs"],
 };
 
 /**

@@ -4,6 +4,7 @@ import { showMessageDialog } from "@genome-spy/ui-components/messageDialog";
 export default {
     title: "Components/MessageDialog",
     component: "gs-message-dialog",
+    tags: ["autodocs"],
     args: {
         title: "Publish dataset",
         message: "Publish the preview so collaborators can open it?",

@@ -1,5 +1,8 @@
 import { html } from "lit";
+import { loadCustomElementsManifest } from "./customElements.js";
 import "./preview.css";
+
+loadCustomElementsManifest();
 
 export const globalTypes = {
     theme: {
@@ -28,6 +31,11 @@ export const decorators = [
 ];
 
 export const parameters = {
+    options: {
+        storySort: {
+            order: ["Overview", "Components", "Theming"],
+        },
+    },
     docs: {
         source: { format: "html" },
     },

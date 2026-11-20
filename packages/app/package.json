@@ -63,8 +63,8 @@
     "test:tsc:tests": "tsc -p tsconfig.tests.json --noEmit",
     "test:tsc:public": "tsc -p tsconfig.public.json --noEmit",
     "smoke:examples:webgpu": "node ../core/scripts/runWebGpuExamples.mjs --scope app --all --compare-webgl",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "storybook": "npm -w @genome-spy/ui-components run build:manifest && storybook dev -p 6006",
+    "build-storybook": "npm -w @genome-spy/ui-components run build:manifest && storybook build"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.1",

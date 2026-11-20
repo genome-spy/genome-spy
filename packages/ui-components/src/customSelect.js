@@ -3,9 +3,19 @@ import { computePosition, autoUpdate, flip, offset } from "@floating-ui/dom";
 import { formStyles } from "./formStyles.js";
 
 /**
- * A lightweight custom select component that mimics the idea of
- * <selectedcontent>: the trigger shows nicely rendered content for the
- * currently selected option, and the popover lists all options.
+ * Choose one value from a popover. A custom renderer can show the same rich
+ * content in the trigger and the option list.
+ *
+ * @tag gs-custom-select
+ * @fires {SelectionChangeEvent} change - Bubbles across shadow roots with `event.value` and `event.option`.
+ * @csspart trigger - Button displaying the current selection.
+ * @csspart panel - Options popover.
+ * @csspart option - An option in the popover.
+ * @cssprop --gs-control-background - Popover surface.
+ * @cssprop --gs-control-border - Control and option borders.
+ * @cssprop --gs-hover-background - Hovered option fill.
+ * @cssprop --gs-selected-background - Selected or keyboard-active option fill.
+ * @cssprop --gs-focus-color - Focus outline.
  */
 export default class CustomSelect extends LitElement {
     static properties = {
@@ -43,20 +53,22 @@ export default class CustomSelect extends LitElement {
 
     constructor() {
         super();
-        /** @type {unknown[]} */
+        /** @type {unknown[]} Options, such as strings or objects with value and label fields. */
         this.options = [];
+        /** @type {unknown} Selected value, compared with getValue(option). */
         this.value = null;
+        /** Disable the trigger and option selection. */
         this.disabled = false;
-        /** @type {((opt: unknown) => unknown) | null} */
+        /** @type {((opt: unknown) => unknown) | null} Optional Lit renderer for the trigger and list options. */
         this.renderOption = null;
-        /** @type {(opt: unknown) => unknown} */
+        /** @type {(opt: unknown) => unknown} Return an option's value. Defaults to option.value or the option itself. */
         this.getValue = (opt) =>
             opt &&
             typeof opt === "object" &&
             "value" in /** @type {any} */ (opt)
                 ? /** @type {any} */ (opt).value
                 : opt;
-        /** @type {(opt: unknown) => string} */
+        /** @type {(opt: unknown) => string} Return the option's text label. Defaults to option.label or a string representation. */
         this.getLabel = (opt) =>
             opt &&
             typeof opt === "object" &&

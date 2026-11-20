@@ -1,4 +1,4 @@
-import "./comparisonOperatorButtons.js";
+import "./segmentedControl.js";
 import "./histogram.js";
 import ThresholdComparisonInput from "../thresholdComparisonInput.js";
 

@@ -3,6 +3,7 @@ import "@genome-spy/ui-components/define/histogram";
 
 export default {
     title: "Components/Histogram",
+    component: "gs-histogram",
     tags: ["autodocs"],
     args: {
         count: 1000,

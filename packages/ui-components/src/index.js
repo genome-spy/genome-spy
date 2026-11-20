@@ -18,7 +18,7 @@ export { default as SearchableCheckboxList } from "./searchableCheckboxList.js";
 export { default as DataGrid } from "./dataGrid.js";
 export { default as Histogram } from "./histogram.js";
 export { default as JobProgress } from "./jobProgress.js";
-export { default as ComparisonOperatorButtons } from "./comparisonOperatorButtons.js";
+export { default as SegmentedControl } from "./segmentedControl.js";
 export { default as ThresholdComparisonInput } from "./thresholdComparisonInput.js";
 export { FormController } from "./formController.js";
 export { formField } from "./formField.js";

@@ -1,15 +1,17 @@
 import { LitElement, html, css } from "lit";
 
 /**
- * gs-data-grid
+ * Preview an array of records with a sticky header and virtualized rows.
+ * Give the grid a bounded height so it can size its scrollable viewport.
  *
- * Simple, high-performance data grid for viewing arrays of plain objects.
- * - Input: `items` (Array<Object>)
- * - Sticky header
- * - Virtualized rows with fixed `rowHeight`
- *
- * Usage:
- * <gs-data-grid .items=${data} style="height:400px"></gs-data-grid>
+ * @tag gs-data-grid
+ * @csspart grid - Outer grid frame.
+ * @csspart body - Scrollable viewport for the rows.
+ * @cssprop --gs-control-background - Grid surface.
+ * @cssprop --gs-control-text - Grid text color.
+ * @cssprop --gs-control-border - Frame border.
+ * @cssprop --gs-control-radius - Frame corner radius.
+ * @cssprop --gs-divider-color - Header and row separators.
  */
 export default class DataGrid extends LitElement {
     /**
@@ -51,11 +53,14 @@ export default class DataGrid extends LitElement {
 
     constructor() {
         super();
-        /** @type {Item[]} */
+        /** @type {Item[]} Records to preview. The grid derives columns from the data. */
         this.items = [];
-        this.rowHeight = 32; // px
-        this.buffer = 5; // extra rows rendered above/below
-        this.blockMultiplier = 3; // render blocks that are `blockMultiplier * viewport` tall
+        /** Fixed row height in pixels. */
+        this.rowHeight = 32;
+        /** Extra rows to render above and below the visible range. */
+        this.buffer = 5;
+        /** Virtualization block height as a multiple of the viewport height. */
+        this.blockMultiplier = 3;
     }
 
     static styles = css`

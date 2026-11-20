@@ -77,6 +77,18 @@ customElements.define("gs-story-setup-dialog", SetupDialog);
 
 export default {
     title: "Components/Dialog",
+    tags: ["autodocs"],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    "Extend `BaseDialog` and register your custom element. " +
+                    "Render fields in `renderBody()` and build footer actions in `renderButtons()`. " +
+                    "Call `finish({ ok, data })` to resolve the caller's result. " +
+                    "Use `showDialog(tagName, configure, { mount })` to open it under a themed container.",
+            },
+        },
+    },
 };
 
 /** @param {MouseEvent} event */

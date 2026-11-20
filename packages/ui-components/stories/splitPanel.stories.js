@@ -4,6 +4,7 @@ import "@genome-spy/ui-components/define/splitPanel";
 export default {
     title: "Components/SplitPanel",
     component: "gs-split-panel",
+    tags: ["autodocs"],
     args: { orientation: "horizontal", reverse: false },
     argTypes: {
         orientation: { control: "select", options: ["horizontal", "vertical"] },

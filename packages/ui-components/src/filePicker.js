@@ -2,7 +2,17 @@ import { LitElement, css, html } from "lit";
 
 /** @typedef {CustomEvent<{files: FileList}>} FilesChosenEvent */
 
-/** Choose files through a native input. The caller owns validation and reading. */
+/**
+ * Choose local files through a native input. The caller reads and validates them.
+ *
+ * @tag gs-file-picker
+ * @slot - Button label. Defaults to “Choose files”.
+ * @fires {FilesChosenEvent} gs-files-chosen - Bubbles across shadow roots with a FileList in `detail.files`.
+ * @csspart button - Native button that opens the picker.
+ * @cssprop --gs-file-picker-background - Picker button fill. Falls back to the shared button fill.
+ * @cssprop --gs-file-picker-hover - Picker hover fill.
+ * @cssprop --gs-file-picker-padding - Picker button padding.
+ */
 export default class FilePicker extends LitElement {
     static properties = {
         accept: { type: String },
@@ -56,7 +66,9 @@ export default class FilePicker extends LitElement {
 
     constructor() {
         super();
+        /** Comma-separated extensions or MIME types passed to the native picker. */
         this.accept = "";
+        /** Allow choosing more than one file. */
         this.multiple = false;
     }
 

@@ -8,6 +8,7 @@ const VALUES = [
 
 export default {
     title: "Components/ThresholdComparisonInput",
+    component: "gs-threshold-comparison-input",
     tags: ["autodocs"],
     args: {
         operator: "gte",

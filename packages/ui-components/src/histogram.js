@@ -125,6 +125,19 @@ const histogramStyles = css`
     }
 `;
 
+/**
+ * Show a numeric distribution with optional draggable thresholds. Handle
+ * threshold events by assigning a new thresholds array.
+ *
+ * @tag gs-histogram
+ * @fires {ThresholdEvent} add - A click suggests a threshold at `event.value`.
+ * @fires {ThresholdEvent} adjust - A drag reports `event.index` and `event.value`.
+ * @csspart plot - Plot surface containing the bars and thresholds.
+ * @cssprop --gs-histogram-background - Plot surface.
+ * @cssprop --gs-divider-color - Histogram grid lines.
+ * @cssprop --gs-theme-primary - Fallback bar fill when colors is empty.
+ * @cssprop --gs-control-text - Threshold lines and handles.
+ */
 export default class Histogram extends LitElement {
     static properties = {
         // Arrays are not reflected as attributes (use properties)
@@ -154,10 +167,10 @@ export default class Histogram extends LitElement {
     constructor() {
         super();
 
-        /** @type {number[]} */
+        /** @type {number[]} Numeric observations to bin. */
         this.values = [];
 
-        /** @type {number[]} */
+        /** @type {number[]} Threshold values along the histogram's domain. */
         this.thresholds = [];
 
         /**
@@ -167,11 +180,13 @@ export default class Histogram extends LitElement {
          */
         this.operators = [];
 
+        /** Palette for groups formed by the thresholds. */
         this.colors = defaultScheme;
 
+        /** Display numeric values in the threshold handles. */
         this.showThresholdNumbers = false;
 
-        // How many bins (thresholds) to divide the values into.
+        /** Target bin count. Bin boundaries follow the numeric domain. */
         this.binCount = 40;
         this.#bin = bin().thresholds(this.binCount);
         this.#bins = this.#bin([]);
@@ -196,6 +211,7 @@ export default class Histogram extends LitElement {
         }
     }
 
+    /** @type {number[]} Read-only lower and upper bounds of the binned range. */
     get domain() {
         return [this.#bins.at(0).x0, this.#bins.at(-1).x1];
     }

@@ -1,0 +1,7 @@
+<script>
+    const storybookUrl = new URL(window.location.href);
+    if (!storybookUrl.searchParams.get("path")) {
+        storybookUrl.searchParams.set("path", "/docs/overview--docs");
+        window.history.replaceState(null, "", storybookUrl);
+    }
+</script>

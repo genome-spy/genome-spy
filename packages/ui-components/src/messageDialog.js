@@ -16,6 +16,12 @@ const icons = {
     info: faInfoCircle,
 };
 
+/**
+ * Show an informational message or ask for confirmation. The showMessageDialog()
+ * helper registers the element, opens it, and resolves to the user's choice.
+ *
+ * @tag gs-message-dialog
+ */
 export default class MessageDialog extends BaseDialog {
     static properties = {
         ...super.properties,
@@ -45,9 +51,11 @@ export default class MessageDialog extends BaseDialog {
 
     constructor() {
         super();
-        /** @type {string | import("lit").TemplateResult} */
+        /** @type {string | import("lit").TemplateResult} Message text or Lit markup. */
         this.message = "";
+        /** Message severity. Use info, warning, or error for the corresponding icon. */
         this.type = "info";
+        /** Display OK and Cancel. Otherwise the dialog has a single Close button. */
         this.confirm = false;
     }
 
@@ -97,11 +105,12 @@ export function defineMessageDialog(registry = customElements) {
  * @property {string | import("lit").TemplateResult} [title]
  * @property {"warning" | "error" | "info"} [type]
  * @property {boolean} [confirm] If true, shows OK and Cancel buttons
- * @property {import("lit").TemplateResult<any>[]} [customButtons] Custom buttons to show instead of default ones
+ * @property {import("lit").TemplateResult<any>[]} [customButtons] Reserved for future use.
  * @property {HTMLElement | ShadowRoot} [mount] Container that supplies the theme
  */
 /**
- *
+ * Show a message or request confirmation. For a themed dialog, pass the
+ * themed container as `mount`. Use `confirm: true` to ask for a decision.
  * @param {string | import("lit").TemplateResult} message
  * @param {MessageDialogOptions} [options]
  * @returns {Promise<boolean>} Resolves to true if OK was clicked

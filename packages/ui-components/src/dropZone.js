@@ -6,6 +6,20 @@ import { faStyles } from "./iconStyles.js";
 /**
  * @typedef {import("./filePicker.js").FilesChosenEvent} FilesChosenEvent
  */
+
+/**
+ * Accept local files from a drop or the built-in picker. Validate both paths
+ * before reading the files.
+ *
+ * @tag gs-upload-drop-zone
+ * @fires {FilesChosenEvent} gs-files-chosen - Bubbles across shadow roots with a FileList in `detail.files`.
+ * @csspart drop-zone - Surface that receives file drops.
+ * @csspart picker-button - Button inside the nested file picker.
+ * @cssprop --gs-control-border - Drop surface border.
+ * @cssprop --gs-drop-zone-radius - Drop surface corner radius.
+ * @cssprop --gs-drop-zone-active-background - Fill during a drag.
+ * @cssprop --gs-accent-color - Border color during a drag. Falls back to the theme accent.
+ */
 export default class UploadDropZone extends LitElement {
     static properties = {
         accept: { type: String },
@@ -16,8 +30,11 @@ export default class UploadDropZone extends LitElement {
 
     constructor() {
         super();
+        /** Extensions or MIME types offered by the picker. Validate dropped files in the caller. */
         this.accept = "";
+        /** Allow multiple files in the picker. Drops can contain multiple files independently. */
         this.multiple = false;
+        /** Prompt next to the file picker. */
         this.dropText = "Drop a file here or";
         this._dragOver = false;
     }

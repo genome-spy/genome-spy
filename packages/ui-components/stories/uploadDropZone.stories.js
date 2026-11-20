@@ -5,6 +5,7 @@ import { showSelectedFiles } from "./fileSelection.js";
 export default {
     title: "Components/UploadDropZone",
     component: "gs-upload-drop-zone",
+    tags: ["autodocs"],
     args: {
         accept: "",
         multiple: false,

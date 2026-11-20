@@ -11,7 +11,23 @@ import { LitElement, css, html, nothing } from "lit";
  * )} JobProgressState
  */
 
-/** Displays progress for a job managed by the caller. */
+/**
+ * Show progress and elapsed time for a job managed by the caller. Replace
+ * activity when the job changes state, including after a cancel request.
+ *
+ * @tag gs-job-progress
+ * @fires {Event} gs-job-cancel - Bubbles across shadow roots when a running job's Cancel control is activated.
+ * @slot cancel - Optional control. The caller manages a slotted control's disabled state.
+ * @slot message - Optional status content in the reserved message area.
+ * @csspart cancel-button - Built-in Cancel button.
+ * @csspart track - Progress bar track.
+ * @csspart elapsed - Elapsed time readout.
+ * @csspart message - Reserved status area.
+ * @cssprop --gs-theme-primary - Progress fill.
+ * @cssprop --gs-divider-color - Progress track fill.
+ * @cssprop --gs-muted-text - Status and elapsed time text.
+ * @cssprop --gs-job-message-height - Status area height, default 3lh.
+ */
 export default class JobProgress extends LitElement {
     static properties = {
         activity: { attribute: false },
@@ -36,6 +52,7 @@ export default class JobProgress extends LitElement {
         /** @type {number | null} Completed fraction from 0 to 1, or null if unknown. */
         this.progress = null;
 
+        /** Label of the built-in Cancel button. */
         this.cancelLabel = "Cancel";
 
         /** @private */

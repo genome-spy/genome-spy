@@ -13,6 +13,7 @@ function requestCancellation(event) {
 export default {
     title: "Components/JobProgress",
     component: "gs-job-progress",
+    tags: ["autodocs"],
     args: { label: "Downloading dataset", progress: 0.42, complete: false },
     argTypes: {
         progress: { control: { type: "number", min: 0, max: 1, step: 0.01 } },

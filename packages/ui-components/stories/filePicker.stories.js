@@ -5,6 +5,7 @@ import { showSelectedFiles } from "./fileSelection.js";
 export default {
     title: "Components/FilePicker",
     component: "gs-file-picker",
+    tags: ["autodocs"],
     args: { accept: ".csv,.tsv", multiple: true },
 };
 

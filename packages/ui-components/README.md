@@ -1,7 +1,10 @@
 # GenomeSpy UI Components
 
-Lit web components used by GenomeSpy App and Playground. Install
-`@genome-spy/ui-components` with Lit 3.
+Reusable Lit web components used across GenomeSpy apps, including GenomeSpy App
+and Playground. They are free to use under the MIT license. The APIs may change
+in any release.
+
+Install `@genome-spy/ui-components` with Lit 3.
 
 ## Use a component
 
@@ -107,15 +110,15 @@ uses `--gs-theme-primary` and `--gs-divider-color`. Set
 
 ## Selection and data preview
 
-| Component                   | Element                          | Use                                  |
-| --------------------------- | -------------------------------- | ------------------------------------ |
-| `SearchableCheckboxList`    | `gs-searchable-checkbox-list`    | Filter and select known values       |
-| `MultiSelect`               | `gs-multi-select`                | Search for values and select tags    |
-| `CustomSelect`              | `gs-custom-select`               | Pick one rich option                 |
-| `DataGrid`                  | `gs-data-grid`                   | Preview records in a scrollable grid |
-| `Histogram`                 | `gs-histogram`                   | Show a distribution and thresholds   |
-| `ComparisonOperatorButtons` | `gs-comparison-operator-buttons` | Pick a numeric comparison operator   |
-| `ThresholdComparisonInput`  | `gs-threshold-comparison-input`  | Enter a threshold with a histogram   |
+| Component                  | Element                         | Use                                  |
+| -------------------------- | ------------------------------- | ------------------------------------ |
+| `SearchableCheckboxList`   | `gs-searchable-checkbox-list`   | Filter and select known values       |
+| `MultiSelect`              | `gs-multi-select`               | Search for values and select tags    |
+| `CustomSelect`             | `gs-custom-select`              | Pick one rich option                 |
+| `DataGrid`                 | `gs-data-grid`                  | Preview records in a scrollable grid |
+| `Histogram`                | `gs-histogram`                  | Show a distribution and thresholds   |
+| `SegmentedControl`         | `gs-segmented-control`          | Pick one value from a short list     |
+| `ThresholdComparisonInput` | `gs-threshold-comparison-input` | Enter a threshold with a histogram   |
 
 Each element has a `define/` entry, such as
 `@genome-spy/ui-components/define/multiSelect`. Set a height on the grid so it
@@ -150,6 +153,11 @@ default, Playground, and focused-app palettes. Open **Theming → Scoped
 palettes** to compare the Playground and focused-app styles with copyable CSS.
 The **Button Styles** story compares the shared default with GenomeSpy App's
 button theme. The dialog story demonstrates a validated multi-step form.
+
+Open a component's **Docs** page for its public properties, attributes, events,
+slots, styling hooks, and examples. The package also ships a
+[Custom Elements Manifest](https://custom-elements-manifest.open-wc.org/),
+available as `@genome-spy/ui-components/custom-elements.json`.
 
 Run `npm -w @genome-spy/ui-components run build-storybook` to build a static
 showcase under `build/storybook` in the package.

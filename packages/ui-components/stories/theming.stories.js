@@ -1,6 +1,6 @@
 import { html } from "lit";
 import { showMessageDialog } from "@genome-spy/ui-components/messageDialog";
-import "@genome-spy/ui-components/define/comparisonOperatorButtons";
+import "@genome-spy/ui-components/define/segmentedControl";
 import "@genome-spy/ui-components/define/multiSelect";
 import "@genome-spy/ui-components/define/dropZone";
 import "../.storybook/preview.css";
@@ -11,6 +11,10 @@ import { showSelectedFiles } from "./fileSelection.js";
 import "./theming.css";
 
 const columns = ["Sample", "Group", "Score", "Status"];
+const displayModes = [
+    { value: "table", label: "Table" },
+    { value: "chart", label: "Chart" },
+];
 
 const playground = { theme: "playground", title: "Playground" };
 const focusedApps = { theme: "focused-app", title: "Focused apps" };
@@ -61,9 +65,11 @@ function renderPalettes(palettes, cssSource = themeCss) {
                             .selectedValues=${["Sample"]}
                             .search=${searchColumns}
                         ></gs-multi-select>
-                        <gs-comparison-operator-buttons
-                            value="gte"
-                        ></gs-comparison-operator-buttons>
+                        <gs-segmented-control
+                            label="Display mode"
+                            value="table"
+                            .options=${displayModes}
+                        ></gs-segmented-control>
                         <gs-upload-drop-zone
                             accept=".csv,.tsv"
                             @gs-files-chosen=${showSelectedFiles}

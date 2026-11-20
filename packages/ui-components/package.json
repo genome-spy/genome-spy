@@ -4,11 +4,13 @@
   "description": "Reusable GenomeSpy web components.",
   "license": "MIT",
   "type": "module",
+  "customElements": "./dist/custom-elements.json",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.js"
     },
+    "./custom-elements.json": "./dist/custom-elements.json",
     "./splitPanel": {
       "types": "./dist/splitPanel.d.ts",
       "default": "./src/splitPanel.js"
@@ -73,9 +75,9 @@
       "types": "./dist/jobProgress.d.ts",
       "default": "./src/jobProgress.js"
     },
-    "./comparisonOperatorButtons": {
-      "types": "./dist/comparisonOperatorButtons.d.ts",
-      "default": "./src/comparisonOperatorButtons.js"
+    "./segmentedControl": {
+      "types": "./dist/segmentedControl.d.ts",
+      "default": "./src/segmentedControl.js"
     },
     "./thresholdComparisonInput": {
       "types": "./dist/thresholdComparisonInput.d.ts",
@@ -117,9 +119,9 @@
       "types": "./dist/define/jobProgress.d.ts",
       "default": "./src/define/jobProgress.js"
     },
-    "./define/comparisonOperatorButtons": {
-      "types": "./dist/define/comparisonOperatorButtons.d.ts",
-      "default": "./src/define/comparisonOperatorButtons.js"
+    "./define/segmentedControl": {
+      "types": "./dist/define/segmentedControl.d.ts",
+      "default": "./src/define/segmentedControl.js"
     },
     "./define/thresholdComparisonInput": {
       "types": "./dist/define/thresholdComparisonInput.d.ts",
@@ -141,10 +143,11 @@
     "directory": "packages/ui-components"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly",
+    "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly && npm run build:manifest",
+    "build:manifest": "cem analyze",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
-    "storybook": "storybook dev -p 6010",
-    "build-storybook": "storybook build -o build/storybook"
+    "storybook": "npm run build:manifest && storybook dev -p 6010",
+    "build-storybook": "npm run build:manifest && storybook build -o build/storybook"
   },
   "peerDependencies": {
     "lit": "^3.3.0"
@@ -155,5 +158,8 @@
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
     "d3-array": "^3.2.4",
     "d3-scale": "^4.0.2"
+  },
+  "devDependencies": {
+    "@custom-elements-manifest/analyzer": "^0.11.0"
   }
 }

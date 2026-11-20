@@ -1,7 +1,14 @@
 import { LitElement, html, css } from "lit";
 
 /**
- * A resizable split panel component.
+ * Lay out and resize adjacent panes. Give the host a height from its layout,
+ * and assign each direct child a unique `slot` name. A child's optional
+ * `data-pane-label` names the separator for assistive technology.
+ *
+ * @tag gs-split-panel
+ * @csspart handle - Focusable resize separator between adjacent panes.
+ * @cssprop --gs-split-panel-divider - Separator border color. Falls back to the shared divider color.
+ * @cssprop --gs-focus-color - Outline of the focused separator.
  */
 export default class SplitPanel extends LitElement {
     static properties = {
@@ -20,7 +27,9 @@ export default class SplitPanel extends LitElement {
 
     constructor() {
         super();
+        /** @type {"horizontal" | "vertical"} Pane axis. Horizontal puts panes side by side. */
         this.orientation = "horizontal";
+        /** Display the panes in reverse order. */
         this.reverse = false;
     }
 

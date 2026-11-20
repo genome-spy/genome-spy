@@ -23,6 +23,7 @@ const ITEMS = CATEGORIES.map(([value]) => ({
 
 export default {
     title: "Components/SearchableCheckboxList",
+    component: "gs-searchable-checkbox-list",
     tags: ["autodocs"],
     args: {
         selectedItemName: "categories",

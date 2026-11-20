@@ -3,6 +3,7 @@ import "@genome-spy/ui-components/define/dataGrid";
 
 export default {
     title: "Components/DataGrid",
+    component: "gs-data-grid",
     tags: ["autodocs"],
 };
 
