@@ -41,6 +41,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
     #finished = false;
 
+    #layout = Symbol();
+
     /** @type {((mark: import("../../marks/mark.js").default) => boolean) | undefined} */
     #markPredicate;
 
@@ -150,17 +152,13 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 updated: false,
                 active: false,
                 ownerCoords: undefined,
-                definition: undefined,
-                config: undefined,
-                properties: undefined,
+                validatedTopologyRevision: undefined,
+                translation: undefined,
+                configBounds: undefined,
                 configRevision: -1,
                 resourceRevision: -1,
                 resourcesDirty: true,
-                configX: NaN,
-                configY: NaN,
-                configWidth: NaN,
-                configHeight: NaN,
-                viewport: undefined,
+                viewport: createDrawRect(),
                 generatedRectangles: undefined,
             };
             this.#marks.set(mark, state);
@@ -297,6 +295,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
+        this.surface.updateSharedScales();
         return items;
     }
 
@@ -318,6 +317,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     command.view.hasLocalOpacity();
                 command.clipX = clip.clipX;
                 command.clipY = clip.clipY;
+                if (command.coords.length > 1) {
+                    command.coords = Array.from(new Set(command.coords));
+                }
             }
         }
     }
@@ -367,9 +369,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords = state.occurrences[0].markCoords;
         }
 
-        if (state.source) {
-            state.viewport = createDrawRect();
-        }
         for (const occurrence of state.occurrences) {
             occurrence.draw = createOccurrenceDraw(occurrence, state);
         }
@@ -390,9 +389,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 state.generatedRectangles
             );
         }
-        if (state.viewport) {
-            writeDrawRect(state.viewport, state.ownerCoords);
-        }
+        writeDrawRect(state.viewport, state.ownerCoords);
         const viewOpacity =
             this.globalOptions.applyViewOpacity === false
                 ? 1
@@ -421,6 +418,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const configRevision = getWebGpuMarkConfigRevision(state.mark);
+        const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
+        const resourcesChanged = resourceRevision !== state.resourceRevision;
         const packedChanged = state.packed !== packed;
         const expressionChanged = state.configRevision !== configRevision;
         // Positional channels are translated into the owner's coordinate
@@ -429,16 +428,13 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         // stable Rectangle whose accessors change during interaction. The
         // WebGL path reevaluates that range for every draw; a retained WebGPU
         // config must be rebuilt when the numeric range changes.
-        const configX = state.source ? 0 : state.ownerCoords.x;
-        const configY = state.source ? 0 : state.ownerCoords.y;
-        const configWidth = state.ownerCoords.width;
-        const configHeight = state.ownerCoords.height;
+        const { width, height } = state.ownerCoords;
+        const bounds = state.configBounds;
         const geometryChanged =
-            state.configX !== configX ||
-            state.configY !== configY ||
-            state.configWidth !== configWidth ||
-            state.configHeight !== configHeight;
-        if (packedChanged || expressionChanged || geometryChanged) {
+            width !== bounds?.width || height !== bounds?.height;
+        const configChanged =
+            packedChanged || expressionChanged || geometryChanged;
+        if (configChanged) {
             countPerformance(
                 packedChanged
                     ? "markConfigurationPackedMiss"
@@ -446,33 +442,18 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                       ? "markConfigurationExpressionMiss"
                       : "markConfigurationGeometryMiss"
             );
-            const first = state.occurrences[0];
-            const configCoords = state.source
-                ? Rectangle.create(
-                      0,
-                      0,
-                      state.ownerCoords.width,
-                      state.ownerCoords.height
-                  )
-                : state.ownerCoords;
-            const translated = measurePerformance("markConfiguration", () =>
+            state.translation = measurePerformance("markConfiguration", () =>
                 createWebGpuMarkConfig(
                     state.mark,
-                    first.options,
-                    configCoords,
+                    state.occurrences[0].options,
+                    state.ownerCoords,
                     packed.data,
                     createPlacementIndexConfig(state)
                 )
             );
             state.packed = packed;
-            state.definition = translated?.definition;
-            state.config = translated?.config;
-            state.properties = translated?.properties;
             state.configRevision = configRevision;
-            state.configX = configX;
-            state.configY = configY;
-            state.configWidth = configWidth;
-            state.configHeight = configHeight;
+            state.configBounds = { width, height };
         }
         if (packedChanged) {
             for (const occurrence of state.occurrences) {
@@ -483,15 +464,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 );
             }
         }
-        const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
-        state.resourcesDirty ||=
-            resourceRevision === undefined ||
-            packedChanged ||
-            expressionChanged ||
-            geometryChanged ||
-            state.resourceRevision !== resourceRevision;
+        state.resourcesDirty ||= configChanged || resourcesChanged;
         state.resourceRevision = resourceRevision ?? -1;
-        state.active = !!state.config;
+        state.active = !!state.translation?.config;
     }
 
     /** @param {MarkState} state */
@@ -501,6 +476,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
 
         const topologyRevision = state.source.getSnapshot().topology.revision;
+        if (state.validatedTopologyRevision === topologyRevision) return;
         for (const occurrence of state.occurrences) {
             const captured = occurrence.options.placement?.topologyRevision;
             if (captured !== undefined && captured !== topologyRevision) {
@@ -510,6 +486,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 );
             }
         }
+        state.validatedTopologyRevision = topologyRevision;
     }
 
     /**
@@ -521,12 +498,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      */
     #submitOccurrenceDraw(occurrence, picking, canvas, items) {
         const state = occurrence.state;
-        if (
-            !state.active ||
-            !state.config ||
-            !state.definition ||
-            !state.packed
-        ) {
+        const translation = state.translation;
+        if (!state.active || !translation?.definition || !state.packed) {
             return undefined;
         }
         const range = occurrence.range;
@@ -538,55 +511,28 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         if (!draw) {
             throw new Error("Occurrence draw has not been compiled.");
         }
-        const scissor = draw.scissor;
-        if (scissor) {
-            const clip = occurrence.clip;
-            const markClip = occurrence.markClip;
-            scissor.x = clip?.clipX ? clip.rect.x : 0;
-            scissor.y = clip?.clipY ? clip.rect.y : 0;
-            scissor.width = clip?.clipX ? clip.rect.width : canvas.width;
-            scissor.height = clip?.clipY ? clip.rect.height : canvas.height;
-            if (markClip === true || markClip === "x") {
-                const x = occurrence.coords.x;
-                const width = occurrence.coords.width;
-                const left = clip?.clipX ? Math.max(scissor.x, x) : x;
-                scissor.width = clip?.clipX
-                    ? Math.min(scissor.x + scissor.width, x + width) - left
-                    : width;
-                scissor.x = left;
-            }
-            if (markClip === true || markClip === "y") {
-                const y = occurrence.coords.y;
-                const height = occurrence.coords.height;
-                const top = clip?.clipY ? Math.max(scissor.y, y) : y;
-                scissor.height = clip?.clipY
-                    ? Math.min(scissor.y + scissor.height, y + height) - top
-                    : height;
-                scissor.y = top;
-            }
-        }
-
         const placementIndex = state.generatedSource
             ? occurrence.placementIndex
             : occurrence.options.placement?.index;
-        if (state.source && placementIndex === undefined) {
-            throw createViewError(
-                state.mark,
-                "Draw-level placement requires a resolved placement index."
-            );
-        }
-        if (
-            state.source &&
-            placementIndex !== undefined &&
-            !isPlacementVisible(
-                state.source,
-                placementIndex,
-                state.viewport,
-                draw.scissor,
-                canvas
-            )
-        ) {
-            return undefined;
+        if (state.source) {
+            if (placementIndex === undefined) {
+                throw createViewError(
+                    state.mark,
+                    "Draw-level placement requires a resolved placement index."
+                );
+            }
+            if (
+                !preparePlacementScissor(
+                    occurrence,
+                    placementIndex,
+                    draw.scissor,
+                    canvas
+                )
+            ) {
+                return undefined;
+            }
+        } else if (draw.scissor) {
+            writeOccurrenceScissor(occurrence, draw.scissor, canvas);
         }
 
         let firstInstance = range.firstInstance;
@@ -621,9 +567,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     () =>
                         this.surface.updateMark(
                             state.mark,
-                            state.definition,
-                            state.config,
-                            state.properties ?? {}
+                            translation.definition,
+                            translation.config,
+                            translation.properties ?? {},
+                            this.#layout
                         )
                 );
                 state.resourcesDirty = false;
@@ -772,12 +719,10 @@ function createOccurrenceDraw(occurrence, state) {
                 -1
             ),
         },
+        viewport: state.viewport,
         firstInstance: 0,
         instanceCount: 0,
     };
-    if (state.viewport) {
-        draw.viewport = state.viewport;
-    }
     if (
         occurrence.markClip !== "never" &&
         (occurrence.clip || occurrence.markClip)
@@ -843,16 +788,12 @@ function refreshVisibleRange(occurrence, state, draw) {
                 : occurrence.coords;
         const x = xCoords.x;
         const y = yCoords.y;
-        draw.visibleRange.x1 = draw.visibleRange.cullX ? x : 0;
-        draw.visibleRange.x2 = x + xCoords.width;
-        draw.visibleRange.y1 = draw.visibleRange.cullY ? y : 0;
-        draw.visibleRange.y2 = y + yCoords.height;
-        if (state.viewport) {
-            draw.visibleRange.x1 -= state.viewport.x;
-            draw.visibleRange.x2 -= state.viewport.x;
-            draw.visibleRange.y1 -= state.viewport.y;
-            draw.visibleRange.y2 -= state.viewport.y;
-        }
+        draw.visibleRange.x1 =
+            (draw.visibleRange.cullX ? x : 0) - state.viewport.x;
+        draw.visibleRange.x2 = x + xCoords.width - state.viewport.x;
+        draw.visibleRange.y1 =
+            (draw.visibleRange.cullY ? y : 0) - state.viewport.y;
+        draw.visibleRange.y2 = y + yCoords.height - state.viewport.y;
     }
 }
 
@@ -884,40 +825,72 @@ function writeOccurrencePlacements(state, canvas, rectangles) {
 }
 
 /**
- * Resolves draw-index visibility using only dense placement geometry.
+ * @param {Occurrence} occurrence
+ * @param {import("@genome-spy/webgpu-renderer").DrawRect} scissor
+ * @param {{width: number, height: number}} canvas
+ */
+function writeOccurrenceScissor(occurrence, scissor, canvas) {
+    const clip = occurrence.clip;
+    const markClip = occurrence.markClip;
+    scissor.x = clip?.clipX ? clip.rect.x : 0;
+    scissor.y = clip?.clipY ? clip.rect.y : 0;
+    scissor.width = clip?.clipX ? clip.rect.width : canvas.width;
+    scissor.height = clip?.clipY ? clip.rect.height : canvas.height;
+    if (markClip === true || markClip === "x") {
+        const x = occurrence.coords.x;
+        const width = occurrence.coords.width;
+        const left = clip?.clipX ? Math.max(scissor.x, x) : x;
+        scissor.width = clip?.clipX
+            ? Math.min(scissor.x + scissor.width, x + width) - left
+            : width;
+        scissor.x = left;
+    }
+    if (markClip === true || markClip === "y") {
+        const y = occurrence.coords.y;
+        const height = occurrence.coords.height;
+        const top = clip?.clipY ? Math.max(scissor.y, y) : y;
+        scissor.height = clip?.clipY
+            ? Math.min(scissor.y + scissor.height, y + height) - top
+            : height;
+        scissor.y = top;
+    }
+}
+
+/**
+ * Rejects offscreen placements before reading their live clip rectangles.
  *
- * @param {import("../../view/layout/placementSource.js").default} source
+ * @param {Occurrence} occurrence
  * @param {number} index
- * @param {import("@genome-spy/webgpu-renderer").DrawRect} owner
  * @param {import("@genome-spy/webgpu-renderer").DrawRect | undefined} scissor
  * @param {{width: number, height: number}} canvas
  */
-function isPlacementVisible(source, index, owner, scissor, canvas) {
+function preparePlacementScissor(occurrence, index, scissor, canvas) {
+    const { source, viewport: owner } = occurrence.state;
     const rectangles = source.getSnapshot().rectangles;
     const offset = index * 4;
-    if (offset + 3 >= rectangles.length) {
-        return false;
-    }
+    if (offset + 3 >= rectangles.length) return false;
 
-    const x = owner.x + rectangles[offset] * owner.width;
     const y = owner.y + rectangles[offset + 1] * owner.height;
-    const width = rectangles[offset + 2] * owner.width;
     const height = rectangles[offset + 3] * owner.height;
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
+    if (!(height > 0 && y < canvas.height && y + height > 0)) return false;
+    const x = owner.x + rectangles[offset] * owner.width;
+    const width = rectangles[offset + 2] * owner.width;
+    if (!(width > 0 && x < canvas.width && x + width > 0)) return false;
 
-    const x1 = Math.max(0, scissor?.x ?? 0);
-    const y1 = Math.max(0, scissor?.y ?? 0);
-    const x2 = Math.min(
-        canvas.width,
-        scissor ? scissor.x + scissor.width : canvas.width
+    if (!scissor) return canvas.width > 0 && canvas.height > 0;
+    writeOccurrenceScissor(occurrence, scissor, canvas);
+    const x1 = Math.max(0, scissor.x);
+    const y1 = Math.max(0, scissor.y);
+    const x2 = Math.min(canvas.width, scissor.x + scissor.width);
+    const y2 = Math.min(canvas.height, scissor.y + scissor.height);
+    return (
+        x1 < x2 &&
+        y1 < y2 &&
+        x < x2 &&
+        y < y2 &&
+        x + width > x1 &&
+        y + height > y1
     );
-    const y2 = Math.min(
-        canvas.height,
-        scissor ? scissor.y + scissor.height : canvas.height
-    );
-    return x < x2 && y < y2 && x + width > x1 && y + height > y1;
 }
 
 /**
@@ -925,6 +898,12 @@ function isPlacementVisible(source, index, owner, scissor, canvas) {
  * @param {{width: number, height: number}} target
  */
 function writeScopeBounds(command, target) {
+    if (!command.clipX && !command.clipY) {
+        command.bounds.width = target.width;
+        command.bounds.height = target.height;
+        return;
+    }
+
     const first = command.coords[0];
     let x1 = first.x;
     let y1 = first.y;
@@ -958,17 +937,13 @@ function writeScopeBounds(command, target) {
  * @property {boolean} updated
  * @property {boolean} active
  * @property {Rectangle | undefined} ownerCoords
- * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
- * @property {object | undefined} config
- * @property {Record<string, {value: any}> | undefined} properties
+ * @property {number | undefined} validatedTopologyRevision
+ * @property {ReturnType<typeof createWebGpuMarkConfig>} translation
+ * @property {{width: number, height: number} | undefined} configBounds
  * @property {number} configRevision
  * @property {number} resourceRevision
  * @property {boolean} resourcesDirty
- * @property {number} configX
- * @property {number} configY
- * @property {number} configWidth
- * @property {number} configHeight
- * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
+ * @property {import("@genome-spy/webgpu-renderer").DrawRect} viewport
  * @property {Float32Array | undefined} generatedRectangles
  */
 

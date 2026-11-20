@@ -13,7 +13,7 @@ import {
 
 /**
  * @param {string} name
- * @param {import("../../index.d.ts").ChannelConfigInput} channel
+ * @param {import("../../index.d.ts").LocalChannelConfigInput} channel
  */
 function validateScaleConfig(name, channel) {
     attachScaleDefinitions({ channel });

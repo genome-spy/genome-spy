@@ -159,11 +159,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         i
     ) + vec2<f32>(getScaled_x2Offset(i), getScaled_y2Offset(i));
 
-    let upper = vec2<f32>(globals.width, globals.height);
+    let lower = -globals.viewportOrigin;
+    let upper = lower + globals.canvasSize;
     // The overscan keeps artificial caps and thick strokes outside the image.
-    let margin = max(upper, vec2<f32>(width + expansion + getScaled_minLength(i) + pixelSize));
-    var xBounds = vec2<f32>(-margin.x, upper.x + margin.x);
-    var yBounds = vec2<f32>(-margin.y, upper.y + margin.y);
+    let margin = max(globals.canvasSize, vec2<f32>(width + expansion + getScaled_minLength(i) + pixelSize));
+    var xBounds = vec2<f32>(lower.x - margin.x, upper.x + margin.x);
+    var yBounds = vec2<f32>(lower.y - margin.y, upper.y + margin.y);
 #if defined(xClampRange_DEFINED)
     let xRange = getScaled_xClampRange(i);
     xBounds = vec2<f32>(applyPlacementPixel(vec2<f32>(xRange.x, 0.0), i).x,
@@ -191,16 +192,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let along = mix(-end - padding, span + end + padding, local.x);
     let across = (local.y - 0.5) * (width + 2.0 * padding);
     let position = (a + b) * 0.5 + tangent / len * (along - span * 0.5) + normal * across;
-    let clip = vec2<f32>(
-        (position.x / globals.width) * 2.0 - 1.0,
-        1.0 - (position.y / globals.height) * 2.0
-    );
+    let clip = localPixelToClip(position);
 
     var out: VSOut;
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
 #endif
-    out.pos = vec4<f32>(applyPlacementClipForRule(clip, i), 0.0, 1.0);
+    out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.fill = getScaled_fill(i);
     out.fill.a *= getScaled_fillOpacity(i);
     out.stroke = getScaled_stroke(i);

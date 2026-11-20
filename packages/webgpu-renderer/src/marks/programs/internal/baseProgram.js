@@ -18,6 +18,7 @@ import {
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
+import { sharedScaleResources } from "./sharedScale.js";
 
 /**
  * @template T
@@ -269,7 +270,7 @@ export default class BaseProgram {
 
         const normalizedChannels = normalizeChannels({
             channels: config.channels,
-            context: { channelSpecs: this.channelSpecs },
+            context: { channelSpecs: this.channelSpecs, renderer },
         });
         /** @protected */
         this._channels = normalizedChannels.channels;
@@ -397,10 +398,34 @@ export default class BaseProgram {
         this.#validateUniformBufferCapacity();
         this._initializeExtraResources();
         this.#selectionResources.initializeSelections(this._extraBuffers);
+        /** @type {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
         const extraResources = [
             ...this.#selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
+        /** @type {Map<import("../../../index.d.ts").SharedScaleHandle, string>} */
+        const sharedScales = new Map();
+        for (const channelIR of compiledChannels.channelIRs) {
+            const handle = channelIR.channel.sharedScale;
+            if (!handle) continue;
+            const entry = sharedScaleResources.get(handle);
+            let bindingName = sharedScales.get(handle);
+            if (!bindingName) {
+                bindingName = "sharedScale_" + sharedScales.size;
+                sharedScales.set(handle, bindingName);
+                this._extraBuffers.set(bindingName, entry.buffer);
+                this._borrowedExtraBuffers.add(bindingName);
+                extraResources.push({
+                    name: bindingName,
+                    kind: "buffer",
+                    role: "extraBuffer",
+                    visibility: "vertex",
+                    bufferType: "uniform",
+                    wgslType: "array<vec4<f32>, 3>",
+                });
+            }
+            channelIR.sharedScaleName = bindingName;
+        }
         const {
             bindGroupLayout,
             getPipeline,
@@ -461,6 +486,9 @@ export default class BaseProgram {
                     .map(([k, v]) => [k, v.data])
             ),
             this.count
+        );
+        this.#scaleResources.subscribeSharedScales((rebind) =>
+            this._queueSlotUpdate(rebind)
         );
     }
 
@@ -835,7 +863,7 @@ export default class BaseProgram {
         const add = (name, source, index) => {
             const channel = this._channels[source];
             if (!channel) return;
-            if (channel.scale)
+            if (channel.scale && !channel.sharedScale)
                 addChannelSlot(
                     this.#slotHandles.scales,
                     name,
@@ -1141,20 +1169,18 @@ export default class BaseProgram {
                     isValueChannelConfig(channel)) &&
                 channel.scale
             ) {
-                this.#scaleResources.initializeScale(
+                const updater = this.#scaleResources.initializeScale(
                     name,
-                    channel,
-                    channel.scale
+                    channel
                 );
-                const updater = this.#scaleResources.getScaleUpdater(name);
-                updater.updateDomain(
+                updater?.updateDomain(
                     channel.scale.domain,
                     channel.scale.gapDomain
                 );
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
                 if (rangeValue !== undefined) {
-                    updater.updateRange(rangeValue);
+                    updater?.updateRange(rangeValue);
                 }
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {

@@ -1,6 +1,9 @@
 import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
+    SCALE_ALIGN_PREFIX,
+    SCALE_PADDING_INNER_PREFIX,
+    SCALE_PADDING_OUTER_PREFIX,
     SCALED_FUNCTION_PREFIX,
 } from "../../wgsl/prefixes.js";
 import {
@@ -12,9 +15,9 @@ import {
 } from "./scalePipeline.js";
 
 /**
- * @typedef {import("../../index.d.ts").ScaleEmitParams} ScaleEmitParams
+ * @typedef {import("./scaleCodegen.js").ScaleEmitParams} ScaleEmitParams
  * @typedef {import("./scalePipeline.js").ScalePipelineStep} ScalePipelineStep
- * @typedef {Pick<ScaleEmitParams, "name"|"functionName"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture">} ContinuousEmitParams
+ * @typedef {Pick<ScaleEmitParams, "name"|"functionName"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture"|"sharedScaleName">} ContinuousEmitParams
  */
 
 /**
@@ -28,26 +31,38 @@ export function makeFnHeader(name, returnType, functionName = name) {
 
 /**
  * @param {string} name
+ * @param {string} [sharedScaleName]
  * @returns {string}
  */
-export function domainVec2(name) {
-    return `readPacked2(params.${DOMAIN_PREFIX}${name})`;
+export function domainVec2(name, sharedScaleName) {
+    return sharedScaleName
+        ? sharedScaleName + "[0].xy"
+        : `readPacked2(params.${DOMAIN_PREFIX}${name})`;
 }
 
 /**
  * @param {string} name
+ * @param {string} [sharedScaleName]
  * @returns {string}
  */
-export function domainVec3(name) {
-    return `readPacked3(params.${DOMAIN_PREFIX}${name})`;
+export function domainVec3(name, sharedScaleName) {
+    return sharedScaleName
+        ? sharedScaleName + "[0].xyz"
+        : `readPacked3(params.${DOMAIN_PREFIX}${name})`;
 }
 
-/**
- * @param {string} name
- * @returns {string}
- */
-export function rangeVec2(name) {
-    return `readPacked2(params.${RANGE_PREFIX}${name})`;
+/** @param {string} name @param {string} [sharedScaleName] */
+export function rangeVec2(name, sharedScaleName) {
+    return sharedScaleName
+        ? sharedScaleName + "[2].xy"
+        : `readPacked2(params.${RANGE_PREFIX}${name})`;
+}
+
+/** @param {string} name @param {string} [sharedScaleName] */
+export function bandParameters(name, sharedScaleName) {
+    return sharedScaleName
+        ? `${sharedScaleName}[2].z, ${sharedScaleName}[2].w, ${sharedScaleName}[0].w`
+        : `params.${SCALE_PADDING_INNER_PREFIX}${name}, params.${SCALE_PADDING_OUTER_PREFIX}${name}, params.${SCALE_ALIGN_PREFIX}${name}`;
 }
 
 /**
@@ -75,6 +90,7 @@ export function emitContinuousScale(
         clamp,
         round,
         useRangeTexture,
+        sharedScaleName,
     },
     valueExprFn
 ) {
@@ -86,7 +102,7 @@ export function emitContinuousScale(
     }
 
     if (clamp) {
-        steps.push(clampToDomainStep(domainVec2(name)));
+        steps.push(clampToDomainStep(domainVec2(name, sharedScaleName)));
     }
 
     steps.push(applyScaleStep(name, valueExprFn));

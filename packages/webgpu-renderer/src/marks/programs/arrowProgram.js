@@ -483,7 +483,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let axisPosition = geometryCenter + (local.x - 0.5) * (quadHalfLength * 2.0);
     let normalPosition = (local.y - 0.5) * (max(headHalfWidth, abs(stemHalfWidth)) * 2.0 + padding * 2.0);
     let position = centre + axis * axisPosition + normal * normalPosition;
-    let clip = vec2<f32>((position.x / globals.width) * 2.0 - 1.0, 1.0 - (position.y / globals.height) * 2.0);
+    let clip = localPixelToClip(position);
     var out: VSOut;
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);

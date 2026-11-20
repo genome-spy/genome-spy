@@ -6,7 +6,11 @@ import HASH_TABLE_WGSL, {
 import { evaluateShaderConditionals } from "../../wgsl/conditionals.js";
 import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
-import { hasGroupingGaps, GROUPING_GAPS_WGSL } from "../scales/groupingGaps.js";
+import {
+    gapShaderInputs,
+    hasGroupingGaps,
+    GROUPING_GAPS_WGSL,
+} from "../scales/groupingGaps.js";
 import { rangeVec2 } from "../scales/scaleEmitUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
@@ -46,7 +50,7 @@ import {
  * @prop {"float"|"uint"|"sint"} [sampleType]
  * @prop {"2d"|"2d-array"} [dimension]
  * @prop {"filtering"|"non-filtering"} [samplerType]
- * @prop {"read-only-storage"} [bufferType]
+ * @prop {"read-only-storage"|"uniform"} [bufferType]
  * @prop {string} [wgslType]
  * @prop {"extraTexture"|"extraSampler"|"extraBuffer"} role
  */
@@ -215,10 +219,13 @@ export function buildMarkShader({
               selectionDefs,
           })
         : "";
-    const gapChecks = gapChannels.map(({ name, channel }) => {
-        const axis =
-            channel.scale.gapAxis ?? (name.startsWith("y") ? "y" : "x");
-        return `groupingGapsFit(${rangeVec2(name)}, params.gapGeometry_${name}, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u))`;
+    const gapChecks = gapChannels.map(({ name, channel, sharedScaleName }) => {
+        const { geometry, placement } = gapShaderInputs(
+            name,
+            channel.scale,
+            sharedScaleName
+        );
+        return `groupingGapsFit(${rangeVec2(name, sharedScaleName)}, ${geometry}, ${placement})`;
     });
     const instanceVisibility =
         order || hasGaps
@@ -630,8 +637,10 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                 buffer: { type: extra.bufferType ?? "read-only-storage" },
             });
             resourceLayout.push({ name: extra.name, role: extra.role });
+            const addressSpace =
+                extra.bufferType === "uniform" ? "uniform" : "storage, read";
             extraDecls.push(
-                `@group(1) @binding(${binding}) var<storage, read> ${wgslName}: ${extra.wgslType ?? "array<f32>"};`
+                `@group(1) @binding(${binding}) var<${addressSpace}> ${wgslName}: ${extra.wgslType ?? "array<f32>"};`
             );
             continue;
         }
@@ -695,6 +704,7 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                     outputComponents: channelIR.outputComponents,
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
+                    sharedScaleName: channelIR.sharedScaleName,
                     useRangeTexture: channelIR.useRangeTexture,
                     domainMapName: channelIR.needsDomainMap
                         ? `${DOMAIN_MAP_PREFIX}${name}`
@@ -825,14 +835,23 @@ struct Globals {
     uZero: f32,
     logicalVisibleRect: vec4<f32>,
     cullByVisibleRange: vec4<f32>,
-    viewport: vec4<f32>,
+    viewportOrigin: vec2<f32>,
+    canvasSize: vec2<f32>,
     placementIndex: u32,
     placementClipMode: u32,
     placementCount: u32,
     orderPass: u32,
+    renderTargetOrigin: vec2<f32>,
+    renderTargetSize: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
+
+// A draw can extend past its logical viewport. Project into the active attachment.
+fn localPixelToClip(pixel: vec2<f32>) -> vec2<f32> {
+    let unit = (globals.viewportOrigin + pixel - globals.renderTargetOrigin) / globals.renderTargetSize;
+    return unit * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0);
+}
 
 #if defined(PLACEMENT_ENABLED)
 @group(2) @binding(0) var<storage, read> placementRectangles: array<vec4<f32>>;
@@ -852,13 +871,12 @@ fn isPlacementVisible(i: u32) -> bool {
     }
     let rect = placementRectangles[placementIndex];
     let bounds = vec4<f32>(
-        globals.viewport.xy + rect.xy * globals.viewport.zw,
-        globals.viewport.xy + (rect.xy + rect.zw) * globals.viewport.zw
+        globals.viewportOrigin + rect.xy * vec2<f32>(globals.width, globals.height),
+        globals.viewportOrigin + (rect.xy + rect.zw) * vec2<f32>(globals.width, globals.height)
     );
     return rect.z > 0.0 && rect.w > 0.0 &&
-        bounds.x < globals.viewport.x + globals.viewport.z &&
-        bounds.y < globals.viewport.y + globals.viewport.w &&
-        bounds.z > globals.viewport.x && bounds.w > globals.viewport.y;
+        bounds.x < globals.canvasSize.x && bounds.y < globals.canvasSize.y &&
+        bounds.z > 0.0 && bounds.w > 0.0;
 }
 
 fn placementClipBounds(i: u32) -> vec4<f32> {
@@ -868,10 +886,10 @@ fn placementClipBounds(i: u32) -> vec4<f32> {
     }
     let rect = placementRectangles[placementIndex];
     return vec4<f32>(
-        globals.viewport.x + rect.x * globals.viewport.z,
-        globals.viewport.y + rect.y * globals.viewport.w,
-        globals.viewport.x + (rect.x + rect.z) * globals.viewport.z,
-        globals.viewport.y + (rect.y + rect.w) * globals.viewport.w
+        globals.viewportOrigin.x + rect.x * globals.width,
+        globals.viewportOrigin.y + rect.y * globals.height,
+        globals.viewportOrigin.x + (rect.x + rect.z) * globals.width,
+        globals.viewportOrigin.y + (rect.y + rect.w) * globals.height
     );
 }
 
@@ -881,18 +899,13 @@ fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
         return vec2<f32>(0.0);
     }
     let rect = placementRectangles[placementIndex];
-    return rect.xy * globals.viewport.zw + pixel * rect.zw;
-}
-
-fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
-
-fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
+    return rect.xy * vec2<f32>(globals.width, globals.height) + pixel * rect.zw;
 }
 
 fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
+    // TODO: Add the crop origin before comparing against canvas-space bounds.
+    // An offset opacity group can lose marks with clipToPlacement enabled.
+    // GenomeSpy's view adapter currently leaves this option unset.
     let logicalPosition = position.xy / globals.dpr;
     return ((globals.placementClipMode & 1u) == 0u ||
         (logicalPosition.x >= placementClip.x && logicalPosition.x <= placementClip.z)) &&
@@ -909,13 +922,6 @@ fn applyPlacementPixel(pixel: vec2<f32>, i: u32) -> vec2<f32> {
     return pixel;
 }
 
-fn applyTextPlacementClip(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
-
-fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
-    return clip;
-}
 #endif
 
 fn isOutsideVisibleRange(pos: vec2<f32>) -> bool {

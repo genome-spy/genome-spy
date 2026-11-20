@@ -132,12 +132,11 @@ fn distanceFromLine(a: vec2<f32>, b: vec2<f32>, p: vec2<f32>) -> f32 {
     return length(ap - proj);
 }
 
-fn isInsideViewport(p: vec2<f32>, marginFactor: f32) -> bool {
-    let margin = vec2<f32>(globals.width, globals.height) * vec2<f32>(marginFactor);
-    return p.x >= -margin.x &&
-        p.x <= globals.width + margin.x &&
-        p.y >= -margin.y &&
-        p.y <= globals.height + margin.y;
+fn isNearCanvas(p: vec2<f32>) -> bool {
+    let canvasPosition = globals.viewportOrigin + p;
+    let margin = 2.0 * globals.canvasSize;
+    return all(canvasPosition >= -margin) &&
+        all(canvasPosition <= globals.canvasSize + margin);
 }
 
 fn inverseSmoothstep(t: f32) -> f32 {
@@ -149,7 +148,7 @@ fn remapVisibleChordParameter(
     stripT: f32,
     chordStart: f32,
     chordEnd: f32,
-    viewportLength: f32
+    canvasBounds: vec2<f32>
 ) -> f32 {
     let chordMin = min(chordStart, chordEnd);
     let chordMax = max(chordStart, chordEnd);
@@ -158,8 +157,8 @@ fn remapVisibleChordParameter(
         return 0.0;
     }
 
-    let visibleChordMin = max(chordMin, 0.0);
-    let visibleChordMax = min(chordMax, viewportLength);
+    let visibleChordMin = max(chordMin, canvasBounds.x);
+    let visibleChordMax = min(chordMax, canvasBounds.y);
     if (visibleChordMax <= visibleChordMin) {
         return stripT;
     }
@@ -207,7 +206,7 @@ fn remapVisibleChordParameter(
     return visibleTMax;
 }
 
-fn clampChordToViewport(
+fn clampChordLength(
     p1: ptr<function, vec2<f32>>,
     p4: ptr<function, vec2<f32>>,
     chordLength: ptr<function, f32>
@@ -215,10 +214,10 @@ fn clampChordToViewport(
     if (*chordLength > params.uMaxChordLength) {
         let chordVector = *p4 - *p1;
         let unitChordVector = normalize(chordVector);
-        if (isInsideViewport(*p1, 2.0)) {
+        if (isNearCanvas(*p1)) {
             (*chordLength) = params.uMaxChordLength;
             (*p4) = *p1 + unitChordVector * params.uMaxChordLength;
-        } else if (isInsideViewport(*p4, 2.0)) {
+        } else if (isNearCanvas(*p4)) {
             (*chordLength) = params.uMaxChordLength;
             (*p1) = *p4 - unitChordVector * params.uMaxChordLength;
         }
@@ -259,6 +258,9 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     if (all(a == b)) { return culledLink(); }
 #endif
 
+    let canvasStart = -globals.viewportOrigin;
+    let canvasEnd = canvasStart + globals.canvasSize;
+
     if (params.uShape <= SHAPE_DOME) {
         if (params.uShape == SHAPE_DOME) {
             var height = vec2<f32>(0.0, 0.0);
@@ -273,21 +275,21 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             }
 
             var chordLength = length(p4 - p1);
-            clampChordToViewport(&p1, &p4, &chordLength);
+            clampChordLength(&p1, &p4, &chordLength);
             if (params.uClampApex != 0u) {
                 if (params.uOrient == ORIENT_VERTICAL) {
-                    if (p4.x > 0.0) {
-                        p1.x = max(p1.x, -p4.x);
+                    if (p4.x > canvasStart.x) {
+                        p1.x = max(p1.x, 2.0 * canvasStart.x - p4.x);
                     }
-                    if (p1.x < globals.width) {
-                        p4.x = min(p4.x, 2.0 * globals.width - p1.x);
+                    if (p1.x < canvasEnd.x) {
+                        p4.x = min(p4.x, 2.0 * canvasEnd.x - p1.x);
                     }
                 } else {
-                    if (p4.y > 0.0) {
-                        p1.y = max(p1.y, -p4.y);
+                    if (p4.y > canvasStart.y) {
+                        p1.y = max(p1.y, 2.0 * canvasStart.y - p4.y);
                     }
-                    if (p1.y < globals.height) {
-                        p4.y = min(p4.y, 2.0 * globals.height - p1.y);
+                    if (p1.y < canvasEnd.y) {
+                        p4.y = min(p4.y, 2.0 * canvasEnd.y - p1.y);
                     }
                 }
             }
@@ -307,7 +309,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             let chordNormal = vec2<f32>(unitChordVector.y, -unitChordVector.x);
             var chordLength = length(chordVector);
 
-            clampChordToViewport(&p1, &p4, &chordLength);
+            clampChordLength(&p1, &p4, &chordLength);
 
             let height = max(chordLength / 2.0 * params.uArcHeightFactor, params.uMinArcHeight);
             let controlOffset = chordNormal * height / 0.75;
@@ -336,15 +338,15 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
     if (params.uShape == SHAPE_DOME) {
         if (params.uOrient == ORIENT_VERTICAL) {
-            t = remapVisibleChordParameter(tRaw, p1.x, p4.x, globals.width);
+            t = remapVisibleChordParameter(tRaw, p1.x, p4.x, vec2<f32>(canvasStart.x, canvasEnd.x));
         } else {
-            t = remapVisibleChordParameter(tRaw, p1.y, p4.y, globals.height);
+            t = remapVisibleChordParameter(tRaw, p1.y, p4.y, vec2<f32>(canvasStart.y, canvasEnd.y));
         }
     } else if (params.uShape == SHAPE_ARC) {
         if (a.y == b.y) {
-            t = remapVisibleChordParameter(tRaw, p1.x, p4.x, globals.width);
+            t = remapVisibleChordParameter(tRaw, p1.x, p4.x, vec2<f32>(canvasStart.x, canvasEnd.x));
         } else if (a.x == b.x) {
-            t = remapVisibleChordParameter(tRaw, p1.y, p4.y, globals.height);
+            t = remapVisibleChordParameter(tRaw, p1.y, p4.y, vec2<f32>(canvasStart.y, canvasEnd.y));
         }
     }
 
@@ -406,10 +408,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         p = p + normal * normalDistance;
     }
 
-    let clip = vec2<f32>(
-        (p.x / globals.width) * 2.0 - 1.0,
-        1.0 - (p.y / globals.height) * 2.0
-    );
+    let clip = localPixelToClip(p);
 
     var out: VSOut;
 #if defined(PLACEMENT_ENABLED)

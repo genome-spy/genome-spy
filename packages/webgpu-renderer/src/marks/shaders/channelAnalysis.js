@@ -12,7 +12,7 @@ import {
 } from "../scales/scaleDefinition.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.d.ts").LocalChannelConfigInput} LocalChannelConfigInput
  * @typedef {import("../../index.d.ts").ChannelScale["type"]} ScaleType
  * @typedef {import("../../types.js").ScalarType} ScalarType
  */
@@ -24,7 +24,7 @@ import {
 /**
  * @typedef {ScaleIOContext & {
  *   name: string,
- *   channel: ChannelConfigInput,
+ *   channel: LocalChannelConfigInput,
  *   sourceKind: ChannelSourceKind,
  *   scaleType: ScaleType,
  *   scaleDef: import("../../index.d.ts").ScaleDef,
@@ -54,7 +54,7 @@ export function normalizeScalarType(type) {
 }
 
 /**
- * @param {ChannelConfigInput} channel
+ * @param {LocalChannelConfigInput} channel
  * @returns {ChannelSourceKind}
  */
 function getSourceKind(channel) {
@@ -69,7 +69,7 @@ function getSourceKind(channel) {
 
 /**
  * @param {string} name
- * @param {ChannelConfigInput} channel
+ * @param {LocalChannelConfigInput} channel
  * @returns {ChannelAnalysis}
  */
 export function buildChannelAnalysis(name, channel) {

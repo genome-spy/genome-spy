@@ -53,7 +53,7 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
  */
 function createContext(surface, options = {}) {
     return new WebGpuViewRenderingContext({
-        surface,
+        surface: { updateSharedScales: () => {}, ...surface },
         ...options,
     });
 }
@@ -534,7 +534,13 @@ describe("WebGpuViewRenderingContext", () => {
             ]).toEqual([20.5, 30.5, 100, 80]);
             expect(adapterCalls[0][3]).toBe(mocks.packed.data);
 
-            expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+            expect(surface.updateMark).toHaveBeenCalledWith(
+                mark,
+                {},
+                {},
+                {},
+                expect.any(Symbol)
+            );
             expect(surface.prepareDraw).toHaveBeenCalledWith(
                 mark,
                 expect.objectContaining({
@@ -583,17 +589,23 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
         context.render();
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+        expect(surface.updateMark).toHaveBeenCalledWith(
+            mark,
+            {},
+            {},
+            {},
+            expect.any(Symbol)
+        );
         expect(surface.prepareDraw).toHaveBeenCalledWith(
             mark,
             expect.objectContaining({
                 firstInstance: 0,
                 instanceCount: 1,
                 visibleRange: {
-                    x1: 0,
-                    y1: 40,
-                    x2: 120,
-                    y2: 90,
+                    x1: -20.5,
+                    y1: 9.5,
+                    x2: 99.5,
+                    y2: 59.5,
                     cullX: false,
                     cullY: true,
                 },
@@ -656,7 +668,7 @@ describe("WebGpuViewRenderingContext", () => {
             width: 100,
             height: 90,
         });
-        expect(firstDraw.visibleRange).toMatchObject({ x1: 30, x2: 130 });
+        expect(firstDraw.visibleRange).toMatchObject({ x1: -0.5, x2: 99.5 });
 
         const pickingFrame = context.renderPicking();
         const secondDraw = surface.prepareDraw.mock.calls[1][1];
@@ -668,7 +680,7 @@ describe("WebGpuViewRenderingContext", () => {
             width: 100,
             height: 100,
         });
-        expect(secondDraw.visibleRange).toMatchObject({ x1: 40, x2: 140 });
+        expect(secondDraw.visibleRange).toMatchObject({ x1: -0.5, x2: 99.5 });
 
         // Unlike the draw envelope, positional mark channels bake the owner
         // rectangle into the retained config and must be refreshed as well.
@@ -1264,10 +1276,9 @@ describe("WebGpuViewRenderingContext", () => {
         rectangles.set([0, 0.99, 1, 0.02], 4);
         rectangles.set([0, -0.01, 1, 0.02], 8);
         const source = new PlacementSource();
-        source.replaceTopology(
-            Array.from({ length: count }, (_, index) => [index]),
-            rectangles
-        );
+        const facetIds = Array.from({ length: count }, (_, index) => [index]);
+        source.replaceTopology(facetIds, rectangles);
+        const { revision: topologyRevision } = source.getSnapshot().topology;
         const surface = {
             getDevicePixelRatio: () => 1,
             getLogicalCanvasSize: () => ({ width: 100, height: 100 }),
@@ -1280,10 +1291,11 @@ describe("WebGpuViewRenderingContext", () => {
             encoders: {},
             getType: () => "point",
             isPickingParticipant: () => true,
-            properties: { clip: "never", cullByVisibleRange: "x" },
+            properties: { cullByVisibleRange: "x" },
             unitView: {
                 getEffectiveOpacity: () => 1,
                 getCollector: () => ({}),
+                getPathString: () => "root/test-view",
             },
         };
         const coords = Rectangle.create(0, 0, 100, 100);
@@ -1292,7 +1304,7 @@ describe("WebGpuViewRenderingContext", () => {
             context.pushView(/** @type {any} */ (view), coords);
             context.renderMark(/** @type {any} */ (mark), {
                 clip,
-                placement: { source, index },
+                placement: { source, index, topologyRevision },
             });
             context.popView(/** @type {any} */ (view));
         }
@@ -1311,11 +1323,20 @@ describe("WebGpuViewRenderingContext", () => {
         // A previously rejected occurrence must use current bounds on reentry.
         const next = rectangles.slice();
         next.set([0.25, 0.25, 0.5, 0.5], 12);
+        next.set([0, 0.4, 0.1, 0.2], 16);
         source.replaceGeometry(next);
         clipX = 20;
-        expect(collectDraws(context.render()).at(-1)).toMatchObject({
+        const draws = collectDraws(context.render());
+        expect(draws.map((draw) => draw.placement.index)).toEqual([1, 2, 3]);
+        expect(draws.at(-1)).toMatchObject({
             placement: { index: 3 },
+            scissor: { x: 20, width: 80 },
             visibleRange: { x1: 19.5, x2: 99.5 },
         });
+
+        source.replaceTopology(facetIds, next);
+        expect(() => context.render()).toThrow(
+            "Placement topology changed after layout completion."
+        );
     });
 });

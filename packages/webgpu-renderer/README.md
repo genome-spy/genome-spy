@@ -501,6 +501,40 @@ avoids per-frame CPU projection for large interactive datasets and lets
 conditional encodings and high-precision integer mapping run directly in the
 shader.
 
+### Shared scales
+
+Stacked tracks can share an x scale to stay aligned during pan and zoom. Create
+one scale with `renderer.createSharedScale()` and give each channel the same
+handle. The channels share the domain and range, and the renderer uploads the
+updated scale bounds once for all of them. Position ranges are in viewport-local
+logical pixels.
+
+Using the data and imports from the quick start:
+
+```js
+const sharedX = renderer.createSharedScale(
+  linearScale({ domain: [0, 1], range: [20, 620] })
+);
+if (!sharedX) throw new Error("Unsupported shared scale configuration.");
+
+const tracks = [x, nextX].map((data) =>
+  renderer.createMark(pointMark, {
+    channels: { x: { data, type: "f32", scale: sharedX } },
+  })
+);
+
+sharedX.update({ domain: [0.25, 0.75] });
+```
+
+Use independent scales when tracks need different domains, pixel ranges, or zoom
+behavior. A mark-local scale also avoids an extra GPU binding when only one mark
+uses the mapping.
+
+Sharing supports built-in linear, index, and band scales with explicit domains
+and two numeric range endpoints. `createSharedScale()` returns `undefined` for
+unsupported configurations. Call `sharedX.destroy()` after destroying the marks
+that use it.
+
 ### High-precision index scale
 
 The renderer-specific `index` scale maps large ordered integer domains without
@@ -531,11 +565,10 @@ A placement set contains normalized `[x, y, width, height]` rectangles relative
 to a draw viewport. It is retained independently of marks and can be replaced
 or destroyed without recreating their pipelines.
 
-Faceted views and small multiples are primary use cases. One retained mark and
-its shared scale state can be reused across many facet rectangles instead of
-creating GPU resources for every panel. The caller remains responsible for
-facet grouping, layout, data ranges, and scale-resolution policy; the renderer
-treats facets as generic indexed placements.
+Faceted views and small multiples are primary use cases. Reuse one retained mark
+and its scale state across facet rectangles to avoid allocating GPU resources
+for each panel. The caller owns facet grouping, layout, data ranges, and scale
+resolution. The renderer treats facets as generic indexed placements.
 
 A mark chooses one placement-index mode at creation:
 

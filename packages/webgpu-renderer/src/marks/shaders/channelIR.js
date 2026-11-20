@@ -14,6 +14,8 @@ import { formatLiteral } from "../../wgsl/literals.js";
  *   Channel name used for function naming and resource bookkeeping.
  * @prop {ChannelConfigResolved} channel
  *   Original resolved channel config; used for scale config lookups.
+ * @prop {string} [sharedScaleName]
+ *   WGSL binding name assigned by the mark program when it borrows a scale.
  * @prop {ChannelSourceKind} sourceKind
  *   Where the values originate: series buffer, uniform, or literal constant.
  * @prop {string} rawValueExpr

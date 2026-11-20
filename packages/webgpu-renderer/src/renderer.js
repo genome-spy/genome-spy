@@ -1,8 +1,13 @@
-import { globalBindings, placementBindings } from "./utils/bindingLimits.js";
+import {
+    globalBindings,
+    globalUniformByteSize,
+    placementBindings,
+} from "./utils/bindingLimits.js";
 import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
 import RenderPassState from "./renderPassState.js";
+import { createSharedScale } from "./marks/programs/internal/sharedScale.js";
 
 const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
@@ -390,10 +395,9 @@ export class Renderer {
          */
         this._pickingFrame = null;
 
-        this.#globalUniformStride = Math.max(
-            80,
-            device.limits.minUniformBufferOffsetAlignment
-        );
+        const alignment = device.limits.minUniformBufferOffsetAlignment;
+        this.#globalUniformStride =
+            Math.ceil(globalUniformByteSize / alignment) * alignment;
 
         this.#globalUniformStaging = createGlobalUniformStaging(
             this.#globalUniformStride
@@ -421,7 +425,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this.#globalUniformBuffer,
-                        size: 80,
+                        size: globalUniformByteSize,
                     },
                 },
             ],
@@ -546,7 +550,7 @@ export class Renderer {
                     binding: 0,
                     resource: {
                         buffer: this.#globalUniformBuffer,
-                        size: 80,
+                        size: globalUniformByteSize,
                     },
                 },
             ],
@@ -556,48 +560,53 @@ export class Renderer {
     }
 
     /**
-     * @param {NormalizedDraw[]} draws
-     * @returns {void}
+     * @param {NormalizedDraw} draw
+     * @param {RenderTarget} target
+     * @param {boolean} picking
      */
-    #writeDrawGlobals(draws, forceAll = false) {
-        const phaseStart = startPhase();
-        if (!draws.length) {
-            finishPhase("drawGlobals", phaseStart);
-            return;
-        }
+    #stageDrawGlobals(draw, target, picking) {
+        const { floats, integers } = this.#globalUniformStaging;
+        const { width, height, dpr } = this._globals;
+        const offset = (draw.uniformIndex * this.#globalUniformStride) / 4;
+        floats[offset] = draw.viewport.width;
+        floats[offset + 1] = draw.viewport.height;
+        floats[offset + 2] = dpr;
+        floats[offset + 4] = draw.visibleRange.x1;
+        floats[offset + 5] = draw.visibleRange.y1;
+        floats[offset + 6] = draw.visibleRange.x2;
+        floats[offset + 7] = draw.visibleRange.y2;
+        floats[offset + 8] = draw.visibleRange.cullX ? 1 : 0;
+        floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
+        floats[offset + 12] = draw.viewport.x;
+        floats[offset + 13] = draw.viewport.y;
+        floats[offset + 14] = width;
+        floats[offset + 15] = height;
+        integers[offset + 16] = draw.placement?.index ?? 0;
+        integers[offset + 17] = draw.placement?.clipMode ?? 0;
+        integers[offset + 18] = draw.placement?.count ?? 0;
+        integers[offset + 19] = picking ? 0 : draw.orderPass;
+        floats[offset + 20] = target.x / dpr;
+        floats[offset + 21] = target.y / dpr;
+        floats[offset + 22] = target.width / dpr;
+        floats[offset + 23] = target.height / dpr;
+    }
 
-        this.#ensureGlobalUniformCapacity(draws.length);
-        const { buffer, floats, integers } = this.#globalUniformStaging;
-        for (let i = 0; i < draws.length; i++) {
-            const offset = (i * this.#globalUniformStride) / 4;
-            const draw = draws[i];
-            floats[offset] = draw.viewport.width;
-            floats[offset + 1] = draw.viewport.height;
-            floats[offset + 2] = this._globals.dpr;
-            floats[offset + 4] = draw.visibleRange.x1;
-            floats[offset + 5] = draw.visibleRange.y1;
-            floats[offset + 6] = draw.visibleRange.x2;
-            floats[offset + 7] = draw.visibleRange.y2;
-            floats[offset + 8] = draw.visibleRange.cullX ? 1 : 0;
-            floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
-            floats[offset + 12] = draw.viewport.x;
-            floats[offset + 13] = draw.viewport.y;
-            floats[offset + 14] = draw.viewport.width;
-            floats[offset + 15] = draw.viewport.height;
-            integers[offset + 16] = draw.placement?.index ?? 0;
-            integers[offset + 17] = draw.placement?.clipMode ?? 0;
-            integers[offset + 18] = draw.placement?.count ?? 0;
-            integers[offset + 19] = forceAll ? 0 : draw.orderPass;
-        }
+    /** @param {number} drawCount */
+    #uploadDrawGlobals(drawCount) {
+        if (!drawCount) return;
+
+        // Draw encoding stages the uniforms for each attachment. Upload once before submission.
+        const phaseStart = startPhase();
+        const size = drawCount * this.#globalUniformStride;
         this.device.queue.writeBuffer(
             this.#globalUniformBuffer,
             0,
-            buffer,
+            this.#globalUniformStaging.buffer,
             0,
-            draws.length * this.#globalUniformStride
+            size
         );
         addCount("drawGlobalWrites");
-        addCount("drawGlobalBytes", draws.length * this.#globalUniformStride);
+        addCount("drawGlobalBytes", size);
         finishPhase("drawGlobals", phaseStart);
     }
 
@@ -638,6 +647,13 @@ export class Renderer {
         const set = new PlacementSet(this, this.#nextPlacementSetId++, data);
         this._placementSets.set(set.placementSetId, set);
         return set;
+    }
+
+    /** @param {import("./index.d.ts").ChannelScale} scale */
+    createSharedScale(scale) {
+        return createSharedScale(this, scale, (handle) =>
+            this.#ownedResources.delete(handle)
+        );
     }
 
     /**
@@ -738,10 +754,11 @@ export class Renderer {
             this._pickingFrame ??
             this._renderFrame ??
             this.#normalizeDraws(this._marks.keys());
-        this.#writeDrawGlobals(draws, true);
+        this.#ensureGlobalUniformCapacity(draws.length);
         this.#encodeDraws(pass, draws, true);
 
         pass.end();
+        this.#uploadDrawGlobals(draws.length);
         this.device.queue.submit([commandEncoder.finish()]);
         this.#pickingDirty = false;
     }
@@ -953,7 +970,7 @@ export class Renderer {
         );
         addCount("renderDraws", draws.length);
         addCount("renderGroups", groupCount);
-        this.#writeDrawGlobals(draws);
+        this.#ensureGlobalUniformCapacity(draws.length);
         this.#textureCompositor.prepare(draws.length + groupCount + 1);
         const commandEncoder = this.device.createCommandEncoder({
             label: gpuLabel(RENDERER_GPU_OWNER, "main command encoder"),
@@ -971,8 +988,8 @@ export class Renderer {
                     view,
                     width: canvas.width,
                     height: canvas.height,
-                    logicalX: 0,
-                    logicalY: 0,
+                    x: 0,
+                    y: 0,
                     label: RENDERER_GPU_OWNER,
                 },
                 items,
@@ -981,6 +998,7 @@ export class Renderer {
             );
             this.#textureCompositor.flush();
             finishPhase("commandEncoding", encodingStart);
+            this.#uploadDrawGlobals(draws.length);
             const submissionStart = startPhase();
             this.device.queue.submit([commandEncoder.finish()]);
             finishPhase("submission", submissionStart);
@@ -1054,17 +1072,7 @@ export class Renderer {
         }
 
         const viewport = { ...(command.viewport ?? canvas) };
-        assertRect("viewport", viewport);
-        if (
-            viewport.x < 0 ||
-            viewport.y < 0 ||
-            viewport.x + viewport.width > canvas.width ||
-            viewport.y + viewport.height > canvas.height
-        ) {
-            throw new RendererError(
-                "Viewport must be contained within the logical canvas."
-            );
-        }
+        assertRect("viewport", viewport, true);
 
         let scissor = intersectRects(command.scissor ?? canvas, canvas);
         const firstInstance = command.firstInstance ?? 0;
@@ -1444,22 +1452,17 @@ export class Renderer {
      * @returns {RenderedGroup | undefined}
      */
     #renderGroup(commandEncoder, parent, group) {
-        const clippedBounds = intersectRects(group.bounds, {
-            x: parent.logicalX,
-            y: parent.logicalY,
-            width: parent.width / this._globals.dpr,
-            height: parent.height / this._globals.dpr,
-        });
         const dpr = this._globals.dpr;
-        const bounds = toPhysicalScissor(
-            clippedBounds,
-            dpr,
-            Math.floor(parent.logicalX * dpr) + parent.width,
-            Math.floor(parent.logicalY * dpr) + parent.height
-        );
-        if (!bounds.width || !bounds.height) {
+        const clippedBounds = intersectRects(group.bounds, {
+            x: parent.x / dpr,
+            y: parent.y / dpr,
+            width: parent.width / dpr,
+            height: parent.height / dpr,
+        });
+        if (!clippedBounds.width || !clippedBounds.height) {
             return undefined;
         }
+        const bounds = toPhysicalScissor(clippedBounds, dpr, parent);
         const texture = this.#transientTextures.acquire(
             bounds.width,
             bounds.height,
@@ -1467,10 +1470,7 @@ export class Renderer {
         );
         const target = {
             view: texture.view,
-            width: bounds.width,
-            height: bounds.height,
-            logicalX: bounds.x / dpr,
-            logicalY: bounds.y / dpr,
+            ...bounds,
             label: group.label,
         };
         this.#encodeRenderItems(
@@ -1552,12 +1552,8 @@ export class Renderer {
                 },
             ],
         });
-        const x = Math.round(
-            (source.logicalX - target.logicalX) * this._globals.dpr
-        );
-        const y = Math.round(
-            (source.logicalY - target.logicalY) * this._globals.dpr
-        );
+        const x = source.x - target.x;
+        const y = source.y - target.y;
         pass.setViewport(x, y, source.width, source.height, 0, 1);
         pass.setScissorRect(x, y, source.width, source.height);
         pass.setPipeline(this.#textureCompositor.pipeline);
@@ -1582,18 +1578,15 @@ export class Renderer {
             view: /** @type {GPUTextureView | undefined} */ (undefined),
             width: this.canvas.width,
             height: this.canvas.height,
-            logicalX: 0,
-            logicalY: 0,
+            x: 0,
+            y: 0,
             label: RENDERER_GPU_OWNER,
         },
         sampleCount = 1
     ) {
         const dpr = this._globals.dpr;
-        const targetX = Math.floor(target.logicalX * dpr);
-        const targetY = Math.floor(target.logicalY * dpr);
-        const targetRight = target.logicalX + target.width / dpr;
-        const targetBottom = target.logicalY + target.height / dpr;
         const state = new RenderPassState(pass);
+        pass.setViewport(0, 0, target.width, target.height, 0, 1);
         for (const draw of draws) {
             if (picking && draw.orderPass & 4) {
                 continue;
@@ -1603,39 +1596,16 @@ export class Renderer {
                 continue;
             }
 
-            state.setViewport(
-                (draw.viewport.x - target.logicalX) * dpr,
-                (draw.viewport.y - target.logicalY) * dpr,
-                draw.viewport.width * dpr,
-                draw.viewport.height * dpr,
-                0,
-                1
+            const { x, y, width, height } = toPhysicalScissor(
+                draw.scissor,
+                dpr,
+                target
             );
-            const scissor = draw.scissor;
-            const left = Math.max(scissor.x, target.logicalX);
-            const top = Math.max(scissor.y, target.logicalY);
-            const width = Math.max(
-                0,
-                Math.min(scissor.x + scissor.width, targetRight) - left
-            );
-            const height = Math.max(
-                0,
-                Math.min(scissor.y + scissor.height, targetBottom) - top
-            );
-            const x = Math.floor(left * dpr);
-            const y = Math.floor(top * dpr);
-            state.setScissorRect(
-                x - targetX,
-                y - targetY,
-                Math.min(
-                    targetX + target.width,
-                    Math.ceil((left + width) * dpr)
-                ) - x,
-                Math.min(
-                    targetY + target.height,
-                    Math.ceil((top + height) * dpr)
-                ) - y
-            );
+            if (width <= 0 || height <= 0) {
+                continue;
+            }
+            state.setScissorRect(x - target.x, y - target.y, width, height);
+            this.#stageDrawGlobals(draw, target, picking);
             state.setBindGroup(0, this.#globalBindGroup, [
                 draw.uniformIndex * this.#globalUniformStride,
             ]);
@@ -1840,12 +1810,12 @@ function wrapMethod(target, name, before) {
 /** @typedef {NormalizedDraw | NormalizedRenderGroup} NormalizedRenderItem */
 
 /**
- * @typedef {object} RenderTarget
+ * @typedef {object} RenderTarget A render attachment with bounds in canvas device pixels.
  * @property {GPUTextureView | undefined} view
  * @property {number} width
  * @property {number} height
- * @property {number} logicalX
- * @property {number} logicalY
+ * @property {number} x
+ * @property {number} y
  * @property {string} label
  */
 
@@ -1991,15 +1961,17 @@ function intersectRects(rect, bounds) {
 /**
  * @param {import("./index.d.ts").DrawRect} rect
  * @param {number} dpr
- * @param {number} canvasWidth
- * @param {number} canvasHeight
+ * @param {RenderTarget} target
  */
-function toPhysicalScissor(rect, dpr, canvasWidth, canvasHeight) {
-    const x = Math.floor(rect.x * dpr);
-    const y = Math.floor(rect.y * dpr);
-    const right = Math.min(canvasWidth, Math.ceil((rect.x + rect.width) * dpr));
+function toPhysicalScissor(rect, dpr, target) {
+    const x = Math.max(target.x, Math.floor(rect.x * dpr));
+    const y = Math.max(target.y, Math.floor(rect.y * dpr));
+    const right = Math.min(
+        target.x + target.width,
+        Math.ceil((rect.x + rect.width) * dpr)
+    );
     const bottom = Math.min(
-        canvasHeight,
+        target.y + target.height,
         Math.ceil((rect.y + rect.height) * dpr)
     );
     return { x, y, width: right - x, height: bottom - y };

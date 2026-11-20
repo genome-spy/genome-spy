@@ -1,7 +1,9 @@
+import { linearScale } from "./scales/linear.js";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { TransientTexturePool } from "./renderGroups.js";
 import { Renderer, createRenderer } from "./renderer.js";
+import { bandScale } from "./scales/band.js";
 
 const renderers = new Set();
 afterEach(() => {
@@ -40,6 +42,44 @@ test.each([134217728, 536870912])(
 );
 
 describe("Renderer mark definitions", () => {
+    test("rejects a repeated invalid shared gap update before writing", () => {
+        const { renderer } = createRendererHarness();
+        const shared = renderer.createSharedScale(
+            bandScale({ domain: [1, 2], range: [0, 100], gapEnabled: true })
+        );
+        const writes = vi.mocked(renderer.device.queue.writeBuffer);
+        writes.mockClear();
+        const invalid = { gapPositions: [-1] };
+
+        expect(() => shared.update(invalid)).toThrow("Gap positions");
+        expect(() => shared.update(invalid)).toThrow("Gap positions");
+        expect(writes).not.toHaveBeenCalled();
+        const valid = { ...invalid, gapPositions: [1] };
+        shared.update(valid);
+        shared.update({ ...valid, gapPositions: [1] });
+        expect(writes).toHaveBeenCalledOnce();
+    });
+
+    test("rejects a shared update that would require a different shader layout", () => {
+        const { renderer } = createRendererHarness();
+        const band = renderer.createSharedScale(
+            bandScale({ domain: [1, 2], range: [0, 100] })
+        );
+        const linear = renderer.createSharedScale(
+            linearScale({ domain: [0, 1], range: [0, 100] })
+        );
+        const writes = vi.mocked(renderer.device.queue.writeBuffer);
+        writes.mockClear();
+
+        expect(() => band.update({ gapPositions: [1], gapWidth: 10 })).toThrow(
+            "without grouping gaps"
+        );
+        expect(() =>
+            linear.update({ viewport: { interval: [0, 0.5] } })
+        ).toThrow("band scale");
+        expect(writes).not.toHaveBeenCalled();
+    });
+
     test("renders detached targets without replacing live or picking draws", async () => {
         const { renderer, pass } = createRendererHarness();
         renderer.format = "bgra8unorm";
@@ -108,7 +148,7 @@ describe("Renderer mark definitions", () => {
                 sampleCount: 1,
             }
         );
-        expect(pass.setViewport).toHaveBeenLastCalledWith(20, 10, 40, 20, 0, 1);
+        expect(pass.setViewport).toHaveBeenLastCalledWith(0, 0, 200, 100, 0, 1);
 
         renderer.renderPicking({
             draws: [{ ...liveDraw, firstInstance: 3, instanceCount: 4 }],
@@ -419,11 +459,10 @@ describe("Renderer mark definitions", () => {
             expect.anything(),
             { firstInstance: 2, instanceCount: 3, sampleCount: 1 }
         );
-        expect(pass.setViewport).toHaveBeenNthCalledWith(
-            1,
-            100,
+        expect(pass.setViewport).toHaveBeenCalledExactlyOnceWith(
             0,
-            100,
+            0,
+            200,
             100,
             0,
             1
@@ -700,15 +739,7 @@ describe("Renderer mark definitions", () => {
         expect(renderPassDescriptors[1].label).toBe(
             "viewRoot/samples/copy-ratios: group composite pass"
         );
-        expect(pass.setViewport).toHaveBeenNthCalledWith(
-            1,
-            expect.closeTo(0.375),
-            expect.closeTo(0.25),
-            30,
-            15,
-            0,
-            1
-        );
+        expect(pass.setViewport).toHaveBeenNthCalledWith(1, 0, 0, 31, 16, 0, 1);
         expect(pass.setScissorRect).toHaveBeenNthCalledWith(1, 3, 1, 24, 12);
         expect(pass.setViewport).toHaveBeenNthCalledWith(
             2,
@@ -726,14 +757,7 @@ describe("Renderer mark definitions", () => {
         renderer.renderPicking();
         await renderer.pick(15, 10);
         expect(renderer._pickingFrame).toBe(renderer._renderFrame);
-        expect(pass.setViewport).toHaveBeenCalledWith(
-            15.375,
-            8.25,
-            30,
-            15,
-            0,
-            1
-        );
+        expect(pass.setViewport).toHaveBeenCalledWith(0, 0, 150, 75, 0, 1);
         expect(pass.setScissorRect).toHaveBeenCalledWith(18, 9, 24, 12);
     });
 

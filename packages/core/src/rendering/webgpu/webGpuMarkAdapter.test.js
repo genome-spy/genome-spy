@@ -218,7 +218,7 @@ describe("WebGPU mark adapter", () => {
         view.paramRuntime.setValue("gap", 20);
         await view.paramRuntime.whenPropagated();
 
-        expect(rect.y.scale.range).toEqual([20, 220]);
+        expect(rect.y.scale.range).toEqual([0, 200]);
         expect(text.y.scale.range).toEqual([0, 200]);
         expect(rect.y.scale.gapWidth).toBe(20);
         expect(text.y.scale.gapWidth).toBe(20);
@@ -334,7 +334,7 @@ describe("WebGPU mark adapter", () => {
                 type: "linear",
                 definition: linearScaleDefinition,
                 domain: [0, 2],
-                range: [10, 110],
+                range: [0, 100],
                 clamp: false,
             },
         });
@@ -345,7 +345,7 @@ describe("WebGPU mark adapter", () => {
                 type: "linear",
                 definition: linearScaleDefinition,
                 domain: [-1, 1],
-                range: [220, 20],
+                range: [200, 0],
                 clamp: false,
             },
         });
@@ -599,12 +599,8 @@ describe("WebGPU mark adapter", () => {
                 expect(datum.data).toBeUndefined();
                 expect(datum.scale).toEqual(field.scale);
             }
-            expect(channels.x.scale.range).toEqual(
-                type == "text" ? [100, 0] : [110, 10]
-            );
-            expect(channels.y.scale.range).toEqual(
-                type == "text" ? [0, 200] : [20, 220]
-            );
+            expect(channels.x.scale.range).toEqual([100, 0]);
+            expect(channels.y.scale.range).toEqual([0, 200]);
             position = 87;
             domain[1] = 200;
             expect(channels.x2.value).toBe(87);
@@ -639,8 +635,8 @@ describe("WebGPU mark adapter", () => {
 
         expect(x.value).toBe(0.25);
         expect(x.scale.domain).toEqual([0, 1]);
-        expect(x.scale.range).toEqual([10, 110]);
-        expect(x.conditions[0].channel.scale.range).toEqual([110, 10]);
+        expect(x.scale.range).toEqual([0, 100]);
+        expect(x.conditions[0].channel.scale.range).toEqual([100, 0]);
     });
 
     test.each(["band", "ordinal"])(
@@ -669,7 +665,7 @@ describe("WebGPU mark adapter", () => {
 
             expect(x).toMatchObject({ value: 1, type: "u32", dynamic: true });
             expect(x.data).toBeUndefined();
-            expect(x.scale.range).toEqual([110, 10]);
+            expect(x.scale.range).toEqual([100, 0]);
             if (type != "ordinal") {
                 expect(x.scale.band).toBe(1);
             }
@@ -760,9 +756,9 @@ describe("WebGPU mark adapter", () => {
         expect(config.channels.dx).toEqual({ value: 4 });
         expect(config.channels.dy).toEqual({ value: 5 });
         expect(config.font.getGlyph).toBeTypeOf("function");
-        expect(config.viewport).toEqual([10, 20, 110, 220]);
+        expect(config.viewport).toEqual([0, 0, 100, 200]);
         expect(translated.properties.viewport).toEqual({
-            value: [10, 20, 110, 220],
+            value: [0, 0, 100, 200],
         });
     });
 
@@ -1061,7 +1057,7 @@ describe("WebGPU mark adapter", () => {
                 viewport: null,
                 definition: bandScaleDefinition,
                 domain: [0, 1],
-                range: [10, 110],
+                range: [0, 100],
                 paddingInner: type === "point" ? 1 : 0.2,
                 paddingOuter: 0.1,
                 align: 0.5,
@@ -1123,7 +1119,7 @@ describe("WebGPU mark adapter", () => {
         const y = /** @type {any} */ (translated).config.channels.y;
 
         // Pixel y measures the within-band position from the opposite edge.
-        expect(y.scale).toMatchObject({ range: [20, 220], band: 0.75 });
+        expect(y.scale).toMatchObject({ range: [0, 200], band: 0.75 });
     });
 
     test("translates a rule dash pattern to the renderer atlas config", () => {
@@ -1376,11 +1372,12 @@ describe("WebGPU mark adapter", () => {
                 type: "index",
                 definition: indexScaleDefinition,
                 domain: [3, 10],
-                range: [10, 110],
+                range: [0, 100],
                 paddingInner: 0.2,
                 paddingOuter: 0.1,
                 align: 0.5,
                 band: 0.25,
+                gapEnabled: false,
             },
         });
     });
@@ -1452,7 +1449,7 @@ describe("WebGPU mark adapter", () => {
             expect.objectContaining({
                 type: "log",
                 domain: [1, 100],
-                range: [10, 110],
+                range: [0, 100],
                 base: 10,
                 clamp: true,
             })
@@ -1485,7 +1482,7 @@ describe("WebGPU mark adapter", () => {
                 scale: expect.objectContaining({
                     type: "ordinal",
                     domain: [0, 1, 2],
-                    range: [220, 120, 20],
+                    range: [200, 100, 0],
                 }),
             })
         );
@@ -2020,7 +2017,7 @@ describe("WebGPU mark adapter", () => {
         expect(channels.x2.scale.band).toBe(1);
         expect(channels.y.data).toEqual(new Float32Array([28, 55]));
         expect(channels.y2.value).toBe(0);
-        expect(channels.y2.scale.range).toEqual([220, 20]);
+        expect(channels.y2.scale.range).toEqual([200, 0]);
         expect(channels.fill.value).toEqual([0.2, 0.4, 0.6, 1]);
         expect(channels.strokeWidth).toEqual({ value: 0 });
         expect(channels.hatchPattern).toEqual({ value: 0, type: "u32" });
@@ -2035,12 +2032,10 @@ describe("WebGPU mark adapter", () => {
                     createWebGpuMarkConfig(mark, {}, coords)
                 ).config;
                 expect(channels.xClampRange?.value).toEqual(
-                    clamp === true || clamp === "x"
-                        ? [10, 10 + width]
-                        : undefined
+                    clamp === true || clamp === "x" ? [0, width] : undefined
                 );
                 expect(channels.yClampRange?.value).toEqual(
-                    clamp === true || clamp === "y" ? [20, 220] : undefined
+                    clamp === true || clamp === "y" ? [0, 200] : undefined
                 );
             }
         }
@@ -2137,8 +2132,8 @@ describe("WebGPU mark adapter", () => {
 
         expect(channels.x.value).toBe(0);
         expect(channels.x2.value).toBe(1);
-        expect(channels.x.scale.range).toEqual([10, 110]);
-        expect(channels.x2.scale.range).toEqual([10, 110]);
+        expect(channels.x.scale.range).toEqual([0, 100]);
+        expect(channels.x2.scale.range).toEqual([0, 100]);
         expect(channels.xOffset.data).toEqual(new Float32Array([-1]));
         expect(channels.x2Offset.data).toEqual(new Float32Array([0.5]));
         expect(channels.xOffset.scale.range).toEqual([0, 20]);
@@ -2307,7 +2302,7 @@ describe("WebGPU mark adapter", () => {
         const secondChannels = /** @type {any} */ (second.config).channels;
         expect(secondChannels.x.data).toBe(firstChannels.x.data);
         expect(secondChannels.y.data).toBe(firstChannels.y.data);
-        expect(secondChannels.x.scale.range).toEqual([10, 110]);
+        expect(secondChannels.x.scale.range).toEqual([0, 100]);
         expect(x).toHaveBeenCalledTimes(data.length);
         expect(y).toHaveBeenCalledTimes(data.length);
     });

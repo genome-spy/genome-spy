@@ -9,13 +9,14 @@ import {
 import { hashLookupFunctionName } from "../../../wgsl/hashTable.wgsl.js";
 import {
     domainVec2,
+    bandParameters,
     makeFnHeader,
     rangeVec2,
     toU32Expr,
 } from "../scaleEmitUtils.js";
 import { isValueChannelConfig } from "../../../types.js";
 import { normalizeOrdinalDomain } from "../ordinalDomain.js";
-import { hasGroupingGaps } from "../groupingGaps.js";
+import { gapShaderInputs, hasGroupingGaps } from "../groupingGaps.js";
 
 const bandWgsl = /* wgsl */ `
 // TODO: domainExtent should be uint
@@ -50,10 +51,11 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
  * Technical notes: implements the Vega band formula in WGSL and optionally
  * routes sparse domains through a hash map before band lookup.
  *
- * @type {import("../../../index.d.ts").ScaleDef}
+ * @type {import("../scaleCodegen.js").ShareableScaleDef}
  */
 export const bandScaleDef = {
     type: "band",
+    sharedScaleLayout: "bounds",
     input: "u32",
     output: "f32",
     params: [
@@ -86,7 +88,7 @@ export const bandScaleDef = {
 Object.freeze(bandScaleDef);
 
 /**
- * @param {import("../../../index.d.ts").ScaleEmitParams} params
+ * @param {import("../scaleCodegen.js").ScaleEmitParams} params
  * @returns {string}
  */
 function emitBandScale({
@@ -96,14 +98,17 @@ function emitBandScale({
     inputScalarType,
     domainMapName,
     scaleConfig,
+    sharedScaleName,
 }) {
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
     const gaps = hasGroupingGaps(scaleConfig);
-    const axis = scaleConfig?.gapAxis ?? (name.startsWith("y") ? "y" : "x");
-    const gapArgs = gaps
-        ? `params.gapTable_${name}, params.gapGeometry_${name}, `
-        : "";
+    const { geometry, placement } = gapShaderInputs(
+        name,
+        scaleConfig,
+        sharedScaleName
+    );
+    const gapArgs = gaps ? `params.gapTable_${name}, ${geometry}, ` : "";
     // WGSL rejects constant NaNs, so construct missing positions at runtime.
     return `${makeFnHeader(name, "f32", functionName)} {
     var mapped = ${valueExpr};
@@ -118,12 +123,10 @@ function emitBandScale({
     }
     return ${gaps ? "scaleBandGaps" : "scaleBand"}(
         mapped,
-        ${domainVec2(name)},
-        ${rangeVec2(name)},
-        ${gapArgs}params.${SCALE_PADDING_INNER_PREFIX}${name},
-        params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name},
-        params.${SCALE_BAND_PREFIX}${name}${gaps ? `, gapPlacementFactor(i, ${axis === "y" ? 1 : 0}u)` : ""}
+        ${domainVec2(name, sharedScaleName)},
+        ${rangeVec2(name, sharedScaleName)},
+        ${gapArgs}${bandParameters(name, sharedScaleName)},
+        params.${SCALE_BAND_PREFIX}${name}${gaps ? `, ${placement}` : ""}
     );
 }`;
 }

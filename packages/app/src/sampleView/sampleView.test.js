@@ -195,6 +195,7 @@ function createWebGpuHarness(canvas) {
             return source;
         },
         updateMark: vi.fn(),
+        updateSharedScales: vi.fn(),
         prepareDraw: vi.fn(),
     };
     return {
