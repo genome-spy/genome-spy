@@ -1,8 +1,7 @@
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
-import { faStyles } from "./iconStyles.js";
+import { faStyles, renderIcon } from "./icon.js";
 import { formStyles } from "./formStyles.js";
 
 /**
@@ -347,8 +346,8 @@ export default class SearchableCheckboxList extends LitElement {
                         : filteredItems.length == 1 && this.items.length > 1
                           ? html`<div class="search-note">
                                 <div>
-                                    ${icon(faArrowUp).node[0]} Hit enter to
-                                    select the exact match
+                                    ${renderIcon(faArrowUp)} Hit enter to select
+                                    the exact match
                                 </div>
                             </div>`
                           : nothing

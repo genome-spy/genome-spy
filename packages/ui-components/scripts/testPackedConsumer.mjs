@@ -131,7 +131,11 @@ try {
         await expect(header).toBeInViewport();
 
         await page.getByRole("button", { name: "Open dialog" }).click();
-        await page.getByRole("button", { name: "Close dialog" }).click();
+        const close = page.getByRole("button", { name: "Close dialog" });
+        await expect(
+            close.locator("svg[data-icon=xmark] path[d]")
+        ).toBeVisible();
+        await close.click();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.locator("#dialog-result")).toHaveText("cancel");
 
@@ -143,9 +147,15 @@ try {
             menu.getByRole("menuitem", { name: "Import" })
         ).toBeFocused();
         await page.keyboard.press("ArrowDown");
-        await expect(
-            menu.getByRole("menuitem", { name: "Export" })
-        ).toBeFocused();
+        const exportItem = menu.getByRole("menuitem", { name: "Export" });
+        await expect(exportItem).toBeFocused();
+        const menuIcon = exportItem.locator("svg[data-icon=file-export]");
+        await expect(menuIcon).toHaveAttribute("aria-hidden", "true");
+        await expect(menuIcon.locator("path")).toHaveCount(2);
+        await expect(menuIcon.locator(".fa-secondary")).toHaveCSS(
+            "opacity",
+            "0.4"
+        );
         await page.keyboard.press("Escape");
         await expect(menu).toHaveCount(0);
         await expect(opener).toBeFocused();
@@ -190,6 +200,12 @@ try {
             `${plotBox.width / 2}px`
         );
         await expect(operand).toHaveValue("7");
+
+        const dropIcon = page.locator(
+            "gs-upload-drop-zone svg[data-icon=upload]"
+        );
+        await expect(dropIcon).toHaveCSS("height", "32px");
+        await expect(dropIcon.locator("path[d]")).toBeVisible();
 
         expect(errors).toEqual([]);
         process.stdout.write(

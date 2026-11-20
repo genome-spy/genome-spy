@@ -1,7 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
-import { faStyles } from "./iconStyles.js";
+import { faStyles, renderIcon } from "./icon.js";
 import { formStyles } from "./formStyles.js";
-import { icon } from "@fortawesome/fontawesome-svg-core";
 
 const DEFAULT_ACTION_INPUT_TYPES = new Set([
     "text",
@@ -471,7 +470,7 @@ export default class BaseDialog extends LitElement {
      * @param {string} title
      * @param {() => boolean | void | Promise<boolean | void>} callback If returns truthy value, dialog closing is canceled
      * @param {{
-     *  iconDef?: import("@fortawesome/fontawesome-svg-core").IconDefinition,
+     *  iconDef?: import("@fortawesome/free-solid-svg-icons").IconDefinition,
      *  disabled?: boolean,
      *  preventMouseDown?: boolean,
      *  isPrimary?: boolean,
@@ -515,7 +514,7 @@ export default class BaseDialog extends LitElement {
                 }
             }}
         >
-            ${iconDef ? icon(iconDef).node[0] : nothing} ${title}
+            ${iconDef ? renderIcon(iconDef) : nothing} ${title}
         </button>`;
     }
 

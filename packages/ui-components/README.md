@@ -88,6 +88,9 @@ Subclass `BaseDialog` from `/dialog`, register the subclass, and call
 persistent dialogs, set `openOnConnect` to false and call `openDialog()` after
 the element's first render.
 
+The `faStyles` export from `@genome-spy/ui-components/styles` provides baseline
+sizing and alignment for inline Font Awesome SVGs in a Lit shadow root.
+
 ## Style native forms
 
 Import the optional stylesheet and add `gs-form` to a form or a wrapper around

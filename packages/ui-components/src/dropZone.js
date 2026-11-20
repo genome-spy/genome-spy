@@ -1,7 +1,6 @@
 import { LitElement, html, css } from "lit";
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
-import { faStyles } from "./iconStyles.js";
+import { faStyles, renderIcon } from "./icon.js";
 
 /**
  * @typedef {import("./filePicker.js").FilesChosenEvent} FilesChosenEvent
@@ -97,7 +96,7 @@ export default class UploadDropZone extends LitElement {
                 @drop=${(/** @type {DragEvent} */ e) => this.#onDrop(e)}
             >
                 <div class="drop-inner">
-                    <div class="drop-icon">${icon(faUpload).node[0]}</div>
+                    <div class="drop-icon">${renderIcon(faUpload)}</div>
                     <div class="drop-text">${this.dropText}</div>
                     <gs-file-picker
                         .accept=${this.accept}

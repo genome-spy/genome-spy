@@ -132,7 +132,6 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.1",
-    "@fortawesome/fontawesome-svg-core": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
     "d3-array": "^3.2.4"
   },

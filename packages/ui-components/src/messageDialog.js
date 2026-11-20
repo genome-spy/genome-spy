@@ -4,11 +4,11 @@ import {
     faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
-import { icon } from "@fortawesome/fontawesome-svg-core";
+import { renderIcon } from "./icon.js";
 import BaseDialog, { showDialogOk } from "./dialog.js";
 
 /**
- * @type {Record<string, import("@fortawesome/fontawesome-svg-core").IconDefinition>}
+ * @type {Record<string, import("@fortawesome/free-solid-svg-icons").IconDefinition>}
  */
 const icons = {
     warning: faExclamationTriangle,
@@ -83,7 +83,7 @@ export default class MessageDialog extends BaseDialog {
             return html`<div class="message-flex">
                 ${
                     iconDef
-                        ? html`<div class="icon">${icon(iconDef).node[0]}</div>`
+                        ? html`<div class="icon">${renderIcon(iconDef)}</div>`
                         : nothing
                 }
                 <div class="message">${this.message}</div>

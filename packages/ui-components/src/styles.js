@@ -1,2 +1,2 @@
-export { faStyles } from "./iconStyles.js";
+export { faStyles } from "./icon.js";
 export { formStyles } from "./formStyles.js";

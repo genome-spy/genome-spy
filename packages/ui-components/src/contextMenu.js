@@ -1,7 +1,7 @@
 import { html, nothing, render } from "lit";
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { renderIcon } from "./icon.js";
 
 /**
  * @typedef {Object} MenuItem
@@ -373,7 +373,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                                 ? html`<span
                                       class="menu-item-icon"
                                       aria-hidden="true"
-                                      >${icon(item.icon).node[0]}</span
+                                      >${renderIcon(item.icon)}</span
                                   >`
                                 : nothing
                         }
@@ -412,7 +412,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                               }}
                           >
                               <span aria-hidden="true"
-                                  >${icon(faEllipsisV).node[0]}</span
+                                  >${renderIcon(faEllipsisV)}</span
                               >
                           </button>`
                         : nothing
@@ -734,7 +734,7 @@ export function createMenuController({ mount, onOpen } = {}) {
                                     ? html`<span
                                           class="menu-item-icon"
                                           aria-hidden="true"
-                                          >${icon(item.icon).node[0]}</span
+                                          >${renderIcon(item.icon)}</span
                                       >`
                                     : nothing
                             }

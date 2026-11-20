@@ -1,6 +1,5 @@
 import { html } from "lit";
 import { ref } from "lit/directives/ref.js";
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faArrowDownWideShort,
     faDownload,
@@ -20,6 +19,7 @@ import {
 } from "@genome-spy/ui-components/contextMenu";
 import "@genome-spy/ui-components/contextMenu.css";
 import "@genome-spy/ui-components/form.css";
+import { renderIcon } from "../src/icon.js";
 import "./theming.css";
 import "./sequenceDesignerMenu.css";
 import sequenceDesignerMenuCss from "./sequenceDesignerMenu.css?raw";
@@ -328,20 +328,13 @@ export const SequenceDesigner = {
                 <span class="gs-form">
                     <button
                         type="button"
+                        class="sequence-designer-menu-trigger"
                         aria-label="More actions"
                         aria-haspopup="menu"
                         aria-expanded="false"
                         @click=${openMenu}
                     >
-                        ${
-                            icon(faEllipsisV, {
-                                styles: {
-                                    display: "block",
-                                    width: "1em",
-                                    height: "1em",
-                                },
-                            }).node[0]
-                        }
+                        ${renderIcon(faEllipsisV)}
                     </button>
                 </span>
             </div>

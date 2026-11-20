@@ -73,3 +73,9 @@ section.theme-example > button:focus-visible {
 .theme-example.gs-form > button {
     justify-self: start;
 }
+
+.sequence-designer-menu-trigger svg {
+    display: block;
+    width: 1em;
+    height: 1em;
+}
