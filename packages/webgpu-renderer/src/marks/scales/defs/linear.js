@@ -31,7 +31,7 @@ fn scaleLinear(value: f32, domain: vec2<f32>, range: vec2<f32>) -> f32 {
  */
 export const linearScaleDef = {
     type: "linear",
-    sharedPositionLayout: "bounds",
+    sharedScaleLayout: "bounds",
     input: "numeric",
     output: "f32",
     params: [],
@@ -66,7 +66,7 @@ function emitLinearScale(params) {
         useRangeTexture,
         domainLength,
         rangeLength,
-        sharedPositionName,
+        sharedScaleName,
     } = params;
     const resolvedDomainLength = domainLength || 2;
     const resolvedRangeLength = rangeLength || 2;
@@ -96,13 +96,13 @@ function emitLinearScale(params) {
                 clamp,
                 round,
                 useRangeTexture,
-                sharedPositionName,
+                sharedScaleName,
             },
             ({ name: scaleName, valueExpr }) =>
                 `scaleLinear(${valueExpr}, ${domainVec2(
                     scaleName,
-                    sharedPositionName
-                )}, ${rangeVec2(scaleName)})`
+                    sharedScaleName
+                )}, ${rangeVec2(scaleName, sharedScaleName)})`
         );
     }
 

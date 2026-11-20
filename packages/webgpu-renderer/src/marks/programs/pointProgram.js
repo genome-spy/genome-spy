@@ -138,10 +138,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         return culledPoint();
     }
 
-    let clip = vec2<f32>(
-        (px / globals.width) * 2.0 - 1.0,
-        1.0 - (py / globals.height) * 2.0
-    );
+    let clip = localPixelToClip(vec2<f32>(px, py));
 
     var out: VSOut;
 #if defined(PLACEMENT_ENABLED)

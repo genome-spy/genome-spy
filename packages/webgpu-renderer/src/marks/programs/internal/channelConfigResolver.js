@@ -1,3 +1,4 @@
+import { isSharedScale, sharedScaleResources } from "./sharedScale.js";
 import {
     isNumericArray,
     isSeriesChannelConfig,
@@ -31,6 +32,7 @@ import { normalizeSelectionPredicate } from "../../shaders/visibilityPredicate.j
  * Context bundle for channel normalization/validation.
  *
  * @typedef {object} ChannelConfigContext
+ * @property {import("../../../renderer.js").Renderer} [renderer]
  * @property {Record<string, ChannelSpec>} channelSpecs
  */
 
@@ -66,6 +68,46 @@ export function normalizeChannels({ channels, context }) {
 }
 
 /**
+ * @param {string} name
+ * @param {ChannelConfigInput} input
+ * @param {import("../../../renderer.js").Renderer} [renderer]
+ */
+function resolveChannelScale(name, input, renderer) {
+    const channel = /** @type {ChannelConfigResolved} */ (input);
+    let scale = input.scale;
+    if (isSharedScale(scale)) {
+        const shared = sharedScaleResources.get(scale);
+        if (
+            !shared ||
+            shared.renderer !== renderer ||
+            (channel.components ?? 1) !== 1
+        )
+            throw new Error(`Invalid shared scale for "${name}".`);
+        channel.sharedScale = scale;
+        scale = shared.scale;
+    }
+
+    const { band, gapAxis, gapPeer, gapBefore } = channel;
+    if (
+        scale &&
+        (channel.sharedScale ||
+            band !== undefined ||
+            gapAxis !== undefined ||
+            gapPeer !== undefined ||
+            gapBefore !== undefined)
+    ) {
+        channel.scale = {
+            ...scale,
+            band: band ?? scale.band,
+            gapAxis: gapAxis ?? scale.gapAxis,
+            gapPeer: gapPeer ?? scale.gapPeer,
+            gapBefore: gapBefore ?? scale.gapBefore,
+        };
+    }
+    return channel;
+}
+
+/**
  * Normalize a single channel config: merge defaults, validate, and resolve
  * missing values.
  *
@@ -78,7 +120,7 @@ export function normalizeChannels({ channels, context }) {
 export function normalizeChannel({ name, configChannel, context }) {
     const { channelSpecs } = context;
     const spec = channelSpecs[name];
-    const merged = /** @type {ChannelConfigInput} */ (
+    const input = /** @type {ChannelConfigInput} */ (
         /** @type {unknown} */ ({
             type: spec.type,
             components: spec.components,
@@ -87,6 +129,8 @@ export function normalizeChannel({ name, configChannel, context }) {
             ...configChannel,
         })
     );
+
+    const merged = resolveChannelScale(name, input, context.renderer);
 
     if (!merged.components) {
         merged.components = 1;
@@ -191,11 +235,13 @@ function normalizeConditionChannel({
     context,
 }) {
     const { channelSpecs } = context;
-    const merged = /** @type {ChannelConfigInput} */ (
+    const input = /** @type {ChannelConfigInput} */ (
         /** @type {unknown} */ ({
             ...(configChannel ?? {}),
         })
     );
+
+    const merged = resolveChannelScale(name, input, context.renderer);
 
     if (merged.conditions !== undefined) {
         throw new Error(
@@ -245,7 +291,7 @@ function normalizeConditionChannel({
  * Validate a channel config against its spec and scale requirements.
  *
  * @param {string} name
- * @param {ChannelConfigInput} channel
+ * @param {ChannelConfigResolved} channel
  * @param {ChannelConfigContext} context
  * @param {string} [analysisName]
  * @returns {ReturnType<typeof buildChannelAnalysis>}

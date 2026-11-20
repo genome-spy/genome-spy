@@ -17,6 +17,7 @@ import {
 } from "../../../utils/webgpuTextureUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
+    SCALE_BAND_PREFIX,
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
@@ -31,7 +32,7 @@ import {
     normalizeGapWidth,
     writeGapGeometry,
 } from "../../scales/groupingGaps.js";
-import { sharedPositionScaleBuffers } from "./sharedPositionScale.js";
+import { sharedScaleResources } from "./sharedScale.js";
 
 /**
  * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -75,11 +76,14 @@ export class ScaleResourceManager {
     /** @type {Map<string, { updateDomain: (domain: unknown, ranks?: readonly number[]) => boolean, updateRange: (range: unknown) => boolean, updateViewport: (viewport: import("../../../index.d.ts").ScaleViewport | null) => void }>} */
     #scaleUpdaters = new Map();
 
-    /** @type {Map<string, GapScaleState | import("./sharedPositionScale.js").SharedPositionResources>} */
+    /** @type {Map<string, GapScaleState | import("./sharedScale.js").SharedScaleResources>} */
     #gapScales = new Map();
 
-    /** @type {(() => void) | undefined} */
-    #onSharedCuts;
+    /** @type {Array<() => void>} */
+    #sharedScaleDisposers = [];
+
+    /** @type {Map<import("./sharedScale.js").SharedScaleResources, string[]>} */
+    #sharedScales = new Map();
 
     /** @type {GPUBuffer | null} */
     #tableBuffer = null;
@@ -252,7 +256,7 @@ export class ScaleResourceManager {
                 type: "u32",
                 components: 2,
             });
-            if (!channel.scale.sharedPosition)
+            if (!channel.sharedScale)
                 layout.push({
                     name: "gapGeometry_" + name,
                     type: "f32",
@@ -261,7 +265,7 @@ export class ScaleResourceManager {
         }
         const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
-        if (kind) {
+        if (kind && !channel.sharedScale) {
             const { domainLength, rangeLength } = getScaleStopLengths(
                 name,
                 kind,
@@ -287,6 +291,8 @@ export class ScaleResourceManager {
             });
         }
         for (const param of analysis.scaleDef.params) {
+            if (channel.sharedScale && param.prefix !== SCALE_BAND_PREFIX)
+                continue;
             layout.push({
                 name: `${param.prefix}${name}`,
                 type: "f32",
@@ -325,8 +331,8 @@ export class ScaleResourceManager {
      */
     initializeScale(name, channel) {
         const scale = channel.scale;
+        const shared = sharedScaleResources.get(channel.sharedScale);
         if (hasGroupingGaps(scale)) {
-            const shared = sharedPositionScaleBuffers.get(scale.sharedPosition);
             const gaps = shared ?? {
                 cuts: normalizeCuts(scale.gapPositions),
                 domain:
@@ -346,7 +352,7 @@ export class ScaleResourceManager {
         }
         const analysis = this.#getAnalysis(name);
         const kind = analysis.stopKind;
-        if (kind) {
+        if (kind && !shared) {
             const { domainLength, rangeLength } = getScaleStopLengths(
                 name,
                 kind,
@@ -365,6 +371,7 @@ export class ScaleResourceManager {
             }
         }
         for (const param of analysis.scaleDef.params) {
+            if (shared && param.prefix !== SCALE_BAND_PREFIX) continue;
             let value = param.defaultValue;
             if (param.prop && scale[param.prop] !== undefined) {
                 value = scale[param.prop];
@@ -374,6 +381,14 @@ export class ScaleResourceManager {
         if (analysis.needsDomainMap) {
             // Only an omitted domain uses identity IDs; an explicit [] is empty.
             this.#setUniformValue(DOMAIN_MAP_COUNT_PREFIX + name, -1);
+        }
+        if (shared) {
+            if (analysis.needsDomainMap)
+                this.#refreshSharedDomain(name, shared.scale);
+            const channels = this.#sharedScales.get(shared) ?? [];
+            channels.push(name);
+            this.#sharedScales.set(shared, channels);
+            return;
         }
         const updater = this.#buildScaleUpdater(name, scale, analysis);
         this.#scaleUpdaters.set(name, updater);
@@ -761,12 +776,35 @@ export class ScaleResourceManager {
         writeGeometry(geometry);
     }
 
+    /** @param {string} name @param {ChannelScale} scale */
+    #refreshSharedDomain(name, scale) {
+        const domainMap = this.#getAnalysis(name).scaleDef.normalizeDomainMap({
+            name,
+            scale,
+            domain: scale.domain,
+        });
+        return this.#updateDomainMap(name, domainMap?.domainMap ?? null);
+    }
+
     /** @param {(needsRebind: boolean) => void} onUpdate */
-    subscribeSharedCuts(onUpdate) {
-        this.#onSharedCuts = () => onUpdate(this.#refreshGapCuts());
-        for (const gaps of this.#gapScales.values()) {
-            if ("cutListeners" in gaps)
-                gaps.cutListeners.add(this.#onSharedCuts);
+    subscribeSharedScales(onUpdate) {
+        for (const [shared, channels] of this.#sharedScales) {
+            /** @param {boolean} domainChanged @param {boolean} cutsChanged */
+            const refresh = (domainChanged, cutsChanged) => {
+                let rebind = cutsChanged && this.#refreshGapCuts();
+                if (domainChanged) {
+                    for (const name of channels) {
+                        rebind =
+                            this.#refreshSharedDomain(name, shared.scale) ||
+                            rebind;
+                    }
+                }
+                onUpdate(rebind);
+            };
+            shared.listeners.add(refresh);
+            this.#sharedScaleDisposers.push(() =>
+                shared.listeners.delete(refresh)
+            );
         }
     }
 
@@ -964,10 +1002,9 @@ export class ScaleResourceManager {
         this.#tables.clear();
         this.#channelResources.clear();
         this.#scaleUpdaters.clear();
-        for (const gaps of this.#gapScales.values()) {
-            if ("cutListeners" in gaps)
-                gaps.cutListeners.delete(this.#onSharedCuts);
-        }
+        for (const dispose of this.#sharedScaleDisposers) dispose();
+        this.#sharedScaleDisposers.length = 0;
+        this.#sharedScales.clear();
         this.#gapScales.clear();
     }
 }

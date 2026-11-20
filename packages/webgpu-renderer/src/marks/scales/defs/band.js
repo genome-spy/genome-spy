@@ -9,6 +9,7 @@ import {
 import { hashLookupFunctionName } from "../../../wgsl/hashTable.wgsl.js";
 import {
     domainVec2,
+    bandParameters,
     makeFnHeader,
     rangeVec2,
     toU32Expr,
@@ -54,7 +55,7 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
  */
 export const bandScaleDef = {
     type: "band",
-    sharedPositionLayout: "bounds",
+    sharedScaleLayout: "bounds",
     input: "u32",
     output: "f32",
     params: [
@@ -97,7 +98,7 @@ function emitBandScale({
     inputScalarType,
     domainMapName,
     scaleConfig,
-    sharedPositionName,
+    sharedScaleName,
 }) {
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
@@ -105,7 +106,7 @@ function emitBandScale({
     const { geometry, placement } = gapShaderInputs(
         name,
         scaleConfig,
-        sharedPositionName
+        sharedScaleName
     );
     const gapArgs = gaps ? `params.gapTable_${name}, ${geometry}, ` : "";
     // WGSL rejects constant NaNs, so construct missing positions at runtime.
@@ -122,11 +123,9 @@ function emitBandScale({
     }
     return ${gaps ? "scaleBandGaps" : "scaleBand"}(
         mapped,
-        ${domainVec2(name, sharedPositionName)},
-        ${rangeVec2(name)},
-        ${gapArgs}params.${SCALE_PADDING_INNER_PREFIX}${name},
-        params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name},
+        ${domainVec2(name, sharedScaleName)},
+        ${rangeVec2(name, sharedScaleName)},
+        ${gapArgs}${bandParameters(name, sharedScaleName)},
         params.${SCALE_BAND_PREFIX}${name}${gaps ? `, ${placement}` : ""}
     );
 }`;

@@ -39,10 +39,14 @@ for (const [base, sharedCuts] of /** @type {const} */ ([
                 ]),
             });
             const gap = { gapPositions: [base + 10], gapWidth: 6 };
+            const scale = indexScale({
+                domain: [base, base + 20],
+                range: [0, 200],
+                ...gap,
+            });
             const shared = sharedCuts
-                ? renderer.createSharedPositionScale(indexScale())
+                ? renderer.createSharedScale(scale)
                 : undefined;
-            shared?.update({ start: base, end: base + 20, ...gap });
             /** @param {number[]} values @param {string} peer */
             const endpoint = (values, peer) => ({
                 data: base
@@ -50,15 +54,9 @@ for (const [base, sharedCuts] of /** @type {const} */ ([
                     : new Uint32Array(values),
                 type: "u32",
                 inputComponents: base ? 2 : 1,
-                scale: indexScale({
-                    domain: [base, base + 20],
-                    range: [0, 200],
-                    band: 0,
-                    ...(shared
-                        ? { sharedPosition: shared, gapEnabled: true }
-                        : gap),
-                    gapPeer: peer,
-                }),
+                ...(shared
+                    ? { scale: shared, band: 0, gapPeer: peer }
+                    : { scale: { ...scale, band: 0, gapPeer: peer } }),
             });
             const mark = renderer.createMark(rectMark, {
                 count: 2,
@@ -100,8 +98,7 @@ for (const [base, sharedCuts] of /** @type {const} */ ([
                 );
             draw();
             const initial = await sample();
-            if (shared)
-                shared.update({ start: base + 5, end: base + 15, ...gap });
+            if (shared) shared.update({ domain: [base + 5, base + 15] });
             else
                 for (const channel of ["x", "x2"])
                     mark.scales[channel].setDomain([base + 5, base + 15]);
@@ -123,9 +120,6 @@ for (const [base, sharedCuts] of /** @type {const} */ ([
             const recovered = await sample();
             if (shared)
                 shared.update({
-                    start: base + 5,
-                    end: base + 15,
-                    ...gap,
                     gapWidth: 0,
                 });
             else

@@ -6,6 +6,7 @@ import {
 } from "../../../wgsl/prefixes.js";
 import {
     domainVec3,
+    bandParameters,
     makeFnHeader,
     rangeVec2,
     toU32Expr,
@@ -80,7 +81,7 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
  */
 export const indexScaleDef = {
     type: "index",
-    sharedPositionLayout: "packed-index",
+    sharedScaleLayout: "packed-index",
     input: "u32",
     output: "f32",
     params: [
@@ -125,14 +126,14 @@ function emitIndexScale({
     inputScalarType,
     inputComponents,
     scaleConfig,
-    sharedPositionName,
+    sharedScaleName,
 }) {
     const valueExpr =
         inputComponents === 2
             ? rawValueExpr
             : toU32Expr(rawValueExpr, inputScalarType);
     const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
-    const domain = domainVec3(name, sharedPositionName);
+    const domain = domainVec3(name, sharedScaleName);
     if (hasGroupingGaps(scaleConfig)) {
         const key =
             inputComponents === 2
@@ -144,13 +145,12 @@ function emitIndexScale({
         const { geometry, placement } = gapShaderInputs(
             name,
             scaleConfig,
-            sharedPositionName
+            sharedScaleName
         );
         return `${makeFnHeader(name, "f32", functionName)} {
     let v = ${key};
-    return scaleIndexGaps(v, ${domain}, ${rangeVec2(name)}, params.gapTable_${name}, ${geometry},
-        params.${SCALE_PADDING_INNER_PREFIX}${name}, params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name}, params.${SCALE_BAND_PREFIX}${name}, ${before}, ${placement}, 1.0);
+    return scaleIndexGaps(v, ${domain}, ${rangeVec2(name, sharedScaleName)}, params.gapTable_${name}, ${geometry},
+        ${bandParameters(name, sharedScaleName)}, params.${SCALE_BAND_PREFIX}${name}, ${before}, ${placement}, 1.0);
 }`;
     }
     return `${makeFnHeader(name, "f32", functionName)} {
@@ -158,10 +158,8 @@ function emitIndexScale({
     return ${fnName}(
         v,
         ${domain},
-        ${rangeVec2(name)},
-        params.${SCALE_PADDING_INNER_PREFIX}${name},
-        params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name},
+        ${rangeVec2(name, sharedScaleName)},
+        ${bandParameters(name, sharedScaleName)},
         params.${SCALE_BAND_PREFIX}${name}
     );
 }`;

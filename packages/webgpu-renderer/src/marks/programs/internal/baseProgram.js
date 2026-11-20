@@ -18,10 +18,7 @@ import {
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
-import {
-    sharedPositionScaleBuffers,
-    supportsSharedPositionScale,
-} from "./sharedPositionScale.js";
+import { sharedScaleResources } from "./sharedScale.js";
 
 /**
  * @template T
@@ -273,7 +270,7 @@ export default class BaseProgram {
 
         const normalizedChannels = normalizeChannels({
             channels: config.channels,
-            context: { channelSpecs: this.channelSpecs },
+            context: { channelSpecs: this.channelSpecs, renderer },
         });
         /** @protected */
         this._channels = normalizedChannels.channels;
@@ -406,26 +403,16 @@ export default class BaseProgram {
             ...this.#selectionResources.getExtraResourceDefs(),
             ...this.getExtraResourceDefs(),
         ];
-        /** @type {Map<import("../../../index.d.ts").SharedPositionScaleHandle, string>} */
-        const sharedPositions = new Map();
+        /** @type {Map<import("../../../index.d.ts").SharedScaleHandle, string>} */
+        const sharedScales = new Map();
         for (const channelIR of compiledChannels.channelIRs) {
-            const { name, channel, outputComponents } = channelIR;
-            const scale = channel.scale;
-            const handle = scale?.sharedPosition;
+            const handle = channelIR.channel.sharedScale;
             if (!handle) continue;
-            const entry = sharedPositionScaleBuffers.get(handle);
-            if (
-                entry?.renderer !== renderer ||
-                entry.definition !== scale.definition ||
-                outputComponents !== 1 ||
-                !supportsSharedPositionScale(scale)
-            )
-                throw new Error(`Invalid shared position scale for "${name}".`);
-
-            let bindingName = sharedPositions.get(handle);
+            const entry = sharedScaleResources.get(handle);
+            let bindingName = sharedScales.get(handle);
             if (!bindingName) {
-                bindingName = "sharedPosition_" + sharedPositions.size;
-                sharedPositions.set(handle, bindingName);
+                bindingName = "sharedScale_" + sharedScales.size;
+                sharedScales.set(handle, bindingName);
                 this._extraBuffers.set(bindingName, entry.buffer);
                 this._borrowedExtraBuffers.add(bindingName);
                 extraResources.push({
@@ -434,10 +421,10 @@ export default class BaseProgram {
                     role: "extraBuffer",
                     visibility: "vertex",
                     bufferType: "uniform",
-                    wgslType: "array<vec4<f32>, 2>",
+                    wgslType: "array<vec4<f32>, 3>",
                 });
             }
-            channelIR.sharedPositionName = bindingName;
+            channelIR.sharedScaleName = bindingName;
         }
         const {
             bindGroupLayout,
@@ -500,7 +487,7 @@ export default class BaseProgram {
             ),
             this.count
         );
-        this.#scaleResources.subscribeSharedCuts((rebind) =>
+        this.#scaleResources.subscribeSharedScales((rebind) =>
             this._queueSlotUpdate(rebind)
         );
     }
@@ -876,7 +863,7 @@ export default class BaseProgram {
         const add = (name, source, index) => {
             const channel = this._channels[source];
             if (!channel) return;
-            if (channel.scale)
+            if (channel.scale && !channel.sharedScale)
                 addChannelSlot(
                     this.#slotHandles.scales,
                     name,
@@ -1186,14 +1173,14 @@ export default class BaseProgram {
                     name,
                     channel
                 );
-                updater.updateDomain(
+                updater?.updateDomain(
                     channel.scale.domain,
                     channel.scale.gapDomain
                 );
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
                 if (rangeValue !== undefined) {
-                    updater.updateRange(rangeValue);
+                    updater?.updateRange(rangeValue);
                 }
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {

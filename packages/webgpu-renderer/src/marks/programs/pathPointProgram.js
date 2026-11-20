@@ -155,10 +155,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
 
     let pixel = vec2<f32>(centerX, centerY) + screenOffset;
-    let clip = vec2<f32>(
-        (pixel.x / globals.width) * 2.0 - 1.0,
-        1.0 - (pixel.y / globals.height) * 2.0
-    );
+    let clip = localPixelToClip(pixel);
 
     let atlasPixelsPerScreen = params.uShapePixels / max(diameter, 0.001);
     let tileCenter = vec2<f32>(params.uTileSize * 0.5);

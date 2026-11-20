@@ -3,7 +3,7 @@ import { gpuLabel, RENDERER_GPU_OWNER } from "./utils/gpuLabel.js";
 import { ProgramTemplateCache } from "./marks/programs/internal/programTemplateCache.js";
 import { TextureCompositor, TransientTexturePool } from "./renderGroups.js";
 import RenderPassState from "./renderPassState.js";
-import { createSharedPositionScale } from "./marks/programs/internal/sharedPositionScale.js";
+import { createSharedScale } from "./marks/programs/internal/sharedScale.js";
 
 const TRANSPARENT = { r: 0, g: 0, b: 0, a: 0 };
 
@@ -583,8 +583,8 @@ export class Renderer {
             floats[offset + 9] = draw.visibleRange.cullY ? 1 : 0;
             floats[offset + 12] = draw.viewport.x;
             floats[offset + 13] = draw.viewport.y;
-            floats[offset + 14] = draw.viewport.width;
-            floats[offset + 15] = draw.viewport.height;
+            floats[offset + 14] = this._globals.width;
+            floats[offset + 15] = this._globals.height;
             integers[offset + 16] = draw.placement?.index ?? 0;
             integers[offset + 17] = draw.placement?.clipMode ?? 0;
             integers[offset + 18] = draw.placement?.count ?? 0;
@@ -642,8 +642,8 @@ export class Renderer {
     }
 
     /** @param {import("./index.d.ts").ChannelScale} scale */
-    createSharedPositionScale(scale) {
-        return createSharedPositionScale(this, scale, (handle) =>
+    createSharedScale(scale) {
+        return createSharedScale(this, scale, (handle) =>
             this.#ownedResources.delete(handle)
         );
     }
@@ -1062,17 +1062,7 @@ export class Renderer {
         }
 
         const viewport = { ...(command.viewport ?? canvas) };
-        assertRect("viewport", viewport);
-        if (
-            viewport.x < 0 ||
-            viewport.y < 0 ||
-            viewport.x + viewport.width > canvas.width ||
-            viewport.y + viewport.height > canvas.height
-        ) {
-            throw new RendererError(
-                "Viewport must be contained within the logical canvas."
-            );
-        }
+        assertRect("viewport", viewport, true);
 
         let scissor = intersectRects(command.scissor ?? canvas, canvas);
         const firstInstance = command.firstInstance ?? 0;
@@ -1602,6 +1592,14 @@ export class Renderer {
         const targetRight = target.logicalX + target.width / dpr;
         const targetBottom = target.logicalY + target.height / dpr;
         const state = new RenderPassState(pass);
+        state.setViewport(
+            (0 - target.logicalX) * dpr,
+            (0 - target.logicalY) * dpr,
+            this._globals.width * dpr,
+            this._globals.height * dpr,
+            0,
+            1
+        );
         for (const draw of draws) {
             if (picking && draw.orderPass & 4) {
                 continue;
@@ -1611,14 +1609,6 @@ export class Renderer {
                 continue;
             }
 
-            state.setViewport(
-                (draw.viewport.x - target.logicalX) * dpr,
-                (draw.viewport.y - target.logicalY) * dpr,
-                draw.viewport.width * dpr,
-                draw.viewport.height * dpr,
-                0,
-                1
-            );
             const scissor = draw.scissor;
             const left = Math.max(scissor.x, target.logicalX);
             const top = Math.max(scissor.y, target.logicalY);

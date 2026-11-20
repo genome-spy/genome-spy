@@ -12,13 +12,13 @@ export function hasGroupingGaps(scale) {
 /**
  * @param {string} name
  * @param {import("../../index.d.ts").ChannelScale | undefined} scale
- * @param {string} [sharedPositionName]
+ * @param {string} [sharedScaleName]
  */
-export function gapShaderInputs(name, scale, sharedPositionName) {
+export function gapShaderInputs(name, scale, sharedScaleName) {
     const channel = scale?.gapAxis ?? (name.startsWith("y") ? "y" : "x");
     return {
-        geometry: sharedPositionName
-            ? sharedPositionName + "[1]"
+        geometry: sharedScaleName
+            ? sharedScaleName + "[1]"
             : "params.gapGeometry_" + name,
         placement: `gapPlacementFactor(i, ${channel === "y" ? 1 : 0}u)`,
     };

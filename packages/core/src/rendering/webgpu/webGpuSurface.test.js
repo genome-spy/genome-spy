@@ -34,12 +34,15 @@ const mocks = vi.hoisted(() => {
         destroy: vi.fn(),
     };
     const renderer = {
-        createMark: vi.fn(() => handle),
+        createMark: vi.fn(
+            (/** @type {unknown} */ _definition, /** @type {any} */ _config) =>
+                handle
+        ),
         createPlacementSet: vi.fn(() => placementHandle),
-        createSharedPositionScale: vi.fn(
+        createSharedScale: vi.fn(
             /**
              * @param {import("@genome-spy/webgpu-renderer").ChannelScale} _scale
-             * @returns {import("@genome-spy/webgpu-renderer").SharedPositionScaleHandle | undefined}
+             * @returns {import("@genome-spy/webgpu-renderer").SharedScaleHandle | undefined}
              */
             (_scale) => undefined
         ),
@@ -108,7 +111,7 @@ beforeEach(() => {
     mocks.handle.scalarSlots = {};
     mocks.handle.selections = {};
     mocks.renderer.createDetachedTarget.mockReset();
-    mocks.renderer.createSharedPositionScale.mockReset();
+    mocks.renderer.createSharedScale.mockReset();
 });
 
 /**
@@ -187,11 +190,13 @@ describe("WebGpuSurface", () => {
             view.disposeSubtree();
             surface.finalize();
         });
-        const shared = {
-            update: vi.fn(),
-            destroy: vi.fn(),
-        };
-        mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
+        /** @type {{update: ReturnType<typeof vi.fn>, destroy: ReturnType<typeof vi.fn>}[]} */
+        const handles = [];
+        mocks.renderer.createSharedScale.mockImplementation(() => {
+            const handle = { update: vi.fn(), destroy: vi.fn() };
+            handles.push(handle);
+            return handle;
+        });
         const units = Array.from(
             view.getDescendants().filter((child) => child instanceof UnitView)
         );
@@ -204,7 +209,7 @@ describe("WebGpuSurface", () => {
         }
         frame.finish();
         frame.render();
-        expect(shared.update).toHaveBeenCalledOnce();
+        expect(handles[0].update).toHaveBeenCalledOnce();
 
         const changeGaps = (
             /** @type {number} */ gapWidth,
@@ -217,7 +222,7 @@ describe("WebGpuSurface", () => {
             });
         changeGaps(6, [8]);
         frame.render();
-        expect(shared.update).toHaveBeenLastCalledWith(
+        expect(handles.at(-1).update).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 gapPositions: [8],
                 gapWidth: 6,
@@ -227,7 +232,7 @@ describe("WebGpuSurface", () => {
 
         changeGaps(6, [4, 8]);
         frame.renderPicking();
-        expect(shared.update).toHaveBeenLastCalledWith(
+        expect(handles.at(-1).update).toHaveBeenLastCalledWith(
             expect.objectContaining({ gapPositions: [4, 8], gapWidth: 6 })
         );
         expect(
@@ -237,11 +242,74 @@ describe("WebGpuSurface", () => {
 
         changeGaps(0, [4, 8]);
         frame.render();
-        expect(mocks.renderer.createSharedPositionScale).toHaveBeenCalledOnce();
-        expect(shared.update).toHaveBeenLastCalledWith(
-            expect.objectContaining({ gapPositions: [], gapWidth: 0 })
+        expect(handles).toHaveLength(3);
+        expect(handles[0].destroy).toHaveBeenCalledOnce();
+        expect(handles[1].destroy).toHaveBeenCalledOnce();
+        expect(mocks.renderer.createSharedScale).toHaveBeenLastCalledWith(
+            expect.objectContaining({ gapEnabled: false })
         );
         expect(mocks.renderer.createMark).toHaveBeenCalledTimes(6);
+    });
+
+    test("retains old bindings until their marks switch ranges and resumes sharing", async () => {
+        const { view } = await createHeadlessEngine({
+            resolve: { scale: { x: "shared" } },
+            scales: { x: { type: "linear", domain: [0, 10] } },
+            data: { values: [{ start: 0, end: 8 }] },
+            hconcat: Array.from(
+                { length: 2 },
+                /** @returns {import("../../spec/view.js").UnitSpec} */ () => ({
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "start", type: "quantitative", axis: null },
+                        x2: { field: "end" },
+                        fill: { value: "black" },
+                        stroke: { value: null },
+                    },
+                })
+            ),
+        });
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => {
+            view.disposeSubtree();
+            surface.finalize();
+        });
+        const original = { update: vi.fn(), destroy: vi.fn() };
+        const resized = { update: vi.fn(), destroy: vi.fn() };
+        mocks.renderer.createSharedScale
+            .mockReturnValueOnce(original)
+            .mockReturnValueOnce(resized);
+        const units = Array.from(
+            view.getDescendants().filter((child) => child instanceof UnitView)
+        );
+
+        /** @param {number[]} widths */
+        const render = (widths) => {
+            const frame = new WebGpuViewRenderingContext({ surface });
+            for (const [i, width] of widths.entries()) {
+                const unit = units[i];
+                frame.pushView(unit, Rectangle.create(i * 150, 0, width, 50));
+                frame.renderMark(unit.mark, {});
+                frame.popView(unit);
+            }
+            frame.finish();
+            frame.render();
+            return mocks.renderer.createMark.mock.lastCall[1].channels.x.scale;
+        };
+
+        expect(render([100, 100])).toBe(original);
+        expect(render([120])).toBe(resized);
+        expect(original.destroy).not.toHaveBeenCalled();
+        expect(render([120, 100])).toMatchObject({ range: [0, 100] });
+        expect(original.destroy).toHaveBeenCalledOnce();
+        expect(render([120, 120])).toBe(resized);
+        expect(resized.destroy).not.toHaveBeenCalled();
     });
 
     test("recompiles gap mode on a conditional position with a fixed fallback", async () => {
@@ -326,9 +394,8 @@ describe("WebGpuSurface", () => {
                 update: vi.fn(),
                 destroy: vi.fn(),
             };
-            mocks.renderer.createSharedPositionScale.mockReturnValue(shared);
+            mocks.renderer.createSharedScale.mockReturnValue(shared);
 
-            const endpoints = [];
             for (const unit of view
                 .getDescendants()
                 .filter((view) => view instanceof UnitView)) {
@@ -340,32 +407,30 @@ describe("WebGpuSurface", () => {
                         Rectangle.create(0, 0, 100, 50)
                     );
                 surface.updateMark(mark, definition, config, properties);
-                const { x, x2 } =
-                    /** @type {{channels: import("@genome-spy/webgpu-renderer").RectChannels}} */ (
-                        config
-                    ).channels;
-                endpoints.push(x, x2);
             }
+            const endpoints = mocks.renderer.createMark.mock.calls.flatMap(
+                ([, config]) => {
+                    const { x, x2 } = config.channels;
+                    return [x, x2];
+                }
+            );
 
-            expect(
-                mocks.renderer.createSharedPositionScale
-            ).toHaveBeenCalledTimes(Number(shares));
+            expect(mocks.renderer.createSharedScale).toHaveBeenCalledTimes(
+                Number(shares)
+            );
             for (const [index, endpoint] of endpoints.entries()) {
                 if (shares && index !== 1) {
-                    expect(endpoint).toHaveProperty(
-                        "scale.sharedPosition",
-                        shared
-                    );
+                    expect(endpoint.scale).toBe(shared);
                 } else {
-                    expect(endpoint).not.toHaveProperty("scale.sharedPosition");
+                    expect(endpoint.scale).not.toBe(shared);
                 }
             }
-            surface.updateSharedPositions();
-            surface.updateSharedPositions();
+            surface.updateSharedScales();
+            surface.updateSharedScales();
             expect(shared.update).toHaveBeenCalledTimes(Number(shares));
             if (shares) {
                 expect(shared.update).toHaveBeenCalledWith(
-                    expect.objectContaining({ start: 0, end: 4 })
+                    expect.objectContaining({ domain: [0, 4] })
                 );
             }
         }

@@ -53,7 +53,7 @@ import WebGpuViewRenderingContext from "./webGpuViewRenderingContext.js";
  */
 function createContext(surface, options = {}) {
     return new WebGpuViewRenderingContext({
-        surface: { updateSharedPositions: () => {}, ...surface },
+        surface: { updateSharedScales: () => {}, ...surface },
         ...options,
     });
 }
@@ -534,7 +534,13 @@ describe("WebGpuViewRenderingContext", () => {
             ]).toEqual([20.5, 30.5, 100, 80]);
             expect(adapterCalls[0][3]).toBe(mocks.packed.data);
 
-            expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+            expect(surface.updateMark).toHaveBeenCalledWith(
+                mark,
+                {},
+                {},
+                {},
+                expect.any(Symbol)
+            );
             expect(surface.prepareDraw).toHaveBeenCalledWith(
                 mark,
                 expect.objectContaining({
@@ -583,17 +589,23 @@ describe("WebGpuViewRenderingContext", () => {
         context.finish();
         context.render();
 
-        expect(surface.updateMark).toHaveBeenCalledWith(mark, {}, {}, {});
+        expect(surface.updateMark).toHaveBeenCalledWith(
+            mark,
+            {},
+            {},
+            {},
+            expect.any(Symbol)
+        );
         expect(surface.prepareDraw).toHaveBeenCalledWith(
             mark,
             expect.objectContaining({
                 firstInstance: 0,
                 instanceCount: 1,
                 visibleRange: {
-                    x1: 0,
-                    y1: 40,
-                    x2: 120,
-                    y2: 90,
+                    x1: -20.5,
+                    y1: 9.5,
+                    x2: 99.5,
+                    y2: 59.5,
                     cullX: false,
                     cullY: true,
                 },
@@ -656,7 +668,7 @@ describe("WebGpuViewRenderingContext", () => {
             width: 100,
             height: 90,
         });
-        expect(firstDraw.visibleRange).toMatchObject({ x1: 30, x2: 130 });
+        expect(firstDraw.visibleRange).toMatchObject({ x1: -0.5, x2: 99.5 });
 
         const pickingFrame = context.renderPicking();
         const secondDraw = surface.prepareDraw.mock.calls[1][1];
@@ -668,7 +680,7 @@ describe("WebGpuViewRenderingContext", () => {
             width: 100,
             height: 100,
         });
-        expect(secondDraw.visibleRange).toMatchObject({ x1: 40, x2: 140 });
+        expect(secondDraw.visibleRange).toMatchObject({ x1: -0.5, x2: 99.5 });
 
         // Unlike the draw envelope, positional mark channels bake the owner
         // rectangle into the retained config and must be refreshed as well.

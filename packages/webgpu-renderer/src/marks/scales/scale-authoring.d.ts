@@ -25,7 +25,7 @@ export function domainVec2(name: string): string;
 export function domainVec3(name: string): string;
 
 /** Resolve the packed range uniform to a vec2 expression. */
-export function rangeVec2(name: string): string;
+export function rangeVec2(name: string, sharedScaleName?: string): string;
 
 /** Emit an expression that coerces raw values to u32. */
 export function toU32Expr(

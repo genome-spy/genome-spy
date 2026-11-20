@@ -537,8 +537,6 @@ ${effectSetup}
 
     // Range fitting uses viewport-local pixels. Add the configuration
     // rectangle's origin only for final placement and visible-range culling.
-    // Source-backed draws use a zero-origin configuration rectangle and rely
-    // on the GPU viewport for their canvas offset.
     let localAnchor = anchor;
     anchor = params.uViewport.xy + anchor;
 
@@ -614,10 +612,7 @@ ${effectSetup}
         );
     }
 
-    let clip = vec2<f32>(
-        (pixel.x / globals.width) * 2.0 - 1.0,
-        1.0 - (pixel.y / globals.height) * 2.0
-    );
+    let clip = localPixelToClip(pixel);
 
     var out: VSOut;
 #if defined(PLACEMENT_ENABLED)

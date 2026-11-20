@@ -297,18 +297,29 @@ export type BuiltInScaleType =
     | "threshold"
     | "ordinal";
 
-/** A position domain shared by channels on one renderer. */
-export type SharedPositionScaleHandle = {
-    /** Publish a mapping snapshot. Omitted cuts are empty and omitted width is zero. */
-    update(state: {
-        start: number;
-        end: number;
-        /** Gap width in logical pixels. Defaults to zero. */
-        gapWidth?: number | null;
-        /** Replace this array when the cut positions change. */
-        gapPositions?: readonly number[];
-        gapRanks?: readonly number[];
-    }): void;
+/** A scale mapping owned by one renderer and usable by multiple channels. */
+export type SharedScaleHandle = {
+    /**
+     * Update mapping values while retaining the configured scale layout.
+     * Enable grouping gaps on the initial config to publish gaps later.
+     */
+    update(
+        values: Partial<
+            Pick<
+                ChannelScale,
+                | "domain"
+                | "range"
+                | "viewport"
+                | "gapPositions"
+                | "gapWidth"
+                | "gapDomain"
+                | "paddingInner"
+                | "paddingOuter"
+                | "align"
+            >
+        >
+    ): void;
+    /** Release the scale after its consuming marks are destroyed. */
     destroy(): void;
 };
 
@@ -324,12 +335,6 @@ export type ChannelScale = {
 
     /** Band scales only: displayed rank window, separate from category membership. */
     viewport?: ScaleViewport | null;
-
-    /** Use this handle for displayed bounds and grouping gaps. Enable gaps on the
-     * channel with gapEnabled. The local domain defines band category membership.
-     * Initialize the handle before drawing and keep it alive until all consuming
-     * marks are destroyed. */
-    sharedPosition?: SharedPositionScaleHandle;
 
     /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */
     range?: Array<number | number[] | string> | ColorInterpolatorFn;
@@ -462,8 +467,8 @@ export type ScaleEmitParams = {
     /** Scale config for custom emitters that need direct access. */
     scaleConfig?: ChannelScale;
 
-    /** WGSL binding for the shared position domain and gap geometry. */
-    sharedPositionName?: string;
+    /** WGSL binding for the shared scale mapping. */
+    sharedScaleName?: string;
 
     /** WGSL expression for the raw value (buffer read or literal/uniform). */
     rawValueExpr: string;
@@ -566,7 +571,7 @@ export type ScaleFunctionParams = ScaleIOContext & {
     rawValueExpr: string;
     /** Full scale config for detecting piecewise scales and clamp behavior. */
     scaleConfig?: ChannelScale;
-    sharedPositionName?: string;
+    sharedScaleName?: string;
     /** Storage buffer identifier for ordinal/band domain lookup, if used. */
     domainMapName?: string | null;
     /** Whether to map scale output through a color ramp texture. */
@@ -578,7 +583,7 @@ export type ScaleFunctionParams = ScaleIOContext & {
  * This mirrors the channel analysis used by the shader builder.
  */
 export type ScaleValidationContext = ScaleIOContext & {
-    channel: ChannelConfigInput;
+    channel: LocalChannelConfigInput;
     scaleType: ChannelScale["type"];
     isPiecewise: boolean;
     needsDomainMap: boolean;
@@ -647,7 +652,7 @@ export type ScaleDef = {
     resources: ScaleResourceRules;
 
     /** Layout accepted by the shared position shader path. */
-    sharedPositionLayout?: "bounds" | "packed-index";
+    sharedScaleLayout?: "bounds" | "packed-index";
 
     /**
      * Vector output policy for the scale. "interpolated" allows vector outputs
@@ -718,7 +723,7 @@ export type ChannelConfigCommon = {
 
     /** Conditional overrides applied when selection predicates match. */
     conditions?: ChannelCondition[];
-};
+} & Pick<ChannelScale, "band" | "gapAxis" | "gapBefore" | "gapPeer">;
 
 /** Scale-capable channel config. Used by both input and resolved variants. */
 export type ChannelConfigWithScale = ChannelConfigCommon & {
@@ -766,13 +771,19 @@ export type ValueChannelConfigInput = {
 export type ChannelConfigWithScaleInput = (
     SeriesChannelConfigInput | ValueChannelConfigInput
 ) &
-    ChannelConfigWithScale;
+    ChannelConfigCommon & { scale: ChannelScale | SharedScaleHandle };
 
 /** User-supplied configs; may be partial because defaults are filled later. */
 export type ChannelConfigWithoutScaleInput = (
     SeriesChannelConfigInput | ValueChannelConfigInput
 ) &
     ChannelConfigWithoutScale;
+
+/** @internal Input after resolving any shared scale handle. */
+export type LocalChannelConfigInput = (
+    SeriesChannelConfigInput | ValueChannelConfigInput
+) &
+    (ChannelConfigWithScale | ChannelConfigWithoutScale);
 
 /** Any user-facing channel config (may omit data/value until normalized). */
 export type ChannelConfigInput =
@@ -806,11 +817,15 @@ export type ValueChannelConfigWithoutScale = ValueChannelConfig &
     ChannelConfigWithoutScale;
 
 /** Internal shape after normalization: every channel is series or value. */
-export type ChannelConfigResolved =
+export type ChannelConfigResolved = (
     | SeriesChannelConfigWithScale
     | SeriesChannelConfigWithoutScale
     | ValueChannelConfigWithScale
-    | ValueChannelConfigWithoutScale;
+    | ValueChannelConfigWithoutScale
+) & {
+    /** @internal Shared resource resolved during channel normalization. */
+    sharedScale?: SharedScaleHandle;
+};
 
 /** Public-facing channel config type (input form). */
 export type ChannelConfig = ChannelConfigInput;
@@ -1253,11 +1268,12 @@ export type DrawCommand = {
     /** Retained mark whose resources are reused for this occurrence. */
     mark: Pick<MarkHandle, "markId">;
     /**
-     * Logical-pixel viewport. Mark position ranges are local to this rectangle.
+     * Logical-pixel draw frame. Cartesian positions are offsets from its origin.
+     * Use scissor to clip geometry to the frame.
      * Defaults to the full logical canvas.
      */
     viewport?: DrawRect;
-    /** Logical-pixel clipping rectangle. Defaults to the full canvas. */
+    /** Logical-pixel clipping rectangle in canvas coordinates. Defaults to the full canvas. */
     scissor?: DrawRect;
     /** Optional directional anchor-culling bounds in logical pixels. */
     visibleRange?: DrawVisibleRange;
@@ -1392,10 +1408,11 @@ export class Renderer {
     /** Create a retained, renderer-owned placement table. */
     createPlacementSet(data: PlacementSetData): PlacementSetHandle;
 
-    /** Create a shared domain resource for a supported positional scale layout. */
-    createSharedPositionScale(
-        scale: ChannelScale
-    ): SharedPositionScaleHandle | undefined;
+    /**
+     * Create a shared mapping from an ordinary scale config. Returns undefined
+     * for layouts without shared GPU storage. Supply an explicit scale range.
+     */
+    createSharedScale(scale: ChannelScale): SharedScaleHandle | undefined;
 
     /** Log the GPU resources reserved by a mark to the console. */
     debugResources(markId: MarkId, label?: string): void;

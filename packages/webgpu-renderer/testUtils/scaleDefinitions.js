@@ -36,7 +36,11 @@ const TEST_SCALE_DEFINITIONS = Object.freeze({
  */
 export function attachScaleDefinitions(channels) {
     for (const channel of Object.values(channels)) {
-        if (channel.scale && !channel.scale.definition) {
+        if (
+            channel.scale &&
+            "type" in channel.scale &&
+            !channel.scale.definition
+        ) {
             channel.scale.definition = getTestScaleDefinition(
                 channel.scale.type
             );

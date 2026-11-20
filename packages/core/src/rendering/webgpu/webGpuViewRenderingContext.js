@@ -41,6 +41,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
 
     #finished = false;
 
+    #layout = Symbol();
+
     /** @type {((mark: import("../../marks/mark.js").default) => boolean) | undefined} */
     #markPredicate;
 
@@ -293,7 +295,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         countPerformance("retainedMarkSyncChecks", synchronizedMarks);
         countPerformance("retainedMarkSyncChanges", changedMarks);
         countPerformance("retainedResourceWrites", resourceWrites);
-        this.surface.updateSharedPositions();
+        this.surface.updateSharedScales();
         return items;
     }
 
@@ -367,9 +369,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords = state.occurrences[0].markCoords;
         }
 
-        if (state.source) {
-            state.viewport = createDrawRect();
-        }
+        state.viewport = createDrawRect();
         for (const occurrence of state.occurrences) {
             occurrence.draw = createOccurrenceDraw(occurrence, state);
         }
@@ -431,15 +431,10 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         // stable Rectangle whose accessors change during interaction. The
         // WebGL path reevaluates that range for every draw; a retained WebGPU
         // config must be rebuilt when the numeric range changes.
-        const x = state.source ? 0 : state.ownerCoords.x;
-        const y = state.source ? 0 : state.ownerCoords.y;
         const { width, height } = state.ownerCoords;
         const bounds = state.configBounds;
         const geometryChanged =
-            x !== bounds?.x ||
-            y !== bounds?.y ||
-            width !== bounds?.width ||
-            height !== bounds?.height;
+            width !== bounds?.width || height !== bounds?.height;
         const configChanged =
             packedChanged || expressionChanged || geometryChanged;
         if (configChanged) {
@@ -450,21 +445,18 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                       ? "markConfigurationExpressionMiss"
                       : "markConfigurationGeometryMiss"
             );
-            const coords = state.source
-                ? Rectangle.create(x, y, width, height)
-                : state.ownerCoords;
             state.translation = measurePerformance("markConfiguration", () =>
                 createWebGpuMarkConfig(
                     state.mark,
                     state.occurrences[0].options,
-                    coords,
+                    state.ownerCoords,
                     packed.data,
                     createPlacementIndexConfig(state)
                 )
             );
             state.packed = packed;
             state.configRevision = configRevision;
-            state.configBounds = { x, y, width, height };
+            state.configBounds = { width, height };
         }
         if (packedChanged) {
             for (const occurrence of state.occurrences) {
@@ -580,7 +572,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                             state.mark,
                             translation.definition,
                             translation.config,
-                            translation.properties ?? {}
+                            translation.properties ?? {},
+                            this.#layout
                         )
                 );
                 state.resourcesDirty = false;
@@ -955,7 +948,7 @@ function writeScopeBounds(command, target) {
  * @property {Rectangle | undefined} ownerCoords
  * @property {number | undefined} validatedTopologyRevision
  * @property {ReturnType<typeof createWebGpuMarkConfig>} translation
- * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} configBounds
+ * @property {{width: number, height: number} | undefined} configBounds
  * @property {number} configRevision
  * @property {number} resourceRevision
  * @property {boolean} resourcesDirty

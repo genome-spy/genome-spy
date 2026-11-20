@@ -34,7 +34,7 @@ export function buildScaledFunction({
     outputComponents,
     outputScalarType,
     scaleConfig,
-    sharedPositionName,
+    sharedScaleName,
     domainMapName = null,
     useRangeTexture = false,
 }) {
@@ -61,7 +61,7 @@ export function buildScaledFunction({
         name,
         functionName,
         scaleConfig,
-        sharedPositionName,
+        sharedScaleName,
         rawValueExpr,
         inputScalarType: scalarType,
         inputComponents,

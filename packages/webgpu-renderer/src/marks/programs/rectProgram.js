@@ -328,8 +328,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 #endif
 #if !defined(xClampRange_DEFINED)
     // Keep far-off endpoints close enough to avoid triangle precision loss.
-    x = clamp(x, -1.0, globals.width + 1.0);
-    x2 = clamp(x2, -1.0, globals.width + 1.0);
+    let left = -globals.viewportOrigin.x - 1.0;
+    let right = globals.canvasSize.x - globals.viewportOrigin.x + 1.0;
+    x = clamp(x, left, right);
+    x2 = clamp(x2, left, right);
 #endif
 
     var w = x2 - x;
@@ -383,10 +385,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     px += expansion.x;
     py += expansion.y;
 
-    let clip = vec2<f32>(
-        (px / globals.width) * 2.0 - 1.0,
-        1.0 - (py / globals.height) * 2.0
-    );
+    let clip = localPixelToClip(vec2<f32>(px, py));
 
     var out: VSOut;
 #if defined(PLACEMENT_ENABLED)

@@ -8,7 +8,7 @@ function isNumericScalarType(type) {
 
 /**
  * @param {string} name
- * @param {import("../../index.d.ts").ChannelConfigInput} channel
+ * @param {import("../../index.d.ts").LocalChannelConfigInput} channel
  * @param {ReturnType<typeof import("../shaders/channelAnalysis.js").buildChannelAnalysis>} analysis
  * @returns {string | null}
  */
