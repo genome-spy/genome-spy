@@ -69,6 +69,10 @@
       "types": "./dist/histogram.d.ts",
       "default": "./src/histogram.js"
     },
+    "./jobProgress": {
+      "types": "./dist/jobProgress.d.ts",
+      "default": "./src/jobProgress.js"
+    },
     "./comparisonOperatorButtons": {
       "types": "./dist/comparisonOperatorButtons.d.ts",
       "default": "./src/comparisonOperatorButtons.js"
@@ -108,6 +112,10 @@
     "./define/histogram": {
       "types": "./dist/define/histogram.d.ts",
       "default": "./src/define/histogram.js"
+    },
+    "./define/jobProgress": {
+      "types": "./dist/define/jobProgress.d.ts",
+      "default": "./src/define/jobProgress.js"
     },
     "./define/comparisonOperatorButtons": {
       "types": "./dist/define/comparisonOperatorButtons.d.ts",

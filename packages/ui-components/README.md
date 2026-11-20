@@ -81,6 +81,30 @@ Subclass `BaseDialog` from `/dialog`, register the subclass, and call
 persistent dialogs, set `openOnConnect` to false and call `openDialog()` after
 the element's first render.
 
+## Job progress
+
+Bind an activity to `<gs-job-progress>` and update it when the job changes
+state. Listen for `gs-job-cancel` to request cancellation from your job runner.
+
+```js
+import "@genome-spy/ui-components/define/jobProgress";
+
+const indicator = document.querySelector("gs-job-progress");
+indicator.activity = {
+  label: "Downloading dataset",
+  startedAt: Date.now(),
+  status: "running",
+};
+indicator.progress = 0.42;
+```
+
+Use `progress = null` for indeterminate progress and `startedAt: null` for an
+unknown start time. Supply `finishedAt` for `complete`, `failed`, or `cancelled`
+jobs to show the final elapsed time. Use the `message` and `cancel` slots for
+custom contents, or set `cancel-label` to rename the built-in button. The bar
+uses `--gs-theme-primary` and `--gs-divider-color`. Set
+`--gs-job-message-height` to adjust the reserved message space.
+
 ## Selection and data preview
 
 | Component                   | Element                          | Use                                  |
