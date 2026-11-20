@@ -158,8 +158,15 @@ shared `--gs-control-text`, `--gs-hover-background`, `--gs-selected-background`,
 `--gs-divider-color`, and `--gs-focus-color` tokens on the mount or an ancestor.
 Use `--gs-menu-current-border` for the current history entry's accent border.
 Optional `--gs-menu-backdrop-z-index` and `--gs-menu-layer-z-index` tokens
-coordinate the layers with other UI. The **Context Menu** story uses a scoped
-mount so you can switch palettes in the Storybook toolbar.
+coordinate the layers with other UI.
+
+For a compact toolbar menu, set `--gs-menu-border`, `--gs-menu-radius`,
+`--gs-menu-shadow`, `--gs-menu-padding`, and `--gs-menu-font-size` on the mount.
+Use `--gs-menu-item-padding-inline`, `--gs-menu-item-padding-block`,
+`--gs-menu-item-gap`, and `--gs-menu-item-radius` for the rows.
+`--gs-menu-hover-text` and the shared `--gs-disabled-text` set the text colors
+for those states. **Context Menu → Sequence Designer** shows a scoped theme with
+copyable CSS.
 
 ## Job progress
 

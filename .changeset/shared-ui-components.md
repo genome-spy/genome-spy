@@ -15,7 +15,8 @@ default. App preserves its beveled buttons in its own theme, including in
 dialogs. App's dialog exports work alongside the new package.
 
 App’s context menus and toolbar dropdowns use the shared menu controller and
-stylesheet, which can be imported separately.
+stylesheet, which can be imported separately. Themes can customize the menu
+surface, row spacing, and interaction colors.
 
 Import `@genome-spy/ui-components/form.css` and add `gs-form` to theme native
 fields and buttons alongside the shared components.

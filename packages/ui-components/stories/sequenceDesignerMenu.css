@@ -1,0 +1,18 @@
+.sequence-designer-menu-theme {
+    --gs-menu-background: #fff;
+    --gs-menu-border: 1px solid #cbd5dc;
+    --gs-menu-radius: 8px;
+    --gs-menu-shadow: 0 4px 16px #0002;
+    --gs-menu-padding: 8px;
+    --gs-menu-font-size: 12px;
+    --gs-menu-item-gap: 4px;
+    --gs-menu-item-padding-inline: 10px;
+    --gs-menu-item-padding-block: 5px;
+    --gs-menu-item-radius: 5px;
+    --gs-control-text: #46636f;
+    --gs-hover-background: #edf3f5;
+    --gs-menu-hover-text: #263b4c;
+    --gs-selected-background: #dfe9ed;
+    --gs-disabled-text: #b5c1c5;
+    --gs-focus-color: #357f89;
+}

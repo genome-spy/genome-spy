@@ -1,10 +1,11 @@
 .gs-menu,
 .gs-context-menu {
     margin: 0;
-    padding: 7px 0;
+    padding: var(--gs-menu-padding, 7px 0);
     background: var(--gs-menu-background, #f6f6f6);
     color: var(--gs-control-text, inherit);
-    border-radius: 2px;
+    border: var(--gs-menu-border, 0);
+    border-radius: var(--gs-menu-radius, 2px);
 
     /* Keep toolbar menus within the viewport. */
     max-height: calc(100vh - 60px);
@@ -12,12 +13,12 @@
 
     z-index: 100;
 
-    box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
+    box-shadow: var(--gs-menu-shadow, 0 3px 15px rgb(0 0 0 / 21%));
 
     cursor: default;
 
     line-height: 22px;
-    font-size: 13px;
+    font-size: var(--gs-menu-font-size, 13px);
 
     font-family: var(
         --gs-font-family,
@@ -38,6 +39,11 @@
         vertical-align: -0.125em;
     }
 
+    > li + li,
+    > ul > li + li {
+        margin-block-start: var(--gs-menu-item-gap, 0);
+    }
+
     li {
         display: block;
         list-style: none;
@@ -52,16 +58,32 @@
             background-color: var(--gs-hover-background, #e0e0e0);
         }
 
+        > :is(
+            button[role="menuitem"],
+            button.choice-item,
+            button.submenu-item
+        ) {
+            border-radius: var(--gs-menu-item-radius, 0);
+        }
+
+        > :is(button.choice-item, button.submenu-item):hover {
+            color: var(--gs-menu-hover-text, inherit);
+        }
+
         > button[role="menuitem"] {
             width: 100%;
             border: 0;
-            padding-block: 0;
+            padding-block: var(--gs-menu-item-padding-block, 0);
             background: transparent;
             color: inherit;
             font: inherit;
             line-height: inherit;
             text-align: left;
             cursor: default;
+
+            &[aria-disabled="true"] {
+                color: var(--gs-disabled-text, inherit);
+            }
 
             &:focus-visible {
                 outline: 2px solid var(--gs-focus-color, #2459a6);
@@ -111,8 +133,7 @@
     .menu-header,
     li > :is(span.disabled-item, a:first-child, .submenu-item, label),
     li > button[role="menuitem"] {
-        padding-left: 15px;
-        padding-right: 15px;
+        padding-inline: var(--gs-menu-item-padding-inline, 15px);
     }
 
     .menu-header {
@@ -157,8 +178,8 @@
             margin-left: 0.5em;
         }
 
-        > .disabled-item {
-            color: #999;
+        > span.disabled-item {
+            color: var(--gs-disabled-text, #999);
         }
     }
 
@@ -168,7 +189,7 @@
         align-items: center;
 
         position: absolute;
-        top: 0px;
+        top: var(--gs-menu-item-padding-block, 0);
         right: 7.5px;
         width: 22px;
         height: 22px;
@@ -200,7 +221,10 @@
     li > button[role="menuitem"][aria-current="step"] {
         background-color: var(--gs-selected-background, #e0e0e0);
         border-left: 5px solid var(--gs-menu-current-border, #c0c0c0);
-        padding-left: 10px;
+        padding-left: max(
+            0px,
+            calc(var(--gs-menu-item-padding-inline, 15px) - 5px)
+        );
     }
 }
 
@@ -294,7 +318,8 @@
     .submenu-item {
         width: 100%;
         min-height: 22px;
-        padding: 0 15px;
+        padding-block: var(--gs-menu-item-padding-block, 0);
+        padding-inline: var(--gs-menu-item-padding-inline, 15px);
         text-align: left;
     }
 

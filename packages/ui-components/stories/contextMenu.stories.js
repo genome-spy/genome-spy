@@ -1,8 +1,10 @@
 import { html } from "lit";
 import { ref } from "lit/directives/ref.js";
+import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faArrowDownWideShort,
     faDownload,
+    faEllipsisV,
     faFileCode,
     faFileCsv,
     faFileImage,
@@ -17,6 +19,10 @@ import {
     DIVIDER,
 } from "@genome-spy/ui-components/contextMenu";
 import "@genome-spy/ui-components/contextMenu.css";
+import "@genome-spy/ui-components/form.css";
+import "./theming.css";
+import "./sequenceDesignerMenu.css";
+import sequenceDesignerMenuCss from "./sequenceDesignerMenu.css?raw";
 
 export default {
     title: "Components/Context Menu",
@@ -252,6 +258,97 @@ export const Controls = {
                 </button>
                 <p><output>${describeSettings()}</output></p>
             </div>
+        `;
+    },
+};
+
+export const SequenceDesigner = {
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    "The Sequence Designer palette applies to the menu mounted in the same themed container as the trigger. " +
+                    "The stylesheet sets the popup border, inset rows, and colors for hover and disabled items.",
+            },
+        },
+    },
+    render() {
+        /** @type {ReturnType<typeof createMenuController>} */
+        let menu;
+        /** @type {HTMLElement} */
+        let mount;
+
+        const setMount = (/** @type {HTMLElement | undefined} */ element) => {
+            if (element) {
+                mount = element;
+                menu = createMenuController({ mount });
+            } else {
+                menu?.dismissDropdownMenu();
+            }
+        };
+
+        /** @param {string} label */
+        const action = (label) => ({
+            label,
+            callback: () => {
+                mount.querySelector("output").value = `Selected: ${label}`;
+            },
+        });
+
+        /** @param {MouseEvent} event */
+        const openMenu = (event) => {
+            const trigger = /** @type {HTMLElement} */ (event.currentTarget);
+            if (menu.isDropdownOpenFor(trigger)) {
+                menu.dismissDropdownMenu();
+            } else {
+                menu.dropdownMenu(
+                    {
+                        label: "Session actions",
+                        mode: "command",
+                        items: [
+                            action("New session"),
+                            { label: "Reset" },
+                            action("Replace sequence"),
+                            action("Debug"),
+                        ],
+                    },
+                    trigger,
+                    "bottom-end"
+                );
+            }
+        };
+
+        return html`
+            <div
+                ${ref(setMount)}
+                class="sequence-designer-menu-theme"
+                style="display: flex; align-items: center; justify-content: flex-end; gap: 0.75em; max-width: 20rem"
+            >
+                <output></output>
+                <span class="gs-form">
+                    <button
+                        type="button"
+                        aria-label="More actions"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                        @click=${openMenu}
+                    >
+                        ${
+                            icon(faEllipsisV, {
+                                styles: {
+                                    display: "block",
+                                    width: "1em",
+                                    height: "1em",
+                                },
+                            }).node[0]
+                        }
+                    </button>
+                </span>
+            </div>
+            <details class="theme-code">
+                <summary>Sequence Designer theme CSS</summary>
+                <pre><code>${sequenceDesignerMenuCss.trim()}</code></pre>
+            </details>
         `;
     },
 };
