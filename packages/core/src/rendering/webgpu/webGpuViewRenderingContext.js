@@ -322,6 +322,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     command.view.hasLocalOpacity();
                 command.clipX = clip.clipX;
                 command.clipY = clip.clipY;
+                if (command.coords.length > 1) {
+                    command.coords = Array.from(new Set(command.coords));
+                }
             }
         }
     }
@@ -944,6 +947,12 @@ function preparePlacementScissor(occurrence, index, scissor, canvas) {
  * @param {{width: number, height: number}} target
  */
 function writeScopeBounds(command, target) {
+    if (!command.clipX && !command.clipY) {
+        command.bounds.width = target.width;
+        command.bounds.height = target.height;
+        return;
+    }
+
     const first = command.coords[0];
     let x1 = first.x;
     let y1 = first.y;
