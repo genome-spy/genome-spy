@@ -35,8 +35,10 @@ const mocks = vi.hoisted(() => {
     };
     const renderer = {
         createMark: vi.fn(
-            (/** @type {unknown} */ _definition, /** @type {any} */ _config) =>
-                handle
+            (/** @type {unknown} */ _definition, /** @type {any} */ config) =>
+                "update" in (config.channels?.x?.scale ?? {})
+                    ? { ...handle, scales: {} }
+                    : handle
         ),
         createPlacementSet: vi.fn(() => placementHandle),
         createSharedScale: vi.fn(
