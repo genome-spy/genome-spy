@@ -11,6 +11,7 @@ import { packHighPrecisionDomain } from "../../../utils/highPrecision.js";
 
 /** @typedef {import("../../../index.d.ts").SharedScaleHandle} Handle */
 /** @typedef {import("../../../index.d.ts").ChannelScale} ChannelScale */
+/** @typedef {import("../../scales/scaleCodegen.js").ShareableScaleDef} ShareableScaleDef */
 
 /**
  * @typedef {object} SharedScaleResources
@@ -53,7 +54,10 @@ function hasSharedScaleShape(domain, range, categorical) {
 export function createSharedScale(renderer, config, release) {
     renderer._assertAlive();
     const categorical = config.type === "band";
-    const layout = config.definition?.sharedScaleLayout;
+    const definition = /** @type {ShareableScaleDef | undefined} */ (
+        config.definition
+    );
+    const layout = definition?.sharedScaleLayout;
     if (
         !layout ||
         !hasSharedScaleShape(config.domain, config.range, categorical)

@@ -297,11 +297,17 @@ export type BuiltInScaleType =
     | "threshold"
     | "ordinal";
 
-/** A scale mapping owned by one renderer and usable by multiple channels. */
+/**
+ * A scale mapping owned by one renderer. Assign the same handle to the
+ * `scale` property of each channel that should use the mapping.
+ */
 export type SharedScaleHandle = {
     /**
-     * Update mapping values while retaining the configured scale layout.
-     * Enable grouping gaps on the initial config to publish gaps later.
+     * Update the mapping for every consuming channel. Omitted fields retain
+     * their previous values. Updates preserve the scale type and shader layout.
+     * On band scales, `domain` sets category membership and `viewport` sets
+     * the displayed rank window. Use `viewport: null` to show the full domain.
+     * Set `gapEnabled: true` at creation to add grouping gaps later.
      */
     update(
         values: Partial<
@@ -467,9 +473,6 @@ export type ScaleEmitParams = {
     /** Scale config for custom emitters that need direct access. */
     scaleConfig?: ChannelScale;
 
-    /** WGSL binding for the shared scale mapping. */
-    sharedScaleName?: string;
-
     /** WGSL expression for the raw value (buffer read or literal/uniform). */
     rawValueExpr: string;
 
@@ -571,7 +574,6 @@ export type ScaleFunctionParams = ScaleIOContext & {
     rawValueExpr: string;
     /** Full scale config for detecting piecewise scales and clamp behavior. */
     scaleConfig?: ChannelScale;
-    sharedScaleName?: string;
     /** Storage buffer identifier for ordinal/band domain lookup, if used. */
     domainMapName?: string | null;
     /** Whether to map scale output through a color ramp texture. */
@@ -650,9 +652,6 @@ export type ScaleDef = {
 
     /** Resource hints used for allocating buffers and textures. */
     resources: ScaleResourceRules;
-
-    /** Layout accepted by the shared position shader path. */
-    sharedScaleLayout?: "bounds" | "packed-index";
 
     /**
      * Vector output policy for the scale. "interpolated" allows vector outputs
@@ -1409,8 +1408,12 @@ export class Renderer {
     createPlacementSet(data: PlacementSetData): PlacementSetHandle;
 
     /**
-     * Create a shared mapping from an ordinary scale config. Returns undefined
-     * for layouts without shared GPU storage. Supply an explicit scale range.
+     * Create a shared mapping from a built-in linear, index, or band scale
+     * configuration. Use two finite numeric range endpoints and an explicit
+     * domain with two finite bounds (linear/index) or unique unsigned integer
+     * category IDs (band).
+     * Returns `undefined` for unsupported configurations. Those scales can
+     * still be supplied directly to a channel.
      */
     createSharedScale(scale: ChannelScale): SharedScaleHandle | undefined;
 

@@ -15,7 +15,7 @@ import {
 } from "./scalePipeline.js";
 
 /**
- * @typedef {import("../../index.d.ts").ScaleEmitParams} ScaleEmitParams
+ * @typedef {import("./scaleCodegen.js").ScaleEmitParams} ScaleEmitParams
  * @typedef {import("./scalePipeline.js").ScalePipelineStep} ScalePipelineStep
  * @typedef {Pick<ScaleEmitParams, "name"|"functionName"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture"|"sharedScaleName">} ContinuousEmitParams
  */

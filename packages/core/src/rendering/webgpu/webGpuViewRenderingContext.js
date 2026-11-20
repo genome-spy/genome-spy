@@ -158,7 +158,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 configRevision: -1,
                 resourceRevision: -1,
                 resourcesDirty: true,
-                viewport: undefined,
+                viewport: createDrawRect(),
                 generatedRectangles: undefined,
             };
             this.#marks.set(mark, state);
@@ -369,7 +369,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             state.ownerCoords = state.occurrences[0].markCoords;
         }
 
-        state.viewport = createDrawRect();
         for (const occurrence of state.occurrences) {
             occurrence.draw = createOccurrenceDraw(occurrence, state);
         }
@@ -390,9 +389,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 state.generatedRectangles
             );
         }
-        if (state.viewport) {
-            writeDrawRect(state.viewport, state.ownerCoords);
-        }
+        writeDrawRect(state.viewport, state.ownerCoords);
         const viewOpacity =
             this.globalOptions.applyViewOpacity === false
                 ? 1
@@ -722,12 +719,10 @@ function createOccurrenceDraw(occurrence, state) {
                 -1
             ),
         },
+        viewport: state.viewport,
         firstInstance: 0,
         instanceCount: 0,
     };
-    if (state.viewport) {
-        draw.viewport = state.viewport;
-    }
     if (
         occurrence.markClip !== "never" &&
         (occurrence.clip || occurrence.markClip)
@@ -793,16 +788,12 @@ function refreshVisibleRange(occurrence, state, draw) {
                 : occurrence.coords;
         const x = xCoords.x;
         const y = yCoords.y;
-        draw.visibleRange.x1 = draw.visibleRange.cullX ? x : 0;
-        draw.visibleRange.x2 = x + xCoords.width;
-        draw.visibleRange.y1 = draw.visibleRange.cullY ? y : 0;
-        draw.visibleRange.y2 = y + yCoords.height;
-        if (state.viewport) {
-            draw.visibleRange.x1 -= state.viewport.x;
-            draw.visibleRange.x2 -= state.viewport.x;
-            draw.visibleRange.y1 -= state.viewport.y;
-            draw.visibleRange.y2 -= state.viewport.y;
-        }
+        draw.visibleRange.x1 =
+            (draw.visibleRange.cullX ? x : 0) - state.viewport.x;
+        draw.visibleRange.x2 = x + xCoords.width - state.viewport.x;
+        draw.visibleRange.y1 =
+            (draw.visibleRange.cullY ? y : 0) - state.viewport.y;
+        draw.visibleRange.y2 = y + yCoords.height - state.viewport.y;
     }
 }
 
@@ -952,7 +943,7 @@ function writeScopeBounds(command, target) {
  * @property {number} configRevision
  * @property {number} resourceRevision
  * @property {boolean} resourcesDirty
- * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
+ * @property {import("@genome-spy/webgpu-renderer").DrawRect} viewport
  * @property {Float32Array | undefined} generatedRectangles
  */
 

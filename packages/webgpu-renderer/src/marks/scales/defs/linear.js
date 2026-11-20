@@ -27,7 +27,7 @@ fn scaleLinear(value: f32, domain: vec2<f32>, range: vec2<f32>) -> f32 {
  * Technical notes: uses scalePipeline steps for casting/clamping and emits a
  * piecewise linear loop when domain/range arrays exceed two elements.
  *
- * @type {import("../../../index.d.ts").ScaleDef}
+ * @type {import("../scaleCodegen.js").ShareableScaleDef}
  */
 export const linearScaleDef = {
     type: "linear",
@@ -50,7 +50,7 @@ export const linearScaleDef = {
 Object.freeze(linearScaleDef);
 
 /**
- * @param {import("../../../index.d.ts").ScaleEmitParams} params
+ * @param {import("../scaleCodegen.js").ScaleEmitParams} params
  * @returns {string}
  */
 function emitLinearScale(params) {

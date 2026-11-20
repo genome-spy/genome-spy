@@ -384,7 +384,7 @@ export class ScaleResourceManager {
         }
         if (shared) {
             if (analysis.needsDomainMap)
-                this.#refreshSharedDomain(name, shared.scale);
+                this.#updateDomainMap(name, shared.scale.domain);
             const channels = this.#sharedScales.get(shared) ?? [];
             channels.push(name);
             this.#sharedScales.set(shared, channels);
@@ -776,16 +776,6 @@ export class ScaleResourceManager {
         writeGeometry(geometry);
     }
 
-    /** @param {string} name @param {ChannelScale} scale */
-    #refreshSharedDomain(name, scale) {
-        const domainMap = this.#getAnalysis(name).scaleDef.normalizeDomainMap({
-            name,
-            scale,
-            domain: scale.domain,
-        });
-        return this.#updateDomainMap(name, domainMap?.domainMap ?? null);
-    }
-
     /** @param {(needsRebind: boolean) => void} onUpdate */
     subscribeSharedScales(onUpdate) {
         for (const [shared, channels] of this.#sharedScales) {
@@ -795,7 +785,7 @@ export class ScaleResourceManager {
                 if (domainChanged) {
                     for (const name of channels) {
                         rebind =
-                            this.#refreshSharedDomain(name, shared.scale) ||
+                            this.#updateDomainMap(name, shared.scale.domain) ||
                             rebind;
                     }
                 }

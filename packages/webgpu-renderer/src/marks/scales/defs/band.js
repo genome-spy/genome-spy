@@ -51,7 +51,7 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
  * Technical notes: implements the Vega band formula in WGSL and optionally
  * routes sparse domains through a hash map before band lookup.
  *
- * @type {import("../../../index.d.ts").ScaleDef}
+ * @type {import("../scaleCodegen.js").ShareableScaleDef}
  */
 export const bandScaleDef = {
     type: "band",
@@ -88,7 +88,7 @@ export const bandScaleDef = {
 Object.freeze(bandScaleDef);
 
 /**
- * @param {import("../../../index.d.ts").ScaleEmitParams} params
+ * @param {import("../scaleCodegen.js").ScaleEmitParams} params
  * @returns {string}
  */
 function emitBandScale({

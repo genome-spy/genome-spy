@@ -15,10 +15,10 @@
 import { isPiecewiseScale } from "./scaleUtils.js";
 
 /**
- * Scale emission params shared with validation and channel analysis.
- * @typedef {import("../../index.d.ts").ScaleFunctionParams} ScaleFunctionParams
+ * @typedef {import("../../index.d.ts").ScaleDef & {sharedScaleLayout?: "bounds" | "packed-index"}} ShareableScaleDef
+ * @typedef {import("../../index.d.ts").ScaleFunctionParams & {sharedScaleName?: string}} ScaleFunctionParams
+ * @typedef {import("../../index.d.ts").ScaleEmitParams & {sharedScaleName?: string}} ScaleEmitParams
  */
-/** @typedef {import("../../index.d.ts").ScaleEmitParams} ScaleEmitParams */
 
 /**
  * @param {ScaleFunctionParams} params
@@ -57,7 +57,8 @@ export function buildScaledFunction({
         outputComponents === 1 &&
         !useRangeTexture;
 
-    return scaleDef.emit({
+    /** @type {ScaleEmitParams} */
+    const params = {
         name,
         functionName,
         scaleConfig,
@@ -74,7 +75,8 @@ export function buildScaledFunction({
         isPiecewise,
         domainMapName,
         useRangeTexture,
-    });
+    };
+    return scaleDef.emit(params);
 }
 
 export { validateScaleConfig } from "./scaleValidation.js";

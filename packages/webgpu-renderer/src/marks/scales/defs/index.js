@@ -77,7 +77,7 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
  * Technical notes: uses split u32 math and stable subtraction to mitigate
  * float32 precision loss, with two WGSL variants for u32 and vec2<u32> inputs.
  *
- * @type {import("../../../index.d.ts").ScaleDef}
+ * @type {import("../scaleCodegen.js").ShareableScaleDef}
  */
 export const indexScaleDef = {
     type: "index",
@@ -116,7 +116,7 @@ export const indexScaleDef = {
 Object.freeze(indexScaleDef);
 
 /**
- * @param {import("../../../index.d.ts").ScaleEmitParams} params
+ * @param {import("../scaleCodegen.js").ScaleEmitParams} params
  * @returns {string}
  */
 function emitIndexScale({
