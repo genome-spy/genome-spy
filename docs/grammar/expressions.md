@@ -318,6 +318,22 @@ black. Malformed values raise an error.
 If the value is `null` or `undefined`, the function returns the supplied CSS
 fallback color or `null` if omitted. A null color renders as transparent.
 
+<a name="formatUnit" href="#formatUnit">#</a>
+<b>formatUnit</b>(<i>value</i>, <i>unit</i>, <i>digits?</i>)<br/>
+Formats a value with a unit, choosing a prefix based on its magnitude. Pass the
+value in the unprefixed unit and supply its symbol, such as `'m'` for meters or
+`'bp'` for genomic distances.
+
+```javascript
+formatUnit(250, 'bp') // '250 bp'
+formatUnit(20000, 'bp') // '20 kb'
+formatUnit(1500, 'm') // '1.5 km'
+formatUnit(0.0025, 'm') // '2.5 mm'
+```
+
+The optional `digits` argument controls the number of significant digits. It
+defaults to six and is limited to 1–21. Trailing zeros are trimmed.
+
 <a name="tickStep" href="#tickStep">#</a>
 <b>tickStep</b>(<i>start</i>, <i>stop</i>, <i>count</i>)<br/>
 Returns a nicely rounded step of `1`, `2`, or `5` times a power of ten for

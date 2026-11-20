@@ -14,10 +14,6 @@
   "params": [
     { "name": "visibleSpan", "expr": "abs(span(domain('x')))" },
     { "name": "distance", "expr": "max(1, tickStep(0, visibleSpan, 2))" },
-    {
-      "name": "unit",
-      "expr": "distance >= 1e9 ? 1e9 : distance >= 1e6 ? 1e6 : distance >= 1e3 ? 1e3 : 1"
-    },
     { "name": "barFraction", "expr": "distance / visibleSpan" }
   ],
 
@@ -44,9 +40,7 @@
         "type": "text",
         "yOffset": -2,
         "baseline": "alphabetic",
-        "text": {
-          "expr": "format(distance / unit, '.0f') + (unit == 1e9 ? ' Gb' : unit == 1e6 ? ' Mb' : unit == 1e3 ? ' kb' : ' bp')"
-        }
+        "text": { "expr": "formatUnit(distance, 'bp')" }
       }
     }
   ]

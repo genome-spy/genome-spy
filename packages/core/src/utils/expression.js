@@ -19,6 +19,7 @@ import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
 import { annotateSpecError } from "./specError.js";
 import compileDatumAccessor from "./compileDatumAccessor.js";
+import formatUnit from "./formatUnit.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import {
     isSelectionActive,
@@ -56,6 +57,7 @@ const functionContext = {
     format(/** @type {number} */ value, /** @type {string} */ format) {
         return d3format(format)(value);
     },
+    formatUnit,
     /**
      * Vega's expression docs list these as basic sequence helpers, but the
      * bundled `vega-expression` version does not currently include them in the

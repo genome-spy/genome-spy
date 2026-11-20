@@ -653,9 +653,9 @@ properties of another scale.
 
 A scale bar is a practical use of a scale-dependent expression. The example
 reads the visible span of a shared locus scale, uses `tickStep` to choose a
-rounded distance, formats the label, and drives arrow and text properties with
-the resulting parameters. Zoom the scale to see the bar update while remaining centered at roughly half
-the viewport width.
+rounded distance, and labels the arrow with
+[`formatUnit(distance, 'bp')`](expressions.md#formatUnit). Zoom the scale to see
+the bar update while remaining centered at roughly half the viewport width.
 
 EXAMPLE examples/docs/grammar/scale/scale-bar.json height=100
 

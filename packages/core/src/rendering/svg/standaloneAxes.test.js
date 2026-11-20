@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { expect, test } from "vitest";
+import scaleBarSpec from "../../../../../examples/docs/grammar/scale/scale-bar.json" with { type: "json" };
 import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../../config/defaultConfig.js";
 import { resolveBaseConfig } from "../../config/resolveConfig.js";
@@ -10,6 +11,7 @@ import {
 } from "../../config/themes.js";
 import { createSvg } from "./index.js";
 import AxisView from "../../view/axisView.js";
+import Genome from "../../genome/genome.js";
 
 const baseConfig = resolveBaseConfig({
     defaultConfig: INTERNAL_DEFAULT_CONFIG,
@@ -61,23 +63,35 @@ function labels(svg) {
     );
 }
 
-test("a locus axis renders without genomic encodings", async () => {
+test("a standalone locus axis and scale bar update together on zoom", async () => {
     const { view, render } = await createPlot({
-        scales: { x: { type: "locus" } },
-        axes: { x: {} },
-        data: { values: [{}] },
-        mark: { type: "text", text: "Scale bar" },
+        .../** @type {import("../../spec/root.js").RootSpec} */ (scaleBarSpec),
+        name: "plot",
     });
     try {
-        const svg = await render();
-        expect(labels(svg)).toContain("Scale bar");
-        expect(
-            svg.querySelector('[data-name="chromosome_labels"] text')
-                ?.textContent
-        ).toBe("chr1");
-        expect(
-            svg.querySelectorAll('[data-name="chromosome_labels"] text').length
-        ).toBeGreaterThan(0);
+        const plot = view
+            .getDescendants()
+            .find((child) => child.name === "plot");
+        const scale = plot.getScaleResolution("x");
+        // Chromosome 2 checks that tick labels use chromosome-local positions.
+        const start = new Genome({ name: "hg38" }).toContinuous("chr2", 0);
+
+        for (const [span, barLabel, axisLabel] of /** @type {const} */ ([
+            [20_000_000, "10 Mb", "5.00M"],
+            [40_000, "20 kb", "10,000"],
+            [40, "20 bp", "10"],
+        ])) {
+            await scale.zoomTo([start, start + span]);
+            const svg = await render();
+            expect(
+                svg.querySelector('[data-name="scale-label"] text')?.textContent
+            ).toBe(barLabel);
+            expect(labels(svg)).toContain(axisLabel);
+            expect(
+                svg.querySelector('[data-name="chromosome_labels"] text')
+                    ?.textContent
+            ).toBe("chr2");
+        }
     } finally {
         view.disposeSubtree();
     }

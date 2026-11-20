@@ -42,6 +42,20 @@ test("leaves computed keys and nested properties unchecked", () => {
 });
 
 describe("expression helpers", () => {
+    test.each([
+        ["formatUnit(250, 'bp')", "250 bp"],
+        ["formatUnit(12500, 'bp')", "12.5 kb"],
+        ["formatUnit(0.5, 'bp')", "0.5 bp"],
+        ["formatUnit(999500, 'bp', 3)", "1 Mb"],
+        ["formatUnit(12500, 'bp', 0)", "10 kb"],
+        ["formatUnit(1500, 'm')", "1.5 km"],
+        ["formatUnit(-0.0000025, 'm')", "−2.5 µm"],
+        ["formatUnit(0, 's')", "0 s"],
+        ["formatUnit(1 / 0, 'm')", "Infinity m"],
+    ])("evaluates %s as %s", (expr, expected) => {
+        expect(createFunction(expr)()).toBe(expected);
+    });
+
     test("computes nicely rounded tick steps", () => {
         expect(createFunction("tickStep(0, 12000000, 2)")()).toBe(5000000);
         expect(createFunction("tickStep(0, 3000000, 2)")()).toBe(2000000);
