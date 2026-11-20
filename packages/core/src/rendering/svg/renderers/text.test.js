@@ -1,13 +1,109 @@
 // @vitest-environment jsdom
 
 import { describe, expect, test } from "vitest";
-import { createHeadlessEngine } from "../../../genomeSpy/headlessBootstrap.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../../../genomeSpy/headlessBootstrap.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createSvg } from "../index.js";
 import { createEmbedParamNamespace } from "../../../paramRuntime/embedParamApi.js";
 import SvgViewRenderingContext from "../svgViewRenderingContext.js";
 
 describe("SVG text renderer", () => {
+    test.each([false, true])(
+        "keeps constant opacity on each label (logoLetters: %s)",
+        async (logoLetters) => {
+            const { view } = await createHeadlessEngine({
+                data: { values: [{ label: "A" }, { label: "A" }] },
+                mark: { type: "text", size: 20, opacity: 0.5, logoLetters },
+                encoding: {
+                    x: { value: 0.2 },
+                    x2: { value: 0.8 },
+                    y: { value: 0.2 },
+                    y2: { value: 0.8 },
+                    text: { field: "label" },
+                    color: { value: "black" },
+                },
+            });
+            try {
+                const { svg } = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 200,
+                    logicalHeight: 100,
+                    background: null,
+                });
+                const group = svg.querySelector('[data-mark-type="text"]');
+                const labels = Array.from(group.querySelectorAll("text"));
+
+                // Group opacity would fade the overlap of separate labels only once.
+                expect(group.hasAttribute("opacity")).toBe(false);
+                expect(group.getAttribute("fill-opacity")).toBe("1");
+                expect(
+                    labels.map((label) => label.getAttribute("opacity"))
+                ).toEqual(["0.5", "0.5"]);
+            } finally {
+                view.disposeSubtree();
+            }
+        }
+    );
+
+    test("combines label opacity and squeeze fading inside a faded view", async () => {
+        const context = createHeadlessViewContext();
+        const label = "A fitted label";
+        const size = 20;
+        const textWidth = context.textMetrics
+            .requestFont({})
+            .measureWidth(label, size);
+        // A 20px label fades halfway at this range width, between 3px and 6px.
+        const rangeWidth = textWidth * 0.225;
+        const { view } = await createHeadlessEngine(
+            {
+                opacity: 0.8,
+                data: {
+                    values: [
+                        { label, alpha: 0.5 },
+                        { label, alpha: 0.25 },
+                    ],
+                },
+                mark: { type: "text", size, squeeze: true },
+                encoding: {
+                    x: { value: 0.2 },
+                    x2: { value: 0.2 + rangeWidth / 200 },
+                    y: { value: 0.5 },
+                    text: { field: "label" },
+                    color: { value: "black" },
+                    opacity: {
+                        field: "alpha",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            },
+            { context }
+        );
+        try {
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 200,
+                logicalHeight: 100,
+                background: null,
+            });
+            const labels = Array.from(
+                svg.querySelectorAll('[data-mark-type="text"] text')
+            );
+            expect(labels.map((text) => text.getAttribute("opacity"))).toEqual([
+                "0.25",
+                "0.125",
+            ]);
+            expect(
+                labels[0].closest("[data-view-path]").getAttribute("opacity")
+            ).toBe("0.8");
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
     test.each(/** @type {const} */ (["color", "fill"]))(
         "preserves shared %s scales, legends and category focus",
         async (channel) => {
@@ -92,7 +188,7 @@ describe("SVG text renderer", () => {
                 expect(
                     Array.from(texts, (text) => [
                         text.getAttribute("fill"),
-                        text.getAttribute("fill-opacity"),
+                        text.getAttribute("opacity") ?? "1",
                     ])
                 ).toEqual([
                     ["red", "1"],
@@ -131,10 +227,10 @@ describe("SVG text renderer", () => {
                     logicalHeight: 50,
                 }).svg.querySelector('[data-mark-type="text"]');
             expect(group().getAttribute("fill")).toBe("red");
-            expect(group().getAttribute("fill-opacity")).toBe("0.2");
+            expect(group().getAttribute("fill-opacity")).toBe("0.4");
             view.paramRuntime.setValue("alpha", 1);
             await view.paramRuntime.whenPropagated();
-            expect(group().getAttribute("fill-opacity")).toBe("0.5");
+            expect(group().getAttribute("fill-opacity")).toBe("1");
             view.paramRuntime.setValue("paint", "green");
             await view.paramRuntime.whenPropagated();
             expect(group().getAttribute("fill")).toBe("green");
@@ -185,17 +281,17 @@ describe("SVG text renderer", () => {
                     }).svg.querySelectorAll('[data-mark-type="text"] text'),
                     (text) => text.getAttribute("fill-opacity")
                 );
-            expect(alphas()).toEqual(["0", "0.25"]);
+            expect(alphas()).toEqual(["0", "0.5"]);
             const picked =
                 createEmbedParamNamespace(view).getSelection("picked");
             if (picked.type !== "point")
                 throw new Error("Expected record selection");
             picked.setValue([["A"]]);
             await view.paramRuntime.whenPropagated();
-            expect(alphas()).toEqual(["0.5", "0.25"]);
+            expect(alphas()).toEqual(["1", "0.5"]);
             view.paramRuntime.setValue("selectedAlpha", 0.4);
             await view.paramRuntime.whenPropagated();
-            expect(alphas()).toEqual(["0.2", "0.25"]);
+            expect(alphas()).toEqual(["0.4", "0.5"]);
         } finally {
             view.disposeSubtree();
         }
