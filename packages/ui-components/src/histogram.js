@@ -1,6 +1,5 @@
 import { LitElement, css, html, nothing } from "lit";
 import { bin } from "d3-array";
-import { scaleLinear } from "d3-scale";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 
@@ -159,8 +158,6 @@ export default class Histogram extends LitElement {
 
     #bins;
 
-    #scale;
-
     // A hack to prevent click event when drag stops. A cleaner solution would be nice.
     #lastMouseUp = 0;
 
@@ -190,7 +187,6 @@ export default class Histogram extends LitElement {
         this.binCount = 40;
         this.#bin = bin().thresholds(this.binCount);
         this.#bins = this.#bin([]);
-        this.#scale = scaleLinear();
     }
 
     /**
@@ -207,7 +203,6 @@ export default class Histogram extends LitElement {
             changedProperties.has("binCount")
         ) {
             this.#bins = this.#bin(this.values);
-            this.#scale = scaleLinear().domain(this.domain).range([0, 100]);
         }
     }
 
@@ -228,7 +223,7 @@ export default class Histogram extends LitElement {
         const x =
             event.clientX - elem.getBoundingClientRect().left - elem.clientLeft;
 
-        this.#dispatch("add", 0, x / elem.offsetWidth);
+        this.#dispatch("add", 0, (x / elem.offsetWidth) * 100);
     }
 
     /**
@@ -256,7 +251,7 @@ export default class Histogram extends LitElement {
                 this.#dispatch(
                     "adjust",
                     knobId,
-                    (knobPos + x) / containerWidth
+                    ((knobPos + x) / containerWidth) * 100
                 );
             },
             () => {
@@ -270,22 +265,20 @@ export default class Histogram extends LitElement {
      *
      * @param {"add" | "adjust"} type
      * @param {number} thresholdId
-     * @param {number} value
+     * @param {number} percentage
      */
-    #dispatch(type, thresholdId, value) {
-        value = Math.max(0, Math.min(1, value));
+    #dispatch(type, thresholdId, percentage) {
+        const fraction = Math.max(0, Math.min(100, percentage)) / 100;
+        const [lower, upper] = this.domain;
+        const value = lower * (1 - fraction) + upper * fraction;
         this.dispatchEvent(
-            new ThresholdEvent(
-                type,
-                thresholdId,
-                +this.#scale.invert(value * 100).toPrecision(3)
-            )
+            new ThresholdEvent(type, thresholdId, +value.toPrecision(3))
         );
     }
 
-    #computeBars() {
+    /** @param {(value: number) => number} toPercent */
+    #computeBars(toPercent) {
         const bins = this.#bins;
-        const s = this.#scale;
 
         const hFactor =
             90 / bins.map((b) => b.length).reduce((a, b) => Math.max(a, b), 0);
@@ -316,7 +309,7 @@ export default class Histogram extends LitElement {
 
         for (let i = 0; i < bins.length; i++) {
             const b = bins[i];
-            const x = s(b.x0);
+            const x = toPercent(b.x0);
             let y = 0;
             if (eq) {
                 for (let j = 0; j <= 1; j++) {
@@ -364,10 +357,21 @@ export default class Histogram extends LitElement {
 
     /** @returns {import("lit").HTMLTemplateResult} */
     render() {
-        const s = this.#scale;
+        const domain = this.domain.map(Number);
+        const [lower, upper] = domain;
+        const span = upper - lower;
+
+        /** @param {number} value */
+        const toPercent = (value) => {
+            if (value == null || Number.isNaN(Number(value))) {
+                return NaN;
+            }
+            // A constant domain places every observation at the midpoint.
+            return span === 0 ? 50 : ((value - lower) / span) * 100;
+        };
         const w = 100 / this.#bins.length;
 
-        const barDivs = this.#computeBars().map(
+        const barDivs = this.#computeBars(toPercent).map(
             (b) =>
                 html`<div
                     style=${styleMap({
@@ -388,12 +392,12 @@ export default class Histogram extends LitElement {
                 <div class="histogram-bars">${barDivs}</div>
                 <div class="histogram-thresholds" @click=${this.#clicked}>
                     ${this.thresholds.map((threshold, i) => {
-                        const pos = s(threshold);
+                        const pos = toPercent(threshold);
                         return pos >= 0 && pos <= 100
                             ? html`<div
                                   class="histogram-threshold"
                                   style=${styleMap({
-                                      left: s(threshold) + "%",
+                                      left: pos + "%",
                                   })}
                               >
                                   <div
@@ -423,7 +427,7 @@ export default class Histogram extends LitElement {
             </div>
             <div class="histogram-domain"></div>
             <div class="histogram-extent">
-                ${s.domain().map((x) => html`<div>${x}</div>`)}
+                ${domain.map((x) => html`<div>${x}</div>`)}
             </div>
         </div>`;
     }

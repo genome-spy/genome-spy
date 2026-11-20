@@ -134,8 +134,7 @@
     "@floating-ui/dom": "^1.6.1",
     "@fortawesome/fontawesome-svg-core": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
-    "d3-array": "^3.2.4",
-    "d3-scale": "^4.0.2"
+    "d3-array": "^3.2.4"
   },
   "devDependencies": {
     "@custom-elements-manifest/analyzer": "^0.11.0"

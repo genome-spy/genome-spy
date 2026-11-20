@@ -5,6 +5,7 @@ import {
     type CustomSelect,
     type DataGrid,
     type MultiSelect,
+    type ThresholdComparisonInput,
 } from "@genome-spy/ui-components";
 import "@genome-spy/ui-components/form.css";
 import "@genome-spy/ui-components/contextMenu.css";
@@ -32,6 +33,11 @@ search.search = async (query) => {
 const select = document.querySelector("gs-custom-select") as CustomSelect;
 select.options = ["Tracks", "Table"];
 select.value = "Tracks";
+
+const threshold = document.querySelector(
+    "gs-threshold-comparison-input"
+) as ThresholdComparisonInput;
+threshold.values = [0, 20, 40];
 
 const grid = document.querySelector("gs-data-grid") as DataGrid;
 grid.items = Array.from({ length: 200 }, (_, i) => ({

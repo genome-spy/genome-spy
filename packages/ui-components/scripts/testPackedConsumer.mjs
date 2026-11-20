@@ -150,6 +150,47 @@ try {
         await expect(menu).toHaveCount(0);
         await expect(opener).toBeFocused();
 
+        const threshold = page.locator("gs-threshold-comparison-input");
+        const operand = threshold.getByRole("spinbutton", {
+            name: "Maximum reads",
+        });
+        const histogram = threshold.locator("gs-histogram");
+        const extent = histogram.locator(".histogram-extent > div");
+        const plot = histogram.locator(".histogram-thresholds");
+        const knob = histogram.locator(".histogram-knob");
+        await expect(extent).toHaveText(["0", "41"]);
+
+        // Use the midpoint of the binned domain and drag by a quarter of its width.
+        await plot.scrollIntoViewIfNeeded();
+        const plotBox = await plot.boundingBox();
+        await plot.click({
+            position: { x: plotBox.width / 2, y: plotBox.height / 2 },
+        });
+        await expect(operand).toHaveValue("20.5");
+        const knobBox = await knob.boundingBox();
+        await page.mouse.move(
+            knobBox.x + knobBox.width / 2,
+            knobBox.y + knobBox.height / 2
+        );
+        await page.mouse.down();
+        await page.mouse.move(
+            knobBox.x + knobBox.width / 2 + plotBox.width / 4,
+            knobBox.y + knobBox.height / 2
+        );
+        await page.mouse.up();
+        await expect(operand).toHaveValue("30.8");
+
+        await threshold.evaluate((element) => {
+            element.values = [7, 7, 7];
+            element.operand = 7;
+        });
+        await expect(extent).toHaveText(["7", "7"]);
+        await expect(histogram.locator(".histogram-threshold")).toHaveCSS(
+            "left",
+            `${plotBox.width / 2}px`
+        );
+        await expect(operand).toHaveValue("7");
+
         expect(errors).toEqual([]);
         process.stdout.write(
             "Packed UI components passed consumer type and browser checks.\n"
