@@ -59,7 +59,7 @@ export default function generateAttributeContextMenu(
     /**
      * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>} action
      * @param {boolean} [disabled]
-     * @param {function} [callback]
+     * @param {() => void} [callback]
      * @param {string | import("lit").TemplateResult} [label]
      * @returns {MenuItem}
      */

@@ -23,6 +23,7 @@ export { default as SegmentedControl } from "./segmentedControl.js";
 export { default as ThresholdComparisonInput } from "./thresholdComparisonInput.js";
 export { FormController } from "./formController.js";
 export { formField } from "./formField.js";
+export { createMenuController, DIVIDER } from "./contextMenu.js";
 export { default as DialogWizardController } from "./dialogWizardController.js";
 
 /** @typedef {import("./jobProgress.js").JobProgressState} JobProgressState */

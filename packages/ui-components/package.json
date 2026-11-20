@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "default": "./src/index.js"
     },
+    "./contextMenu": {
+      "types": "./dist/contextMenu.d.ts",
+      "default": "./src/contextMenu.js"
+    },
+    "./contextMenu.css": "./src/contextMenu.css",
     "./custom-elements.json": "./dist/custom-elements.json",
     "./splitPanel": {
       "types": "./dist/splitPanel.d.ts",
@@ -137,10 +142,12 @@
     }
   },
   "sideEffects": [
-    "./src/define/*.js"
+    "./src/define/*.js",
+    "./src/contextMenu.css"
   ],
   "files": [
     "src/*.js",
+    "src/contextMenu.css",
     "src/define/",
     "!src/*.test.js",
     "dist/"

@@ -88,6 +88,51 @@ Subclass `BaseDialog` from `/dialog`, register the subclass, and call
 persistent dialogs, set `openOnConnect` to false and call `openDialog()` after
 the element's first render.
 
+## Context menus and dropdowns
+
+Import the controller and its stylesheet. Use one controller for a group of
+triggers that should share one open menu.
+
+```js
+import { createMenuController } from "@genome-spy/ui-components/contextMenu";
+import "@genome-spy/ui-components/contextMenu.css";
+
+const menu = createMenuController();
+const options = {
+  label: "Plot actions",
+  mode: "command",
+  items: [{ label: "Reset zoom", callback: resetZoom }],
+};
+
+plot.addEventListener("contextmenu", (event) =>
+  menu.contextMenu(options, event)
+);
+button.addEventListener("click", () => {
+  if (menu.isDropdownOpenFor(button)) {
+    menu.dismissDropdownMenu();
+  } else {
+    menu.dropdownMenu(options, button);
+  }
+});
+```
+
+Use `mode: "command"` for actions with arrow-key navigation. Anchored dropdowns
+default to `mode: "controls"`, which supports form controls and Tab navigation.
+Call `dropdownMenu()` again with the same anchor and mode to update it in place.
+Use `onOpen` to acquire host state for the lifetime of the popup and return a
+function that releases it on dismissal.
+
+The popup and backdrop mount on `document.body` by default. Pass a connected
+light DOM container as `mount` to inherit a scoped theme. For viewport-relative
+positioning, mount outside ancestors that establish a fixed containing block,
+such as transformed containers. Set `--gs-menu-background`, paired with the
+shared `--gs-control-text`, `--gs-hover-background`, `--gs-selected-background`,
+`--gs-divider-color`, and `--gs-focus-color` tokens on the mount or an ancestor.
+Use `--gs-menu-current-border` for the current history entry's accent border.
+Optional `--gs-menu-backdrop-z-index` and `--gs-menu-layer-z-index` tokens
+coordinate the layers with other UI. The **Context Menu** story uses a scoped
+mount so you can switch palettes in the Storybook toolbar.
+
 ## Job progress
 
 Bind an activity to `<gs-job-progress>` and update it when the job changes

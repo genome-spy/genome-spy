@@ -13,3 +13,6 @@ keyboard-accessible tabs, and a Custom Elements Manifest for tooling. GenomeSpy
 App and Playground use the shared components, which have flat buttons by
 default. App preserves its beveled buttons in its own theme, including in
 dialogs. App's dialog exports work alongside the new package.
+
+App’s context menus and toolbar dropdowns use the shared menu controller and
+stylesheet, which can be imported separately.

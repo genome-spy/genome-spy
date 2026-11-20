@@ -49,7 +49,11 @@ export default defineConfig({
         rollupOptions: {
             // npm consumers share UI constructors and Lit with plugins. The
             // standalone browser and UMD entries are built by vite.config.js.
-            external: [/^@genome-spy\/ui-components(?:\/|$)/, /^lit(?:\/|$)/],
+            // Include the menu stylesheet in the published App CSS.
+            external: [
+                /^@genome-spy\/ui-components(?:$|\/(?!contextMenu\.css$))/,
+                /^lit(?:\/|$)/,
+            ],
             plugins: [
                 replace({
                     preventAssignment: true,
