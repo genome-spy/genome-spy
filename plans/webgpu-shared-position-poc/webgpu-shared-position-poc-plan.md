@@ -1,5 +1,10 @@
 # Prototype shared WebGPU position scale buffers
 
+The [whole-scale implementation](../webgpu-shared-scale-mappings/webgpu-shared-scale-mappings-plan.md)
+superseded this prototype. The prototype's position-only API, split domain and
+range ownership, and additional prototype-only validation are dropped from
+PR #754. The measurements below describe the prototype revisions.
+
 The SampleView experiment in #698 removed WebGPU writes while close-up scroll
 still took more main-thread CPU in four of five pairs. Measure whether a generic
 shared position resource can also remove repeated update work. The same path

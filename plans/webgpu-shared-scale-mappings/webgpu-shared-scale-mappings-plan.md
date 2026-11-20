@@ -1,5 +1,21 @@
 # Share whole scale mappings in WebGPU
 
+## Completion
+
+PR #754 implements the whole-scale handle, viewport-local ranges, and bounded
+hardware viewports for cropped attachments. Chrome checks covered SampleView
+scrolling, track navigation, unequal-width resize and rejoining, fixed-width
+gaps, and labeled pileup raster output at device pixel ratios 1 and 2. Safari
+26.5 passed the cropped opacity regression. Shared scales uploaded once per
+changed navigation frame in both benchmark fixtures.
+
+The existing explicit placement-clipping issue inside offset opacity groups is
+documented in the shader and deferred. GenomeSpy's adapter leaves that option
+unset. Further standalone placement and export variants are outside this PR's
+acceptance checks. Shared band membership and grouping cuts remain mutable.
+
+## Background
+
 Keep the upload savings from the
 [position-scale prototype](../webgpu-shared-position-poc/webgpu-shared-position-poc-plan.md)
 with one scale source per channel. The Chrome audit found that SampleView labels

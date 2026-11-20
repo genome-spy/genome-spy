@@ -1,5 +1,8 @@
 # Separate sample placements from camera scrolling
 
+This proposal is deferred beyond PR #754. The placement translation API and
+SampleView integration are outside the shared-scale changes.
+
 ## Goal
 
 Keep the sample placement buffer resident during a fully open SampleView scroll.
