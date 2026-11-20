@@ -909,6 +909,9 @@ fn applyPlacementClipForRule(clip: vec2<f32>, i: u32) -> vec2<f32> {
 }
 
 fn isInsidePlacementClip(position: vec4<f32>, placementClip: vec4<f32>) -> bool {
+    // TODO: Add the crop origin before comparing against canvas-space bounds.
+    // An offset opacity group can lose marks with clipToPlacement enabled.
+    // GenomeSpy's view adapter currently leaves this option unset.
     let logicalPosition = position.xy / globals.dpr;
     return ((globals.placementClipMode & 1u) == 0u ||
         (logicalPosition.x >= placementClip.x && logicalPosition.x <= placementClip.z)) &&
