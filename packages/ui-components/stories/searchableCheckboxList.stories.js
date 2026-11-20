@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
-import "./searchableCheckboxList.js";
+import "@genome-spy/ui-components/define/searchableCheckboxList";
 
 const CATEGORIES = [
     ["primary", "#4c78a8"],
@@ -60,11 +60,11 @@ if (!customElements.get("gs-searchable-checkbox-list-demo")) {
             super();
             this.selectedItemName = "categories";
             this.showMarkers = true;
-            /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
+            /** @type {import("@genome-spy/ui-components/searchableCheckboxList").Scalar[]} */
             this._selected = ["primary", "relapse"];
         }
 
-        /** @param {import("@genome-spy/core/spec/channel.js").Scalar} value */
+        /** @param {import("@genome-spy/ui-components/searchableCheckboxList").Scalar} value */
         #marker(value) {
             if (!this.showMarkers) {
                 return nothing;
@@ -89,11 +89,11 @@ if (!customElements.get("gs-searchable-checkbox-list-demo")) {
                         .selectedValues=${this._selected}
                         .selectedItemName=${this.selectedItemName}
                         .itemMarker=${(
-                            /** @type {import("@genome-spy/core/spec/channel.js").Scalar} */ value
+                            /** @type {import("@genome-spy/ui-components/searchableCheckboxList").Scalar} */ value
                         ) => this.#marker(value)}
                         @change=${(/** @type {Event} */ event) => {
                             const change =
-                                /** @type {import("./searchableCheckboxList.js").SearchableCheckboxListChangeEvent} */ (
+                                /** @type {import("@genome-spy/ui-components/searchableCheckboxList").SearchableCheckboxListChangeEvent} */ (
                                     event
                                 );
                             this._selected = change.values;
@@ -101,9 +101,11 @@ if (!customElements.get("gs-searchable-checkbox-list-demo")) {
                     ></gs-searchable-checkbox-list>
                     <div class="selected">
                         Selected:
-                        ${this._selected.length > 0
-                            ? this._selected.join(", ")
-                            : "none"}
+                        ${
+                            this._selected.length > 0
+                                ? this._selected.join(", ")
+                                : "none"
+                        }
                     </div>
                 </div>
             `;

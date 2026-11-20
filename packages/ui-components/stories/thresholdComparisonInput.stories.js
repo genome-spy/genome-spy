@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import "./thresholdComparisonInput.js";
+import "@genome-spy/ui-components/define/thresholdComparisonInput";
 
 const VALUES = [
     -2.5, -1.8, -1.2, -0.9, -0.4, -0.2, 0.1, 0.2, 0.4, 0.7, 0.8, 1.1, 1.4, 1.8,
@@ -51,6 +51,7 @@ if (!customElements.get("gs-threshold-comparison-input-demo")) {
         constructor() {
             super();
             this.operator = "gte";
+            /** @type {number | undefined} */
             this.operand = 0.4;
             this.width = 420;
             this.autofocus = false;
@@ -66,7 +67,7 @@ if (!customElements.get("gs-threshold-comparison-input-demo")) {
                         .operand=${this.operand}
                         @change=${(/** @type {Event} */ event) => {
                             const change =
-                                /** @type {import("./thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} */ (
+                                /** @type {import("@genome-spy/ui-components/thresholdComparisonInput").ThresholdComparisonInputChangeEvent} */ (
                                     event
                                 );
                             this.operator = change.operator;
@@ -75,9 +76,11 @@ if (!customElements.get("gs-threshold-comparison-input-demo")) {
                     ></gs-threshold-comparison-input>
                     <div class="selected">
                         Selected: ${this.operator}
-                        ${typeof this.operand === "number"
-                            ? this.operand
-                            : "..."}
+                        ${
+                            typeof this.operand === "number"
+                                ? this.operand
+                                : "..."
+                        }
                     </div>
                 </div>
             `;

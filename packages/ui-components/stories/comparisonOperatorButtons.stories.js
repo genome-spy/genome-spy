@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import "./comparisonOperatorButtons.js";
+import "@genome-spy/ui-components/define/comparisonOperatorButtons";
 
 export default {
     title: "Components/ComparisonOperatorButtons",
@@ -47,7 +47,7 @@ if (!customElements.get("gs-comparison-operator-buttons-demo")) {
                         .value=${this.value}
                         @change=${(/** @type {Event} */ event) => {
                             const change =
-                                /** @type {import("./comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ (
+                                /** @type {import("@genome-spy/ui-components/comparisonOperatorButtons").ComparisonOperatorChangeEvent} */ (
                                     event
                                 );
                             this.value = change.value;

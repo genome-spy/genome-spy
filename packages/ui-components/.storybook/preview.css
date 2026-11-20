@@ -1,0 +1,26 @@
+.gs-story {
+    --gs-basic-spacing: 10px;
+    --gs-font-family: system-ui, sans-serif;
+    font-family: var(--gs-font-family);
+}
+
+.gs-story[data-theme="playground"] {
+    --gs-theme-primary: #548fcc;
+    --gs-theme-on-primary: #fff;
+    --gs-focus-color: #437eb9;
+    --gs-control-border: #cdd3da;
+    --gs-control-background: #f5f6f7;
+    --gs-split-panel-divider: #e2e6eb;
+    --gs-file-picker-background: #edf0f3;
+}
+
+.gs-story[data-theme="focused-app"] {
+    --gs-theme-primary: #255f68;
+    --gs-theme-on-primary: #fff;
+    --gs-focus-color: #357f89;
+    --gs-control-border: #aac7ce;
+    --gs-control-background: #f0f7f7;
+    --gs-dialog-background: #f0f7f7;
+    --gs-split-panel-divider: #aac7ce;
+    --gs-file-picker-background: #e5f1f1;
+}

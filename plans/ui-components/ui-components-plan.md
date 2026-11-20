@@ -91,3 +91,42 @@ upload, and closing and reopening export with its selected format retained.
 The focused apps can adopt the package using the theme example in the package
 README. First npm publication and trusted publishing configuration remain
 release tasks.
+
+## Snapshot expansion
+
+Extract the searchable checkbox list, multi-select, custom select, data grid,
+histogram, comparison operator buttons, and threshold input. Share the form
+controller, field directive, and dialog wizard controller. Keep App's current
+tags, values, events, and metadata/filter wiring. Keep histogram geometry
+independent of Core and keep async search and select positioning with their
+existing Floating UI implementation.
+
+- Give each component a pure class export and an opt-in definition. The
+  threshold input's definition registers its two child components. Keep App
+  compatibility re-exports where its callers use shared types or require
+  registration. Preserve the App bundle and CDN boundary from the first
+  extraction.
+- Extend the existing theme with inherited control surface and focus tokens.
+  Expose targeted parts covering inputs, selection panels, and chart or grid
+  containers. Keep the grid's virtual scrolling active across reconnect and use
+  the same row height for sizing and scrolling.
+- Add a package-owned Storybook with the repository's installed Web
+  Components/Vite framework. Move the reusable App stories and add interactive
+  examples for the initial extraction and form helpers. Share those stories with
+  the App Storybook. Keep stories and tooling out of the npm archive.
+
+Verify the App and UI package with focused tests and type checks. Build
+Storybook and exercise a selection control, a composed threshold input, a
+scrolling grid, and scoped colors in Chromium. Pack the workspace and verify
+consumer typings and that a single split panel import excludes the new
+components and dependencies. The local tarball is for testing. A hosted snapshot
+can use the existing manual preview workflow after the branch is pushed.
+Tentative commit: feat(ui-components): expand reusable controls and add a
+Storybook.
+
+The expansion is complete. Both Storybooks built, and all 16 package stories
+rendered in Chromium. The browser checks covered the theme toolbar, async
+selection, checkbox filtering, threshold composition, grid scrolling after
+reconnect, and the validated dialog wizard. The packed snapshot resolved in an
+isolated TypeScript consumer. A single component registration retained its
+required dependencies, and package class imports registered no elements.

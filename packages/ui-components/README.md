@@ -73,3 +73,35 @@ Subclass `BaseDialog` from `/dialog`, register the subclass, and call
 `showDialog(tagName, configure, { mount })` to open it and await its result. For
 persistent dialogs, set `openOnConnect` to false and call `openDialog()` after
 the element's first render.
+
+## Selection and data preview
+
+| Component                   | Element                          | Use                                  |
+| --------------------------- | -------------------------------- | ------------------------------------ |
+| `SearchableCheckboxList`    | `gs-searchable-checkbox-list`    | Filter and select known values       |
+| `MultiSelect`               | `gs-multi-select`                | Search for values and select tags    |
+| `CustomSelect`              | `gs-custom-select`               | Pick one rich option                 |
+| `DataGrid`                  | `gs-data-grid`                   | Preview records in a scrollable grid |
+| `Histogram`                 | `gs-histogram`                   | Show a distribution and thresholds   |
+| `ComparisonOperatorButtons` | `gs-comparison-operator-buttons` | Pick a numeric comparison operator   |
+| `ThresholdComparisonInput`  | `gs-threshold-comparison-input`  | Enter a threshold with a histogram   |
+
+Each element has a `define/` entry, such as
+`@genome-spy/ui-components/define/multiSelect`. Set a height on the grid so it
+can virtualize the visible rows. Its `rowHeight` property sets the height of
+each row in pixels. Use `FormController` and `formField` to validate input
+within a Lit component, and `DialogWizardController` to manage dialog steps.
+
+Controls share `--gs-control-background`, `--gs-control-border`, and
+`--gs-control-radius` where applicable. The option focus outline uses
+`--gs-focus-color`. The histogram background uses `--gs-histogram-background`.
+
+## Storybook
+
+From the monorepo root, run `npm -w @genome-spy/ui-components run storybook` and
+open the local URL shown in the terminal. The **Theme** toolbar previews the
+default, Playground, and focused-app palettes. The dialog story demonstrates a
+validated multi-step form.
+
+Run `npm -w @genome-spy/ui-components run build-storybook` to build a static
+showcase under `build/storybook` in the package.

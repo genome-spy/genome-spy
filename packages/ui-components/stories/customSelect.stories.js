@@ -1,5 +1,5 @@
 import { LitElement, html, css } from "lit";
-import "./customSelect.js";
+import "@genome-spy/ui-components/define/customSelect";
 
 /**
  * Storybook: Custom select showing Vega-like color schemes.
@@ -173,16 +173,18 @@ class CustomSelectDemo extends LitElement {
 
                 <div>
                     <div>Selected:</div>
-                    ${selected
-                        ? html`<div class="preview">
-                              <img
-                                  src=${paletteDataUrl(selected.colors)}
-                                  alt=${selected.name}
-                                  style="width: 120px; height: 14px; border: 1px solid #ccc; border-radius: 2px;"
-                              />
-                              <strong>${selected.name}</strong>
-                          </div>`
-                        : html`<em>None</em>`}
+                    ${
+                        selected
+                            ? html`<div class="preview">
+                                  <img
+                                      src=${paletteDataUrl(selected.colors)}
+                                      alt=${selected.name}
+                                      style="width: 120px; height: 14px; border: 1px solid #ccc; border-radius: 2px;"
+                                  />
+                                  <strong>${selected.name}</strong>
+                              </div>`
+                            : html`<em>None</em>`
+                    }
                 </div>
             </div>
         `;

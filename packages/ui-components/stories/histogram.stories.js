@@ -1,5 +1,5 @@
 import { html } from "lit";
-import "./histogram.js";
+import "@genome-spy/ui-components/define/histogram";
 
 export default {
     title: "Components/Histogram",

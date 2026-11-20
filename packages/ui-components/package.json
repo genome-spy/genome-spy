@@ -48,6 +48,74 @@
     "./define/messageDialog": {
       "types": "./dist/define/messageDialog.d.ts",
       "default": "./src/define/messageDialog.js"
+    },
+    "./customSelect": {
+      "types": "./dist/customSelect.d.ts",
+      "default": "./src/customSelect.js"
+    },
+    "./multiSelect": {
+      "types": "./dist/multiSelect.d.ts",
+      "default": "./src/multiSelect.js"
+    },
+    "./searchableCheckboxList": {
+      "types": "./dist/searchableCheckboxList.d.ts",
+      "default": "./src/searchableCheckboxList.js"
+    },
+    "./dataGrid": {
+      "types": "./dist/dataGrid.d.ts",
+      "default": "./src/dataGrid.js"
+    },
+    "./histogram": {
+      "types": "./dist/histogram.d.ts",
+      "default": "./src/histogram.js"
+    },
+    "./comparisonOperatorButtons": {
+      "types": "./dist/comparisonOperatorButtons.d.ts",
+      "default": "./src/comparisonOperatorButtons.js"
+    },
+    "./thresholdComparisonInput": {
+      "types": "./dist/thresholdComparisonInput.d.ts",
+      "default": "./src/thresholdComparisonInput.js"
+    },
+    "./formController": {
+      "types": "./dist/formController.d.ts",
+      "default": "./src/formController.js"
+    },
+    "./formField": {
+      "types": "./dist/formField.d.ts",
+      "default": "./src/formField.js"
+    },
+    "./dialogWizardController": {
+      "types": "./dist/dialogWizardController.d.ts",
+      "default": "./src/dialogWizardController.js"
+    },
+    "./define/customSelect": {
+      "types": "./dist/define/customSelect.d.ts",
+      "default": "./src/define/customSelect.js"
+    },
+    "./define/multiSelect": {
+      "types": "./dist/define/multiSelect.d.ts",
+      "default": "./src/define/multiSelect.js"
+    },
+    "./define/searchableCheckboxList": {
+      "types": "./dist/define/searchableCheckboxList.d.ts",
+      "default": "./src/define/searchableCheckboxList.js"
+    },
+    "./define/dataGrid": {
+      "types": "./dist/define/dataGrid.d.ts",
+      "default": "./src/define/dataGrid.js"
+    },
+    "./define/histogram": {
+      "types": "./dist/define/histogram.d.ts",
+      "default": "./src/define/histogram.js"
+    },
+    "./define/comparisonOperatorButtons": {
+      "types": "./dist/define/comparisonOperatorButtons.d.ts",
+      "default": "./src/define/comparisonOperatorButtons.js"
+    },
+    "./define/thresholdComparisonInput": {
+      "types": "./dist/define/thresholdComparisonInput.d.ts",
+      "default": "./src/define/thresholdComparisonInput.js"
     }
   },
   "sideEffects": [
@@ -66,13 +134,18 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --declaration --emitDeclarationOnly",
-    "test:tsc": "tsc -p tsconfig.json --noEmit"
+    "test:tsc": "tsc -p tsconfig.json --noEmit",
+    "storybook": "storybook dev -p 6010",
+    "build-storybook": "storybook build -o build/storybook"
   },
   "peerDependencies": {
     "lit": "^3.3.0"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.6.1",
     "@fortawesome/fontawesome-svg-core": "^6.4.2",
-    "@fortawesome/free-solid-svg-icons": "^6.4.2"
+    "@fortawesome/free-solid-svg-icons": "^6.4.2",
+    "d3-array": "^3.2.4",
+    "d3-scale": "^4.0.2"
   }
 }

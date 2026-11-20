@@ -1,5 +1,5 @@
 import { html } from "lit";
-import "./dataGrid.js";
+import "@genome-spy/ui-components/define/dataGrid";
 
 export default {
     title: "Components/DataGrid",

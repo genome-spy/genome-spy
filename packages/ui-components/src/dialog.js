@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
-import { faStyles, formStyles } from "./styles.js";
+import { faStyles } from "./iconStyles.js";
+import { formStyles } from "./formStyles.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
 const DEFAULT_ACTION_INPUT_TYPES = new Set([

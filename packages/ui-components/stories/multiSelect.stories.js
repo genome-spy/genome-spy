@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import "./multiSelect.js";
+import "@genome-spy/ui-components/define/multiSelect";
 
 const COLUMNS = [
     "TP53",
@@ -95,10 +95,10 @@ if (!customElements.get("gs-multi-select-demo")) {
                         .placeholder=${this.placeholder}
                         .debounceMs=${this.debounceMs}
                         .maxSuggestions=${this.maxSuggestions}
-                        ?allowUnknown=${this.allowUnknown}
+                        .allowUnknown=${this.allowUnknown}
                         @change=${(/** @type {Event} */ event) => {
                             const change =
-                                /** @type {import("./multiSelect.js").MultiSelectChangeEvent} */ (
+                                /** @type {import("@genome-spy/ui-components/multiSelect").MultiSelectChangeEvent} */ (
                                     event
                                 );
                             this._selected = change.values;
@@ -106,9 +106,11 @@ if (!customElements.get("gs-multi-select-demo")) {
                     ></gs-multi-select>
                     <div class="selected">
                         Selected:
-                        ${this._selected.length > 0
-                            ? this._selected.join(", ")
-                            : "none"}
+                        ${
+                            this._selected.length > 0
+                                ? this._selected.join(", ")
+                                : "none"
+                        }
                     </div>
                 </div>
             `;

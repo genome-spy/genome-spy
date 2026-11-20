@@ -1,5 +1,6 @@
 // @ts-check
 // @vitest-environment jsdom
+import "./define/thresholdComparisonInput.js";
 import { describe, expect, it, vi } from "vitest";
 import {
     getSingleThresholds,

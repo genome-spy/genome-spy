@@ -1,0 +1,34 @@
+import { html } from "lit";
+import "./preview.css";
+
+export const globalTypes = {
+    theme: {
+        description: "Component theme",
+        toolbar: {
+            title: "Theme",
+            items: [
+                { value: "default", title: "Default" },
+                { value: "playground", title: "Playground" },
+                { value: "focused-app", title: "Focused app" },
+            ],
+            dynamicTitle: true,
+        },
+    },
+};
+
+export const initialGlobals = { theme: "default" };
+
+/** @type {import("@storybook/web-components-vite").Decorator[]} */
+export const decorators = [
+    (story, context) => html`
+        <div class="gs-story" data-theme=${context.globals.theme}>
+            ${story()}
+        </div>
+    `,
+];
+
+export const parameters = {
+    docs: {
+        source: { format: "html" },
+    },
+};

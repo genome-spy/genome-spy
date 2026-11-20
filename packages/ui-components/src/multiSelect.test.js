@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import "./define/multiSelect.js";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import MultiSelect from "./multiSelect.js";
 
