@@ -39,7 +39,8 @@ const markTypes = {
  * @returns {import("./types.js").WebGLMark}
  */
 export function createWebGLMark(mark, glHelper, rendererResources) {
-    const Mark = markTypes[mark.getType()];
+    const Mark =
+        markTypes[/** @type {keyof typeof markTypes} */ (mark.getType())];
     if (!Mark) {
         throw new Error("Unsupported WebGL mark type: " + mark.getType());
     }

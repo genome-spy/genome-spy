@@ -1,4 +1,5 @@
 import RectMark from "../marks/rect.js";
+import RasterMark from "../marks/raster.js";
 import ArrowMark from "../marks/arrow.js";
 import PointMark from "../marks/point.js";
 import RuleMark from "../marks/rule.js";
@@ -41,6 +42,8 @@ export const markTypes = {
     point: PointMark,
     // @ts-ignore
     rect: RectMark,
+    // @ts-ignore TODO: fix
+    raster: RasterMark,
     // @ts-ignore
     arrow: ArrowMark,
     // @ts-ignore

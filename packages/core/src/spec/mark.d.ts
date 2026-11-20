@@ -4,7 +4,7 @@ import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
 export type MarkType =
-    "rect" | "point" | "rule" | "tick" | "text" | "link" | "arrow";
+    "rect" | "raster" | "point" | "rule" | "tick" | "text" | "link" | "arrow";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -923,8 +923,14 @@ export interface LinkProps
     noFadingOnPointSelection?: boolean | ExprRef;
 }
 
+/** Experimental WebGPU mark for regularly spaced two-dimensional tiles. */
+export interface RasterProps extends MarkPropsBase {
+    type: "raster";
+}
+
 export type MarkProps =
     | RectProps
+    | RasterProps
     | ArrowProps
     | TextProps
     | RuleProps

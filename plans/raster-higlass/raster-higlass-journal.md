@@ -32,3 +32,23 @@ coverage for both axes and the active resolution. Match HiGlass's asymmetric
 tile IDs and preserve displayed x/y coordinates when transposing a tile. Test
 missing and constant color extents and late arrivals.
 [HiGlass tile mirroring](https://github.com/higlass/higlass/blob/develop/app/scripts/HeatmapTiledPixiTrack.js#L1567-L1607)
+
+## Renderer and static tiles
+
+- The raster lowers its positional dimensions to tile endpoint encoders. This
+  reuses the integer locus scale, layout, and clip code. The same fixture passes
+  in Chrome with a reversed vertical scale, a live color-domain change, and an
+  ordinary rule at a bin boundary above 2 billion bp. The rule needs `band: 0`
+  to anchor to that boundary.
+- The WebGPU mark holds a separate scalar storage buffer. Existing scale code
+  reads it by fragment cell index. The adapter packs one array per collector
+  publication and keeps that array for scale changes. A new publication still
+  packs and uploads the entire retained set. Per-tile updates and buffer
+  suballocation are candidates if real navigation shows upload cost.
+- Core's scale planner identifies the raster color contribution explicitly. It
+  reduces cells over the existing viewport bounds and keeps the scale and legend
+  under the existing domain owner. A second grid consumer would help determine
+  whether to introduce a generic domain-contribution hook.
+- The initial input contract uses row-major values with the x-bound dimension
+  contiguous. RGB, categorical fields, per-cell opacity, explicit image bounds,
+  and fixed-size icons remain test cases for the grammar design.

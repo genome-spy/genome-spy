@@ -324,6 +324,13 @@ export default class BaseProgram {
                     ? config.seriesIndexExpression
                     : undefined,
         });
+        const fragmentReads = this.fragmentChannelReads;
+        for (const channel of compiledChannels.channelIRs) {
+            const read = fragmentReads[channel.name];
+            if (read !== undefined) {
+                channel.rawValueExpr = read;
+            }
+        }
         this.#logicalSeriesTargets = this.#collectLogicalSeriesTargets();
         /** @protected */
         this._seriesBuffers = new SeriesBufferManager(
@@ -550,6 +557,16 @@ export default class BaseProgram {
      */
     getExtraResourceDefs() {
         return [];
+    }
+
+    /**
+     * Custom fragment inputs to the ordinary scale functions. An expression
+     * can use `i` as the index into its mark-specific storage.
+     * @returns {Record<string, string>}
+     * @protected
+     */
+    get fragmentChannelReads() {
+        return {};
     }
 
     /**

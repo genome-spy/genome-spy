@@ -260,6 +260,7 @@ export interface GenomeSpyConfig {
      * Defaults for rect marks.
      */
     rect?: RectConfig;
+    raster?: Partial<Omit<import("./mark.js").RasterProps, "type">>;
 
     /**
      * Defaults for arrow marks.

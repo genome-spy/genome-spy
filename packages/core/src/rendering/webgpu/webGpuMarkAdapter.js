@@ -13,6 +13,7 @@ import {
 } from "@genome-spy/webgpu-renderer/high-precision";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
+import { rasterMark } from "@genome-spy/webgpu-renderer/marks/raster";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
 import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
 import {
@@ -43,6 +44,8 @@ import {
 } from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
+import { readRasterTile } from "../../data/rasterTile.js";
+import RasterMark from "../../marks/raster.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
@@ -207,6 +210,9 @@ export function createWebGpuMarkConfig(
     if (markType == "point") {
         definition = pointMark;
         config = createPointConfig(mark, data, coords);
+    } else if (mark instanceof RasterMark) {
+        definition = rasterMark;
+        config = createRasterConfig(mark, data, coords);
     } else if (markType == "rect") {
         definition = rectMark;
         config = createRectConfig(mark, data, coords);
@@ -555,6 +561,98 @@ function createRectConfig(mark, data, coords) {
                 () => mapProperty(mark, "hatch", HATCH_CODES, "none"),
                 "u32"
             ),
+        },
+    };
+}
+
+/** @type {WeakMap<RasterMark, {data: object[], packed: ReturnType<typeof packRasterTiles>}>} */
+const rasterDataCache = new WeakMap();
+
+/**
+ * @param {RasterMark} mark
+ * @param {object[]} data
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ */
+function createRasterConfig(mark, data, coords) {
+    let cached = rasterDataCache.get(mark);
+    if (cached?.data !== data) {
+        cached = { data, packed: packRasterTiles(mark, data) };
+        rasterDataCache.set(mark, cached);
+    }
+    for (const axis of /** @type {const} */ (["x", "y"])) {
+        const scale = requireEncoder(mark, axis).scale;
+        if (
+            !scale ||
+            !["linear", "index", "locus"].includes(scale.type) ||
+            hasGroupingGaps(scale.props) ||
+            ("paddingInner" in scale && scale.paddingInner()) ||
+            ("paddingOuter" in scale && scale.paddingOuter())
+        ) {
+            throw unsupported(
+                mark,
+                "Raster axes need linear or unpadded index/locus scales without gaps."
+            );
+        }
+    }
+    const color = requireEncoder(mark, "color").scale;
+    const opacity = mark.encoders.opacity;
+    if (opacity && !isValueDef(opacity.channelDef)) {
+        throw unsupported(
+            mark,
+            "The raster prototype only supports constant opacity."
+        );
+    }
+    const { cells, inputs } = cached.packed;
+    return {
+        count: data.length,
+        inputs,
+        cells,
+        channels: {
+            x: createPositionChannel(mark, "x", data, coords),
+            x2: createPositionChannel(mark, "x2", data, coords),
+            y: createPositionChannel(mark, "y", data, coords),
+            y2: createPositionChannel(mark, "y2", data, coords),
+            fill: { value: 0, scale: createColorScale(mark, "color", color) },
+            opacity: opacity
+                ? createNumericChannel(mark, "opacity", data)
+                : { value: 1 },
+        },
+        retainedProperties: { cells: { value: cells } },
+    };
+}
+
+/** @param {RasterMark} mark @param {object[]} data */
+function packRasterTiles(mark, data) {
+    const x = mark.getDimensionName("x");
+    const y = mark.getDimensionName("y");
+    const field = mark.getColorField();
+    const tiles = data.map((datum) => readRasterTile(datum, x, y, field));
+    const columns = new Uint32Array(tiles.length);
+    const rows = new Uint32Array(tiles.length);
+    const offsets = new Uint32Array(tiles.length);
+    const cells = new Float32Array(
+        tiles.reduce((count, tile) => count + tile.values.length, 0)
+    );
+    let offset = 0;
+    for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
+        columns[index] = horizontal.count;
+        rows[index] = vertical.count;
+        offsets[index] = offset;
+        if (values instanceof Float32Array) {
+            cells.set(values, offset);
+        } else {
+            for (let cell = 0; cell < values.length; cell++) {
+                cells[offset + cell] = values[cell] ?? NaN;
+            }
+        }
+        offset += values.length;
+    }
+    return {
+        cells,
+        inputs: {
+            columns: { data: columns, type: "u32" },
+            rows: { data: rows, type: "u32" },
+            cellOffset: { data: offsets, type: "u32" },
         },
     };
 }

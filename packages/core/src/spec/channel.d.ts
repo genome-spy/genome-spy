@@ -583,8 +583,15 @@ export type ChromPosDef = SecondaryChromPosDef &
     TypeMixins<"locus"> &
     ScaleMixins;
 
+/** A regular grid dimension used for positioning a raster tile. */
+export type RasterDimensionDef = Omit<PositionFieldDef, "field" | "type"> & {
+    dimension: string;
+    type: "locus" | "index" | "quantitative";
+};
+
 export type PositionDef =
     | PositionFieldDef
+    | RasterDimensionDef
     | ChromPosDef
     | PositionDatumDef
     | PositionExprDef

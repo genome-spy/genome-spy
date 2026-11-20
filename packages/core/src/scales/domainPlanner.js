@@ -535,7 +535,11 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
 
             let domain;
             if (collector) {
-                domain = collector.getDomain(domainKey, type, accessor);
+                const mark = member.view.mark;
+                domain =
+                    mark instanceof RasterMark && member.channel === "color"
+                        ? mark.getColorDomain(collector)
+                        : collector.getDomain(domainKey, type, accessor);
             } else if (accessor.constant) {
                 domain = createDomain(type);
                 domain.extend(accessor({}));
@@ -593,3 +597,4 @@ export function getScaleMemberAccessors(member) {
     const encoder = member.view.mark.encoders?.[member.channel];
     return encoder ? getEncoderAccessors(encoder).filter(isScaleAccessor) : [];
 }
+import RasterMark from "../marks/raster.js";

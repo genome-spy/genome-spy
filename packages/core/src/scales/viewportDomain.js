@@ -120,6 +120,16 @@ export function resolveVisibleDataDomain(
 
         const constraints = getViewportConstraints(member);
         const collector = member.view.getCollector();
+        const mark = member.view.mark;
+        if (
+            collector &&
+            mark instanceof RasterMark &&
+            member.channel === "color"
+        ) {
+            domain.extendAll(mark.getColorDomain(collector, constraints));
+            hasContributors = true;
+            continue;
+        }
         for (const accessor of accessors) {
             if (collector) {
                 domain.extendAll(
@@ -310,3 +320,4 @@ function getViewportAccessor(encoder) {
         getEncoderAccessors(encoder).find(isScaleAccessor)
     );
 }
+import RasterMark from "../marks/raster.js";
