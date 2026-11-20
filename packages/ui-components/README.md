@@ -117,13 +117,19 @@ button.addEventListener("click", () => {
 ```
 
 Use `mode: "command"` for actions with arrow-key navigation. Anchored dropdowns
-default to `mode: "controls"`, which supports form controls and Tab navigation.
+default to `mode: "controls"`. Pass a Lit template as an item’s `customContent`
+to embed form controls. The **Context Menu → Controls** story demonstrates Tab
+navigation and focus return.
+
 Call `dropdownMenu()` again with the same anchor and mode to update it in place.
-Use `onOpen` to acquire host state for the lifetime of the popup and return a
-function that releases it on dismissal.
+Pass an `interactionBoundary` for related controls that can receive focus while
+the popup stays open. To make those controls clickable, position them above the
+backdrop. Use `onOpen` to acquire host state for the lifetime of the popup and
+return a function that releases it on dismissal.
 
 The popup and backdrop mount on `document.body` by default. Pass a connected
-light DOM container as `mount` to inherit a scoped theme. For viewport-relative
+light DOM container as `mount` to inherit a scoped theme. Call
+`dismissDropdownMenu()` before removing that container. For viewport-relative
 positioning, mount outside ancestors that establish a fixed containing block,
 such as transformed containers. Set `--gs-menu-background`, paired with the
 shared `--gs-control-text`, `--gs-hover-background`, `--gs-selected-background`,

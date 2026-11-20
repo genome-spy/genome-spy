@@ -20,7 +20,9 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @prop {MenuItem[]} items
  * @prop {"command" | "controls"} [mode] Anchored popups default to controls.
  * @prop {string} [label] Accessible name for the popup.
- * @prop {HTMLElement} [interactionBoundary] An element whose controls keep the popup open.
+ * @prop {HTMLElement} [interactionBoundary] Focus can move into this element
+ * without dismissing the popup. Place its controls above the backdrop to keep
+ * them clickable while the popup is open.
  *
  * @typedef {Object} VirtualElement
  * @prop {() => DOMRect} getBoundingClientRect
@@ -38,7 +40,8 @@ let nextMenuId = 0;
  *
  * @param {object} [options]
  * @param {HTMLElement} [options.mount] Connected light DOM container for the fixed popup
- * and backdrop in the current document. Defaults to `document.body`.
+ * and backdrop in the current document. Defaults to `document.body`. Call
+ * `dismissDropdownMenu()` before removing a custom mount.
  * @param {() => (() => void) | void} [options.onOpen] Called when a root popup
  * opens. Return a cleanup function to run on dismissal, before focus returns.
  */

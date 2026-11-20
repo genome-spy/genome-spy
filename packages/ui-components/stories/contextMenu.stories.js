@@ -29,8 +29,8 @@ export default {
                     "Use one controller for related triggers. Pass a light DOM mount " +
                     "to pick up CSS custom properties from its ancestors. " +
                     "Open commands at a button or a right-click position. " +
-                    "The story shows icons, nested submenus, and secondary actions. " +
-                    "Use Right Arrow to enter a submenu and Escape to return focus.",
+                    "Commands shows icons, nested submenus, and secondary actions. " +
+                    "Use Right Arrow to enter a submenu. Controls uses native form fields with Tab navigation.",
             },
         },
     },
@@ -126,6 +126,131 @@ export const Commands = {
                     Dataset actions
                 </button>
                 <output></output>
+            </div>
+        `;
+    },
+};
+
+export const Controls = {
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    "Pass a Lit template as an item's `customContent`. Changes apply as you make them. " +
+                    "Tab moves from the checkbox to the select, then closes the popup and moves to Reset display settings. " +
+                    "Escape closes the popup and returns focus to Display settings.",
+            },
+        },
+    },
+    render() {
+        /** @type {ReturnType<typeof createMenuController>} */
+        let menu;
+        /** @type {HTMLElement} */
+        let mount;
+
+        const setMount = (/** @type {HTMLElement | undefined} */ element) => {
+            if (element) {
+                mount = element;
+                menu = createMenuController({ mount });
+            } else {
+                menu?.dismissDropdownMenu();
+            }
+        };
+
+        const defaults = { showLabels: true, colorBy: "state" };
+        const settings = { ...defaults };
+        const describeSettings = () =>
+            `Sample labels ${settings.showLabels ? "shown" : "hidden"}. Color by ${settings.colorBy}.`;
+        const updateStatus = () => {
+            mount.querySelector("output").value = describeSettings();
+        };
+
+        /** @param {MouseEvent} event */
+        const openSettings = (event) => {
+            const button = /** @type {HTMLElement} */ (event.currentTarget);
+            if (menu.isDropdownOpenFor(button)) {
+                menu.dismissDropdownMenu();
+                return;
+            }
+
+            menu.dropdownMenu(
+                {
+                    label: "Display settings",
+                    mode: "controls",
+                    items: [
+                        {
+                            customContent: html`
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        .checked=${settings.showLabels}
+                                        @change=${(
+                                            /** @type {Event} */ event
+                                        ) => {
+                                            const input =
+                                                /** @type {HTMLInputElement} */ (
+                                                    event.currentTarget
+                                                );
+                                            settings.showLabels = input.checked;
+                                            updateStatus();
+                                        }}
+                                    />
+                                    Show sample labels
+                                </label>
+                            `,
+                        },
+                        {
+                            customContent: html`
+                                <label>
+                                    Color by
+                                    <select
+                                        .value=${settings.colorBy}
+                                        @change=${(
+                                            /** @type {Event} */ event
+                                        ) => {
+                                            const select =
+                                                /** @type {HTMLSelectElement} */ (
+                                                    event.currentTarget
+                                                );
+                                            settings.colorBy = select.value;
+                                            updateStatus();
+                                        }}
+                                    >
+                                        <option value="state">State</option>
+                                        <option value="sample">Sample</option>
+                                    </select>
+                                </label>
+                            `,
+                        },
+                    ],
+                },
+                button
+            );
+        };
+
+        return html`
+            <div
+                ${ref(setMount)}
+                style="--gs-menu-background: var(--gs-control-background, #f6f6f6)"
+            >
+                <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                    @click=${openSettings}
+                >
+                    Display settings
+                </button>
+                <button
+                    type="button"
+                    @click=${() => {
+                        Object.assign(settings, defaults);
+                        updateStatus();
+                    }}
+                >
+                    Reset display settings
+                </button>
+                <p><output>${describeSettings()}</output></p>
             </div>
         `;
     },
