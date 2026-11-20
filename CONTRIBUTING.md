@@ -335,10 +335,10 @@ Actions.
 
 ### Publish a reviewed release commit
 
-Push the reviewed version commit to `master` and wait for **Node.js CI** and
-**Changesets** to pass for that exact commit. In GitHub Actions, select
-**Publish GenomeSpy → Run workflow** on `master` and enter the prepared manifest
-version, such as `1.0.1`.
+Push the reviewed version commit to `master` and wait for **Node.js CI** to pass
+for that exact commit, including its release policy checks. In GitHub Actions,
+select **Publish GenomeSpy → Run workflow** on `master` and enter the prepared
+manifest version, such as `1.0.1`.
 
 The [publish workflow](.github/workflows/publish.yml) publishes the packages,
 creates the `vX.Y.Z` tag and GitHub release, and calls the
@@ -485,7 +485,7 @@ Before activating this policy, complete the following work:
   entry, repeated previews, and exit. Preserve the fixed/private package policy,
   handle archived `.changeset/pre/` notes in the final changelog, and check the
   expected version against the selected release channel.
-- Extend both CI workflows to cover maintenance branches and their PRs.
+- Extend Node.js CI to cover maintenance branches and their PRs.
 - Make `publish.yml` validate the branch, version, and npm channel together,
   including the transition from 1.x `latest` to 2.x `latest`. Preserve the
   global Git tags and mark GitHub releases with the appropriate

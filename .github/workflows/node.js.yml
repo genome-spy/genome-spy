@@ -1,10 +1,11 @@
 name: Node.js CI
 
 on:
+    # See CONTRIBUTING.md#future-major-release-lines before adding maintenance branches.
     push:
-        branches: [master]
+        branches: [master, main]
     pull_request:
-        branches: [master]
+        branches: [master, main]
 
 permissions:
     contents: read
@@ -26,10 +27,38 @@ jobs:
                   cache: "npm"
             - run: npm ci
             - run: npm run lint
+            - name: Lint release scripts
+              run: >-
+                  npx eslint scripts/release.mjs scripts/checkChangesets.mjs
+                  scripts/verifyPackedPackages.mjs scripts/release.test.mjs
+                  scripts/changelog.mjs scripts/changelog.test.mjs
+                  scripts/verifyReleaseCi.mjs scripts/verifyReleaseCi.test.mjs
+            - name: Validate changesets and release package policy
+              run: npm run release:check
             - run: npm --workspaces run test:tsc --if-present
             - run: npm -w @genome-spy/embed-examples run build:smoke
             - run: npm run build
-            - run: npm test -- --reporter=agent
+              env:
+                  GENOMESPY_WEBGPU_STATIC_CHECKS_DONE: "1"
+            - name: Test App Agent and its production bundles
+              run: npm test -- --project @genome-spy/app-agent --reporter=agent
+              env:
+                  GENOMESPY_TEST_PREBUILT_BUNDLES: "1"
+
+    unit-tests:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: "npm"
+            - run: npm ci
+            - run:
+                  npm test -- --project '!@genome-spy/app-agent'
+                  --reporter=agent
 
     playground-e2e:
         runs-on: ubuntu-latest

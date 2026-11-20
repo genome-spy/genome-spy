@@ -1,13 +1,11 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import { beforeAll, describe, expect, test } from "vitest";
 import { generateSpecSchema } from "../../../../scripts/generateSpecSchema.mjs";
 import Ajv from "ajv";
 
-const specDir = path.dirname(fileURLToPath(import.meta.url));
-const packageDir = path.resolve(specDir, "..", "..");
-const repoRoot = path.resolve(packageDir, "..", "..");
+import {
+    collectSharedExamplePaths,
+    loadSharedExampleSpec,
+} from "./exampleFiles.js";
 
 describe("generated core schema", () => {
     /** @type {import("ts-json-schema-generator").Schema} */
@@ -25,6 +23,13 @@ describe("generated core schema", () => {
             allowUnionTypes: true,
         }).compile(schema);
     }, 30000);
+
+    test.each(collectSharedExamplePaths())("validates %s", (examplePath) => {
+        expect(
+            validate(loadSharedExampleSpec(examplePath)),
+            JSON.stringify(validate.errors, null, 2)
+        ).toBe(true);
+    });
 
     test("direct encodings can omit the data type", () => {
         expect(
@@ -526,24 +531,6 @@ describe("generated core schema", () => {
         );
     });
 
-    test("accepts conditional mark-property branches with their own scale", () => {
-        const spec = JSON.parse(
-            fs.readFileSync(
-                path.join(
-                    repoRoot,
-                    "examples/docs/grammar/parameters/penguins.json"
-                ),
-                "utf8"
-            )
-        );
-
-        // Non-obvious: this example exercises a conditional field branch inside
-        // a value fallback, which must keep its own nested scale in schema output.
-        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
-            true
-        );
-    });
-
     test("accepts structured selection predicates and rejects malformed forms", () => {
         const base = /** @type {any} */ ({
             data: { values: [{ id: 1 }] },
@@ -691,22 +678,6 @@ describe("generated core schema", () => {
         spec.predicates.highlighted = { param: "hover" };
         spec.encoding.color.condition.test.empty = false;
         expect(validate(spec)).toBe(false);
-    });
-
-    test("accepts the indexed FASTA six-frame translation example", () => {
-        const spec = JSON.parse(
-            fs.readFileSync(
-                path.join(
-                    repoRoot,
-                    "examples/docs/examples/genomic-data/indexed-fasta-six-frame-translation.json"
-                ),
-                "utf8"
-            )
-        );
-
-        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
-            true
-        );
     });
 
     test("accepts eager cross data and rejects lazy cross data", () => {

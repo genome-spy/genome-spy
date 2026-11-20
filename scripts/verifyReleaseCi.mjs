@@ -2,50 +2,48 @@ import process from "node:process";
 import { fileURLToPath, URLSearchParams } from "node:url";
 
 /**
- * Require the latest master-push checks for the commit being published.
+ * Require the latest master-push CI run for the commit being published.
  * @param {string} repository
  * @param {string} sha
  * @param {string} token
  */
 export async function verifyReleaseCi(repository, sha, token) {
-    for (const workflow of ["node.js.yml", "changesets.yml"]) {
-        const query = new URLSearchParams({
-            branch: "master",
-            event: "push",
-            head_sha: sha,
-            per_page: "1",
-        });
-        const response = await globalThis.fetch(
-            `https://api.github.com/repos/${repository}/actions/workflows/${workflow}/runs?${query}`,
-            {
-                headers: {
-                    Accept: "application/vnd.github+json",
-                    Authorization: "Bearer " + token,
-                    "X-GitHub-Api-Version": "2026-03-10",
-                },
-            }
+    const query = new URLSearchParams({
+        branch: "master",
+        event: "push",
+        head_sha: sha,
+        per_page: "1",
+    });
+    const response = await globalThis.fetch(
+        `https://api.github.com/repos/${repository}/actions/workflows/node.js.yml/runs?${query}`,
+        {
+            headers: {
+                Accept: "application/vnd.github+json",
+                Authorization: "Bearer " + token,
+                "X-GitHub-Api-Version": "2026-03-10",
+            },
+        }
+    );
+    if (!response.ok) {
+        throw new Error(
+            `Cannot verify node.js.yml: GitHub returned HTTP ${response.status}.`
         );
-        if (!response.ok) {
-            throw new Error(
-                `Cannot verify ${workflow}: GitHub returned HTTP ${response.status}.`
-            );
-        }
+    }
 
-        const { workflow_runs: runs } = await response.json();
-        const run = runs[0];
-        if (
-            !run ||
-            run.head_sha !== sha ||
-            run.head_branch !== "master" ||
-            run.event !== "push" ||
-            run.status !== "completed" ||
-            run.conclusion !== "success"
-        ) {
-            throw new Error(
-                `Publication requires successful ${workflow} push CI on master for ${sha}. ` +
-                    "Wait for CI to pass before starting publication."
-            );
-        }
+    const { workflow_runs: runs } = await response.json();
+    const run = runs[0];
+    if (
+        !run ||
+        run.head_sha !== sha ||
+        run.head_branch !== "master" ||
+        run.event !== "push" ||
+        run.status !== "completed" ||
+        run.conclusion !== "success"
+    ) {
+        throw new Error(
+            `Publication requires successful node.js.yml push CI on master for ${sha}. ` +
+                "Wait for CI to pass before starting publication."
+        );
     }
 }
 
@@ -58,5 +56,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
 
     await verifyReleaseCi(GITHUB_REPOSITORY, GITHUB_SHA, GH_TOKEN);
-    process.stdout.write("Both CI workflows passed for " + GITHUB_SHA + ".\n");
+    process.stdout.write("CI passed for " + GITHUB_SHA + ".\n");
 }
