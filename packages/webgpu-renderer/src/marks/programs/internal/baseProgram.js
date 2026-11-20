@@ -16,7 +16,6 @@ import {
     scalarSlotUniformName,
 } from "../../shaders/visibilityPredicate.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
-import { hasGroupingGaps } from "../../scales/groupingGaps.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import {
@@ -234,9 +233,6 @@ export default class BaseProgram {
     /** @type {GPUBindGroup} */
     #bindGroup;
 
-    /** @type {(() => void)[]} */
-    #releaseSharedCuts = [];
-
     /** @type {import("./pipelineBuilder.js").ProgramTemplate["getPipeline"]} */
     #getPipeline;
 
@@ -412,7 +408,6 @@ export default class BaseProgram {
         ];
         /** @type {Map<import("../../../index.d.ts").SharedPositionScaleHandle, string>} */
         const sharedPositions = new Map();
-        const cutSubscriptions = new Set();
         for (const channelIR of compiledChannels.channelIRs) {
             const { name, channel, outputComponents } = channelIR;
             const scale = channel.scale;
@@ -443,8 +438,6 @@ export default class BaseProgram {
                 });
             }
             channelIR.sharedPositionName = bindingName;
-            if (hasGroupingGaps(scale))
-                cutSubscriptions.add(entry.cutListeners);
         }
         const {
             bindGroupLayout,
@@ -507,12 +500,9 @@ export default class BaseProgram {
             ),
             this.count
         );
-        const refreshCuts = () =>
-            this._queueSlotUpdate(this.#scaleResources.refreshGapCuts());
-        for (const listeners of cutSubscriptions) {
-            listeners.add(refreshCuts);
-            this.#releaseSharedCuts.push(() => listeners.delete(refreshCuts));
-        }
+        this.#scaleResources.subscribeSharedCuts((rebind) =>
+            this._queueSlotUpdate(rebind)
+        );
     }
 
     /**
@@ -1192,12 +1182,10 @@ export default class BaseProgram {
                     isValueChannelConfig(channel)) &&
                 channel.scale
             ) {
-                this.#scaleResources.initializeScale(
+                const updater = this.#scaleResources.initializeScale(
                     name,
-                    channel,
-                    channel.scale
+                    channel
                 );
-                const updater = this.#scaleResources.getScaleUpdater(name);
                 updater.updateDomain(
                     channel.scale.domain,
                     channel.scale.gapDomain
@@ -1291,8 +1279,6 @@ export default class BaseProgram {
         this.#uniformBuffer.destroy();
         this._seriesBuffers.destroy();
         this.#scaleResources.destroy();
-        for (const release of this.#releaseSharedCuts) release();
-        this.#releaseSharedCuts.length = 0;
         for (const [name, buffer] of this._extraBuffers) {
             if (!this._borrowedExtraBuffers.has(name)) {
                 buffer.destroy();

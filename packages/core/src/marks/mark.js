@@ -15,6 +15,7 @@ import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isScalar } from "../utils/variableTools.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
@@ -322,7 +323,9 @@ export default class Mark {
                 ...configured,
             };
             const mutable = /** @type {Record<string, any>} */ (merged);
-            for (const channel of /** @type {Channel[]} */ (Object.keys(merged))) {
+            for (const channel of /** @type {Channel[]} */ (
+                Object.keys(merged)
+            )) {
                 if (!isChannelWithScale(channel)) {
                     continue;
                 }
@@ -607,10 +610,17 @@ export default class Mark {
                         const resolution =
                             this.unitView.getScaleResolution(resolutionChannel);
                         if (resolution && !scales.has(resolution)) {
+                            const mapping = resolution.getMappingRef();
+                            let gapMode = hasGroupingGaps(mapping.get()?.props);
                             this.unitView.registerDisposer(
-                                resolution.getMappingRef().subscribe(
-                                    () => state.resources++
-                                )
+                                mapping.subscribe(() => {
+                                    state.resources++;
+                                    const next = hasGroupingGaps(
+                                        mapping.get()?.props
+                                    );
+                                    if (next !== gapMode) state.configuration++;
+                                    gapMode = next;
+                                })
                             );
                             scales.add(resolution);
                         }

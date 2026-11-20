@@ -4,10 +4,7 @@ import { resolveCategoryInput } from "../../selection/categorySelection.js";
 import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
 import { cssColorToRgba, packCssColor } from "../color.js";
 import { format as numberFormat } from "d3-format";
-import {
-    groupingGapKey,
-    hasGroupingGaps,
-} from "../../genome/indexGapMapping.js";
+import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
 import { getGapPeer, isMarkClamped } from "../../marks/markUtils.js";
 import { rgba8Unorm } from "@genome-spy/webgpu-renderer";
 import {
@@ -43,7 +40,6 @@ import {
     isChannelWithScale,
     isDatumDef,
     isValueDef,
-    positionalChannels,
 } from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
@@ -195,7 +191,7 @@ export function createWebGpuMarkConfig(
     dataOverride,
     placementIndex
 ) {
-    initializeWebGpuMarkRevisions(mark);
+    mark.initializeRenderingRevisions([]);
     const data = dataOverride ?? getMarkData(mark, options);
     if (data.length == 0) {
         return undefined;
@@ -276,18 +272,12 @@ function createTranslation(definition, config, mark) {
 }
 
 /**
- * Returns the revision of expression-backed data columns. Scale and property
- * leaves stay live and therefore do not participate in this revision.
+ * Returns the revision of translated data and shader configuration.
  *
  * @param {import("../../marks/mark.js").default} mark
  */
 export function getWebGpuMarkConfigRevision(mark) {
     return mark.getRenderingRevision("configuration");
-}
-
-/** @param {import("../../marks/mark.js").default} mark */
-export function getWebGpuMarkGapKey(mark) {
-    return groupingGapKey(mark.encoders, positionalChannels);
 }
 
 /**
@@ -299,11 +289,6 @@ export function getWebGpuMarkGapKey(mark) {
  */
 export function getWebGpuMarkResourceRevision(mark) {
     return mark.getRenderingRevision("resources");
-}
-
-/** @param {import("../../marks/mark.js").default} mark */
-function initializeWebGpuMarkRevisions(mark) {
-    mark.initializeRenderingRevisions([]);
 }
 
 /**

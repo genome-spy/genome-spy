@@ -107,7 +107,7 @@ describe("ScaleResourceManager", () => {
         const { manager, uniforms } = createManager(channels);
         uniforms.set(DOMAIN_PREFIX + "x", [0, 3]);
         uniforms.set(DOMAIN_MAP_COUNT_PREFIX + "x", 0);
-        manager.initializeScale("x", channels.x, channels.x.scale);
+        manager.initializeScale("x", channels.x);
         const updater = manager.getScaleUpdater("x");
 
         // Domain publication follows initialization; [] publishes empty membership.
@@ -157,7 +157,7 @@ describe("ScaleResourceManager", () => {
             });
         const { manager, uniforms } = createManager(channels);
         uniforms.set(RANGE_COUNT_PREFIX + "fill", 0);
-        manager.initializeScale("fill", channels.fill, channels.fill.scale);
+        manager.initializeScale("fill", channels.fill);
         const updater = manager.getScaleUpdater("fill");
 
         const initialRebind = updater.updateRange(channels.fill.scale.range);
@@ -190,7 +190,7 @@ describe("ScaleResourceManager", () => {
             });
         const { manager, uniforms, writes } = createManager(channels);
         for (const [name, channel] of Object.entries(channels)) {
-            manager.initializeScale(name, channel, channel.scale);
+            manager.initializeScale(name, channel);
             manager.getScaleUpdater(name).updateDomain(channel.scale.domain);
         }
         const initial = manager.tableBuffer;
@@ -237,7 +237,7 @@ describe("ScaleResourceManager", () => {
             maxStorageBufferBindingSize: 32,
         });
         for (const name of ["x", "y"])
-            manager.initializeScale(name, channels[name], channels[name].scale);
+            manager.initializeScale(name, channels[name]);
         const x = manager.getScaleUpdater("x");
         const y = manager.getScaleUpdater("y");
         x.updateRange(Array(7).fill(0));
@@ -276,7 +276,7 @@ describe("ScaleResourceManager", () => {
             });
         const { manager, uniforms, textures } = createManager(channels);
 
-        manager.initializeScale("fill", channels.fill, channels.fill.scale);
+        manager.initializeScale("fill", channels.fill);
         manager.getScaleUpdater("fill").updateRange(["red", "blue"]);
         expect(textures).toHaveLength(1);
         expect(uniforms.get(RANGE_PREFIX + "fill")).toEqual([0, 1]);
@@ -304,7 +304,7 @@ describe("ScaleResourceManager", () => {
                 },
             });
         const { manager, buffers } = createManager(channels);
-        manager.initializeScale("fill", channels.fill, channels.fill.scale);
+        manager.initializeScale("fill", channels.fill);
         const updater = manager.getScaleUpdater("fill");
 
         updater.updateRange(channels.fill.scale.range);
@@ -340,7 +340,7 @@ describe("grouping gap resources", () => {
         const { manager, buffers, textures, uniforms } = createManager({
             x: channel,
         });
-        manager.initializeScale("x", channel, channel.scale);
+        manager.initializeScale("x", channel);
         expect(buffers).toHaveLength(0);
         expect(textures).toHaveLength(0);
         expect(
@@ -367,8 +367,8 @@ describe("grouping gap resources", () => {
             x: channel,
             x2: channel,
         });
-        manager.initializeScale("x", channel, channel.scale);
-        manager.initializeScale("x2", channel, channel.scale);
+        manager.initializeScale("x", channel);
+        manager.initializeScale("x2", channel);
         expect(buffers).toHaveLength(1);
         expect(uniforms.get("gapTable_x")).toEqual(uniforms.get("gapTable_x2"));
         manager.getScaleUpdater("x").updateDomain([5, 15]);
@@ -398,7 +398,7 @@ describe("grouping gap resources", () => {
             },
         };
         const { manager, uniforms, buffers } = createManager({ x: channel });
-        manager.initializeScale("x", channel, channel.scale);
+        manager.initializeScale("x", channel);
         const updater = manager.getScaleUpdater("x");
         updater.updateDomain([10, 20], [0.5, 1]);
         expect(uniforms.get("gapGeometry_x")).toEqual([6, 0.5, 1, 1]);

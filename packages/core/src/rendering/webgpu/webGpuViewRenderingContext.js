@@ -13,7 +13,6 @@ import {
 import {
     createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision,
-    getWebGpuMarkGapKey,
     getWebGpuMarkResourceRevision,
 } from "./webGpuMarkAdapter.js";
 import { getPackedMarkData, getPackedMarkRange } from "./webGpuMarkData.js";
@@ -152,17 +151,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                 active: false,
                 ownerCoords: undefined,
                 validatedTopologyRevision: undefined,
-                definition: undefined,
-                config: undefined,
-                properties: undefined,
+                translation: undefined,
+                configBounds: undefined,
                 configRevision: -1,
-                gapKey: -1,
                 resourceRevision: -1,
                 resourcesDirty: true,
-                configX: NaN,
-                configY: NaN,
-                configWidth: NaN,
-                configHeight: NaN,
                 viewport: undefined,
                 generatedRectangles: undefined,
             };
@@ -430,10 +423,6 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         const configRevision = getWebGpuMarkConfigRevision(state.mark);
         const resourceRevision = getWebGpuMarkResourceRevision(state.mark);
         const resourcesChanged = resourceRevision !== state.resourceRevision;
-        const gapKey = resourcesChanged
-            ? getWebGpuMarkGapKey(state.mark)
-            : state.gapKey;
-        const gapModeChanged = state.gapKey !== gapKey;
         const packedChanged = state.packed !== packed;
         const expressionChanged = state.configRevision !== configRevision;
         // Positional channels are translated into the owner's coordinate
@@ -442,58 +431,40 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         // stable Rectangle whose accessors change during interaction. The
         // WebGL path reevaluates that range for every draw; a retained WebGPU
         // config must be rebuilt when the numeric range changes.
-        const configX = state.source ? 0 : state.ownerCoords.x;
-        const configY = state.source ? 0 : state.ownerCoords.y;
-        const configWidth = state.ownerCoords.width;
-        const configHeight = state.ownerCoords.height;
+        const x = state.source ? 0 : state.ownerCoords.x;
+        const y = state.source ? 0 : state.ownerCoords.y;
+        const { width, height } = state.ownerCoords;
+        const bounds = state.configBounds;
         const geometryChanged =
-            state.configX !== configX ||
-            state.configY !== configY ||
-            state.configWidth !== configWidth ||
-            state.configHeight !== configHeight;
+            x !== bounds?.x ||
+            y !== bounds?.y ||
+            width !== bounds?.width ||
+            height !== bounds?.height;
         const configChanged =
-            packedChanged ||
-            expressionChanged ||
-            geometryChanged ||
-            gapModeChanged;
+            packedChanged || expressionChanged || geometryChanged;
         if (configChanged) {
             countPerformance(
                 packedChanged
                     ? "markConfigurationPackedMiss"
                     : expressionChanged
                       ? "markConfigurationExpressionMiss"
-                      : geometryChanged
-                        ? "markConfigurationGeometryMiss"
-                        : "markConfigurationGapModeMiss"
+                      : "markConfigurationGeometryMiss"
             );
-            const first = state.occurrences[0];
-            const configCoords = state.source
-                ? Rectangle.create(
-                      0,
-                      0,
-                      state.ownerCoords.width,
-                      state.ownerCoords.height
-                  )
+            const coords = state.source
+                ? Rectangle.create(x, y, width, height)
                 : state.ownerCoords;
-            const translated = measurePerformance("markConfiguration", () =>
+            state.translation = measurePerformance("markConfiguration", () =>
                 createWebGpuMarkConfig(
                     state.mark,
-                    first.options,
-                    configCoords,
+                    state.occurrences[0].options,
+                    coords,
                     packed.data,
                     createPlacementIndexConfig(state)
                 )
             );
             state.packed = packed;
-            state.definition = translated?.definition;
-            state.config = translated?.config;
-            state.properties = translated?.properties;
             state.configRevision = configRevision;
-            state.gapKey = gapKey;
-            state.configX = configX;
-            state.configY = configY;
-            state.configWidth = configWidth;
-            state.configHeight = configHeight;
+            state.configBounds = { x, y, width, height };
         }
         if (packedChanged) {
             for (const occurrence of state.occurrences) {
@@ -506,7 +477,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
         }
         state.resourcesDirty ||= configChanged || resourcesChanged;
         state.resourceRevision = resourceRevision ?? -1;
-        state.active = !!state.config;
+        state.active = !!state.translation?.config;
     }
 
     /** @param {MarkState} state */
@@ -538,12 +509,8 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
      */
     #submitOccurrenceDraw(occurrence, picking, canvas, items) {
         const state = occurrence.state;
-        if (
-            !state.active ||
-            !state.config ||
-            !state.definition ||
-            !state.packed
-        ) {
+        const translation = state.translation;
+        if (!state.active || !translation?.definition || !state.packed) {
             return undefined;
         }
         const range = occurrence.range;
@@ -611,9 +578,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
                     () =>
                         this.surface.updateMark(
                             state.mark,
-                            state.definition,
-                            state.config,
-                            state.properties ?? {}
+                            translation.definition,
+                            translation.config,
+                            translation.properties ?? {}
                         )
                 );
                 state.resourcesDirty = false;
@@ -987,17 +954,11 @@ function writeScopeBounds(command, target) {
  * @property {boolean} active
  * @property {Rectangle | undefined} ownerCoords
  * @property {number | undefined} validatedTopologyRevision
- * @property {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any> | undefined} definition
- * @property {object | undefined} config
- * @property {Record<string, {value: any}> | undefined} properties
+ * @property {ReturnType<typeof createWebGpuMarkConfig>} translation
+ * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} configBounds
  * @property {number} configRevision
- * @property {number} gapKey
  * @property {number} resourceRevision
  * @property {boolean} resourcesDirty
- * @property {number} configX
- * @property {number} configY
- * @property {number} configWidth
- * @property {number} configHeight
  * @property {import("@genome-spy/webgpu-renderer").DrawRect | undefined} viewport
  * @property {Float32Array | undefined} generatedRectangles
  */

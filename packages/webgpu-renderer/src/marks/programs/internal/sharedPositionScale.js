@@ -39,9 +39,11 @@ export function supportsSharedPositionScale(scale) {
  * @param {import("../../../renderer.js").Renderer} renderer
  * @param {import("../../../index.d.ts").ChannelScale} scale
  * @param {(handle: Handle) => void} release
- * @returns {Handle}
+ * @returns {Handle | undefined}
  */
 export function createSharedPositionScale(renderer, scale, release) {
+    if (!supportsSharedPositionScale(scale)) return;
+    renderer._assertAlive();
     const { device } = renderer;
     const { definition } = scale;
     const data = new Float32Array(8);
@@ -107,5 +109,5 @@ export function createSharedPositionScale(renderer, scale, release) {
         },
     });
     sharedPositionScaleBuffers.set(handle, resources);
-    return handle;
+    return renderer._ownResource(handle);
 }

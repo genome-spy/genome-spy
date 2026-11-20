@@ -31,7 +31,6 @@ const mocks = vi.hoisted(() => {
 vi.mock("./webGpuMarkAdapter.js", () => ({
     createWebGpuMarkConfig: mocks.createWebGpuMarkConfig,
     getWebGpuMarkConfigRevision: mocks.getWebGpuMarkConfigRevision,
-    getWebGpuMarkGapKey: () => 0,
     getWebGpuMarkResourceRevision: mocks.getWebGpuMarkResourceRevision,
 }));
 
