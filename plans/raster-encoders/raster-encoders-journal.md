@@ -97,3 +97,16 @@ A Canvas crop that reduced the bitmap to the visible whole cells still shifted
 the boundary because the destination remained huge. Drawing partial edge cells
 into their visible destinations keeps both source texel bounds and destination
 geometry stable. The interior stays a single bitmap draw.
+
+## Raster antialiasing in WebGPU
+
+Use the pixel footprint already available from the raster projection. Split each
+axis at the nearest cell boundary and sample the midpoint of each part. Their
+lengths give the weights. This integrates a footprint crossing one boundary
+exactly and takes at most four color samples when zoomed out. Evaluate cell
+conditions before filtering premultiplied RGBA.
+
+Clamp the samples to the tile drawn at the pixel center and keep the existing
+conditional order passes. This can leave visible seams between tiles or between
+the two order passes. A few samples can still alias repeating patterns at strong
+minification.

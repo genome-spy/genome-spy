@@ -172,19 +172,56 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     return out;
 }
 
+struct AxisSamples {
+    first: u32,
+    second: u32,
+    secondWeight: f32,
+};
+
+fn rasterCellIndex(anchor: u32, last: u32, offset: f32) -> u32 {
+    // Keep taps inside the tile that covers the pixel center.
+    let delta = floor(offset);
+    let base = min(anchor - min(anchor, u32(max(-delta, 0.0))), last);
+    return base + min(last - base, u32(max(delta, 0.0)));
+}
+
+fn rasterAxisSamples(center: f32, width: f32, anchor: u32, count: u32) -> AxisSamples {
+    // Split the pixel footprint at the nearest grid line. Sample the midpoint
+    // of each part and weight by its length. This is exact if the footprint
+    // crosses at most one boundary, and bounds work for smaller cells.
+    let weight = clamp(0.5 + (center - round(center)) / width, 0.0, 1.0);
+    let halfWidth = width * 0.5;
+    let last = count - 1u;
+    let first = rasterCellIndex(anchor, last, center - halfWidth * weight);
+    let second = rasterCellIndex(anchor, last, center + halfWidth * (1.0 - weight));
+    if (weight == 1.0) { return AxisSamples(second, second, 0.0); }
+    return AxisSamples(first, second, select(weight, 0.0, first == second));
+}
+
+fn rasterCellColor(in: VSOut, cell: vec2<u32>) -> vec4<f32> {
+    let i = in.grid.z + cell.x + cell.y * in.grid.x;
+    if (!isInstanceVisible(i)) { return vec4<f32>(0.0); }
+    let color = getScaled_fill(i);
+    return premultiplyAlpha(vec4<f32>(color.rgb, color.a * clamp(getScaled_opacity(i), 0.0, 1.0)));
+}
+
+fn rasterRowColor(in: VSOut, x: AxisSamples, row: u32) -> vec4<f32> {
+    let first = rasterCellColor(in, vec2<u32>(x.first, row));
+    if (x.secondWeight == 0.0) { return first; }
+    return mix(first, rasterCellColor(in, vec2<u32>(x.second, row)), x.secondWeight);
+}
+
 fn shade(in: VSOut) -> vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
-    let shape = in.grid.xy;
-    let delta = floor((in.pos.xy - in.anchorPixel) * in.cellsPerPixel);
-    let last = shape - vec2<u32>(1u);
-    let base = min(in.anchor - min(in.anchor, vec2<u32>(max(-delta, vec2<f32>(0.0)))), last);
-    let cell = base + min(last - base, vec2<u32>(max(delta, vec2<f32>(0.0))));
-    let i = in.grid.z + cell.x + cell.y * shape.x;
-    if (!isInstanceVisible(i)) { discard; }
-    let color = getScaled_fill(i);
-    return premultiplyAlpha(vec4<f32>(color.rgb, color.a * clamp(getScaled_opacity(i), 0.0, 1.0)));
+    let center = (in.pos.xy - in.anchorPixel) * in.cellsPerPixel;
+    let width = abs(in.cellsPerPixel);
+    let x = rasterAxisSamples(center.x, width.x, in.anchor.x, in.grid.x);
+    let y = rasterAxisSamples(center.y, width.y, in.anchor.y, in.grid.y);
+    let first = rasterRowColor(in, x, y.first);
+    if (y.secondWeight == 0.0) { return first; }
+    return mix(first, rasterRowColor(in, x, y.second), y.secondWeight);
 }
 
 @fragment

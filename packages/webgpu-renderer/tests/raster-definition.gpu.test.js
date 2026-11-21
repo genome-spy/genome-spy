@@ -251,3 +251,115 @@ test("raster conditions and order operate on cells across tile replacement", asy
     ]);
     expect(result.hidden.pixels[0]).toEqual([0, 0, 0, 0]);
 });
+
+test("raster footprints filter encoded colors through zoom and selection", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const result = await page.evaluate(async () => {
+        const [{ createRenderer }, { rasterMark }, { ordinalScale }] =
+            await Promise.all([
+                import("/src/index.js"),
+                import("/src/marks/raster.js"),
+                import("/src/scales/ordinal.js"),
+            ]);
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        document.body.appendChild(canvas);
+        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
+        const { device } = renderer;
+        renderer.context.configure({
+            device,
+            format: renderer.format,
+            alphaMode: "premultiplied",
+            usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
+        device.pushErrorScope("validation");
+
+        // At (16, 32) the four categories cover different areas of the pixel.
+        /** @param {number} x0 @param {number} x1 @param {number} y0 @param {number} y1 */
+        const data = (x0, x1, y0, y1) => ({
+            tiles: {
+                x0: new Float32Array([x0]),
+                x1: new Float32Array([x1]),
+                y0: new Float32Array([y0]),
+                y1: new Float32Array([y1]),
+                columns: new Uint32Array([2]),
+                rows: new Uint32Array([2]),
+                offsets: new Uint32Array([0]),
+            },
+            cells: { base: new Uint32Array([11, 29, 47, 83]) },
+        });
+        const mark = renderer.createMark(rasterMark, {
+            data: data(0.25, 32.25, 0.75, 64.75),
+            channels: {
+                fill: {
+                    input: "base",
+                    scale: ordinalScale({
+                        domain: [11, 29, 47, 83],
+                        range: [
+                            [1, 0, 0, 1],
+                            [0, 0, 1, 1],
+                            [0, 1, 0, 1],
+                            [1, 1, 1, 1],
+                        ],
+                    }),
+                },
+            },
+            visibleWhen: { selection: "bases", type: "multi", input: "base" },
+        });
+        mark.selections.bases.set(new Uint32Array([11, 29, 47]));
+
+        const buffer = device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        const sample = async () => {
+            renderer.render({
+                draws: [{ mark }],
+                clearColor: { r: 0, g: 0, b: 0, a: 0 },
+            });
+            const encoder = device.createCommandEncoder();
+            encoder.copyTextureToBuffer(
+                {
+                    texture: renderer.context.getCurrentTexture(),
+                    origin: [16, 32],
+                },
+                { buffer },
+                [1, 1]
+            );
+            device.queue.submit([encoder.finish()]);
+            await buffer.mapAsync(GPUMapMode.READ);
+            const rgba = Array.from(new Uint8Array(buffer.getMappedRange()));
+            buffer.unmap();
+            return rgba;
+        };
+
+        const first = await sample();
+        mark.series.replace(data(0.75, 32.75, 0.75, 64.75));
+        const moved = await sample();
+        mark.series.replace(data(16, 17, 32, 33));
+        const minified = await sample();
+        const validation = await device.popErrorScope();
+        buffer.destroy();
+        renderer.destroy();
+        return {
+            pixels: [first, moved, minified],
+            validation: validation?.message,
+        };
+    });
+
+    expect(result.validation).toBeUndefined();
+    const weights = [
+        [0.1875, 0.0625, 0.5625, 0.8125],
+        [0.5625, 0.1875, 0.1875, 0.9375],
+        [0.25, 0.25, 0.25, 0.75],
+    ];
+    for (const [i, pixel] of result.pixels.entries()) {
+        pixel.forEach((value, channel) =>
+            expect(Math.abs(value - 255 * weights[i][channel])).toBeLessThan(1)
+        );
+    }
+});
