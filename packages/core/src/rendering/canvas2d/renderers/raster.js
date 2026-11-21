@@ -24,7 +24,7 @@ const bitmaps = new WeakMap();
  * @param {import("./index.js").CanvasMarkRenderingOptions} options
  */
 export function renderRasterCanvas(mark, options) {
-    const { context } = options;
+    const { context, visibleBounds } = options;
     const resolution = mark.validateRenderingScales();
     const firstDatum = options.data[options.start ?? 0];
     const cellOpacity = mark.getCellOpacityReader()?.(firstDatum);
@@ -85,15 +85,77 @@ export function renderRasterCanvas(mark, options) {
                 }
                 cache.tiles.set(datum, bitmap);
             }
+            const x = cropRasterAxis(
+                x0,
+                dx / bitmap.width,
+                bitmap.width,
+                visibleBounds.x1,
+                visibleBounds.x2
+            );
+            const y = cropRasterAxis(
+                y0,
+                dy / bitmap.height,
+                bitmap.height,
+                visibleBounds.y1,
+                visibleBounds.y2
+            );
+            const signX = Math.sign(dx);
+            const signY = Math.sign(dy);
             context.setTransform(transform);
             context.globalAlpha = Math.min(1, alpha);
-            context.translate(x0, y0);
-            context.scale(Math.sign(dx), Math.sign(dy));
-            context.drawImage(bitmap, 0, 0, Math.abs(dx), Math.abs(dy));
+            context.scale(signX, signY);
+            for (const row of y) {
+                for (const column of x) {
+                    context.drawImage(
+                        bitmap,
+                        column.first,
+                        row.first,
+                        column.count,
+                        row.count,
+                        column.origin * signX,
+                        row.origin * signY,
+                        column.span,
+                        row.span
+                    );
+                }
+            }
         });
     } finally {
         context.restore();
     }
+}
+
+/**
+ * Crop the geometry to the viewport. Stretch each partial edge cell
+ * separately so source rectangles still use whole texels.
+ * @param {number} start
+ * @param {number} step Signed pixel span of one cell.
+ * @param {number} count
+ * @param {number} min
+ * @param {number} max
+ */
+function cropRasterAxis(start, step, count, min, max) {
+    const a = (min - start) / step;
+    const b = (max - start) / step;
+    const lo = clamp(Math.min(a, b), 0, count);
+    const hi = clamp(Math.max(a, b), 0, count);
+    const firstWhole = Math.min(Math.ceil(lo), hi);
+    const lastWhole = Math.max(firstWhole, Math.floor(hi));
+    return [
+        [lo, firstWhole],
+        [firstWhole, lastWhole],
+        [lastWhole, hi],
+    ]
+        .filter(([from, to]) => from < to)
+        .map(([from, to]) => {
+            const first = Math.floor(from);
+            return {
+                first,
+                count: Math.ceil(to) - first,
+                origin: start + from * step,
+                span: (to - from) * Math.abs(step),
+            };
+        });
 }
 
 /**

@@ -13,6 +13,10 @@ for (const renderer of /** @type {const} */ (["webgpu", "canvas"])) {
         playwright,
         baseURL,
     }) => checkRasterStrips(playwright, baseURL, renderer));
+    test(`${renderer} raster boundaries stay aligned at one-base zoom`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterCloseZoom(playwright, baseURL, renderer));
     test(`${renderer} gradient brush controls opacity per raster cell`, ({
         playwright,
         baseURL,
@@ -458,6 +462,169 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             [0, 0, 255],
         ]);
         expect(result.after[2]).toEqual([128, 0, 0]);
+    });
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+async function checkRasterCloseZoom(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const result = await page.evaluate(
+            async ({ src, register, renderer }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+
+                // A million-base tile remains at the finest available resolution.
+                // The two tiles also share an edge that cannot fit in one u32.
+                const edge = 2 ** 32;
+                const count = 256;
+                const step = 4000;
+                const origin = edge - count * step;
+                const middle = origin + (count / 2) * step;
+                const tiles = [origin, edge].map((origin, tile) => ({
+                    dimensions: {
+                        column: { origin, step, count },
+                        row: { origin: 0, step: 1, count: 1 },
+                    },
+                    fields: {
+                        value: Array.from({ length: count }, (_, column) =>
+                            tile || column < count / 2 ? "red" : "blue"
+                        ),
+                    },
+                }));
+
+                const results = [];
+                for (const reverse of [false, true]) {
+                    const api = await embed(
+                        globalThis.document.querySelector("#plot"),
+                        {
+                            assembly: "large",
+                            genomes: {
+                                large: {
+                                    contigs: [{ name: "chr", size: edge * 2 }],
+                                },
+                            },
+                            width: 512,
+                            height: 32,
+                            padding: 0,
+                            config: { background: null },
+                            view: { stroke: null },
+                            scales: {
+                                x: {
+                                    type: "locus",
+                                    domain: [middle - 0.125, middle - 0.125],
+                                    zoom: true,
+                                    reverse,
+                                },
+                            },
+                            layer: [
+                                {
+                                    data: { values: tiles },
+                                    mark: "raster",
+                                    encoding: {
+                                        x: {
+                                            dimension: "column",
+                                            type: "locus",
+                                            axis: null,
+                                        },
+                                        y: {
+                                            dimension: "row",
+                                            type: "quantitative",
+                                            axis: null,
+                                        },
+                                        color: {
+                                            field: "value",
+                                            type: "nominal",
+                                            legend: null,
+                                            scale: {
+                                                domain: ["red", "blue"],
+                                                range: ["red", "blue"],
+                                            },
+                                        },
+                                    },
+                                },
+                                {
+                                    data: { values: [{ position: middle }] },
+                                    mark: {
+                                        type: "rule",
+                                        color: "lime",
+                                        size: 2,
+                                    },
+                                    encoding: {
+                                        x: {
+                                            field: "position",
+                                            type: "locus",
+                                            axis: null,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        {
+                            renderer,
+                            onError: (error) => {
+                                throw new Error(error.message);
+                            },
+                        }
+                    );
+                    try {
+                        await api.awaitVisibleLazyData(
+                            globalThis.AbortSignal.timeout(10000)
+                        );
+                        const x = api.debug
+                            .getViewRoot()
+                            .getDescendants()
+                            .find((view) => view.mark?.getType() === "raster")
+                            .getScaleResolution("x");
+                        for (const boundary of [middle, edge]) {
+                            for (const offset of [0.125, 0.375]) {
+                                await x.zoomTo([
+                                    boundary - offset,
+                                    boundary - offset,
+                                ]);
+                                const pixel = (fraction) =>
+                                    Math.round(
+                                        (reverse ? 1 - fraction : fraction) *
+                                            512
+                                    );
+                                const at = pixel(offset);
+                                // Sample either side of the edge, allowing for subpixel rounding.
+                                const side = reverse ? -1 : 1;
+                                const points = [
+                                    [at - 2 * side, 12],
+                                    [at + 2 * side, 12],
+                                ];
+                                if (boundary === middle)
+                                    points.push([pixel(offset + 0.5), 12]);
+                                results.push(
+                                    await globalThis.readRasterPixels(
+                                        api,
+                                        points,
+                                        null
+                                    )
+                                );
+                            }
+                        }
+                    } finally {
+                        api.finalize();
+                    }
+                }
+                return results;
+            },
+            setup
+        );
+        const red = [255, 0, 0, 255];
+        const blue = [0, 0, 255, 255];
+        const green = [0, 255, 0, 255];
+        expect(result).toEqual([
+            [red, blue, green],
+            [red, blue, green],
+            [blue, red],
+            [blue, red],
+            [red, blue, green],
+            [red, blue, green],
+            [blue, red],
+            [blue, red],
+        ]);
     });
 }
 

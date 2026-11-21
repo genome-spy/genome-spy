@@ -454,7 +454,7 @@ export default class BaseProgram {
             pickFormat: renderer.pickFormat,
             compiledChannels,
             uniformLayout: this.#uniformLayout,
-            shaderBody: this.shaderBody,
+            shaderBody: this.buildShaderBody(compiledChannels.channelIRs),
             usesPickingEnabledInVertex: this.usesPickingEnabledInVertex,
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
@@ -586,6 +586,14 @@ export default class BaseProgram {
      */
     get shaderBody() {
         return "";
+    }
+
+    /**
+     * @param {import("../../shaders/channelIR.js").ChannelIR[]} _channels
+     * @protected
+     */
+    buildShaderBody(_channels) {
+        return this.shaderBody;
     }
 
     /**

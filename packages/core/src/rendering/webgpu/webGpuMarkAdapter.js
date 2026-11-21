@@ -666,25 +666,28 @@ function createRasterConfig(mark, data, coords, placement) {
         rasterDataCache.set(mark, cached);
     }
 
-    const reverseIndex =
-        strip && xScale.type === "index" && xScale.props.reverse;
+    // A raster endpoint is a genomic boundary. The renderer's index band 0
+    // is on the lower pixel side, which is the trailing side on a reversed range.
+    const xBand = xScale.props.reverse ? 1 : 0;
+    const xEndBand = strip && xScale.type === "index" ? 1 - xBand : xBand;
+    const yBand = requireEncoder(mark, "y").scale.props.reverse ? 0 : 1;
     const channels = {
-        x: createPositionChannel(
+        x: createPositionChannel(mark, "x", data, coords, xBand),
+        x2: createPositionChannel(mark, "x2", data, coords, xEndBand),
+        y: createPositionChannel(
             mark,
-            "x",
+            "y",
             data,
             coords,
-            reverseIndex ? 1 : undefined
+            strip ? undefined : yBand
         ),
-        x2: createPositionChannel(
+        y2: createPositionChannel(
             mark,
-            "x2",
+            "y2",
             data,
             coords,
-            reverseIndex ? 0 : undefined
+            strip ? undefined : yBand
         ),
-        y: createPositionChannel(mark, "y", data, coords),
-        y2: createPositionChannel(mark, "y2", data, coords),
     };
     const position = Object.fromEntries(
         Object.entries(channels).map(([name, channel]) => {
@@ -1332,7 +1335,9 @@ function createPositionBranch(
                       ),
         });
     } else if (scale?.type == "index" || scale?.type == "locus") {
-        const large = isLargeIndexDomain(scale.domain().map(Number));
+        const large =
+            mark instanceof RasterMark ||
+            isLargeIndexDomain(scale.domain().map(Number));
         const input = encoder.constant
             ? createIndexValue(mark, channel, () => accessor(data[0]), large)
             : {

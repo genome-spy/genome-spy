@@ -5,7 +5,8 @@
 <!-- category: feature -->
 
 Render experimental raster marks in Canvas2D, including zoomable HiGlass contact
-maps and categorical sequence strips.
+maps and categorical sequence strips. Raster cell boundaries stay stable when
+zooming to individual bases.
 
 Use a gradient legend brush to control the opacity of individual raster cells.
 The HiGlass example makes contact values outside the brushed range transparent.

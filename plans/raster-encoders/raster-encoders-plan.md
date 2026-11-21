@@ -103,6 +103,19 @@ precision at Float32 interval boundaries, column aliasing across replacement,
 and the need to distinguish renderer access to cell and tile indices. The
 implementation should check these contracts directly.
 
+## Close-zoom raster precision
+
+Bound the drawn rectangle by the render target and address cells relative to a
+nearby cell boundary. For matching index mappings, project that boundary from
+the packed genomic edges so it keeps its precision after zoom. Reuse the
+existing scale and position slots, placement, draw order, and cell storage. Core
+uses packed locus edges independently of the active domain and applies the same
+signed edge placement as the locus scale.
+
+Crop Canvas source and destination rectangles together before drawing the cached
+bitmap. Verify a fractional pan across an internal boundary and a shared edge at
+one-base zoom, reversed axes, and a packed endpoint above 2^32.
+
 ## Follow-up milestones
 
 - SVG export should recognize raster marks in the counting and emission passes

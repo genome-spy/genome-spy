@@ -84,3 +84,16 @@ pass. Each cell contributes to one pass, including when overlapping tiles are
 translucent. Ordinary conditions use the fragment shader in the single draw. The
 CPU and GPU may round blended RGBA8 values differently at half-unit boundaries,
 so the compositing check tolerates one unit of quantization.
+
+## Close-zoom raster precision
+
+A large tile shifted the boundary by 32 pixels in a 512-pixel WebGPU view
+spanning one base. Packed tile coordinates and single-word coordinates showed
+the same drift. The shader now clips in target pixels and addresses the grid
+from a nearby cell boundary projected in packed locus coordinates. The revision
+also handles descending tile coordinates and tile widths above 2^32.
+
+A Canvas crop that reduced the bitmap to the visible whole cells still shifted
+the boundary because the destination remained huge. Drawing partial edge cells
+into their visible destinations keeps both source texel bounds and destination
+geometry stable. The interior stays a single bitmap draw.
