@@ -54,6 +54,7 @@ export default class RasterMark extends Mark {
             const domainInert = binding.type !== "quantitative" && !indexStrip;
             encoding[axis] = inheritSpecOrigin(binding, {
                 ...options,
+                title: options.title ?? null,
                 field: path + ".origin",
                 band: 0,
                 ...(domainInert && { domainInert: true }),
