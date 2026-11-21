@@ -208,6 +208,20 @@ test("Scale respects range configuration", function () {
     expect(vs.scale("point")().gapMapping).toBeTypeOf("function");
 });
 
+test("maps the domain to the HiGlass Fall palette", () => {
+    const color = scale({
+        type: "linear",
+        domain: [0, 3],
+        scheme: "higlassFall",
+    });
+    expect([0, 1, 2, 3].map(color)).toEqual([
+        "rgb(255, 255, 255)",
+        "rgb(245, 166, 35)",
+        "rgb(208, 2, 27)",
+        "rgb(0, 0, 0)",
+    ]);
+});
+
 test("Scale respects range color schemes", function () {
     var s, u, v;
 

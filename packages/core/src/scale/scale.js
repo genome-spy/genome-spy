@@ -68,7 +68,7 @@ import {
     interpolateRange,
     interpolate as getInterpolate,
     scale as getScale,
-    scheme as getScheme,
+    scheme as vegaScheme,
     scaleImplicit,
     quantizeInterpolator,
 } from "vega-scale";
@@ -79,6 +79,11 @@ import { interpolate, interpolateRound } from "d3-interpolate";
 
 getScale(Band, scaleBand, ["discrete"]);
 getScale(Point, scalePoint, ["discrete"]);
+
+vegaScheme(
+    "higlassFall",
+    interpolateColors(["#ffffff", "#f5a623", "#d0021b", "#000000"])
+);
 
 const Locus = "locus";
 const Index = "index";
@@ -541,7 +546,7 @@ export function readSchemeName(value) {
 
 function lookupScheme(name) {
     const key = name.toLowerCase();
-    const scheme = getScheme(key);
+    const scheme = vegaScheme(key);
     if (!scheme || scheme === Object.prototype[key]) {
         error(`Unrecognized scheme name: ${name}`);
     }

@@ -49,7 +49,7 @@
       "title": "Contact value",
       "scale": {
         "domain": { "source": "viewport" },
-        "scheme": "reds",
+        "scheme": "higlassFall",
         "zero": false,
         "clamp": true
       }

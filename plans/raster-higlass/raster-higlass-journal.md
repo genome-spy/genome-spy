@@ -76,6 +76,13 @@ missing and constant color extents and late arrivals.
   cover stale responses, the viewport intersection on both axes, and color
   domains for constant and missing-only grids.
 
+- A literal four-stop range on the default linear scale used only the first two
+  colors in Chrome. Vega's `yelloworangered` scheme worked with the viewport
+  domain and gave low values a stronger yellow cast than the HiGlass palette.
+  The `higlassFall` preset uses the four HiGlass colors through the same
+  interpolating scale path as other named palettes.
+  [HiGlass heatmap palette](https://docs.higlass.io/track_types.html#heatmap)
+
 ## Measurements and decisions
 
 - A 256 × 256 tile takes one dataflow record, six vertex invocations, and 256
@@ -107,4 +114,4 @@ missing and constant color extents and late arrivals.
   tilesets with explicit resolution lists need a different level selector.
   Core's generated schema recognizes the experimental grammar while WebGPU
   remains unpublished. Review how to expose the grammar when preparing a
-  release. This branch adds no release fragment for the PoC.
+  release. The reusable color scheme is release-noted as a Core feature.
