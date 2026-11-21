@@ -69,15 +69,46 @@ while the domain is flat and preserve clearing.
 Tentative implementation commit:
 `feat(core): brush raster values from gradient legends`.
 
+## Milestone 3: Standalone WebGPU raster API
+
+Create a raster mark with structured `data.tiles` and `data.cells`, positional
+scale descriptors in `position`, and cell encodings in `channels`. Tile arrays
+supply oriented endpoints, dimensions and offsets into equal-length, named cell
+arrays. Cells divide the rectangle uniformly after projecting its endpoints. The
+same snapshot covers strips and matrices. Tilers and resolutions remain the
+application's responsibility.
+
+Use the renderer's existing scale, selection and order APIs. Compile position at
+tile scope and evaluate fill, opacity, predicates and order at cell scope.
+Predicates read raw cell fields, including fields with no visual channel.
+Support numeric half-open intervals and categorical membership. Order uses the
+renderer's two passes and each cell belongs to exactly one pass. Keep placement
+clipping at tile scope. Support packed RGBA as a fill source.
+
+`series.replace(snapshot)` replaces both scopes together. Validate types,
+lengths, dimensions and referenced ranges and prepare both uploads before
+publishing a replacement. Allow empty snapshots and shared ranges. The field
+names and numeric types establish the retained shader layout. Tile columns that
+shared an initial array can diverge on replacement.
+
+The Core adapter translates the existing grammar to this API. It binds the
+gradient legend to a renderer selection and broadcasts an MSA strip category as
+a raw cell field when required by its opacity condition. Reuse the structured
+snapshot during scale and selection changes. Verify standalone rendering,
+overlapping tiles with conditional order, and incompatible replacement, then
+exercise the existing Core HiGlass and MSA paths.
+
+The design review identified fragment-stage scale and selection bindings,
+precision at Float32 interval boundaries, column aliasing across replacement,
+and the need to distinguish renderer access to cell and tile indices. The
+implementation should check these contracts directly.
+
 ## Follow-up milestones
 
 - SVG export should recognize raster marks in the counting and emission passes
   and embed their images in paint order alongside vector axes and labels. It
   must handle the default async export and an unavailable rasterizer explicitly.
   The instance threshold remains useful for vectorizable marks.
-- WebGPU can compile typed value-to-color functions and declare the required
-  fragment bindings before code generation. Start with cell color because
-  position scales and row conditions may depend on instance context.
 
 An independent design review confirmed that the current grammar can support
 these milestones. The main integration risks were bootstrap domain scanning,

@@ -1,6 +1,9 @@
-import { validateStorageBufferSize } from "../../utils/bufferLimits.js";
 import BaseProgram from "./internal/baseProgram.js";
-import { initializePropertySlots } from "./internal/propertySlots.js";
+import {
+    compileRasterData,
+    lowerRasterConfig,
+    prepareRasterData,
+} from "./internal/rasterData.js";
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 const channels = {
@@ -8,35 +11,16 @@ const channels = {
     x2: { type: "f32", components: 1, default: 1 },
     y: { type: "f32", components: 1, default: 0 },
     y2: { type: "f32", components: 1, default: 1 },
-    fill: { type: "f32", components: 4 },
+    fill: { type: "f32", components: 4, default: [0, 0, 0, 1] },
     opacity: { type: "f32", components: 1, default: 1 },
 };
 
-/** @typedef {import("../raster.js").RasterConfig["cells"]} Cells */
-
-const floatBits = new DataView(new ArrayBuffer(4));
-
-/**
- * Rounding a threshold up preserves both low <= cell and cell < high
- * for float32 cells, even when the brush bounds fall between float32 values.
- * @param {number} threshold
- */
-function ceilFloat32(threshold) {
-    const rounded = Math.fround(threshold);
-    if (!(rounded < threshold)) return rounded;
-    floatBits.setFloat32(0, rounded);
-    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
-    return floatBits.getFloat32(0);
-}
-
-/** @param {boolean} integerCells */
-const rasterShader = (integerCells) => /* wgsl */ `
+const rasterShader = /* wgsl */ `
 struct VSOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) @interpolate(flat) grid: vec3<u32>,
-    @location(2) @interpolate(flat) opacity: f32,
-    @location(3) @interpolate(flat) pickId: u32,
+    @location(2) @interpolate(flat) pickId: u32,
 #if defined(PLACEMENT_ENABLED)
     @location(15) @interpolate(flat) placementClip: vec4<f32>,
 #endif
@@ -49,9 +33,12 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0)
     );
     var out: VSOut;
+    if (!isPlacementVisible(i)) {
+        out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
+        return out;
+    }
     out.uv = vertices[v];
     out.grid = vec3<u32>(read_columns(i), read_rows(i), read_cellOffset(i));
-    out.opacity = getScaled_opacity(i);
     out.pickId = 0u;
     let start = applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i);
     let end = applyPlacementPixel(vec2<f32>(getScaled_x2(i), getScaled_y2(i)), i);
@@ -68,13 +55,10 @@ fn shade(in: VSOut) -> vec4<f32> {
 #endif
     let shape = in.grid.xy;
     let cell = min(vec2<u32>(in.uv * vec2<f32>(shape)), shape - vec2<u32>(1u));
-    let index = in.grid.z + cell.x + cell.y * shape.x;
-    ${integerCells ? "" : "if ((bitcast<u32>(rasterCells[index]) & 0x7f800000u) == 0x7f800000u) { discard; }"}
-    let brush = params.uCellOpacity;
-    let value = f32(rasterCells[index]);
-    let alpha = clamp(select(brush.w, brush.z, brush.x <= value && value < brush.y), 0.0, 1.0);
-    let color = getScaled_fill(index);
-    return premultiplyAlpha(vec4<f32>(color.rgb, color.a * in.opacity * alpha));
+    let i = in.grid.z + cell.x + cell.y * shape.x;
+    if (!isInstanceVisible(i)) { discard; }
+    let color = getScaled_fill(i);
+    return premultiplyAlpha(vec4<f32>(color.rgb, color.a * clamp(getScaled_opacity(i), 0.0, 1.0)));
 }
 
 @fragment
@@ -83,17 +67,57 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 }
 `;
 
+/** @extends {BaseProgram<import("../raster.js").RasterData>} */
 export default class RasterProgram extends BaseProgram {
+    /**
+     * @param {import("../../renderer.js").Renderer} renderer
+     * @param {import("../raster.js").RasterConfig} config
+     * @param {import("../../index.d.ts").MarkProgramCreationContext} context
+     */
+    constructor(renderer, config, context) {
+        const schema = compileRasterData(config);
+        const prepared = prepareRasterData(
+            renderer.device,
+            config.data,
+            schema
+        );
+        const lowered = lowerRasterConfig(config, schema, prepared);
+        super(renderer, lowered, context);
+        this.schema = schema;
+        delete this._markConfig.initialCells;
+    }
+
     get channelSpecs() {
         return channels;
     }
 
     get shaderBody() {
-        return rasterShader(this._markConfig.cells instanceof Uint32Array);
+        return rasterShader;
     }
 
-    get fragmentChannelReads() {
-        return { fill: "rasterCells[i]" };
+    get hasCellPredicates() {
+        return true;
+    }
+
+    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
+    getFragmentSeriesRead(ir) {
+        const reads =
+            /** @type {ReturnType<typeof compileRasterData>["reads"]} */ (
+                this._markConfig.reads
+            );
+        const expression = reads.get(
+            /** @type {import("../raster.js").RasterCellArray} */ (
+                ir.channel.data
+            )
+        );
+        if (expression !== undefined) {
+            return {
+                expression,
+                transparentOnNonFinite:
+                    ir.scalarType === "f32" &&
+                    /^fill(?:$|__cond)/.test(ir.name),
+            };
+        }
     }
 
     /** @returns {ReturnType<BaseProgram["getExtraResourceDefs"]>} */
@@ -104,69 +128,38 @@ export default class RasterProgram extends BaseProgram {
                 kind: "buffer",
                 role: "extraBuffer",
                 visibility: "fragment",
-                wgslType:
-                    this._markConfig.cells instanceof Uint32Array
-                        ? "array<u32>"
-                        : "array<f32>",
+                wgslType: "array<u32>",
             },
         ];
     }
 
     _initializeExtraResources() {
-        this._writeCells(/** @type {Cells} */ (this._markConfig.cells));
-    }
-
-    /** @returns {ReturnType<BaseProgram["getExtraUniformLayout"]>} */
-    getExtraUniformLayout() {
-        return [{ name: "uCellOpacity", type: "f32", components: 4 }];
-    }
-
-    _initializeExtraUniforms() {
-        initializePropertySlots(this, {
-            cellOpacity: {
-                uniform: "uCellOpacity",
-                default: [0, 0, 1, 1],
-                encode(value) {
-                    if (
-                        !Array.isArray(value) ||
-                        value.length !== 4 ||
-                        !value.every((entry) => typeof entry === "number")
-                    ) {
-                        throw new Error(
-                            "Raster cell opacity requires two bounds and two opacity values."
-                        );
-                    }
-                    const [lo, hi, inside, outside] = value;
-                    return [ceilFloat32(lo), ceilFloat32(hi), inside, outside];
-                },
-            },
-        });
-        this.getSlotHandles().properties.cells = {
-            set: (/** @type {Cells} */ cells) => {
-                this._assertAlive();
-                if (this._writeCells(cells)) this._queueSlotUpdate(true);
-            },
-        };
+        this._writeCells(
+            /** @type {Uint32Array} */ (this._markConfig.initialCells)
+        );
     }
 
     /**
-     * @param {Cells} cells
-     * @returns {boolean} Whether the bound buffer changed.
+     * @param {import("../raster.js").RasterData} data
+     * @param {number} [expectedCount]
      */
-    _writeCells(cells) {
-        if (
-            cells.constructor !==
-            /** @type {Cells} */ (this._markConfig.cells).constructor
-        ) {
+    replaceSeries(data, expectedCount) {
+        const { count, series, cells } = prepareRasterData(
+            this.device,
+            data,
+            this.schema
+        );
+        if (expectedCount !== undefined && count !== expectedCount) {
             throw new Error(
-                "Retained raster cells must keep their original numeric type."
+                "Raster series count must match the number of tiles."
             );
         }
-        validateStorageBufferSize(
-            this.device,
-            cells.byteLength,
-            "Raster cells"
-        );
+        const prepared = this._seriesBuffers.prepareSeries(series, count);
+        this._applyPreparedSeries(prepared, count, this._writeCells(cells));
+    }
+
+    /** @param {Uint32Array} cells */
+    _writeCells(cells) {
         const previous = this._extraBuffers.get("rasterCells");
         const replace = !previous || previous.size < cells.byteLength;
         const buffer = replace
@@ -177,7 +170,7 @@ export default class RasterProgram extends BaseProgram {
               })
             : previous;
 
-        this.device.queue.writeBuffer(buffer, 0, cells);
+        if (cells.length) this.device.queue.writeBuffer(buffer, 0, cells);
         if (replace) {
             this._extraBuffers.set("rasterCells", buffer);
             previous?.destroy();

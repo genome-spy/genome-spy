@@ -160,7 +160,8 @@ export function buildMarkShader({
     const vertexComputeVisibility =
         GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
     const seriesChannelIRs = channelIRs.filter(
-        (channelIR) => channelIR.sourceKind === "series"
+        (channelIR) =>
+            channelIR.sourceKind === "series" && !channelIR.readInFragment
     );
     const ordinalRangeChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsOrdinalRange
@@ -698,11 +699,14 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
         const { name } = channelIR;
         const hasConditions = (channelIR.channel.conditions?.length ?? 0) > 0;
         const baseFunctionName = hasConditions ? `${name}_base` : name;
+        const mappingName = channelIR.transparentOnNonFinite
+            ? `${name}_finite`
+            : baseFunctionName;
         if (channelIR.needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
-                    functionName: baseFunctionName,
+                    functionName: mappingName,
                     scaleDef: channelIR.scaleDef,
                     rawValueExpr: channelIR.rawValueExpr,
                     scalarType: channelIR.scalarType,
@@ -718,9 +722,16 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                 })
             );
         } else {
-            channelFns.push(
-                emitPassthroughFunction(channelIR, baseFunctionName)
-            );
+            channelFns.push(emitPassthroughFunction(channelIR, mappingName));
+        }
+        if (channelIR.transparentOnNonFinite) {
+            channelFns.push(/* wgsl */ `
+fn ${SCALED_FUNCTION_PREFIX}${baseFunctionName}(i: u32) -> vec4<f32> {
+    if ((bitcast<u32>(${channelIR.rawValueExpr}) & 0x7f800000u) == 0x7f800000u) {
+        return vec4<f32>(0.0);
+    }
+    return ${SCALED_FUNCTION_PREFIX}${mappingName}(i);
+}`);
         }
         if (hasConditions) {
             channelFns.push(

@@ -33,6 +33,7 @@ function equalUniformValues(previous, value) {
     );
 }
 
+/** @typedef {import("@genome-spy/webgpu-renderer/marks/raster").RasterConfig} RasterConfig */
 /** @typedef {Pick<import("@genome-spy/webgpu-renderer").ChannelConfigInput, "scale" | "conditions" | "band" | "gapPeer">} PositionConfig */
 
 /**
@@ -385,8 +386,11 @@ export default class WebGpuSurface {
                         retained.sharedMappings.get(channel) !==
                             sharedMappings.get(channel) ||
                         positionBindingChanged(
-                            retained.config.channels?.[channel],
-                            config.channels?.[channel]
+                            (retained.config.position ??
+                                retained.config.channels)?.[channel],
+                            ("data" in config
+                                ? config.position
+                                : config.channels)?.[channel]
                         )
                 )) ||
             !!retained.config.placementIndex !== !!config.placementIndex ||
@@ -431,9 +435,10 @@ export default class WebGpuSurface {
                 retained.resourceExpressionsRevision ===
                     resourceExpressionsRevision;
             if (configChanged && hasSeriesChanges(retained, config)) {
-                retained.series = collectSeries(config);
+                const series = collectSeries(config);
+                retained.handle.series.replace(series, config.count);
+                retained.series = series;
                 retained.count = config.count;
-                retained.handle.series.replace(retained.series, retained.count);
                 writes++;
             }
             if (configChanged || retained.properties !== properties) {
@@ -459,7 +464,7 @@ export default class WebGpuSurface {
 
     /**
      * @param {import("../../marks/mark.js").default} mark
-     * @param {import("@genome-spy/webgpu-renderer").MarkConfig} config
+     * @param {import("@genome-spy/webgpu-renderer").MarkConfig | RasterConfig} config
      * @param {symbol} layout
      */
     #resolveSharedScales(mark, config, layout) {
@@ -467,7 +472,7 @@ export default class WebGpuSurface {
         const sharedMappings = new Map();
         const channels =
             /** @type {Record<string, import("@genome-spy/webgpu-renderer").ChannelConfigInput>} */ (
-                config.channels
+                "data" in config ? config.position : config.channels
             );
         for (const channel of positionalChannels) {
             const input = channels?.[channel];
@@ -681,14 +686,14 @@ function equalFloat32Arrays(first, second) {
 }
 
 /**
- * @param {import("@genome-spy/webgpu-renderer").MarkConfig} config
+ * @param {import("@genome-spy/webgpu-renderer").MarkConfig | RasterConfig} config
  * @param {SharedMappings} sharedMappings
  */
 function bindSharedScales(config, sharedMappings) {
     if (!sharedMappings.size) return config;
     const channels =
         /** @type {Record<string, import("@genome-spy/webgpu-renderer").ChannelConfigInput>} */ ({
-            ...config.channels,
+            ...("data" in config ? config.position : config.channels),
         });
     for (const [name, { handle }] of sharedMappings) {
         const input = channels[name];
@@ -702,7 +707,9 @@ function bindSharedScales(config, sharedMappings) {
             gapBefore,
         };
     }
-    return { ...config, channels };
+    return "data" in config
+        ? { ...config, position: channels }
+        : { ...config, channels };
 }
 
 /**
@@ -763,7 +770,10 @@ function compileResourceBindings(
         return binding;
     };
 
-    for (const [name, channel] of Object.entries(config.channels)) {
+    for (const [name, channel] of Object.entries({
+        ...config.position,
+        ...config.channels,
+    })) {
         compileChannelBindings(
             add,
             `channel:${name}:default`,
@@ -1020,6 +1030,7 @@ function uint32ArraysEqual(previous, next) {
  * @param {any} config
  */
 function hasSeriesChanges(retained, config) {
+    if (config.data) return retained.series !== config.data;
     if (retained.count != config.count) {
         return true;
     }
@@ -1049,6 +1060,7 @@ function hasSeriesChanges(retained, config) {
  * @returns {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>}
  */
 function collectSeries(config) {
+    if (config.data) return config.data;
     /** @type {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} */
     const series = {};
     for (const [name, channel] of Object.entries(config.channels)) {

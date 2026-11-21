@@ -369,7 +369,7 @@ export class Renderer {
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
         /**
-         * @type {Map<MarkId, import("./index.d.ts").MarkProgram>}
+         * @type {Map<MarkId, import("./index.d.ts").MarkProgram<any, any>>}
          * @internal Development GPU checks and benchmarks inspect mark programs.
          */
         this._marks = new Map();
@@ -612,7 +612,7 @@ export class Renderer {
 
     /**
      * @template TConfig
-     * @template {Record<string, import("./index.d.ts").SeriesData>} TSeries
+     * @template {object} TSeries
      * @template {object} TProperties
      * @param {import("./index.d.ts").MarkDefinition<TConfig, TSeries, TProperties>} definition
      * @param {TConfig} config

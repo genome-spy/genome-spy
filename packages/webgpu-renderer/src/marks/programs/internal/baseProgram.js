@@ -197,6 +197,7 @@ export function setDebugResourcesEnabled(enabled) {
  * Base class for marks that build WGSL dynamically based on channel configs.
  * Subclasses supply channel lists, defaults, and shader bodies.
  */
+/** @template {object} [TSeries=Record<string, import("../../../index.d.ts").SeriesData>] */
 export default class BaseProgram {
     #destroyed = false;
 
@@ -245,7 +246,7 @@ export default class BaseProgram {
 
     #slotBindingsDirty = false;
 
-    /** @type {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">} */
+    /** @type {Omit<import("../../../index.d.ts").MarkHandle<TSeries, any>, "markId">} */
     #slotHandles;
 
     /**
@@ -324,23 +325,27 @@ export default class BaseProgram {
                     ? config.seriesIndexExpression
                     : undefined,
         });
-        const fragmentReads = this.fragmentChannelReads;
+        const drawSeries = { ...this._channels };
         for (const channel of compiledChannels.channelIRs) {
-            const read = fragmentReads[channel.name];
+            const read = this.getFragmentSeriesRead(channel);
             if (read !== undefined) {
-                channel.rawValueExpr = read;
+                channel.rawValueExpr = read.expression;
+                channel.transparentOnNonFinite = read.transparentOnNonFinite;
                 channel.readInFragment = true;
+                delete drawSeries[channel.name];
             }
         }
         this.#logicalSeriesTargets = this.#collectLogicalSeriesTargets();
         /** @protected */
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
-            this._channels,
+            drawSeries,
             this.channelSpecs,
-            this.label
+            this.label,
+            !this.hasCellPredicates
         );
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
+        const initialSeries = this._seriesBuffers.prepareSeries({}, this.count);
         this.#scaleResources = new ScaleResourceManager({
             device: this.device,
             analysisByChannel: compiledChannels.analysisByChannel,
@@ -356,6 +361,7 @@ export default class BaseProgram {
             channels: this._channels,
             analysisByChannel: compiledChannels.analysisByChannel,
             visibleWhen,
+            cellPredicates: this.hasCellPredicates,
             order: this._order,
             label: this.label,
             setUniformValue: (name, value) =>
@@ -427,7 +433,7 @@ export default class BaseProgram {
                     name: bindingName,
                     kind: "buffer",
                     role: "extraBuffer",
-                    visibility: "vertex",
+                    visibility: this.hasCellPredicates ? "all" : "vertex",
                     bufferType: "uniform",
                     wgslType: "array<vec4<f32>, 3>",
                 });
@@ -486,15 +492,7 @@ export default class BaseProgram {
         this.#getPipeline = getPipeline;
         this.#getPickPipeline = getPickPipeline;
 
-        // Initialize any series-backed channels.
-        this.updateSeries(
-            Object.fromEntries(
-                Object.entries(this._channels)
-                    .filter(([, v]) => isSeriesChannelConfig(v))
-                    .map(([k, v]) => [k, v.data])
-            ),
-            this.count
-        );
+        this._applyPreparedSeries(initialSeries, this.count, false);
         this.#scaleResources.subscribeSharedScales((rebind) =>
             this._queueSlotUpdate(rebind)
         );
@@ -561,13 +559,17 @@ export default class BaseProgram {
     }
 
     /**
-     * Custom fragment inputs to the ordinary scale functions. An expression
-     * can use `i` as the index into its mark-specific storage.
-     * @returns {Record<string, string>}
+     * @param {import("../../shaders/channelIR.js").ChannelIR} _channel
+     * @returns {{expression: string, transparentOnNonFinite?: boolean} | undefined}
      * @protected
      */
-    get fragmentChannelReads() {
-        return {};
+    getFragmentSeriesRead(_channel) {
+        return undefined;
+    }
+
+    /** @protected */
+    get hasCellPredicates() {
+        return false;
     }
 
     /**
@@ -644,12 +646,27 @@ export default class BaseProgram {
      * @returns {void}
      */
     updateSeries(channels, count, boundResourcesChanged = false) {
-        const inferred = count ?? this._seriesBuffers.inferCount(channels);
-        this.count = inferred ?? this.count ?? 1;
-        const packedBuffersChanged = this._seriesBuffers.updateSeries(
-            channels,
-            this.count
+        const nextCount =
+            count ??
+            this._seriesBuffers.inferCount(channels) ??
+            this.count ??
+            1;
+        this._applyPreparedSeries(
+            this._seriesBuffers.prepareSeries(channels, nextCount),
+            nextCount,
+            boundResourcesChanged
         );
+    }
+
+    /**
+     * @protected
+     * @param {ReturnType<SeriesBufferManager["prepareSeries"]>} prepared
+     * @param {number} count
+     * @param {boolean} boundResourcesChanged
+     */
+    _applyPreparedSeries(prepared, count, boundResourcesChanged) {
+        const packedBuffersChanged = this._seriesBuffers.applySeries(prepared);
+        this.count = count;
 
         if (packedBuffersChanged || boundResourcesChanged || !this.#bindGroup) {
             this._rebuildBindGroup();
@@ -660,12 +677,19 @@ export default class BaseProgram {
     /**
      * Replace the complete logical series set exposed through the public handle.
      *
-     * @param {Record<string, import("../../../index.d.ts").SeriesData>} channels
+     * @param {TSeries} channels
      * @param {number} [count]
      * @returns {void}
      */
     replaceSeries(channels, count) {
-        this.updateSeries(this._resolveSeries(channels), count);
+        this.updateSeries(
+            this._resolveSeries(
+                /** @type {Record<string, import("../../../index.d.ts").SeriesData>} */ (
+                    channels
+                )
+            ),
+            count
+        );
     }
 
     /**
@@ -861,7 +885,7 @@ export default class BaseProgram {
     /**
      * Slot handles for scale/value/selection updates (default + conditional branches).
      *
-     * @returns {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">}
+     * @returns {Omit<import("../../../index.d.ts").MarkHandle<TSeries, any>, "markId">}
      */
     getSlotHandles() {
         return this.#slotHandles;

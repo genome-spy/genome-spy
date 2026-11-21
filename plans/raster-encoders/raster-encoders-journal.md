@@ -53,3 +53,34 @@ dragging may recolor visible tiles on the CPU.
 The ordinary row predicate looked for a scalar field on the tile record. A
 dataflow filter would republish tiles during brushing and could change the color
 domain. Spatial cell conditions still need their own projection semantics.
+
+## Standalone WebGPU API
+
+A tile is a draw instance for placement and a container for cell addresses. The
+Core adapter uploads its edges in one packed vertex buffer and the named cell
+inputs in a separate fragment buffer. A single field can upload its original
+bits directly. Multiple fields are interleaved into one binding to keep the
+number of GPU storage bindings independent of field count.
+
+We considered expanding cells into ordinary rows and adding a texture per field.
+Rows would repeat positions or IDs and increase CPU work on tile publication.
+Separate textures would complicate formats and binding limits. The chosen split
+keeps buffer writes tied to data publication and lets scales and selections
+update independently. Empty snapshots and shared cell ranges are valid. The
+implementation validates and packs both buffers before uploading a replacement.
+Initial array identity does not tie edges together.
+
+The Core gradient brush now writes the renderer's interval selection slot. It
+can stay active over replacement tiles with a different resolution. MSA category
+predicates on a strip's row use an explicit broadcast of the row ID into a cell
+field. That broadcast costs an extra word per cell when used. Measure that case
+on much larger alignments before introducing a separate storage representation.
+Positional predicates on Core cells still need a grammar for how to project the
+cell geometry.
+
+A raster without active conditional ordering uses one draw. Active ordering
+draws the tile geometry twice and tests the same raw cell predicate in each
+pass. Each cell contributes to one pass, including when overlapping tiles are
+translucent. Ordinary conditions use the fragment shader in the single draw. The
+CPU and GPU may round blended RGBA8 values differently at half-unit boundaries,
+so the compositing check tolerates one unit of quantization.

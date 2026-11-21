@@ -254,7 +254,7 @@ export type ChannelSlotGroup<T> = Partial<T> & {
 export type SeriesData = TypedArray | string | string[];
 
 export type SeriesSlotHandle<
-    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TSeries extends object = Record<string, SeriesData>,
 > = {
     /**
      * Replace every series-backed logical channel configured on the mark.
@@ -264,7 +264,7 @@ export type SeriesSlotHandle<
 };
 
 export type MarkHandle<
-    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TSeries extends object = Record<string, SeriesData>,
     TProperties extends object = Record<never, never>,
 > = {
     markId: MarkId;
@@ -1340,7 +1340,7 @@ export type RenderPassState = {
 export class RendererError extends Error {}
 
 export type MarkProgram<
-    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TSeries extends object = Record<string, SeriesData>,
     TProperties extends object = Record<never, never>,
 > = {
     /** Immutable edge-antialiasing strategy selected when the program is created. */
@@ -1369,7 +1369,7 @@ export type MarkProgram<
 
 export type MarkDefinition<
     TConfig = MarkConfig,
-    TSeries extends Record<string, SeriesData> = Record<string, TypedArray>,
+    TSeries extends object = Record<string, TypedArray>,
     TProperties extends object = Record<never, never>,
 > = Readonly<{
     /** Diagnostic name; dispatch uses the definition value, not this string. */
@@ -1394,11 +1394,7 @@ export class Renderer {
     ): DetachedTargetHandle;
 
     /** Create a retained mark from an explicitly imported definition. */
-    createMark<
-        TConfig,
-        TSeries extends Record<string, SeriesData>,
-        TProperties extends object,
-    >(
+    createMark<TConfig, TSeries extends object, TProperties extends object>(
         definition: MarkDefinition<TConfig, TSeries, TProperties>,
         config: TConfig,
         options?: MarkCreationOptions

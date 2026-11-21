@@ -380,36 +380,6 @@ export function validateChannel(name, channel, context, analysisName = name) {
             const { when, value } = condition;
             normalizeSelectionPredicate(when);
 
-            /** @param {import("../../../index.d.ts").SelectionPredicate} node */
-            const checkInputs = (node) => {
-                if ("all" in node || "any" in node) {
-                    for (const child of "all" in node ? node.all : node.any) {
-                        checkInputs(child);
-                    }
-                } else if ("not" in node) {
-                    checkInputs(node.not);
-                } else if ("selection" in node && node.type === "interval") {
-                    for (const projection of node.projections) {
-                        if (!Object.hasOwn(channelSpecs, projection.input)) {
-                            throw new Error(
-                                `Channel "${name}" references unknown selection input "${projection.input}".`
-                            );
-                        }
-                        if (
-                            projection.secondaryInput !== undefined &&
-                            !Object.hasOwn(
-                                channelSpecs,
-                                projection.secondaryInput
-                            )
-                        ) {
-                            throw new Error(
-                                `Channel "${name}" references unknown selection input "${projection.secondaryInput}".`
-                            );
-                        }
-                    }
-                }
-            };
-            checkInputs(when);
             if (condition.channel) {
                 if (value !== undefined) {
                     throw new Error(

@@ -1,7 +1,10 @@
 import { pointStrokeAlign } from "../../marks/point.js";
 import { collectAppearanceSelections } from "../../selection/selection.js";
 import { resolveCategoryInput } from "../../selection/categorySelection.js";
-import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
+import {
+    collectSamplingSelections,
+    selectionPredicateLeaves,
+} from "../../selection/selectionPredicateTree.js";
 import { cssColorToRgba, packCssColor } from "../color.js";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
@@ -211,8 +214,11 @@ export function createWebGpuMarkConfig(
         definition = pointMark;
         config = createPointConfig(mark, data, coords);
     } else if (mark instanceof RasterMark) {
-        definition = rasterMark;
-        config = createRasterConfig(mark, data, coords);
+        return createTranslation(
+            rasterMark,
+            createRasterConfig(mark, data, coords, placementIndex),
+            mark
+        );
     } else if (markType == "rect") {
         definition = rectMark;
         config = createRectConfig(mark, data, coords);
@@ -468,6 +474,18 @@ function createSelectionCondition(mark, predicate) {
         };
     }
     if (predicate.type === "interval") {
+        if (
+            mark instanceof RasterMark &&
+            predicate.projections.some(
+                ({ input, secondaryInput }) =>
+                    input !== "color" || secondaryInput !== undefined
+            )
+        ) {
+            throw unsupported(
+                mark,
+                "Raster interval predicates in Core require a color cell projection."
+            );
+        }
         return {
             selection: predicate.param,
             type: "interval",
@@ -565,28 +583,82 @@ function createRectConfig(mark, data, coords) {
     };
 }
 
-/** @type {WeakMap<RasterMark, {data: object[], palette: import("../../types/encoder.js").VegaScale | undefined, packed: ReturnType<typeof packRasterTiles>}>} */
+/**
+ * @typedef {import("@genome-spy/webgpu-renderer/marks/raster").RasterData} RasterData
+ * @typedef {import("@genome-spy/webgpu-renderer/marks/raster").RasterConfig} RasterConfig
+ */
+
+/** @type {WeakMap<RasterMark, {data: object[], palette: import("../../types/encoder.js").VegaScale | undefined, packed: ReturnType<typeof packRasterTiles>, snapshot?: RasterData}>} */
 const rasterDataCache = new WeakMap();
 
 /**
  * @param {RasterMark} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} placement
+ * @returns {RasterConfig}
  */
-function createRasterConfig(mark, data, coords) {
+function createRasterConfig(mark, data, coords, placement) {
     const { strip, type } = mark.getColorCellBinding();
     const xScale = requireEncoder(mark, "x").scale;
     const color = mark.validateRenderingScales().getScale();
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
+    const encoder = mark.encoders.opacity;
+    // Keep the declarative gradient subset shared with Canvas.
+    mark.getCellOpacityReader();
+    const opacity = encoder && createNumericChannel(mark, "opacity", data);
+
     let cached = rasterDataCache.get(mark);
     if (cached?.data !== data || cached.palette !== palette) {
         try {
+            /** @type {import("../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate[]} */
+            const predicates = [
+                ...(encoder?.branches ?? []).map(
+                    ({ predicate }) => predicate.selection
+                ),
+                mark.getOrder()?.predicate.selection,
+            ];
+            const categoryInputs = new Set(
+                predicates.flatMap((predicate) =>
+                    predicate
+                        ? Array.from(
+                              selectionPredicateLeaves(predicate)
+                          ).flatMap((leaf) =>
+                              "type" in leaf && leaf.type === "categories"
+                                  ? leaf.projections.map(({ input }) => input)
+                                  : []
+                          )
+                        : []
+                )
+            );
+            const cellInputs = Object.fromEntries(
+                Array.from(categoryInputs)
+                    .filter((input) => input !== "color")
+                    .map((input) => {
+                        const inputEncoder = requireEncoder(mark, input);
+                        return [
+                            input,
+                            toCategoricalArray(
+                                mark,
+                                input,
+                                data,
+                                inputEncoder.branches[0].accessor,
+                                inputEncoder.scale
+                            ).values,
+                        ];
+                    })
+            );
             cached = {
                 data,
                 palette,
-                packed: packRasterTiles(mark, data, categories?.intern),
+                packed: packRasterTiles(
+                    mark,
+                    data,
+                    categories?.intern,
+                    cellInputs
+                ),
             };
         } catch (error) {
             throw unsupported(mark, error.message, error);
@@ -594,34 +666,64 @@ function createRasterConfig(mark, data, coords) {
         rasterDataCache.set(mark, cached);
     }
 
-    const brush = mark.getCellOpacityReader();
-    const cellOpacity = brush && liveValue(() => brush(data[0]));
-    const { cells, inputs } = cached.packed;
     const reverseIndex =
         strip && xScale.type === "index" && xScale.props.reverse;
+    const channels = {
+        x: createPositionChannel(
+            mark,
+            "x",
+            data,
+            coords,
+            reverseIndex ? 1 : undefined
+        ),
+        x2: createPositionChannel(
+            mark,
+            "x2",
+            data,
+            coords,
+            reverseIndex ? 0 : undefined
+        ),
+        y: createPositionChannel(mark, "y", data, coords),
+        y2: createPositionChannel(mark, "y2", data, coords),
+    };
+    const position = Object.fromEntries(
+        Object.entries(channels).map(([name, channel]) => {
+            const { scale, inputComponents } = channel;
+            const descriptor = { scale, inputComponents };
+            SCALE_DEPENDENT_VALUES.set(
+                descriptor,
+                getWebGpuChannelResolution(channel)
+            );
+            return [name, descriptor];
+        })
+    );
+    /** @type {RasterData["tiles"]} */
+    const tiles = {
+        ...cached.packed.tiles,
+        x0: /** @type {RasterData["tiles"]["x0"]} */ (channels.x.data),
+        x1: /** @type {RasterData["tiles"]["x1"]} */ (channels.x2.data),
+        y0: /** @type {RasterData["tiles"]["y0"]} */ (channels.y.data),
+        y1: /** @type {RasterData["tiles"]["y1"]} */ (channels.y2.data),
+        ...(placement &&
+            "data" in placement && { placementIndices: placement.data }),
+    };
+    if (
+        !cached.snapshot ||
+        Object.entries(tiles).some(
+            ([key, array]) => array !== cached.snapshot.tiles[key]
+        ) ||
+        cached.snapshot.tiles.placementIndices !== tiles.placementIndices
+    ) {
+        cached.snapshot = { tiles, cells: cached.packed.cells };
+    }
+
     return {
-        count: data.length,
-        inputs,
-        cells,
-        cellOpacity: cellOpacity?.value,
+        data: cached.snapshot,
+        placement: placement && "source" in placement ? "draw" : undefined,
+        position,
         channels: {
-            x: createPositionChannel(
-                mark,
-                "x",
-                data,
-                coords,
-                reverseIndex ? 1 : undefined
-            ),
-            x2: createPositionChannel(
-                mark,
-                "x2",
-                data,
-                coords,
-                reverseIndex ? 0 : undefined
-            ),
-            y: createPositionChannel(mark, "y", data, coords),
-            y2: createPositionChannel(mark, "y2", data, coords),
             fill: {
+                input: "color",
                 scale: createColorScale(
                     mark,
                     "color",
@@ -629,14 +731,11 @@ function createRasterConfig(mark, data, coords) {
                     categories?.readDomain
                 ),
             },
-            opacity:
-                !brush && mark.encoders.opacity
-                    ? createNumericChannel(mark, "opacity", data)
-                    : { value: 1 },
-        },
-        retainedProperties: {
-            cells: { value: cells },
-            ...(cellOpacity && { cellOpacity }),
+            ...(opacity && {
+                opacity: /** @type {RasterConfig["channels"]["opacity"]} */ (
+                    opacity
+                ),
+            }),
         },
     };
 }
@@ -644,37 +743,51 @@ function createRasterConfig(mark, data, coords) {
 /**
  * @param {RasterMark} mark
  * @param {object[]} data
- * @param {(value: import("../../spec/channel.js").Scalar) => number} [intern]
+ * @param {((value: import("../../spec/channel.js").Scalar) => number) | undefined} intern
+ * @param {Record<string, Uint32Array>} cellInputs
  */
-function packRasterTiles(mark, data, intern) {
+function packRasterTiles(mark, data, intern, cellInputs) {
     const tiles = data.map(mark.getColorCellBinding().readTile);
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
     const offsets = new Uint32Array(tiles.length);
     const length = tiles.reduce((count, tile) => count + tile.values.length, 0);
-    const cells = intern ? new Uint32Array(length) : new Float32Array(length);
+    const color = intern ? new Uint32Array(length) : new Float32Array(length);
     const encodeCell = intern ?? readNumericRasterCell;
+    const categoryFields = Object.entries(cellInputs).map(([name, values]) => ({
+        name,
+        values,
+        cells: new Uint32Array(length),
+    }));
     let offset = 0;
     for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
         columns[index] = horizontal.count;
         rows[index] = vertical?.count ?? 1;
         offsets[index] = offset;
         if (!intern && values instanceof Float32Array) {
-            cells.set(values, offset);
+            color.set(values, offset);
         } else {
             for (let cell = 0; cell < values.length; cell++) {
-                cells[offset + cell] = encodeCell(values[cell]);
+                color[offset + cell] = encodeCell(values[cell]);
             }
+        }
+        for (const category of categoryFields) {
+            category.cells.fill(
+                category.values[index],
+                offset,
+                offset + values.length
+            );
         }
         offset += values.length;
     }
     return {
-        cells,
-        inputs: {
-            columns: { data: columns, type: "u32" },
-            rows: { data: rows, type: "u32" },
-            cellOffset: { data: offsets, type: "u32" },
+        cells: {
+            color,
+            ...Object.fromEntries(
+                categoryFields.map(({ name, cells }) => [name, cells])
+            ),
         },
+        tiles: { columns, rows, offsets },
     };
 }
 

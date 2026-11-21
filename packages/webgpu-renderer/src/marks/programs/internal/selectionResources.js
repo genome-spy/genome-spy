@@ -357,6 +357,21 @@ function predicateReferences(node, name) {
     return node.selection === name;
 }
 
+const floatBits = new DataView(new ArrayBuffer(4));
+
+/**
+ * Rounding a threshold up preserves both low <= cell and cell < high
+ * for float32 cells, even when the brush bounds fall between float32 values.
+ * @param {number} threshold
+ */
+function ceilFloat32(threshold) {
+    const rounded = Math.fround(threshold);
+    if (!(rounded < threshold)) return rounded;
+    floatBits.setFloat32(0, rounded);
+    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
+    return floatBits.getFloat32(0);
+}
+
 /**
  * Manages GPU resources for selection predicates declared in channel configs.
  */
@@ -385,6 +400,7 @@ export class SelectionResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
+     * @param {boolean} [params.cellPredicates]
      * @param {import("../../../index.d.ts").MarkOrder} [params.order]
      * @param {string} [params.label]
      * @param {(name: string, value: UniformValue) => void} params.setUniformValue
@@ -394,10 +410,12 @@ export class SelectionResourceManager {
         channels,
         analysisByChannel,
         visibleWhen,
+        cellPredicates = false,
         order,
         label = "mark",
         setUniformValue,
     }) {
+        this.cellPredicates = cellPredicates;
         this.#device = device;
         this.#label = label;
         this.#setUniformValue = setUniformValue;
@@ -501,7 +519,7 @@ export class SelectionResourceManager {
                 wgslName: bufferName,
                 wgslType: "array<HashEntry>",
                 bufferType: "read-only-storage",
-                visibility: "vertex",
+                visibility: this.cellPredicates ? "fragment" : "vertex",
             });
         }
         return extras;
@@ -571,7 +589,10 @@ export class SelectionResourceManager {
                     ? active
                         ? representation.inputComponents === 2
                             ? packHighPrecisionU32Array(interval)
-                            : Array.from(interval)
+                            : Array.from(
+                                  interval,
+                                  this.cellPredicates ? ceilFloat32 : Number
+                              )
                         : representation.inputComponents === 2
                           ? INACTIVE_PACKED_BOUNDS
                           : INACTIVE_INTERVAL_BOUNDS
