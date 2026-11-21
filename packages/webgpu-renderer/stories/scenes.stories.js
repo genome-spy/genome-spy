@@ -20,6 +20,7 @@ import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
 import runSelectionPredicateScene from "../examples/selectionPredicateScene.js";
 import runRasterScene from "../examples/rasterScene.js";
+import runRasterImagesScene from "../examples/rasterImagesScene.js";
 import runConditionalOrderScene from "../examples/conditionalOrderScene.js";
 import runGroupScene from "../examples/groupScene.js";
 import {
@@ -407,6 +408,17 @@ export const RasterCells = withSource("runRasterScene", null, {
         },
     },
     render: (args) => renderScene(runRasterScene, args),
+});
+
+export const RasterImages = withSource("runRasterImagesScene", null, {
+    parameters: {
+        docs: {
+            description: {
+                story: "Six tiles share one 64 × 64 RGBA image of the GenomeSpy bowtie.",
+            },
+        },
+    },
+    render: (args) => renderScene(runRasterImagesScene, args),
 });
 
 export const IndexedPlacements = withSource("runIndexedPlacementScene", null, {
