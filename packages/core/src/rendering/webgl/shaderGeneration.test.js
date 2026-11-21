@@ -405,7 +405,7 @@ describe("generated shader snapshots", () => {
             },
         });
 
-        expect(sources.vertex).toContain("mediump float uDomain_fill[4]");
+        expect(sources.vertex).toContain("float uDomain_fill[4]");
         expect(sources.vertex).toContain(
             "while (slot < uDomain_fill.length() && value >= uDomain_fill[slot])"
         );

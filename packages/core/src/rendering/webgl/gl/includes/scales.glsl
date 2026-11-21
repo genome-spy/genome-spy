@@ -40,8 +40,8 @@ float scaleLinear(float value, vec2 domain, vec2 range) {
 float scaleLog(float value, vec2 domain, vec2 range, float base) {
     // y = m log(x) + b 
     // TODO: Perf optimization: precalculate log domain in js.
-    // TODO: Reversed domain, etc
-    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+    float direction = sign(domain[0]);
+    return scaleLinear(log(value * direction) / log(base), log(domain * direction) / log(base), range);
 }
 
 float symlog(float value, float constant) {

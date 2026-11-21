@@ -334,6 +334,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
         ["band", "point"].includes(scale.type);
     const sharedDomain = shareScale && usesDomain && !needsSlot;
     const sharedBlock = sharedDomain && channel === primary;
+    const precision = hp || isColorChannel(channel) ? "highp" : "mediump";
 
     /** @type {string} */
     let domainUniform;
@@ -348,7 +349,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
     glsl.push("");
     if (sharedBlock) {
         glsl.push(`layout(std140) uniform SharedScale_${primary} {
-    ${hp ? "highp" : "mediump"} vec4 ${domainUniformName};
+    ${precision} vec4 ${domainUniformName};
     highp vec4 uGapGeometry_${primary};
     highp int uGapCount_${primary};
 };`);
@@ -616,7 +617,7 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
                 : 2;
         domainUniform = hp
             ? `    highp vec3 ${domainUniformName};`
-            : `    mediump float ${domainUniformName}[${length}];`;
+            : `    ${precision} float ${domainUniformName}[${length}];`;
     }
 
     return {

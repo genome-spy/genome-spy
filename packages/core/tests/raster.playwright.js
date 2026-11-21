@@ -4,7 +4,7 @@ import { expect, test } from "playwright/test";
 
 const coreSource = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 
-for (const renderer of /** @type {const} */ (["webgpu", "canvas"])) {
+for (const renderer of /** @type {const} */ (["webgpu", "canvas", "webgl"])) {
     test(`${renderer} raster maps cells and a row-backed rule onto the same locus axis`, ({
         playwright,
         baseURL,
@@ -17,17 +17,23 @@ for (const renderer of /** @type {const} */ (["webgpu", "canvas"])) {
         playwright,
         baseURL,
     }) => checkRasterCloseZoom(playwright, baseURL, renderer));
+    if (renderer === "webgl") continue;
     test(`${renderer} gradient brush controls opacity per raster cell`, ({
         playwright,
         baseURL,
     }) => checkRasterBrush(playwright, baseURL, renderer));
 }
 
-test("Canvas recolors clipped raster tiles when the viewport log domain changes", async ({
-    playwright,
-    baseURL,
-}) =>
-    withRasterPage(playwright, baseURL, "canvas", async (page, setup) => {
+for (const renderer of /** @type {const} */ (["canvas", "webgl"])) {
+    test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterLogDomain(playwright, baseURL, renderer));
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {"canvas" | "webgl"} renderer */
+async function checkRasterLogDomain(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
             async ({ src, renderer, register }) => {
                 const { embed } = await import(src + "minimal.js");
@@ -139,11 +145,12 @@ test("Canvas recolors clipped raster tiles when the viewport log domain changes"
                 pixels: [black, black, [255, 0, 0, 255]],
             },
         });
-    }));
+    });
+}
 
 /** @typedef {import("playwright/test").PlaywrightTestArgs["playwright"]} Playwright */
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
 async function checkRasterBrush(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
@@ -340,7 +347,7 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
 async function checkRasterGrid(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(async (args) => {
@@ -465,7 +472,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
 async function checkRasterCloseZoom(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
@@ -628,7 +635,7 @@ async function checkRasterCloseZoom(playwright, baseURL, renderer) {
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
 async function checkRasterStrips(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const results = await page.evaluate(async (args) => {
@@ -766,7 +773,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
 /**
  * @param {Playwright} playwright
  * @param {string} baseURL
- * @param {"webgpu" | "canvas"} renderer
+ * @param {"webgpu" | "canvas" | "webgl"} renderer
  * @param {(page: import("playwright/test").Page, setup: {src: string, renderer: string, register: string}) => Promise<void>} check
  */
 async function withRasterPage(playwright, baseURL, renderer, check) {
@@ -814,7 +821,9 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
             register:
                 renderer === "canvas"
                     ? "rendering/registerCanvas.js"
-                    : "rendering/webgpu/register.js",
+                    : renderer === "webgl"
+                      ? "rendering/registerWebGL.js"
+                      : "rendering/webgpu/register.js",
         });
         expect(errors).toEqual([]);
     } finally {
@@ -822,9 +831,9 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
     }
 }
 
-/** @param {Playwright} playwright @param {"webgpu" | "canvas"} renderer */
+/** @param {Playwright} playwright @param {"webgpu" | "canvas" | "webgl"} renderer */
 function launchRasterBrowser(playwright, renderer) {
-    if (renderer === "canvas")
+    if (renderer !== "webgpu")
         return playwright.chromium.launch({ channel: "chrome" });
     const softwareWebGpu = process.platform === "linux";
     return playwright.chromium.launch({
