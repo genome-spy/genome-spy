@@ -15,10 +15,6 @@ const defaultLazyDataTimeoutMs = 30_000;
 const screenshotHarnessTimeoutPaddingMs = 60_000;
 
 const excludedExamples = new Set(["examples/core/app/samples.json"]);
-const rasterExamples = new Set([
-    "examples/core/lazy-data/higlass-raster.json",
-    "examples/core/raster/msa.json",
-]);
 
 const helpText = `Usage:
   node packages/core/scripts/captureScreenshots.mjs [examples/...json ...]
@@ -37,7 +33,6 @@ Notes:
   - Screenshots are written next to their source specs as sibling .png files.
   - Check mode visits examples even when a sibling screenshot already exists.
   - The script excludes app-only examples for now.
-  - Batch capture includes experimental raster examples with --renderer canvas or webgpu.
   - Remote lazy-data examples require network access during capture.
   - Explicitly listed examples overwrite by default. Batch runs skip existing screenshots unless --overwrite is provided.
 `;
@@ -53,7 +48,7 @@ export async function main(args = process.argv.slice(2)) {
     const examplePaths =
         options.examplePaths.length > 0
             ? normalizeRequestedPaths(options.examplePaths)
-            : collectCuratedExamplePaths(options.renderer);
+            : collectCuratedExamplePaths();
     const overwrite = options.overwrite ?? options.examplePaths.length > 0;
 
     if (!examplePaths.length) {
@@ -205,8 +200,7 @@ function normalizeRequestedPaths(examplePaths) {
         });
 }
 
-/** @param {string} renderer */
-export function collectCuratedExamplePaths(renderer) {
+export function collectCuratedExamplePaths() {
     /** @type {string[]} */
     const examplePaths = [];
 
@@ -217,12 +211,7 @@ export function collectCuratedExamplePaths(renderer) {
                 .relative(repoRoot, absolutePath)
                 .split(path.sep)
                 .join("/");
-            if (
-                !excludedExamples.has(examplePath) &&
-                (renderer === "webgpu" ||
-                    renderer === "canvas" ||
-                    !rasterExamples.has(examplePath))
-            ) {
+            if (!excludedExamples.has(examplePath)) {
                 examplePaths.push(examplePath);
             }
         });

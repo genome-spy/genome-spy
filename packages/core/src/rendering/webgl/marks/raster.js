@@ -48,11 +48,14 @@ export default class WebGLRasterMark {
     #dpr = 1;
     #pixelOffset = 0;
     #viewOpacity = 1;
+
+    /** @type {ReturnType<import("../../../marks/raster.js").default["getCellOpacityReader"]>} */
+    #readCellOpacity;
+
     #target = [0, 0];
     #tileUniforms = {
         uRect: [0, 0, 0, 0],
-        uAnchorPixel: [0, 0],
-        uAnchorCell: [0, 0],
+        uAnchor: [0, 0, 0, 0],
         uCellsPerPixel: [0, 0],
         uCells: /** @type {WebGLTexture | null} */ (null),
         uOpacity: 1,
@@ -75,6 +78,7 @@ export default class WebGLRasterMark {
     initializeGraphics() {
         this.#color = this.mark.validateRenderingScales();
         this.mark.initializeRenderingRevisions([]);
+        this.#readCellOpacity = this.mark.getCellOpacityReader();
         const gl = this.gl;
         this.#programStatus = createProgram(
             gl,
@@ -110,7 +114,7 @@ export default class WebGLRasterMark {
         const { readTile, type } = this.mark.getColorCellBinding();
         const categorical = type !== "quantitative";
         const indexer =
-            /** @type {{domainIndexer?: (value: string | number | null) => number}} */ (
+            /** @type {{domainIndexer: (value: string | number | null) => number}} */ (
                 this.#color.getScale().props
             ).domainIndexer;
         const size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
@@ -126,7 +130,9 @@ export default class WebGLRasterMark {
                     );
                 }
                 const src = categorical
-                    ? Uint32Array.from(values, indexer)
+                    ? Uint32Array.from({ length: values.length }, (_, i) =>
+                          indexer(values[i])
+                      )
                     : values instanceof Float32Array
                       ? values
                       : Float32Array.from(values, readNumericRasterCell);
@@ -181,7 +187,13 @@ export default class WebGLRasterMark {
                         ? 1
                         : this.mark.unitView.getEffectiveOpacity();
                 const mapping = this.#color.getMappingRef().get();
+                const brush = this.#readCellOpacity?.();
+                if (brush) {
+                    brush[0] = ceilFloat32(brush[0]);
+                    brush[1] = ceilFloat32(brush[1]);
+                }
                 setUniforms(this.#programInfo, {
+                    uBrush: brush,
                     uDomain_color: readScaleDomainUniform(mapping),
                     uRangeTexture_color: this.glHelper.rangeTextures.get(
                         mapping.scale
@@ -229,16 +241,6 @@ export default class WebGLRasterMark {
 
     /** @param {MarkRenderingOptions} options */
     render(options) {
-        const visit = (
-            /** @type {import("../../../view/layout/rectangle.js").default} */ coords,
-            /** @type {object[]} */ data
-        ) => {
-            visitRasterTiles(
-                this.mark,
-                { coords, data, visibleBounds: this.#bounds },
-                this.#drawTile
-            );
-        };
         return () => {
             if (this.mark.unitView.getCollector()?.completed) {
                 visitMarkOccurrences(
@@ -246,15 +248,29 @@ export default class WebGLRasterMark {
                     options,
                     this.#coords,
                     this.#sampleFacetCoords,
-                    visit
+                    this.#drawOccurrence
                 );
             }
         };
     }
 
+    /**
+     * @param {import("../../../view/layout/rectangle.js").default} coords
+     * @param {object[]} data
+     */
+    #drawOccurrence = (coords, data) => {
+        visitRasterTiles(
+            this.mark,
+            { coords, data, visibleBounds: this.#bounds },
+            this.#drawTile
+        );
+    };
+
     /** @param {object} datum @param {number} x0 @param {number} y0 @param {number} dx @param {number} dy */
     #drawTile = (datum, x0, y0, dx, dy) => {
-        const opacity = this.mark.encoders.opacity;
+        const opacity = this.#readCellOpacity
+            ? undefined
+            : this.mark.encoders.opacity;
         const alpha =
             this.#viewOpacity * (opacity ? encodeNumber(opacity, datum) : 1);
         if (!(alpha > 0)) return;
@@ -278,8 +294,7 @@ export default class WebGLRasterMark {
      * @param {number} count @param {number} lo @param {number} hi
      */
     #setAxis(axis, start, span, count, lo, hi) {
-        const { uRect, uAnchorPixel, uAnchorCell, uCellsPerPixel } =
-            this.#tileUniforms;
+        const { uRect, uAnchor, uCellsPerPixel } = this.#tileUniforms;
         start += this.#pixelOffset;
         const end = start + span;
         const first = Math.max(lo, Math.min(start, end));
@@ -292,8 +307,21 @@ export default class WebGLRasterMark {
         );
         uRect[axis] = first * this.#dpr;
         uRect[axis + 2] = last * this.#dpr;
-        uAnchorPixel[axis] = (start + anchor * step) * this.#dpr;
-        uAnchorCell[axis] = anchor;
+        uAnchor[axis] = (start + anchor * step) * this.#dpr;
+        uAnchor[axis + 2] = anchor;
         uCellsPerPixel[axis] = 1 / (step * this.#dpr);
     }
+}
+
+const floatBits = new DataView(new ArrayBuffer(4));
+
+/** Round upward so lower <= cell < upper holds for the Float32 texels.
+ * @param {number} threshold
+ */
+function ceilFloat32(threshold) {
+    const rounded = Math.fround(threshold);
+    if (!(rounded < threshold)) return rounded;
+    floatBits.setFloat32(0, rounded);
+    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
+    return floatBits.getFloat32(0);
 }

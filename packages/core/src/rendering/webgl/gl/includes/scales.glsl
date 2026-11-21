@@ -33,6 +33,7 @@ float scaleIdentity(uint value) {
 
 float scaleLinear(float value, vec2 domain, vec2 range) {
     float domainSpan = domain[1] - domain[0];
+    if (domainSpan == 0.0) return mix(range[0], range[1], 0.5);
     float rangeSpan = range[1] - range[0];
     return (value - domain[0]) / domainSpan * rangeSpan + range[0];
 }

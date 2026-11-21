@@ -4,7 +4,18 @@ import { expect, test } from "playwright/test";
 
 const coreSource = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 
-for (const renderer of /** @type {const} */ (["webgpu", "canvas", "webgl"])) {
+const registrations = {
+    webgpu: "rendering/webgpu/register.js",
+    canvas: "rendering/registerCanvas.js",
+    webgl: "rendering/registerWebGL.js",
+};
+
+/** @typedef {keyof typeof registrations} RasterRenderer */
+/** @typedef {import("playwright/test").PlaywrightTestArgs["playwright"]} Playwright */
+
+for (const renderer of /** @type {RasterRenderer[]} */ (
+    Object.keys(registrations)
+)) {
     test(`${renderer} raster maps cells and a row-backed rule onto the same locus axis`, ({
         playwright,
         baseURL,
@@ -17,21 +28,19 @@ for (const renderer of /** @type {const} */ (["webgpu", "canvas", "webgl"])) {
         playwright,
         baseURL,
     }) => checkRasterCloseZoom(playwright, baseURL, renderer));
-    if (renderer === "webgl") continue;
     test(`${renderer} gradient brush controls opacity per raster cell`, ({
         playwright,
         baseURL,
     }) => checkRasterBrush(playwright, baseURL, renderer));
+    if (renderer !== "webgpu") {
+        test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
+            playwright,
+            baseURL,
+        }) => checkRasterLogDomain(playwright, baseURL, renderer));
+    }
 }
 
-for (const renderer of /** @type {const} */ (["canvas", "webgl"])) {
-    test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
-        playwright,
-        baseURL,
-    }) => checkRasterLogDomain(playwright, baseURL, renderer));
-}
-
-/** @param {Playwright} playwright @param {string} baseURL @param {"canvas" | "webgl"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
 async function checkRasterLogDomain(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
@@ -148,9 +157,7 @@ async function checkRasterLogDomain(playwright, baseURL, renderer) {
     });
 }
 
-/** @typedef {import("playwright/test").PlaywrightTestArgs["playwright"]} Playwright */
-
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
 async function checkRasterBrush(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
@@ -347,7 +354,7 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
 async function checkRasterGrid(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(async (args) => {
@@ -364,7 +371,10 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                     height: 100,
                     padding: 0,
                     view: { stroke: null },
-                    params: [{ name: "upper", value: 4 }],
+                    params: [
+                        { name: "upper", value: 4 },
+                        { name: "upperColor", value: "red" },
+                    ],
                     resolve: { scale: { x: "shared", y: "shared" } },
                     scales: {
                         x: { type: "locus", domain: [start, start + 1] },
@@ -412,7 +422,10 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                                     type: "quantitative",
                                     scale: {
                                         domain: [0, { expr: "upper" }],
-                                        range: ["black", "red"],
+                                        range: [
+                                            "black",
+                                            { expr: "upperColor" },
+                                        ],
                                     },
                                     legend: null,
                                 },
@@ -455,6 +468,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                 );
                 const before = await sample();
                 api.params.get("upper").setValue(8);
+                api.params.get("upperColor").setValue("blue");
                 return { before, after: await sample(), errors };
             } finally {
                 api.finalize();
@@ -468,11 +482,11 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             [64, 0, 0],
             [0, 0, 255],
         ]);
-        expect(result.after[2]).toEqual([128, 0, 0]);
+        expect(result.after[2]).toEqual([0, 0, 128]);
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
 async function checkRasterCloseZoom(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
@@ -635,7 +649,7 @@ async function checkRasterCloseZoom(playwright, baseURL, renderer) {
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas" | "webgl"} renderer */
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
 async function checkRasterStrips(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const results = await page.evaluate(async (args) => {
@@ -662,7 +676,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                             },
                         ],
                         data: {
-                            values: ["AG?-", "-?GA"].map((sequence, row) => ({
+                            values: ["AG?-", "-🙂A"].map((sequence, row) => ({
                                 id: row ? "b" : "a",
                                 dimensions: {
                                     column: {
@@ -739,6 +753,12 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                                 [10, 30],
                                 [1, 48],
                                 [79, 48],
+                                ...(renderer === "webgl" && !reverse
+                                    ? [
+                                          [20, 12],
+                                          [40, 12],
+                                      ]
+                                    : []),
                             ],
                             null
                         ),
@@ -760,7 +780,22 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
         expect(results).toEqual([
             {
                 extent: [9, 17],
-                pixels: [red, blue, clear, gray, clear, fadedGray, fadedRed],
+                pixels: [
+                    red,
+                    blue,
+                    clear,
+                    gray,
+                    clear,
+                    fadedGray,
+                    fadedRed,
+                    // The internal edges mix colors and preserve transparent cells.
+                    ...(renderer === "webgl"
+                        ? [
+                              [128, 0, 128, 255],
+                              [0, 0, 255, 128],
+                          ]
+                        : []),
+                ],
             },
             {
                 extent: [9, 17],
@@ -773,7 +808,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
 /**
  * @param {Playwright} playwright
  * @param {string} baseURL
- * @param {"webgpu" | "canvas" | "webgl"} renderer
+ * @param {RasterRenderer} renderer
  * @param {(page: import("playwright/test").Page, setup: {src: string, renderer: string, register: string}) => Promise<void>} check
  */
 async function withRasterPage(playwright, baseURL, renderer, check) {
@@ -818,12 +853,7 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
         await check(page, {
             src: coreSource,
             renderer,
-            register:
-                renderer === "canvas"
-                    ? "rendering/registerCanvas.js"
-                    : renderer === "webgl"
-                      ? "rendering/registerWebGL.js"
-                      : "rendering/webgpu/register.js",
+            register: registrations[renderer],
         });
         expect(errors).toEqual([]);
     } finally {
@@ -831,7 +861,7 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
     }
 }
 
-/** @param {Playwright} playwright @param {"webgpu" | "canvas" | "webgl"} renderer */
+/** @param {Playwright} playwright @param {RasterRenderer} renderer */
 function launchRasterBrowser(playwright, renderer) {
     if (renderer !== "webgpu")
         return playwright.chromium.launch({ channel: "chrome" });

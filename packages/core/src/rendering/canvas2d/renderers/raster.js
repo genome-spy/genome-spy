@@ -27,7 +27,7 @@ export function renderRasterCanvas(mark, options) {
     const { context, visibleBounds } = options;
     const resolution = mark.validateRenderingScales();
     const firstDatum = options.data[options.start ?? 0];
-    const cellOpacity = mark.getCellOpacityReader()?.(firstDatum);
+    const cellOpacity = mark.getCellOpacityReader()?.();
     const opacity = cellOpacity ? undefined : mark.encoders.opacity;
     const constantOpacity = opacity?.constant
         ? encodeNumber(opacity, firstDatum)

@@ -479,9 +479,8 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             ? ["band", "point", "index"].includes(scale.type)
             : isOffsetChannel(channel) && scale.type === "band";
         if (
-            liveBandRange ||
-            isExprRef(rangeProp) ||
-            rangeProp.some(isExprRef)
+            !isColorChannel(channel) &&
+            (liveBandRange || isExprRef(rangeProp) || rangeProp.some(isExprRef))
         ) {
             if (range.length < 1 || range.length > 4) {
                 // TODO: Use an array instead of (float|vec[234]). This is likely to be a rare case, however.

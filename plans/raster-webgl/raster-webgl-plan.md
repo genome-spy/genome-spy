@@ -14,7 +14,9 @@ and mipmaps are outside this work.
   interpretation of gradient selections. `HiGlassSource` continues publishing
   one datum per tile. Both GPU backends consume the same collector and scale
   resolutions. Tile-level opacity still uses Core's row encoder. A gradient
-  opacity predicate tests the raw value of each sampled cell.
+  opacity predicate tests the raw value of each sampled cell. Round both brush
+  bounds upward to Float32 to preserve half-open comparisons with stored cells.
+  Use the mark's resource-expression subscriptions to request live redraws.
 - Add a WebGL delegate through `WebGLRendererResources`. Reuse the buffered draw
   order, collector revisions, facet batches, view opacity, and clip rules. The
   delegate owns the tile textures and program. Retain textures for the current
@@ -35,8 +37,9 @@ and mipmaps are outside this work.
   and send coordinates relative to a nearby cell boundary. Reuse the immediate
   occurrence helper for collector facet lookup and sample-facet placement.
   Resolve occurrences at draw time so a callback created for an empty facet can
-  draw when data arrives. Use the same pixel-offset convention as neighboring
-  WebGL marks in live and export passes.
+  draw when data arrives. Use the neighboring WebGL marks' half-pixel convention
+  for live and PNG draws. Honor the renderer's zero pixel-offset and opacity
+  options for hybrid draws.
 - Match the existing WebGPU filter. Split the device-pixel footprint at the
   nearest boundary on each axis, evaluate up to four samples, and blend their
   premultiplied colors. Keep a one-sample path away from boundaries. The
@@ -77,6 +80,8 @@ tile replacement and viewport-driven log mapping stay live. The gradient brush
 makes out-of-range cells transparent. MSA letters retain the palette through
 index zoom, and a neighboring rule remains aligned at close locus zoom. Data
 changes release retired textures, mapping and brush changes preserve them, and
-empty facet data can become populated without rebuilding layout. Check existing
-PNG and hybrid SVG rasterization with WebGL selected. The first version should
-record any observed draw-call or texture-size limits in the raster journal.
+empty facet data can become populated without rebuilding layout. Verify PNG
+export for raster and regression-test the existing hybrid SVG path for other
+marks. Raster-mark SVG support needs an export policy for embedding bitmaps and
+reporting their export metadata. The [journal](raster-webgl-journal.md) records
+this and the remaining performance questions.

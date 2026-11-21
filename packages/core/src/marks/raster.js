@@ -149,8 +149,8 @@ export default class RasterMark extends Mark {
                 accessor.asNumberAccessor()
             );
             const runtime = this.unitView.paramRuntime;
-            /** @param {object} datum @returns {CellOpacity} */
-            return (datum) => {
+            /** @returns {CellOpacity} */
+            return () => {
                 const selection =
                     /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
                         runtime.findValue(param)
@@ -160,8 +160,8 @@ export default class RasterMark extends Mark {
                 return [
                     bounds?.[0] ?? 0,
                     bounds?.[1] ?? 0,
-                    bounds ? clamp(matched(datum)) : 0,
-                    clamp(outside(datum)),
+                    bounds ? clamp(matched(null)) : 0,
+                    clamp(outside(null)),
                 ];
             };
         });

@@ -1,7 +1,7 @@
 {
   "description": [
     "Multiple Sequence Alignment with Raster Strips",
-    "Open with Canvas or WebGPU. Each sequence is one raster strip with base labels at higher zoom levels.",
+    "Each sequence is one raster strip with base labels at higher zoom levels.",
     "Data source: 16SRNA_Deino_87seq.aln from NCBI's Multiple Sequence Alignment Viewer tutorial and NCBI FTP. NCBI places no restrictions on use or distribution of molecular data in its databases, but original submitters may hold third-party intellectual-property rights."
   ],
 
