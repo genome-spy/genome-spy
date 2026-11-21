@@ -1,5 +1,6 @@
 import { readNumericRasterCell } from "../../../data/rasterTile.js";
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
+import clamp from "../../../utils/clamp.js";
 import ViewError from "../../../view/viewError.js";
 import { packCssColor } from "../../color.js";
 import { encodeNumber } from "../../immediate/markEncoding.js";
@@ -26,7 +27,7 @@ export function renderRasterCanvas(mark, options) {
     const { context } = options;
     const resolution = mark.validateRenderingScales();
     const firstDatum = options.data[options.start ?? 0];
-    const cellOpacity = mark.getCellOpacityBinding()?.read(firstDatum);
+    const cellOpacity = mark.getCellOpacityReader()?.(firstDatum);
     const opacity = cellOpacity ? undefined : mark.encoders.opacity;
     const constantOpacity = opacity?.constant
         ? encodeNumber(opacity, firstDatum)
@@ -59,6 +60,7 @@ export function renderRasterCanvas(mark, options) {
         bitmaps.set(mark, cache);
     }
 
+    const transform = context.getTransform();
     context.save();
     try {
         context.imageSmoothingEnabled = false;
@@ -83,15 +85,11 @@ export function renderRasterCanvas(mark, options) {
                 }
                 cache.tiles.set(datum, bitmap);
             }
-            context.save();
-            try {
-                context.globalAlpha = Math.min(1, alpha);
-                context.translate(x0, y0);
-                context.scale(Math.sign(dx), Math.sign(dy));
-                context.drawImage(bitmap, 0, 0, Math.abs(dx), Math.abs(dy));
-            } finally {
-                context.restore();
-            }
+            context.setTransform(transform);
+            context.globalAlpha = Math.min(1, alpha);
+            context.translate(x0, y0);
+            context.scale(Math.sign(dx), Math.sign(dy));
+            context.drawImage(bitmap, 0, 0, Math.abs(dx), Math.abs(dy));
         });
     } finally {
         context.restore();
@@ -115,7 +113,7 @@ function makeCellColorMapper(scale, categorical, cellOpacity) {
     const domain = logarithmic ? scale.domain() : [];
     const lower = Math.min(domain[0], domain.at(-1));
     const upper = Math.max(domain[0], domain.at(-1));
-    const clamp = logarithmic && "clamp" in scale && scale.clamp();
+    const clampLog = logarithmic && "clamp" in scale && scale.clamp();
     const [min, max, matching, fallback] = cellOpacity ?? [];
     return (value) => {
         let number = readNumericRasterCell(value);
@@ -127,7 +125,7 @@ function makeCellColorMapper(scale, categorical, cellOpacity) {
             : 1;
         if (!(alpha > 0)) return 0;
         // Clamp in data coordinates before the log transform, including zero.
-        if (clamp) number = Math.max(lower, Math.min(upper, number));
+        if (clampLog) number = clamp(number, lower, upper);
         if (logarithmic && Math.sign(number) !== Math.sign(lower)) return 0;
         const packed = packCssColor(scale(number));
         return alpha === 1

@@ -1,5 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import Collector from "../../collector.js";
+import GenomeSpy from "../../../genomeSpyBase.js";
+import UnitView from "../../../view/unitView.js";
+import { createBroadcastingTestViewContext } from "../../../view/testUtils.js";
 import HiGlassSource from "./hiGlassSource.js";
 import { decodeTile, mirrorDiagonal, transposeTile } from "./hiGlassTiles.js";
 
@@ -22,19 +25,28 @@ test("publishes only the latest tile window when a response arrives after cancel
         getDomain: () => domain,
         getAssembly: () => ({ contigs: [{ name: "chr1", size: 8 }] }),
     };
+    // Supply the view graph used by the embed API's lazy-data wait.
+    const view = Object.assign(Object.create(UnitView.prototype), {
+        context: createBroadcastingTestViewContext(),
+        getBaseUrl: () => "",
+        getScaleResolution: () => scale,
+        getEffectiveOpacity: () => 1,
+        getLayoutAncestors: () => [view],
+        getPathString: () => "test",
+        isVisible: () => true,
+        /** @param {(view: UnitView) => void} visitor */
+        visit: (visitor) => visitor(view),
+    });
     const source = new HiGlassSource(
         { type: "higlass", url: "https://tiles.example/", tileset: "test" },
-        /** @type {any} */ ({
-            getBaseUrl: () => "",
-            getScaleResolution: () => scale,
-            isVisible: () => true,
-            context: {
-                dataFlow: { loadingStatusRegistry: { setSource: vi.fn() } },
-            },
-        })
+        view
     );
     const collector = new Collector({ type: "collect" });
     source.addChild(collector);
+    view.flowHandle = { collector, dataSource: source };
+    const engine = Object.assign(Object.create(GenomeSpy.prototype), {
+        viewRoot: view,
+    });
 
     const coarse = Promise.withResolvers();
     const fine = Promise.withResolvers();
@@ -68,15 +80,20 @@ test("publishes only the latest tile window when a response arrives after cancel
         await source.load();
         await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
         domain = [0, 2];
-        source.requestVisibleTiles();
+        source.ensureViewportData();
         await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
         expect(fetch.mock.calls[1][1].signal.aborted).toBe(true);
+        const ready = vi.fn();
+        const visibleData = engine
+            .awaitVisibleLazyData(AbortSignal.timeout(2000))
+            .then(ready);
+        await Promise.resolve();
+        expect(ready).not.toHaveBeenCalled();
         fine.resolve(
             Response.json({ "test.2.0.0": { dense, dtype: "float32" } })
         );
-        await vi.waitFor(() =>
-            expect(source.isDataReadyForDomain({})).toBe(true)
-        );
+        await visibleData;
+        expect(source.isDataReadyForDomain({})).toBe(true);
         const revision = collector.dataRevision;
         coarse.resolve(
             Response.json({ "test.0.0.0": { dense, dtype: "float32" } })

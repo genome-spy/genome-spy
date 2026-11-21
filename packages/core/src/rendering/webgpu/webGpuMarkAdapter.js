@@ -476,10 +476,7 @@ function createSelectionCondition(mark, predicate) {
                     predicate.projections.map(
                         ({ component, input, secondaryInput, hitTest }) => ({
                             component,
-                            input:
-                                mark instanceof RasterMark && input === "color"
-                                    ? "fill"
-                                    : input,
+                            input,
                             secondaryInput,
                             hitTest,
                         })
@@ -577,11 +574,10 @@ const rasterDataCache = new WeakMap();
  * @param {import("../../view/layout/rectangle.js").default} coords
  */
 function createRasterConfig(mark, data, coords) {
-    const strip = mark.getDimensionName("y") === undefined;
+    const { strip, type } = mark.getColorCellBinding();
     const xScale = requireEncoder(mark, "x").scale;
     const color = mark.validateRenderingScales().getScale();
-    const palette =
-        mark.getColorCellBinding().type !== "quantitative" ? color : undefined;
+    const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
     let cached = rasterDataCache.get(mark);
@@ -598,10 +594,8 @@ function createRasterConfig(mark, data, coords) {
         rasterDataCache.set(mark, cached);
     }
 
-    const cellOpacity = mark.getCellOpacityBinding();
-    const opacity = mark.encoders.opacity
-        ? createNumericChannel(mark, "opacity", data)
-        : { value: 1 };
+    const brush = mark.getCellOpacityReader();
+    const cellOpacity = brush && liveValue(() => brush(data[0]));
     const { cells, inputs } = cached.packed;
     const reverseIndex =
         strip && xScale.type === "index" && xScale.props.reverse;
@@ -609,6 +603,7 @@ function createRasterConfig(mark, data, coords) {
         count: data.length,
         inputs,
         cells,
+        cellOpacity: cellOpacity?.value,
         channels: {
             x: createPositionChannel(
                 mark,
@@ -634,9 +629,15 @@ function createRasterConfig(mark, data, coords) {
                     categories?.readDomain
                 ),
             },
-            ...(cellOpacity ? { cellOpacity: opacity } : { opacity }),
+            opacity:
+                !brush && mark.encoders.opacity
+                    ? createNumericChannel(mark, "opacity", data)
+                    : { value: 1 },
         },
-        retainedProperties: { cells: { value: cells } },
+        retainedProperties: {
+            cells: { value: cells },
+            ...(cellOpacity && { cellOpacity }),
+        },
     };
 }
 
@@ -652,20 +653,17 @@ function packRasterTiles(mark, data, intern) {
     const offsets = new Uint32Array(tiles.length);
     const length = tiles.reduce((count, tile) => count + tile.values.length, 0);
     const cells = intern ? new Uint32Array(length) : new Float32Array(length);
+    const encodeCell = intern ?? readNumericRasterCell;
     let offset = 0;
     for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
         columns[index] = horizontal.count;
         rows[index] = vertical?.count ?? 1;
         offsets[index] = offset;
-        if (intern) {
-            for (let cell = 0; cell < values.length; cell++) {
-                cells[offset + cell] = intern(values[cell]);
-            }
-        } else if (values instanceof Float32Array) {
+        if (!intern && values instanceof Float32Array) {
             cells.set(values, offset);
         } else {
             for (let cell = 0; cell < values.length; cell++) {
-                cells[offset + cell] = readNumericRasterCell(values[cell]);
+                cells[offset + cell] = encodeCell(values[cell]);
             }
         }
         offset += values.length;

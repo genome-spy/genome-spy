@@ -59,7 +59,7 @@ export default class HiGlassSource extends DataSource {
     activate() {
         if (this.#listening) return;
         this.#listening = true;
-        const refresh = () => this.requestVisibleTiles();
+        const refresh = () => this.ensureViewportData();
         for (const scale of [this.x, this.y]) {
             scale.addEventListener("domain", refresh);
             this.registerDisposer(() =>
@@ -76,7 +76,7 @@ export default class HiGlassSource extends DataSource {
         if (this.#metadata) {
             // DataSource.load also replays the current tiles for downstream transforms.
             this.#publishedKey = undefined;
-            this.requestVisibleTiles();
+            this.ensureViewportData();
             return;
         }
         const signal = this.#metadataRequest.signal;
@@ -84,14 +84,16 @@ export default class HiGlassSource extends DataSource {
         this.reset();
         this.complete(false);
         try {
-            const url = new URL("tileset_info/", this.baseUrl);
-            url.searchParams.set("d", this.params.tileset);
-            const response = await fetchJson(url, signal);
+            const response = await this.#fetch(
+                "tileset_info/",
+                [this.params.tileset],
+                signal
+            );
             signal.throwIfAborted();
             const metadata = response[this.params.tileset];
             this.#validateMetadata(metadata);
             this.#metadata = metadata;
-            this.requestVisibleTiles();
+            this.ensureViewportData();
         } catch (error) {
             if (!signal.aborted) this.setLoadingStatus("error", error.message);
         }
@@ -166,7 +168,12 @@ export default class HiGlassSource extends DataSource {
         return !!window && window.key === this.#publishedKey;
     }
 
-    requestVisibleTiles() {
+    /** @param {DataReadinessRequest} [request] */
+    isViewportReady(request) {
+        return this.isDataReadyForDomain(request);
+    }
+
+    ensureViewportData() {
         if (this.#scheduled || this.disposed) return;
         this.#scheduled = true;
         queueMicrotask(() => {
@@ -188,11 +195,10 @@ export default class HiGlassSource extends DataSource {
         const controller = new AbortController();
         this.#pending = { key: window.key, controller };
         this.setLoadingStatus("loading");
-        let publishing = false;
         try {
             const tiles = await this.#fetchTiles(window, controller.signal);
             controller.signal.throwIfAborted();
-            publishing = true;
+            this.#publishedKey = undefined;
             this.reset();
             this.beginBatch({ type: "file" });
             for (const tile of tiles) this._propagate(tile);
@@ -200,7 +206,8 @@ export default class HiGlassSource extends DataSource {
             this.complete();
             this.setLoadingStatus("complete");
         } catch (error) {
-            if (publishing) this.#publishedKey = undefined;
+            if (this.#publishedKey === window.key)
+                this.#publishedKey = undefined;
             if (!controller.signal.aborted)
                 this.setLoadingStatus("error", error.message);
         } finally {
@@ -218,7 +225,7 @@ export default class HiGlassSource extends DataSource {
         const { bins_per_dimension: bins, mirror_tiles: mirrorTiles } =
             this.#metadata;
         const tiles = [];
-        const missing = new Map();
+        const missing = new Set();
         for (let y = y0; y < y1; y++) {
             for (let x = x0; x < x1; x++) {
                 const mirrored = mirrorTiles !== false && x > y;
@@ -229,28 +236,26 @@ export default class HiGlassSource extends DataSource {
                     mirrored ? x : y,
                 ].join(".");
                 tiles.push({ x, y, id, mirrored });
-                if (!this.#cache.has(id)) missing.set(id, x === y);
+                if (!this.#cache.has(id)) missing.add(id);
             }
         }
-        if (missing.size) {
-            const url = new URL("tiles/", this.baseUrl);
-            for (const id of missing.keys()) url.searchParams.append("d", id);
-            const response = await fetchJson(url, signal);
-            signal.throwIfAborted();
-            for (const [id, diagonal] of missing) {
-                if (!(id in response))
-                    throw new Error("HiGlass omitted tile " + id);
-                const values = decodeTile(response[id], bins);
-                if (diagonal && mirrorTiles !== false)
-                    mirrorDiagonal(values, bins);
-                this.#cache.set(id, values);
-            }
-        }
+        const response = missing.size
+            ? await this.#fetch("tiles/", missing, signal)
+            : {};
+        signal.throwIfAborted();
 
         const step = width / bins;
         const result = tiles.map(({ x, y, id, mirrored }) => {
-            const values = this.#cache.get(id);
-            this.#cache.delete(id);
+            let values = this.#cache.get(id);
+            if (values) {
+                this.#cache.delete(id);
+            } else {
+                if (!(id in response))
+                    throw new Error("HiGlass omitted tile " + id);
+                values = decodeTile(response[id], bins);
+                if (x === y && mirrorTiles !== false)
+                    mirrorDiagonal(values, bins);
+            }
             this.#cache.set(id, values);
             return {
                 dimensions: {
@@ -266,16 +271,20 @@ export default class HiGlassSource extends DataSource {
             this.#cache.delete(this.#cache.keys().next().value);
         return result;
     }
-}
 
-/** @param {URL} url @param {AbortSignal} signal */
-async function fetchJson(url, signal) {
-    const response = await fetch(url, {
-        signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
-    });
-    if (!response.ok)
-        throw new Error(`HiGlass returned HTTP ${response.status} for ${url}.`);
-    return response.json();
+    /** @param {string} path @param {Iterable<string>} ids @param {AbortSignal} signal */
+    async #fetch(path, ids, signal) {
+        const url = new URL(path, this.baseUrl);
+        for (const id of ids) url.searchParams.append("d", id);
+        const response = await fetch(url, {
+            signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+        });
+        if (!response.ok)
+            throw new Error(
+                `HiGlass returned HTTP ${response.status} for ${url}.`
+            );
+        return response.json();
+    }
 }
 
 /**

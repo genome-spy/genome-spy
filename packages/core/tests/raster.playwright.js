@@ -20,151 +20,132 @@ for (const renderer of /** @type {const} */ (["webgpu", "canvas"])) {
 }
 
 test("Canvas recolors clipped raster tiles when the viewport log domain changes", async ({
-    page,
-}) => {
-    await page.route("**/raster-log", (route) =>
-        route.fulfill({
-            contentType: "text/html",
-            body: "<body style='margin:0'></body>",
-        })
-    );
-    await page.goto("/raster-log");
-    const result = await page.evaluate(async (src) => {
-        const { embed } = await import(src + "minimal.js");
-        await import(src + "rendering/registerCanvas.js");
-        const api = await embed(
-            globalThis.document.body,
-            {
-                width: 100,
-                height: 100,
-                padding: 0,
-                config: { background: null },
-                view: { stroke: null },
-                data: {
-                    values: [
-                        {
-                            dimensions: {
-                                column: { origin: 0, step: 1, count: 5 },
-                                row: { origin: 0, step: 1, count: 1 },
+    playwright,
+    baseURL,
+}) =>
+    withRasterPage(playwright, baseURL, "canvas", async (page, setup) => {
+        const result = await page.evaluate(
+            async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        width: 100,
+                        height: 100,
+                        padding: 0,
+                        config: { background: null },
+                        view: { stroke: null },
+                        data: {
+                            values: [
+                                {
+                                    dimensions: {
+                                        column: {
+                                            origin: 0,
+                                            step: 1,
+                                            count: 5,
+                                        },
+                                        row: { origin: 0, step: 1, count: 1 },
+                                    },
+                                    fields: { value: [0, 1, 10, 100, null] },
+                                },
+                            ],
+                        },
+                        mark: { type: "raster", clip: true },
+                        encoding: {
+                            x: {
+                                dimension: "column",
+                                type: "quantitative",
+                                axis: null,
+                                scale: { domain: [0, 5], zoom: true },
                             },
-                            fields: { value: [0, 1, 10, 100, null] },
-                        },
-                    ],
-                },
-                mark: { type: "raster", clip: true },
-                encoding: {
-                    x: {
-                        dimension: "column",
-                        type: "quantitative",
-                        axis: null,
-                        scale: { domain: [0, 5], zoom: true },
-                    },
-                    y: { dimension: "row", type: "quantitative", axis: null },
-                    color: {
-                        field: "value",
-                        type: "quantitative",
-                        legend: null,
-                        scale: {
-                            type: "log",
-                            domain: { source: "viewport" },
-                            range: ["black", "red"],
-                            clamp: true,
+                            y: {
+                                dimension: "row",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            color: {
+                                field: "value",
+                                type: "quantitative",
+                                legend: null,
+                                scale: {
+                                    type: "log",
+                                    domain: { source: "viewport" },
+                                    range: ["black", "red"],
+                                    clamp: true,
+                                },
+                            },
                         },
                     },
-                },
-            },
-            { renderer: "canvas" }
-        );
-        const view = api.debug
-            .getViewRoot()
-            .getDescendants()
-            .find((candidate) => candidate.mark?.getType() === "raster");
-        const x = view.getScaleResolution("x");
-        const color = view.getScaleResolution("color");
+                    { renderer }
+                );
+                const view = api.debug
+                    .getViewRoot()
+                    .getDescendants()
+                    .find(
+                        (candidate) => candidate.mark?.getType() === "raster"
+                    );
+                const x = view.getScaleResolution("x");
+                const color = view.getScaleResolution("color");
 
-        async function sample() {
-            const { blob } = await api.imageExport.raster({
-                pixelRatio: 1,
-                background: null,
-            });
-            const bitmap = await globalThis.createImageBitmap(blob);
-            const context = new globalThis.OffscreenCanvas(
-                bitmap.width,
-                bitmap.height
-            ).getContext("2d");
-            context.drawImage(bitmap, 0, 0);
-            bitmap.close();
-            return {
-                domain: color.getDomain().map(Math.round),
-                pixels: [10, 50, 90].map((column) =>
-                    Array.from(context.getImageData(column, 50, 1, 1).data)
-                ),
-            };
-        }
-        try {
-            const before = await sample();
-            const domainUpdated = new Promise((resolve) => {
-                const onDomain = () => {
-                    if (Math.abs(color.getDomain().at(-1) - 10) < 1e-6) {
-                        color.removeEventListener("domain", onDomain);
-                        resolve(undefined);
-                    }
-                };
-                color.addEventListener("domain", onDomain);
-            });
-            await x.zoomTo([0.5, 2.9]);
-            await domainUpdated;
-            return { before, after: await sample() };
-        } finally {
-            api.finalize();
-        }
-    }, coreSource);
-    const black = [0, 0, 0, 255];
-    expect(result).toEqual({
-        before: {
-            domain: [1, 100],
-            pixels: [black, [128, 0, 0, 255], [0, 0, 0, 0]],
-        },
-        after: {
-            domain: [1, 10],
-            pixels: [black, black, [255, 0, 0, 255]],
-        },
-    });
-});
+                async function sample() {
+                    return {
+                        domain: color.getDomain().map(Math.round),
+                        pixels: await globalThis.readRasterPixels(
+                            api,
+                            [
+                                [10, 50],
+                                [50, 50],
+                                [90, 50],
+                            ],
+                            null
+                        ),
+                    };
+                }
+                try {
+                    const before = await sample();
+                    const domainUpdated = new Promise((resolve) => {
+                        const onDomain = () => {
+                            if (
+                                Math.abs(color.getDomain().at(-1) - 10) < 1e-6
+                            ) {
+                                color.removeEventListener("domain", onDomain);
+                                resolve(undefined);
+                            }
+                        };
+                        color.addEventListener("domain", onDomain);
+                    });
+                    await x.zoomTo([0.5, 2.9]);
+                    await domainUpdated;
+                    return { before, after: await sample() };
+                } finally {
+                    api.finalize();
+                }
+            },
+            setup
+        );
+        const black = [0, 0, 0, 255];
+        expect(result).toEqual({
+            before: {
+                domain: [1, 100],
+                pixels: [black, [128, 0, 0, 255], [0, 0, 0, 0]],
+            },
+            after: {
+                domain: [1, 10],
+                pixels: [black, black, [255, 0, 0, 255]],
+            },
+        });
+    }));
 
 /** @typedef {import("playwright/test").PlaywrightTestArgs["playwright"]} Playwright */
 
 /** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
 async function checkRasterBrush(playwright, baseURL, renderer) {
-    const browser = await launchRasterBrowser(playwright, renderer);
-    try {
-        const page = await browser.newPage({ deviceScaleFactor: 1 });
-        const errors = [];
-        page.on("pageerror", (error) => errors.push(error.message));
-        page.on("console", (message) => {
-            if (
-                /WGSL|Invalid ShaderModule|Invalid RenderPipeline/.test(
-                    message.text()
-                )
-            )
-                errors.push(message.text());
-        });
-        await page.route("**/raster-brush", (route) =>
-            route.fulfill({
-                contentType: "text/html",
-                body: "<body style='margin:0'><div id='plot'></div></body>",
-            })
-        );
-        await page.goto(new URL("/raster-brush", baseURL).href);
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(
-            async ({ src, renderer }) => {
+            async ({ src, renderer, register }) => {
                 const { embed } = await import(src + "minimal.js");
-                await import(
-                    src +
-                        (renderer === "canvas"
-                            ? "rendering/registerCanvas.js"
-                            : "rendering/webgpu/register.js")
-                );
+                await import(src + register);
                 const api = await embed(
                     globalThis.document.querySelector("#plot"),
                     {
@@ -247,28 +228,17 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
                 const initializedDomain = scale.getDomain();
                 api.params.get("upper").setValue(16);
                 const alpha = async () => {
-                    const { blob } = await api.imageExport.raster({
-                        pixelRatio: 1,
-                        background: null,
-                    });
-                    const image = await globalThis.createImageBitmap(blob);
-                    const context = new globalThis.OffscreenCanvas(
-                        image.width,
-                        image.height
-                    ).getContext("2d");
-                    context.drawImage(image, 0, 0);
-                    image.close();
                     const { x, y, width, height } = raster.layoutCoords;
-                    return Array.from(
-                        { length: 5 },
-                        (_, i) =>
-                            context.getImageData(
-                                Math.floor(x + (width * (i + 0.5)) / 5),
-                                Math.floor(y + height / 2),
-                                1,
-                                1
-                            ).data[3]
+                    const points = Array.from({ length: 5 }, (_, i) => [
+                        Math.floor(x + (width * (i + 0.5)) / 5),
+                        Math.floor(y + height / 2),
+                    ]);
+                    const pixels = await globalThis.readRasterPixels(
+                        api,
+                        points,
+                        null
                     );
+                    return pixels.map((pixel) => pixel[3]);
                 };
                 const setBounds = (bounds) =>
                     raster.paramRuntime.setValue("brush", {
@@ -321,7 +291,7 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
                     },
                 };
             },
-            { src: coreSource, renderer }
+            setup
         );
         const { left, right, y } = result.ramp;
         await page.mouse.move(left + (right - left) * 0.15, y);
@@ -349,7 +319,6 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
             api.finalize();
             return result;
         });
-        expect(errors).toEqual([]);
         expect(result.initializedDomain).toEqual([1, 1]);
         expect(result.baseline).toEqual([255, 255, 255, 255, 255]);
         expect(result.selected).toEqual([0, 255, 255, 0, 0]);
@@ -364,40 +333,12 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
             alpha: result.baseline,
             domain: [1, 16],
         });
-    } finally {
-        await browser.close();
-    }
+    });
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
 async function checkRasterGrid(playwright, baseURL, renderer) {
-    const setup = {
-        src: coreSource,
-        renderer,
-        register:
-            renderer === "canvas"
-                ? "rendering/registerCanvas.js"
-                : "rendering/webgpu/register.js",
-    };
-    const browser = await launchRasterBrowser(playwright, renderer);
-    try {
-        const page = await browser.newPage({ deviceScaleFactor: 1 });
-        const browserErrors = [];
-        page.on("console", (message) => {
-            if (
-                /WGSL|Invalid ShaderModule|Invalid RenderPipeline/.test(
-                    message.text()
-                )
-            )
-                browserErrors.push(message.text());
-        });
-        await page.route("**/raster-proof", (route) =>
-            route.fulfill({
-                contentType: "text/html",
-                body: "<body style='margin:0'><div id='plot'></div></body>",
-            })
-        );
-        await page.goto(new URL("/raster-proof", baseURL).href);
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const result = await page.evaluate(async (args) => {
             const { src, renderer, register } = args;
             const { embed } = await import(src + "minimal.js");
@@ -487,30 +428,14 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             );
 
             async function sample() {
-                const { blob } = await api.imageExport.raster({
-                    pixelRatio: 1,
-                });
-                const bitmap = await globalThis.createImageBitmap(blob);
-                const canvas = globalThis.document.createElement("canvas");
-                canvas.width = bitmap.width;
-                canvas.height = bitmap.height;
-                const context = canvas.getContext("2d", {
-                    willReadFrequently: true,
-                });
-                context.drawImage(bitmap, 0, 0);
-                bitmap.close();
-                return [
+                const pixels = await globalThis.readRasterPixels(api, [
                     [25, 25],
                     [75, 25],
                     [25, 75],
                     [75, 75],
                     [50, 25],
-                ].map(([x, y]) =>
-                    Array.from(context.getImageData(x, y, 1, 1).data).slice(
-                        0,
-                        3
-                    )
-                );
+                ]);
+                return pixels.map((pixel) => pixel.slice(0, 3));
             }
 
             try {
@@ -524,7 +449,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                 api.finalize();
             }
         }, setup);
-        expect([...result.errors, ...browserErrors]).toEqual([]);
+        expect(result.errors).toEqual([]);
         expect(result.before).toEqual([
             [0, 0, 0],
             [128, 0, 0],
@@ -533,41 +458,12 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             [0, 0, 255],
         ]);
         expect(result.after[2]).toEqual([128, 0, 0]);
-    } finally {
-        await browser.close();
-    }
+    });
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
 async function checkRasterStrips(playwright, baseURL, renderer) {
-    const setup = {
-        src: coreSource,
-        renderer,
-        register:
-            renderer === "canvas"
-                ? "rendering/registerCanvas.js"
-                : "rendering/webgpu/register.js",
-    };
-    const browser = await launchRasterBrowser(playwright, renderer);
-    try {
-        const page = await browser.newPage({ deviceScaleFactor: 1 });
-        const errors = [];
-        page.on("console", (message) => {
-            if (
-                /WGSL|Invalid ShaderModule|Invalid RenderPipeline/.test(
-                    message.text()
-                )
-            ) {
-                errors.push(message.text());
-            }
-        });
-        await page.route("**/raster-strips", (route) =>
-            route.fulfill({
-                contentType: "text/html",
-                body: "<body style='margin:0'></body>",
-            })
-        );
-        await page.goto(new URL("/raster-strips", baseURL).href);
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const results = await page.evaluate(async (args) => {
             const { src, renderer, register } = args;
             const { embed } = await import(src + "minimal.js");
@@ -657,31 +553,20 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                                 candidate.mark?.getType() === "raster"
                         );
                     const x = view.getScaleResolution("x");
-                    const { blob } = await api.imageExport.raster({
-                        pixelRatio: 1,
-                        background: null,
-                    });
-                    const bitmap = await globalThis.createImageBitmap(blob);
-                    const context = new globalThis.OffscreenCanvas(
-                        bitmap.width,
-                        bitmap.height
-                    ).getContext("2d");
-                    context.drawImage(bitmap, 0, 0);
-                    bitmap.close();
                     return {
                         extent: x.zoomExtent,
-                        pixels: [
-                            [1, 12],
-                            [21, 12],
-                            [41, 12],
-                            [79, 12],
-                            [10, 30],
-                            [1, 48],
-                            [79, 48],
-                        ].map(([column, row]) =>
-                            Array.from(
-                                context.getImageData(column, row, 1, 1).data
-                            )
+                        pixels: await globalThis.readRasterPixels(
+                            api,
+                            [
+                                [1, 12],
+                                [21, 12],
+                                [41, 12],
+                                [79, 12],
+                                [10, 30],
+                                [1, 48],
+                                [79, 48],
+                            ],
+                            null
                         ),
                     };
                 } finally {
@@ -692,7 +577,6 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
 
             return [await render(false), await render(true)];
         }, setup);
-        expect(errors).toEqual([]);
         const red = [255, 0, 0, 255];
         const blue = [0, 0, 255, 255];
         const gray = [128, 128, 128, 255];
@@ -709,6 +593,63 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                 pixels: [gray, clear, blue, red, clear, fadedRed, fadedGray],
             },
         ]);
+    });
+}
+
+/**
+ * @param {Playwright} playwright
+ * @param {string} baseURL
+ * @param {"webgpu" | "canvas"} renderer
+ * @param {(page: import("playwright/test").Page, setup: {src: string, renderer: string, register: string}) => Promise<void>} check
+ */
+async function withRasterPage(playwright, baseURL, renderer, check) {
+    const browser = await launchRasterBrowser(playwright, renderer);
+    try {
+        const page = await browser.newPage({ deviceScaleFactor: 1 });
+        const errors = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        page.on("console", (message) => {
+            if (
+                /WGSL|Invalid ShaderModule|Invalid RenderPipeline/.test(
+                    message.text()
+                )
+            )
+                errors.push(message.text());
+        });
+        await page.route("**/raster-test", (route) =>
+            route.fulfill({
+                contentType: "text/html",
+                body: "<body style='margin:0'><div id='plot'></div></body>",
+            })
+        );
+        await page.goto(new URL("/raster-test", baseURL).href);
+        await page.evaluate(() => {
+            globalThis.readRasterPixels = async (api, points, background) => {
+                const { blob } = await api.imageExport.raster({
+                    pixelRatio: 1,
+                    background,
+                });
+                const bitmap = await globalThis.createImageBitmap(blob);
+                const context = new globalThis.OffscreenCanvas(
+                    bitmap.width,
+                    bitmap.height
+                ).getContext("2d");
+                context.drawImage(bitmap, 0, 0);
+                bitmap.close();
+                return points.map(([x, y]) =>
+                    Array.from(context.getImageData(x, y, 1, 1).data)
+                );
+            };
+        });
+        await check(page, {
+            src: coreSource,
+            renderer,
+            register:
+                renderer === "canvas"
+                    ? "rendering/registerCanvas.js"
+                    : "rendering/webgpu/register.js",
+        });
+        expect(errors).toEqual([]);
     } finally {
         await browser.close();
     }

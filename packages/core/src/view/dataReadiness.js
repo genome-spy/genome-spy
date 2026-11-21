@@ -1,14 +1,16 @@
 import Collector from "../data/collector.js";
 import { isDataReady, iterateDataDependencies } from "../data/dataReadiness.js";
 import DataSource from "../data/sources/dataSource.js";
-import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
-import HiGlassSource from "../data/sources/lazy/hiGlassSource.js";
 import UnitView from "./unitView.js";
 
 /**
  * @typedef {import("../view/view.js").default} View
  * @typedef {import("../data/flowNode.js").default} FlowNode
  * @typedef {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest
+ * @typedef {FlowNode & {
+ *     isViewportReady: (request?: DataReadinessRequest) => boolean,
+ *     ensureViewportData: (request?: DataReadinessRequest) => void
+ * }} ViewportDataSource
  */
 
 /**
@@ -79,6 +81,11 @@ export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
     );
 }
 
+/** @param {FlowNode} node @returns {node is ViewportDataSource} */
+function isLazySource(node) {
+    return "ensureViewportData" in node;
+}
+
 /**
  * @param {View} subtreeRoot
  * @param {(view: View) => boolean} [viewFilter]
@@ -86,14 +93,7 @@ export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
 function* iterateLazyBranches(subtreeRoot, viewFilter) {
     for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
         const nodes = Array.from(iterateDataDependencies(collector));
-        if (
-            nodes.some(
-                (node) =>
-                    node instanceof SingleAxisLazySource ||
-                    node instanceof HiGlassSource
-            )
-        )
-            yield nodes;
+        if (nodes.some(isLazySource)) yield nodes;
     }
 }
 
@@ -104,15 +104,10 @@ function* iterateLazyBranches(subtreeRoot, viewFilter) {
 function isLazyBranchReady(nodes, readinessRequest) {
     return (
         nodes.every((node) => node.isDataReady()) &&
-        nodes.every((node) => {
-            if (node instanceof HiGlassSource) {
-                return node.isDataReadyForDomain(readinessRequest ?? {});
-            }
-            return (
-                !(node instanceof SingleAxisLazySource) ||
-                isLazySourceReady(node, readinessRequest)
-            );
-        })
+        nodes.every(
+            (node) =>
+                !isLazySource(node) || node.isViewportReady(readinessRequest)
+        )
     );
 }
 
@@ -267,22 +262,15 @@ function areSubtreeSourcesSettled(context, branches) {
 /**
  * @param {View} subtreeRoot
  * @param {(view: View) => boolean} [viewFilter]
- * @returns {Set<SingleAxisLazySource | HiGlassSource>}
+ * @returns {Set<ViewportDataSource>}
  */
 function collectLazyDataSources(subtreeRoot, viewFilter) {
-    /** @type {Set<SingleAxisLazySource | HiGlassSource>} */
-    const dataSources = new Set();
-    for (const collector of collectSubtreeCollectors(subtreeRoot, viewFilter)) {
-        for (const node of iterateDataDependencies(collector)) {
-            if (
-                node instanceof SingleAxisLazySource ||
-                node instanceof HiGlassSource
-            ) {
-                dataSources.add(node);
-            }
-        }
-    }
-    return dataSources;
+    return new Set(
+        collectSubtreeCollectors(subtreeRoot, viewFilter)
+            .values()
+            .flatMap(iterateDataDependencies)
+            .filter(isLazySource)
+    );
 }
 
 /**
@@ -323,45 +311,6 @@ export function isEffectivelyVisible(view) {
  */
 function requestUnavailableLazyData(subtreeRoot, readinessRequest, viewFilter) {
     for (const dataSource of collectLazyDataSources(subtreeRoot, viewFilter)) {
-        if (dataSource instanceof HiGlassSource) {
-            dataSource.requestVisibleTiles();
-            continue;
-        }
-        const domain = getLazySourceReadinessDomain(
-            dataSource,
-            readinessRequest
-        );
-        if (domain) {
-            dataSource.ensureDataForDomain(domain);
-        }
+        dataSource.ensureViewportData(readinessRequest);
     }
-}
-
-/**
- * @param {SingleAxisLazySource} dataSource
- * @param {DataReadinessRequest | undefined} readinessRequest
- */
-function isLazySourceReady(dataSource, readinessRequest) {
-    const domain = getLazySourceReadinessDomain(dataSource, readinessRequest);
-
-    return (
-        !!domain &&
-        dataSource.isDataReadyForDomain({
-            [dataSource.channel]: domain,
-        })
-    );
-}
-
-/**
- * @param {SingleAxisLazySource} dataSource
- * @param {DataReadinessRequest | undefined} readinessRequest
- * @returns {number[] | undefined}
- */
-function getLazySourceReadinessDomain(dataSource, readinessRequest) {
-    return (
-        readinessRequest?.[dataSource.channel] ??
-        (!readinessRequest
-            ? Array.from(dataSource.scaleResolution.getDomain())
-            : undefined)
-    );
 }

@@ -46,13 +46,13 @@ opacity one inside the brush and zero outside it. Existing tile opacity
 predicates still evaluate against the tile record. Conditions combining cell and
 tile predicates and positional selection of cells are outside this milestone.
 
-Reuse the parameter runtime and selection shader generation. WebGPU evaluates
-cell opacity in the fragment stage using the existing raster buffer. A brush
-update changes selection uniforms. Canvas includes the effective selection and
-opacity values in its bitmap cache key. Keep the brush out of domain collection
-so values hidden by the brush still contribute to the viewport color domain.
-Allow the gradient legend to wait for an invertible mapping while lazy log
-scales have a provisional or flat domain.
+Reuse the parameter runtime and resolve the condition once in Core. Both
+renderers consume the same half-open bounds and opacity values. WebGPU applies
+them with one retained mark property in the fragment stage. Canvas includes them
+in its bitmap cache key. Keep the brush out of domain collection so values
+hidden by the brush still contribute to the viewport color domain. Allow the
+gradient legend to wait for an invertible mapping while lazy log scales have a
+provisional or flat domain.
 
 Vega-Lite's conditional value encoding is precedent for the condition and
 fallback. GenomeSpy's existing gradient legend supplies the predicate bounds. A

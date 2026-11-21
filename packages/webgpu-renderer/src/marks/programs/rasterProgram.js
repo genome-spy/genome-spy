@@ -1,5 +1,6 @@
 import { validateStorageBufferSize } from "../../utils/bufferLimits.js";
 import BaseProgram from "./internal/baseProgram.js";
+import { initializePropertySlots } from "./internal/propertySlots.js";
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 const channels = {
@@ -9,7 +10,6 @@ const channels = {
     y2: { type: "f32", components: 1, default: 1 },
     fill: { type: "f32", components: 4 },
     opacity: { type: "f32", components: 1, default: 1 },
-    cellOpacity: { type: "f32", components: 1, default: 1 },
 };
 
 /** @typedef {import("../raster.js").RasterConfig["cells"]} Cells */
@@ -24,9 +24,8 @@ const floatBits = new DataView(new ArrayBuffer(4));
 function ceilFloat32(threshold) {
     const rounded = Math.fround(threshold);
     if (!(rounded < threshold)) return rounded;
-    if (rounded === 0) return 2 ** -149;
     floatBits.setFloat32(0, rounded);
-    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded > 0 ? 1 : -1));
+    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
     return floatBits.getFloat32(0);
 }
 
@@ -71,7 +70,9 @@ fn shade(in: VSOut) -> vec4<f32> {
     let cell = min(vec2<u32>(in.uv * vec2<f32>(shape)), shape - vec2<u32>(1u));
     let index = in.grid.z + cell.x + cell.y * shape.x;
     ${integerCells ? "" : "if ((bitcast<u32>(rasterCells[index]) & 0x7f800000u) == 0x7f800000u) { discard; }"}
-    let alpha = clamp(getScaled_cellOpacity(index), 0.0, 1.0);
+    let brush = params.uCellOpacity;
+    let value = f32(rasterCells[index]);
+    let alpha = clamp(select(brush.w, brush.z, brush.x <= value && value < brush.y), 0.0, 1.0);
     let color = getScaled_fill(index);
     return premultiplyAlpha(vec4<f32>(color.rgb, color.a * in.opacity * alpha));
 }
@@ -115,59 +116,35 @@ export default class RasterProgram extends BaseProgram {
         this._writeCells(/** @type {Cells} */ (this._markConfig.cells));
     }
 
-    getSlotHandles() {
-        const slots = super.getSlotHandles();
-        const cellOpacity =
-            /** @type {import("../raster.js").RasterConfig["channels"]["cellOpacity"]} */ (
-                this._markConfig.channels.cellOpacity
-            );
-        const predicate = cellOpacity?.conditions?.[0].when;
-        const selections = { ...slots.selections };
-        if (predicate) {
-            const {
-                selection,
-                projections: [{ component }],
-            } = predicate;
-            const slot =
-                /** @type {import("../../index.js").SelectionSlotHandle} */ (
-                    selections[selection]
-                );
-            if (slot.type === "interval") {
-                selections[selection] = {
-                    ...slot,
-                    /** @param {Parameters<typeof slot.set>[0]} intervals */
-                    set(intervals) {
-                        const bounds = intervals?.[component];
-                        slot.set(
-                            Array.isArray(bounds) &&
-                                bounds.length === 2 &&
-                                bounds.every(
-                                    (value) => typeof value === "number"
-                                )
-                                ? {
-                                      ...intervals,
-                                      [component]: [
-                                          ceilFloat32(bounds[0]),
-                                          ceilFloat32(bounds[1]),
-                                      ],
-                                  }
-                                : intervals
+    /** @returns {ReturnType<BaseProgram["getExtraUniformLayout"]>} */
+    getExtraUniformLayout() {
+        return [{ name: "uCellOpacity", type: "f32", components: 4 }];
+    }
+
+    _initializeExtraUniforms() {
+        initializePropertySlots(this, {
+            cellOpacity: {
+                uniform: "uCellOpacity",
+                default: [0, 0, 1, 1],
+                encode(value) {
+                    if (
+                        !Array.isArray(value) ||
+                        value.length !== 4 ||
+                        !value.every((entry) => typeof entry === "number")
+                    ) {
+                        throw new Error(
+                            "Raster cell opacity requires two bounds and two opacity values."
                         );
-                    },
-                };
-            }
-        }
-        return {
-            ...slots,
-            selections,
-            properties: {
-                cells: {
-                    set: (/** @type {Cells} */ cells) => {
-                        if (this._writeCells(cells)) {
-                            this._rebuildBindGroup();
-                        }
-                    },
+                    }
+                    const [lo, hi, inside, outside] = value;
+                    return [ceilFloat32(lo), ceilFloat32(hi), inside, outside];
                 },
+            },
+        });
+        this.getSlotHandles().properties.cells = {
+            set: (/** @type {Cells} */ cells) => {
+                this._assertAlive();
+                if (this._writeCells(cells)) this._queueSlotUpdate(true);
             },
         };
     }

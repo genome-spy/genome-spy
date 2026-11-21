@@ -44,6 +44,7 @@ import {
 } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
+import HiGlassSource from "./data/sources/lazy/hiGlassSource.js";
 import { initializeViewGuides } from "./view/gridView/guideViewSync.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import {
@@ -739,7 +740,7 @@ export default class GenomeSpy {
             undefined,
             signal,
             (view) =>
-                isEffectivelyVisible(view) && hasIntervalLazyDataSource(view)
+                isEffectivelyVisible(view) && hasRemoteLazyDataSource(view)
         );
     }
 
@@ -1032,12 +1033,14 @@ async function loadSvgRenderer() {
 /**
  * @param {View} view
  */
-function hasIntervalLazyDataSource(view) {
+function hasRemoteLazyDataSource(view) {
     const collector = view.flowHandle?.collector;
     return (
         !!collector &&
         iterateDataDependencies(collector).some(
-            (node) => node instanceof IntervalUrlSource
+            (node) =>
+                node instanceof IntervalUrlSource ||
+                node instanceof HiGlassSource
         )
     );
 }

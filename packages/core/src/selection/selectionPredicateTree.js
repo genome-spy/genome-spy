@@ -135,29 +135,50 @@ export function normalizeSelectionPredicateTree(condition) {
     return parse(operand);
 }
 
+/**
+ * Walks membership and activity predicates in authored order.
+ * @param {SelectionPredicateTree | ResolvedSelectionPredicate} tree
+ * @returns {Generator<Extract<SelectionPredicateTree | ResolvedSelectionPredicate, {param: string} | {selectionActive: unknown}>>}
+ */
+export function* selectionPredicateLeaves(tree) {
+    if ("not" in tree) {
+        yield* selectionPredicateLeaves(tree.not);
+    } else if ("all" in tree || "any" in tree) {
+        for (const child of "all" in tree ? tree.all : tree.any) {
+            yield* selectionPredicateLeaves(child);
+        }
+    } else {
+        yield tree;
+    }
+}
+
 /** @param {SelectionPredicateTree | ResolvedSelectionPredicate} tree @returns {string[]} */
 export function getSelectionPredicateTreeParams(tree) {
     const names = new Set();
-    /** @param {SelectionPredicateTree | ResolvedSelectionPredicate} node */
-    const visit = (node) => {
+    for (const node of selectionPredicateLeaves(tree)) {
         if ("param" in node) {
             names.add(node.param);
-        } else if ("selectionActive" in node) {
-            names.add(
-                typeof node.selectionActive === "string"
-                    ? node.selectionActive
-                    : node.selectionActive.param
-            );
-        } else if ("not" in node) {
-            visit(node.not);
         } else {
-            for (const child of "all" in node ? node.all : node.any) {
-                visit(child);
-            }
+            const { selectionActive } = node;
+            names.add(
+                typeof selectionActive === "string"
+                    ? selectionActive
+                    : selectionActive.param
+            );
         }
-    };
-    visit(tree);
+    }
     return Array.from(names);
+}
+
+/** @param {SelectionPredicateTree | ResolvedSelectionPredicate} node */
+export function isGradientIntervalPredicate(node) {
+    return (
+        "type" in node &&
+        node.type === "interval" &&
+        node.projections.some(({ component }) =>
+            isGradientSelectionChannel(component)
+        )
+    );
 }
 
 /**
@@ -169,29 +190,16 @@ export function getSelectionPredicateTreeParams(tree) {
  */
 export function collectSamplingSelections(roots) {
     const leaves = new Map();
-    /** @param {ResolvedSelectionPredicate} node */
-    const visit = (node) => {
-        if ("param" in node) {
-            if (
-                node.type !== "categories" &&
-                !(
-                    node.type === "interval" &&
-                    node.projections.some((p) =>
-                        isGradientSelectionChannel(p.component)
-                    )
-                )
-            ) {
-                const leaf = { ...node, empty: false };
-                leaves.set(JSON.stringify(leaf), leaf);
-            }
-        } else if ("not" in node) {
-            visit(node.not);
-        } else if ("all" in node || "any" in node) {
-            for (const child of "all" in node ? node.all : node.any)
-                visit(child);
+    for (const node of roots.values().flatMap(selectionPredicateLeaves)) {
+        if (
+            "type" in node &&
+            node.type !== "categories" &&
+            !isGradientIntervalPredicate(node)
+        ) {
+            const leaf = { ...node, empty: false };
+            leaves.set(JSON.stringify(leaf), leaf);
         }
-    };
-    for (const root of roots) visit(root);
+    }
     return Array.from(leaves.values());
 }
 

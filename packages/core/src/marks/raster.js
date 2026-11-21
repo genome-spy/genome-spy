@@ -3,29 +3,17 @@ import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
-import { isGradientSelectionChannel } from "../selection/selection.js";
+import {
+    isGradientIntervalPredicate,
+    selectionPredicateLeaves,
+} from "../selection/selectionPredicateTree.js";
+import clamp from "../utils/clamp.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
 
 /** @typedef {[lower: number, upper: number, matching: number, fallback: number]} CellOpacity */
-
-/** @param {import("../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate */
-function usesGradientInterval(predicate) {
-    if ("param" in predicate) {
-        return (
-            predicate.type === "interval" &&
-            predicate.projections.some(({ component }) =>
-                isGradientSelectionChannel(component)
-            )
-        );
-    }
-    if ("not" in predicate) return usesGradientInterval(predicate.not);
-    if ("all" in predicate) return predicate.all.some(usesGradientInterval);
-    if ("any" in predicate) return predicate.any.some(usesGradientInterval);
-    return false;
-}
 
 /** @extends {Mark<import("../spec/mark.js").RasterProps>} */
 export default class RasterMark extends Mark {
@@ -96,32 +84,31 @@ export default class RasterMark extends Mark {
         return encoding;
     }
 
-    /** @param {"x" | "y"} axis */
-    getDimensionName(axis) {
-        const binding = this.unitView.getEncoding()[axis];
-        if (binding && "dimension" in binding) return binding.dimension;
-    }
-
     getColorCellBinding() {
         return getCachedOrCall(this, "colorCellBinding", () => {
-            const color = this.encoding.color;
-            if (!color || !("field" in color)) {
-                throw new Error("Raster has no color field.");
-            }
-            const x = this.getDimensionName("x");
-            const y = this.getDimensionName("y");
-            const { field, type } = color;
+            const { field, type } =
+                /** @type {import("../spec/channel.js").TypedFieldDef} */ (
+                    this.encoding.color
+                );
+            const { x, y } = this.unitView.getEncoding();
+            // fixEncoding requires a grid dimension on x and permits a band on y.
+            const column =
+                /** @type {import("../spec/channel.js").RasterDimensionDef} */ (
+                    x
+                ).dimension;
+            const row = "dimension" in y ? y.dimension : undefined;
             return {
                 type,
-                domainKey: "raster:" + JSON.stringify([x, y, field]),
+                strip: row === undefined,
+                domainKey: "raster:" + JSON.stringify([column, row, field]),
                 readTile: (/** @type {object} */ datum) =>
-                    readRasterTile(datum, x, y, field),
+                    readRasterTile(datum, column, row, field),
             };
         });
     }
 
     /** Resolves opacity driven by a gradient legend to the raw color cell. */
-    getCellOpacityBinding() {
+    getCellOpacityReader() {
         return getCachedOrCall(this, "cellOpacityBinding", () => {
             const branches = this.encoders.opacity?.branches;
             const test = branches?.[0].predicate.selection;
@@ -129,7 +116,9 @@ export default class RasterMark extends Mark {
                 !branches?.some(
                     ({ predicate }) =>
                         predicate.selection &&
-                        usesGradientInterval(predicate.selection)
+                        selectionPredicateLeaves(predicate.selection).some(
+                            isGradientIntervalPredicate
+                        )
                 )
             ) {
                 return null;
@@ -160,45 +149,36 @@ export default class RasterMark extends Mark {
                 accessor.asNumberAccessor()
             );
             const runtime = this.unitView.paramRuntime;
-            return {
-                /** @param {object} datum @returns {CellOpacity} */
-                read(datum) {
-                    const selection =
-                        /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
-                            runtime.findValue(param)
-                        );
-                    const bounds = selection.intervals[component];
-                    const clampOpacity = (/** @type {number} */ value) =>
-                        Math.max(0, Math.min(1, value));
-                    if (!bounds) {
-                        const opacity = clampOpacity(
-                            (empty ? matched : fallback)(datum)
-                        );
-                        return [-Infinity, Infinity, opacity, opacity];
-                    }
-                    return [
-                        bounds[0],
-                        bounds[1],
-                        clampOpacity(matched(datum)),
-                        clampOpacity(fallback(datum)),
-                    ];
-                },
+            /** @param {object} datum @returns {CellOpacity} */
+            return (datum) => {
+                const selection =
+                    /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
+                        runtime.findValue(param)
+                    );
+                const bounds = selection.intervals[component];
+                const outside = bounds || !empty ? fallback : matched;
+                return [
+                    bounds?.[0] ?? 0,
+                    bounds?.[1] ?? 0,
+                    bounds ? clamp(matched(datum)) : 0,
+                    clamp(outside(datum)),
+                ];
             };
         });
     }
 
     validateRenderingScales() {
-        const strip = this.getDimensionName("y") === undefined;
-        for (const axis of /** @type {const} */ (["x", "y"])) {
-            const scale = this.encoders[axis].scale;
-            if (strip && axis === "y") {
-                if (scale?.type !== "band") {
-                    throw new ViewError(
-                        "Raster strips need a band scale on y.",
-                        this.unitView
-                    );
-                }
-            } else if (
+        const { strip, type } = this.getColorCellBinding();
+        const x = this.encoders.x.scale;
+        const y = this.encoders.y.scale;
+        if (strip && y?.type !== "band") {
+            throw new ViewError(
+                "Raster strips need a band scale on y.",
+                this.unitView
+            );
+        }
+        for (const scale of strip ? [x] : [x, y]) {
+            if (
                 !scale ||
                 !["linear", "index", "locus"].includes(scale.type) ||
                 hasGroupingGaps(scale.props) ||
@@ -214,7 +194,7 @@ export default class RasterMark extends Mark {
         const resolution = this.unitView.getScaleResolution("color");
         const colorScale = resolution.getScale();
         if (
-            this.getColorCellBinding().type !== "quantitative" &&
+            type !== "quantitative" &&
             (colorScale.type !== "ordinal" ||
                 !colorScale.domain().length ||
                 !resolution.isDomainDefinedExplicitly())

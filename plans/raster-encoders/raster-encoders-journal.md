@@ -43,12 +43,12 @@ color scale uses all visible values, and the same raw brush range applies when a
 HiGlass viewport loads a different resolution. A flat domain temporarily
 prevents the legend from producing new bounds. Clearing the brush still works.
 
-WebGPU uses the existing selection uniforms in the fragment stage. The renderer
-accepts scalar opacity values and evaluates the condition against its float32
-cell input. Rounding bounds upward preserves both inclusive lower and exclusive
-upper comparisons when a threshold falls between float32 values. Canvas adds the
-current brush and branch opacity values to the bitmap cache key, so dragging may
-recolor visible tiles on the CPU.
+Core resolves the legend condition to one interval and two opacity values for
+both renderers. WebGPU uploads those four values through a retained mark
+property and compares the float32 cell in the fragment stage. Rounding bounds
+upward preserves inclusive lower and exclusive upper comparisons between
+representable values. Canvas adds that state to the bitmap cache key, so
+dragging may recolor visible tiles on the CPU.
 
 The ordinary row predicate looked for a scalar field on the tile record. A
 dataflow filter would republish tiles during brushing and could change the color
