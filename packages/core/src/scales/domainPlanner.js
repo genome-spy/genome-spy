@@ -519,9 +519,18 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
         }
 
         const collector = member.view.getCollector();
+        const mark = member.view.mark;
+        const raster =
+            collector &&
+            mark instanceof RasterMark &&
+            member.channel === "color"
+                ? mark
+                : undefined;
 
         for (const accessor of accessors) {
-            const domainKey = getAccessorDomainKey(accessor, type);
+            const domainKey =
+                raster?.getColorCellBinding().domainKey ??
+                getAccessorDomainKey(accessor, type);
 
             const collectorKey = collector ?? null;
             let domainsForCollector = domainsByCollector.get(collectorKey);
@@ -536,11 +545,9 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
 
             let domain;
             if (collector) {
-                const mark = member.view.mark;
-                domain =
-                    mark instanceof RasterMark && member.channel === "color"
-                        ? mark.getColorDomain(collector)
-                        : collector.getDomain(domainKey, type, accessor);
+                domain = raster
+                    ? raster.getColorDomain(collector)
+                    : collector.getDomain(domainKey, type, accessor);
             } else if (accessor.constant) {
                 domain = createDomain(type);
                 domain.extend(accessor({}));

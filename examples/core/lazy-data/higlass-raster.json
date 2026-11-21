@@ -1,7 +1,7 @@
 {
   "description": [
     "Zoomable Hi-C contact map",
-    "Open with the experimental WebGPU renderer. Pan and zoom to explore the contact map. The logarithmic color scale follows the visible bins.",
+    "Open with Canvas or WebGPU. Pan and zoom to explore the contact map. The logarithmic color scale follows the visible bins.",
     "Data source: Rao et al. (2014), GM12878 MboI all replicates on hg19, served by HiGlass."
   ],
   "assembly": "hg19",

@@ -72,7 +72,9 @@ export function prepareRangeProjection(
     const secondaryAdjustment = secondary
         ? getPositionAdjustment(secondary)
         : 0;
-    const primaryOffsetAdjustment = getPositionAdjustment(primaryOffset);
+    const primaryOffsetAdjustment = primaryOffset
+        ? getPositionAdjustment(primaryOffset)
+        : 0;
     const secondaryOffsetAdjustment = secondaryOffset
         ? getPositionAdjustment(secondaryOffset)
         : 0;
@@ -87,7 +89,7 @@ export function prepareRangeProjection(
         secondary?.constant && !gapSecondary
             ? encodeNumber(secondary, firstDatum) + secondaryAdjustment
             : 0;
-    const constantPrimaryOffset = primaryOffset.constant
+    const constantPrimaryOffset = primaryOffset?.constant
         ? encodeNumber(primaryOffset, firstDatum) + primaryOffsetAdjustment
         : 0;
     const constantSecondaryOffset =
@@ -97,9 +99,10 @@ export function prepareRangeProjection(
             : 0;
 
     return (datum, result) => {
-        const offset = primaryOffset.constant
-            ? constantPrimaryOffset
-            : encodeNumber(primaryOffset, datum) + primaryOffsetAdjustment;
+        const offset =
+            primaryOffset && !primaryOffset.constant
+                ? encodeNumber(primaryOffset, datum) + primaryOffsetAdjustment
+                : constantPrimaryOffset;
         const primaryPosition = gapPrimary
             ? gapPrimary(datum)
             : primary.constant

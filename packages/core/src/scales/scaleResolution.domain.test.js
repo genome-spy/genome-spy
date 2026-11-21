@@ -845,6 +845,49 @@ describe("Scale resolution domain handling", () => {
         spy.mockRestore();
     });
 
+    test("a shared color domain includes cells and scalar fields from the same collector", async () => {
+        const color = /** @type {const} */ ({
+            field: "value",
+            type: "quantitative",
+            scale: { zero: false },
+        });
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        {
+                            value: 100,
+                            dimensions: {
+                                column: { origin: 0, step: 1, count: 2 },
+                            },
+                            fields: { value: [2, 8] },
+                            row: "a",
+                        },
+                    ],
+                },
+                resolve: { scale: { color: "shared" } },
+                layer: [
+                    { mark: "point", encoding: { color } },
+                    {
+                        mark: "raster",
+                        encoding: {
+                            x: { dimension: "column", type: "index" },
+                            y: { field: "row", type: "nominal" },
+                            color,
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+        const [points, raster] = view.children;
+        // A picking ID transform can give the point layer its own collector.
+        points.flowHandle.collector = raster.getCollector();
+        const resolution = getRequiredScaleResolution(points, "color");
+        resolution.reconfigureDomain();
+        expect(resolution.getDomain()).toEqual([2, 100]);
+    });
+
     test("Scales of primary and secondary channels are shared and extracted domains merged properly", async () => {
         const view = await initView(
             {

@@ -40,14 +40,16 @@ describe("captureScreenshots arguments", () => {
     });
 });
 
-test("selects experimental raster examples for WebGPU batch capture", () => {
+test("selects experimental raster examples for Canvas and WebGPU batch capture", () => {
     const rasterExamples = [
         "examples/core/lazy-data/higlass-raster.json",
         "examples/core/raster/msa.json",
     ];
-    expect(collectCuratedExamplePaths("webgpu")).toEqual(
-        expect.arrayContaining(rasterExamples)
-    );
+    for (const renderer of /** @type {const} */ (["canvas", "webgpu"])) {
+        expect(collectCuratedExamplePaths(renderer)).toEqual(
+            expect.arrayContaining(rasterExamples)
+        );
+    }
     const auto = collectCuratedExamplePaths("auto");
     for (const path of rasterExamples) {
         expect(auto).not.toContain(path);

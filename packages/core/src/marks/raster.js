@@ -1,7 +1,10 @@
 import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
-import { findChannelDefWithScale } from "../encoder/encoder.js";
+import { isValueDef } from "../encoder/encoder.js";
+import { hasGroupingGaps } from "../genome/indexGapMapping.js";
+import { getCachedOrCall } from "../utils/propertyCacher.js";
+import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
 
@@ -80,10 +83,71 @@ export default class RasterMark extends Mark {
         if (binding && "dimension" in binding) return binding.dimension;
     }
 
-    getColorField() {
-        const binding = this.encoding.color;
-        if (binding && "field" in binding) return binding.field;
-        throw new Error("Raster has no color field.");
+    getColorCellBinding() {
+        return getCachedOrCall(this, "colorCellBinding", () => {
+            const color = this.encoding.color;
+            if (!color || !("field" in color)) {
+                throw new Error("Raster has no color field.");
+            }
+            const x = this.getDimensionName("x");
+            const y = this.getDimensionName("y");
+            const { field, type } = color;
+            return {
+                type,
+                domainKey: "raster:" + JSON.stringify([x, y, field]),
+                readTile: (/** @type {object} */ datum) =>
+                    readRasterTile(datum, x, y, field),
+            };
+        });
+    }
+
+    validateRenderingScales() {
+        const strip = this.getDimensionName("y") === undefined;
+        for (const axis of /** @type {const} */ (["x", "y"])) {
+            const scale = this.encoders[axis].scale;
+            if (strip && axis === "y") {
+                if (scale?.type !== "band") {
+                    throw new ViewError(
+                        "Raster strips need a band scale on y.",
+                        this.unitView
+                    );
+                }
+            } else if (
+                !scale ||
+                !["linear", "index", "locus"].includes(scale.type) ||
+                hasGroupingGaps(scale.props) ||
+                ("paddingInner" in scale && scale.paddingInner()) ||
+                ("paddingOuter" in scale && scale.paddingOuter())
+            ) {
+                throw new ViewError(
+                    "Raster axes need linear or unpadded index/locus scales without gaps.",
+                    this.unitView
+                );
+            }
+        }
+        const resolution = this.unitView.getScaleResolution("color");
+        const colorScale = resolution.getScale();
+        if (
+            this.getColorCellBinding().type !== "quantitative" &&
+            (colorScale.type !== "ordinal" ||
+                !colorScale.domain().length ||
+                !resolution.isDomainDefinedExplicitly())
+        ) {
+            throw new ViewError(
+                "Categorical raster colors need an ordinal scale with an explicit domain.",
+                this.unitView
+            );
+        }
+        if (
+            this.encoders.opacity &&
+            !isValueDef(this.encoders.opacity.channelDef)
+        ) {
+            throw new ViewError(
+                "Raster opacity requires a value encoding.",
+                this.unitView
+            );
+        }
+        return resolution;
     }
 
     /**
@@ -91,23 +155,15 @@ export default class RasterMark extends Mark {
      * @param {import("../data/viewportDomain.js").ViewportConstraint[]} [constraints]
      */
     getColorDomain(collector, constraints = []) {
-        const type = findChannelDefWithScale(this.encoding.color).type;
+        const { type, readTile } = this.getColorCellBinding();
         const domain = createDomain(type);
         if (type !== "quantitative" || !collector.completed) return domain;
-        const x = this.getDimensionName("x");
-        const y = this.getDimensionName("y");
-        const field = this.getColorField();
         const colorResolution = this.unitView.getScaleResolution("color");
         const logarithmic = colorResolution?.getResolvedScaleType() === "log";
         const xConstraint = constraints.find(({ channel }) => channel === "x");
         const yConstraint = constraints.find(({ channel }) => channel === "y");
         for (const datum of collector.getData()) {
-            const { horizontal, vertical, values } = readRasterTile(
-                datum,
-                x,
-                y,
-                field
-            );
+            const { horizontal, vertical, values } = readTile(datum);
             const [left, right] = getVisibleCellRange(horizontal, xConstraint);
             const [top, bottom] = vertical
                 ? getVisibleCellRange(vertical, yConstraint)

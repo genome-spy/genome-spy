@@ -44,7 +44,7 @@ import {
 } from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
-import { readRasterTile } from "../../data/rasterTile.js";
+import { readNumericRasterCell } from "../../data/rasterTile.js";
 import RasterMark from "../../marks/raster.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
@@ -576,64 +576,26 @@ const rasterDataCache = new WeakMap();
 function createRasterConfig(mark, data, coords) {
     const strip = mark.getDimensionName("y") === undefined;
     const xScale = requireEncoder(mark, "x").scale;
-    for (const axis of /** @type {const} */ (["x", "y"])) {
-        const scale = requireEncoder(mark, axis).scale;
-        if (strip && axis === "y") {
-            if (scale?.type !== "band") {
-                throw unsupported(
-                    mark,
-                    "Raster strips need a band scale on y."
-                );
-            }
-            continue;
-        }
-        if (
-            !scale ||
-            !["linear", "index", "locus"].includes(scale.type) ||
-            hasGroupingGaps(scale.props) ||
-            ("paddingInner" in scale && scale.paddingInner()) ||
-            ("paddingOuter" in scale && scale.paddingOuter())
-        ) {
-            throw unsupported(
-                mark,
-                "Raster axes need linear or unpadded index/locus scales without gaps."
-            );
-        }
-    }
-    const color = requireEncoder(mark, "color").scale;
-    const colorResolution = mark.unitView.getScaleResolution("color");
-    const colorType = colorResolution.type;
-    const palette = colorType !== "quantitative" ? color : undefined;
-    if (
-        colorType !== "quantitative" &&
-        (palette?.type !== "ordinal" ||
-            !palette.domain().length ||
-            !colorResolution.isDomainDefinedExplicitly())
-    ) {
-        throw unsupported(
-            mark,
-            "Categorical raster colors need an ordinal scale with an explicit domain."
-        );
-    }
+    const color = mark.validateRenderingScales().getScale();
+    const palette =
+        mark.getColorCellBinding().type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
     let cached = rasterDataCache.get(mark);
     if (cached?.data !== data || cached.palette !== palette) {
-        cached = {
-            data,
-            palette,
-            packed: packRasterTiles(mark, data, categories?.intern),
-        };
+        try {
+            cached = {
+                data,
+                palette,
+                packed: packRasterTiles(mark, data, categories?.intern),
+            };
+        } catch (error) {
+            throw unsupported(mark, error.message, error);
+        }
         rasterDataCache.set(mark, cached);
     }
 
     const opacity = mark.encoders.opacity;
-    if (opacity && !isValueDef(opacity.channelDef)) {
-        throw unsupported(
-            mark,
-            "The raster prototype only supports constant opacity."
-        );
-    }
     const { cells, inputs } = cached.packed;
     const reverseIndex =
         strip && xScale.type === "index" && xScale.props.reverse;
@@ -680,10 +642,7 @@ function createRasterConfig(mark, data, coords) {
  * @param {(value: import("../../spec/channel.js").Scalar) => number} [intern]
  */
 function packRasterTiles(mark, data, intern) {
-    const x = mark.getDimensionName("x");
-    const y = mark.getDimensionName("y");
-    const field = mark.getColorField();
-    const tiles = data.map((datum) => readRasterTile(datum, x, y, field));
+    const tiles = data.map(mark.getColorCellBinding().readTile);
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
     const offsets = new Uint32Array(tiles.length);
@@ -702,14 +661,7 @@ function packRasterTiles(mark, data, intern) {
             cells.set(values, offset);
         } else {
             for (let cell = 0; cell < values.length; cell++) {
-                const value = values[cell];
-                if (value != null && typeof value !== "number") {
-                    throw unsupported(
-                        mark,
-                        "Quantitative raster fields need numeric cells."
-                    );
-                }
-                cells[offset + cell] = typeof value === "number" ? value : NaN;
+                cells[offset + cell] = readNumericRasterCell(values[cell]);
             }
         }
         offset += values.length;

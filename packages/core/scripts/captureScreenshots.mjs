@@ -15,7 +15,7 @@ const defaultLazyDataTimeoutMs = 30_000;
 const screenshotHarnessTimeoutPaddingMs = 60_000;
 
 const excludedExamples = new Set(["examples/core/app/samples.json"]);
-const webGpuExamples = new Set([
+const rasterExamples = new Set([
     "examples/core/lazy-data/higlass-raster.json",
     "examples/core/raster/msa.json",
 ]);
@@ -37,7 +37,7 @@ Notes:
   - Screenshots are written next to their source specs as sibling .png files.
   - Check mode visits examples even when a sibling screenshot already exists.
   - The script excludes app-only examples for now.
-  - Batch capture includes experimental raster examples with --renderer webgpu.
+  - Batch capture includes experimental raster examples with --renderer canvas or webgpu.
   - Remote lazy-data examples require network access during capture.
   - Explicitly listed examples overwrite by default. Batch runs skip existing screenshots unless --overwrite is provided.
 `;
@@ -219,7 +219,9 @@ export function collectCuratedExamplePaths(renderer) {
                 .join("/");
             if (
                 !excludedExamples.has(examplePath) &&
-                (renderer === "webgpu" || !webGpuExamples.has(examplePath))
+                (renderer === "webgpu" ||
+                    renderer === "canvas" ||
+                    !rasterExamples.has(examplePath))
             ) {
                 examplePaths.push(examplePath);
             }

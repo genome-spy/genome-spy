@@ -53,6 +53,13 @@ export function readRasterTile(datum, x, y, field) {
     return { horizontal, vertical, values };
 }
 
+/** @param {number | string | null} value */
+export function readNumericRasterCell(value) {
+    if (typeof value === "number") return value;
+    if (value == null) return NaN;
+    throw new Error("Quantitative raster fields need numeric cells.");
+}
+
 /**
  * Restrict a grid dimension to the cells contributing to a viewport domain.
  * @param {RasterDimension} dimension

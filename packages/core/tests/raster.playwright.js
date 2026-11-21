@@ -4,11 +4,143 @@ import { expect, test } from "playwright/test";
 
 const coreSource = "/@fs" + fileURLToPath(new URL("../src/", import.meta.url));
 
-test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", async ({
-    playwright,
-    baseURL,
+for (const renderer of /** @type {const} */ (["webgpu", "canvas"])) {
+    test(`${renderer} raster maps cells and a row-backed rule onto the same locus axis`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterGrid(playwright, baseURL, renderer));
+    test(`${renderer} raster strips use index edges, band placement, and tile opacity`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterStrips(playwright, baseURL, renderer));
+}
+
+test("Canvas recolors clipped raster tiles when the viewport log domain changes", async ({
+    page,
 }) => {
-    const browser = await launchRasterBrowser(playwright);
+    await page.route("**/raster-log", (route) =>
+        route.fulfill({
+            contentType: "text/html",
+            body: "<body style='margin:0'></body>",
+        })
+    );
+    await page.goto("/raster-log");
+    const result = await page.evaluate(async (src) => {
+        const { embed } = await import(src + "minimal.js");
+        await import(src + "rendering/registerCanvas.js");
+        const api = await embed(
+            globalThis.document.body,
+            {
+                width: 100,
+                height: 100,
+                padding: 0,
+                config: { background: null },
+                view: { stroke: null },
+                data: {
+                    values: [
+                        {
+                            dimensions: {
+                                column: { origin: 0, step: 1, count: 5 },
+                                row: { origin: 0, step: 1, count: 1 },
+                            },
+                            fields: { value: [0, 1, 10, 100, null] },
+                        },
+                    ],
+                },
+                mark: { type: "raster", clip: true },
+                encoding: {
+                    x: {
+                        dimension: "column",
+                        type: "quantitative",
+                        axis: null,
+                        scale: { domain: [0, 5], zoom: true },
+                    },
+                    y: { dimension: "row", type: "quantitative", axis: null },
+                    color: {
+                        field: "value",
+                        type: "quantitative",
+                        legend: null,
+                        scale: {
+                            type: "log",
+                            domain: { source: "viewport" },
+                            range: ["black", "red"],
+                            clamp: true,
+                        },
+                    },
+                },
+            },
+            { renderer: "canvas" }
+        );
+        const view = api.debug
+            .getViewRoot()
+            .getDescendants()
+            .find((candidate) => candidate.mark?.getType() === "raster");
+        const x = view.getScaleResolution("x");
+        const color = view.getScaleResolution("color");
+
+        async function sample() {
+            const { blob } = await api.imageExport.raster({
+                pixelRatio: 1,
+                background: null,
+            });
+            const bitmap = await globalThis.createImageBitmap(blob);
+            const context = new globalThis.OffscreenCanvas(
+                bitmap.width,
+                bitmap.height
+            ).getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            return {
+                domain: color.getDomain().map(Math.round),
+                pixels: [10, 50, 90].map((column) =>
+                    Array.from(context.getImageData(column, 50, 1, 1).data)
+                ),
+            };
+        }
+        try {
+            const before = await sample();
+            const domainUpdated = new Promise((resolve) => {
+                const onDomain = () => {
+                    if (Math.abs(color.getDomain().at(-1) - 10) < 1e-6) {
+                        color.removeEventListener("domain", onDomain);
+                        resolve(undefined);
+                    }
+                };
+                color.addEventListener("domain", onDomain);
+            });
+            await x.zoomTo([0.5, 2.9]);
+            await domainUpdated;
+            return { before, after: await sample() };
+        } finally {
+            api.finalize();
+        }
+    }, coreSource);
+    const black = [0, 0, 0, 255];
+    expect(result).toEqual({
+        before: {
+            domain: [1, 100],
+            pixels: [black, [128, 0, 0, 255], [0, 0, 0, 0]],
+        },
+        after: {
+            domain: [1, 10],
+            pixels: [black, black, [255, 0, 0, 255]],
+        },
+    });
+});
+
+/** @typedef {import("playwright/test").PlaywrightTestArgs["playwright"]} Playwright */
+
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+async function checkRasterGrid(playwright, baseURL, renderer) {
+    const setup = {
+        src: coreSource,
+        renderer,
+        register:
+            renderer === "canvas"
+                ? "rendering/registerCanvas.js"
+                : "rendering/webgpu/register.js",
+    };
+    const browser = await launchRasterBrowser(playwright, renderer);
     try {
         const page = await browser.newPage({ deviceScaleFactor: 1 });
         const browserErrors = [];
@@ -27,9 +159,10 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
             })
         );
         await page.goto(new URL("/raster-proof", baseURL).href);
-        const result = await page.evaluate(async (src) => {
+        const result = await page.evaluate(async (args) => {
+            const { src, renderer, register } = args;
             const { embed } = await import(src + "minimal.js");
-            await import(src + "rendering/webgpu/register.js");
+            await import(src + register);
             const start = 2_000_000_001;
             const errors = [];
             const api = await embed(
@@ -44,7 +177,11 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
                     resolve: { scale: { x: "shared", y: "shared" } },
                     scales: {
                         x: { type: "locus", domain: [start, start + 1] },
-                        y: { type: "linear", domain: [0, 2], reverse: true },
+                        y: {
+                            type: "linear",
+                            domain: [0, 2],
+                            reverse: true,
+                        },
                     },
                     layer: [
                         {
@@ -105,7 +242,7 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
                     ],
                 },
                 {
-                    renderer: "webgpu",
+                    renderer,
                     onError: (error) => errors.push(error.message),
                 }
             );
@@ -147,7 +284,7 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
             } finally {
                 api.finalize();
             }
-        }, coreSource);
+        }, setup);
         expect([...result.errors, ...browserErrors]).toEqual([]);
         expect(result.before).toEqual([
             [0, 0, 0],
@@ -160,13 +297,19 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
     } finally {
         await browser.close();
     }
-});
+}
 
-test("WebGPU raster strips use index edges and share categorical band placement", async ({
-    playwright,
-    baseURL,
-}) => {
-    const browser = await launchRasterBrowser(playwright);
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+async function checkRasterStrips(playwright, baseURL, renderer) {
+    const setup = {
+        src: coreSource,
+        renderer,
+        register:
+            renderer === "canvas"
+                ? "rendering/registerCanvas.js"
+                : "rendering/webgpu/register.js",
+    };
+    const browser = await launchRasterBrowser(playwright, renderer);
     try {
         const page = await browser.newPage({ deviceScaleFactor: 1 });
         const errors = [];
@@ -186,9 +329,10 @@ test("WebGPU raster strips use index edges and share categorical band placement"
             })
         );
         await page.goto(new URL("/raster-strips", baseURL).href);
-        const results = await page.evaluate(async (src) => {
+        const results = await page.evaluate(async (args) => {
+            const { src, renderer, register } = args;
             const { embed } = await import(src + "minimal.js");
-            await import(src + "rendering/webgpu/register.js");
+            await import(src + register);
 
             async function render(reverse) {
                 const host = globalThis.document.createElement("div");
@@ -201,11 +345,22 @@ test("WebGPU raster strips use index edges and share categorical band placement"
                         padding: 0,
                         config: { background: null },
                         view: { stroke: null },
+                        params: [
+                            {
+                                name: "highlight",
+                                select: { type: "point", encodings: ["y"] },
+                                value: [{ y: "a" }],
+                            },
+                        ],
                         data: {
                             values: ["AG?-", "-?GA"].map((sequence, row) => ({
                                 id: row ? "b" : "a",
                                 dimensions: {
-                                    column: { origin: 9, step: 2, count: 4 },
+                                    column: {
+                                        origin: 9,
+                                        step: 2,
+                                        count: 4,
+                                    },
                                 },
                                 fields: { base: sequence },
                             })),
@@ -216,7 +371,10 @@ test("WebGPU raster strips use index edges and share categorical band placement"
                                 dimension: "column",
                                 type: "index",
                                 axis: null,
-                                scale: { reverse, zoom: { extent: "data" } },
+                                scale: {
+                                    reverse,
+                                    zoom: { extent: "data" },
+                                },
                             },
                             y: {
                                 field: "id",
@@ -238,10 +396,14 @@ test("WebGPU raster strips use index edges and share categorical band placement"
                                     range: ["red", "blue", "gray"],
                                 },
                             },
+                            opacity: {
+                                condition: { param: "highlight", value: 1 },
+                                value: 0.5,
+                            },
                         },
                     },
                     {
-                        renderer: "webgpu",
+                        renderer,
                         onError: (error) => {
                             throw error;
                         },
@@ -290,29 +452,33 @@ test("WebGPU raster strips use index edges and share categorical band placement"
             }
 
             return [await render(false), await render(true)];
-        }, coreSource);
+        }, setup);
         expect(errors).toEqual([]);
         const red = [255, 0, 0, 255];
         const blue = [0, 0, 255, 255];
         const gray = [128, 128, 128, 255];
+        const fadedRed = [255, 0, 0, 128];
+        const fadedGray = [128, 128, 128, 128];
         const clear = [0, 0, 0, 0];
         expect(results).toEqual([
             {
                 extent: [9, 17],
-                pixels: [red, blue, clear, gray, clear, gray, red],
+                pixels: [red, blue, clear, gray, clear, fadedGray, fadedRed],
             },
             {
                 extent: [9, 17],
-                pixels: [gray, clear, blue, red, clear, red, gray],
+                pixels: [gray, clear, blue, red, clear, fadedRed, fadedGray],
             },
         ]);
     } finally {
         await browser.close();
     }
-});
+}
 
-/** @param {import("playwright/test").PlaywrightTestArgs["playwright"]} playwright */
-function launchRasterBrowser(playwright) {
+/** @param {Playwright} playwright @param {"webgpu" | "canvas"} renderer */
+function launchRasterBrowser(playwright, renderer) {
+    if (renderer === "canvas")
+        return playwright.chromium.launch({ channel: "chrome" });
     const softwareWebGpu = process.platform === "linux";
     return playwright.chromium.launch({
         channel: "chrome",
