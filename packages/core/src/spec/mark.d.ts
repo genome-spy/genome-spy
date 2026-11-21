@@ -924,9 +924,13 @@ export interface LinkProps
 }
 
 /**
- * Experimental Canvas and WebGPU mark for regular grids. A grid dimension
- * on x and a band field on y draw one horizontal strip per record.
+ * Experimental mark for regular grids. A grid dimension on x and a band
+ * field on y draw one horizontal strip per record.
  * Categorical cell colors use an ordinal scale with an explicit domain.
+ * To draw an image, use `color: { field: "pixels", scale: null }` and
+ * store one packed unsigned RGBA8 value (`0xAABBGGRR`) per cell in
+ * `fields.pixels`. Use a row-major `Uint32Array` or array of integers
+ * with straight alpha. Set alpha to 255 for opaque RGB pixels.
  * A single value condition on opacity can use a quantitative gradient legend
  * interval to test each cell's raw color value.
  */

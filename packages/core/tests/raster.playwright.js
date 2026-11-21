@@ -32,12 +32,125 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterBrush(playwright, baseURL, renderer));
+    test(`${renderer} raster preserves direct RGBA colors in display and SVG export`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterImage(playwright, baseURL, renderer));
     if (renderer !== "webgpu") {
         test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
             playwright,
             baseURL,
         }) => checkRasterLogDomain(playwright, baseURL, renderer));
     }
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkRasterImage(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const result = await page.evaluate(
+            async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                await import(src + "rendering/registerSvg.js");
+                const pixels = [0xff0000ff, 0x8000ff00, 0xffff0000, 0x0000ffff];
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        width: 160,
+                        height: 80,
+                        padding: 0,
+                        view: { stroke: null },
+                        data: {
+                            values: [pixels, Uint32Array.from(pixels)].map(
+                                (values, i) => ({
+                                    dimensions: {
+                                        column: {
+                                            origin: 2 * i,
+                                            step: 1,
+                                            count: 2,
+                                        },
+                                        row: { origin: 0, step: 1, count: 2 },
+                                    },
+                                    fields: { pixels: values },
+                                })
+                            ),
+                        },
+                        mark: { type: "raster", opacity: 0.5 },
+                        encoding: {
+                            x: {
+                                dimension: "column",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                dimension: "row",
+                                type: "quantitative",
+                                axis: null,
+                                scale: { reverse: true },
+                            },
+                            color: { field: "pixels", scale: null },
+                        },
+                    },
+                    {
+                        renderer,
+                        onError: (error) => {
+                            throw error;
+                        },
+                    }
+                );
+                const points = [0, 80].flatMap((offset) => [
+                    [20 + offset, 20],
+                    [60 + offset, 20],
+                    [20 + offset, 60],
+                    [60 + offset, 60],
+                ]);
+                try {
+                    const raster = await globalThis.readRasterPixels(
+                        api,
+                        points,
+                        null
+                    );
+                    const { blob } = await api.imageExport.svg({
+                        background: null,
+                        rasterization: { pixelRatio: 1 },
+                    });
+                    const svg = new globalThis.DOMParser().parseFromString(
+                        await blob.text(),
+                        "image/svg+xml"
+                    );
+                    const image = svg.querySelector("[data-rasterized] image");
+                    const png = await (
+                        await globalThis.fetch(image.getAttribute("href"))
+                    ).blob();
+                    return {
+                        raster,
+                        svg: await globalThis.readImagePixels(png, points),
+                    };
+                } finally {
+                    api.finalize();
+                }
+            },
+            setup
+        );
+        const tile = [
+            [255, 0, 0, 128],
+            [0, 255, 0, 64],
+            [0, 0, 255, 128],
+            [0, 0, 0, 0],
+        ];
+        const expected = [...tile, ...tile];
+        for (const [format, samples] of Object.entries(result)) {
+            expect(
+                samples.map((pixel) => pixel.slice(0, 3)),
+                format
+            ).toEqual(expected.map((pixel) => pixel.slice(0, 3)));
+            for (const [i, pixel] of samples.entries()) {
+                expect(Math.abs(pixel[3] - expected[i][3])).toBeLessThanOrEqual(
+                    1
+                );
+            }
+        }
+    });
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
@@ -891,11 +1004,7 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
         );
         await page.goto(new URL("/raster-test", baseURL).href);
         await page.evaluate(() => {
-            globalThis.readRasterPixels = async (api, points, background) => {
-                const { blob } = await api.imageExport.raster({
-                    pixelRatio: 1,
-                    background,
-                });
+            globalThis.readImagePixels = async (blob, points) => {
                 const bitmap = await globalThis.createImageBitmap(blob);
                 const context = new globalThis.OffscreenCanvas(
                     bitmap.width,
@@ -906,6 +1015,13 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
                 return points.map(([x, y]) =>
                     Array.from(context.getImageData(x, y, 1, 1).data)
                 );
+            };
+            globalThis.readRasterPixels = async (api, points, background) => {
+                const { blob } = await api.imageExport.raster({
+                    pixelRatio: 1,
+                    background,
+                });
+                return globalThis.readImagePixels(blob, points);
             };
         });
         await check(page, {

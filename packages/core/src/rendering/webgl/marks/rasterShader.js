@@ -4,7 +4,7 @@ import FRAGMENT from "./raster.fragment.glsl";
 
 /**
  * @param {import("../../../marks/raster.js").default} mark
- * @param {import("../../../types/encoder.js").VegaScale} scale
+ * @param {import("../../../types/encoder.js").VegaScale} [scale]
  */
 export function rasterFragmentShader(mark, scale) {
     const { domainUniform, glsl } = generateScaleGlsl(
@@ -12,11 +12,12 @@ export function rasterFragmentShader(mark, scale) {
         scale,
         mark.encoding.color
     );
-    const categorical = mark.getColorCellBinding().type !== "quantitative";
+    const integer =
+        !scale || mark.getColorCellBinding().type !== "quantitative";
     const brush = !!mark.getCellOpacityReader();
-    const log = ["log", "sequential-log"].includes(scale.type);
+    const log = ["log", "sequential-log"].includes(scale?.type);
     const clamped = log && "clamp" in scale && scale.clamp();
-    const color = categorical
+    const color = integer
         ? "return scale_color(texelFetch(uCells, cell, 0).r);"
         : `
     float value = texelFetch(uCells, cell, 0).r;
@@ -31,7 +32,7 @@ export function rasterFragmentShader(mark, scale) {
     return `
 precision highp float;
 precision highp int;
-uniform highp ${categorical ? "usampler2D" : "sampler2D"} uCells;
+uniform highp ${integer ? "usampler2D" : "sampler2D"} uCells;
 ${SCALES}
 ${brush ? "uniform vec4 uBrush;" : ""}
 ${domainUniform ? "uniform " + domainUniform : ""}

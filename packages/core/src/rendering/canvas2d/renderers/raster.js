@@ -11,9 +11,9 @@ import { visitRasterTiles } from "../../immediate/marks/raster.js";
  * mutate the Vega scale in place, so use the completed mapping snapshot.
  * @type {WeakMap<import("../../../marks/raster.js").default, {
  *     revision: number,
- *     mapping: object,
+ *     mapping: object | undefined,
  *     cellOpacity: import("../../../marks/raster.js").CellOpacity | undefined,
- *     colorize: ReturnType<typeof makeCellColorMapper>,
+ *     colorize: ReturnType<typeof makeCellColorMapper> | undefined,
  *     tiles: WeakMap<object, HTMLCanvasElement>
  * }>}
  */
@@ -34,7 +34,7 @@ export function renderRasterCanvas(mark, options) {
         : 1;
     if (!(constantOpacity * options.viewOpacity > 0)) return 0;
 
-    const mapping = resolution.getMappingRef().get();
+    const mapping = resolution?.getMappingRef().get();
     const revision = mark.unitView.getCollector().dataRevision;
     const { readTile, type } = mark.getColorCellBinding();
     let cache = bitmaps.get(mark);
@@ -50,11 +50,13 @@ export function renderRasterCanvas(mark, options) {
             mapping,
             revision,
             cellOpacity,
-            colorize: makeCellColorMapper(
-                resolution.getScale(),
-                type !== "quantitative",
-                cellOpacity
-            ),
+            colorize:
+                resolution &&
+                makeCellColorMapper(
+                    resolution.getScale(),
+                    type !== "quantitative",
+                    cellOpacity
+                ),
             tiles: new WeakMap(),
         };
         bitmaps.set(mark, cache);
@@ -199,7 +201,7 @@ function makeCellColorMapper(scale, categorical, cellOpacity) {
 /**
  * @param {Document} document
  * @param {ReturnType<import("../../../data/rasterTile.js").readRasterTile>} tile
- * @param {(value: string | number | null) => number} colorize
+ * @param {((value: string | number | null) => number) | undefined} colorize
  */
 function createTileBitmap(
     document,
@@ -218,7 +220,9 @@ function createTileBitmap(
         pixels.data.byteLength
     );
     for (let i = 0; i < values.length; i++) {
-        bytes.setUint32(i * 4, colorize(values[i]), true);
+        const packed =
+            values instanceof Uint32Array ? values[i] : colorize(values[i]);
+        bytes.setUint32(i * 4, packed, true);
     }
     context.putImageData(pixels, 0, 0);
     return bitmap;

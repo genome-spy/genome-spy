@@ -75,11 +75,10 @@ export default class RasterMark extends Mark {
             !["quantitative", "nominal", "ordinal"].includes(
                 encoding.color.type
             ) ||
-            encoding.color.scale === null ||
             "condition" in encoding.color
         ) {
             throw new Error(
-                "Raster requires a quantitative or categorical color field with a scale."
+                "Raster requires a quantitative or categorical color field."
             );
         }
         return encoding;
@@ -87,10 +86,11 @@ export default class RasterMark extends Mark {
 
     getColorCellBinding() {
         return getCachedOrCall(this, "colorCellBinding", () => {
-            const { field, type } =
-                /** @type {import("../spec/channel.js").TypedFieldDef} */ (
+            const { field, type, scale } =
+                /** @type {import("../spec/channel.js").ScaleFieldDef<import("../spec/channel.js").Type>} */ (
                     this.encoding.color
                 );
+            const direct = scale === null;
             const { x, y } = this.unitView.getEncoding();
             // fixEncoding requires a grid dimension on x and permits a band on y.
             const column =
@@ -100,10 +100,11 @@ export default class RasterMark extends Mark {
             const row = "dimension" in y ? y.dimension : undefined;
             return {
                 type,
+                direct,
                 strip: row === undefined,
                 domainKey: "raster:" + JSON.stringify([column, row, field]),
                 readTile: (/** @type {object} */ datum) =>
-                    readRasterTile(datum, column, row, field),
+                    readRasterTile(datum, column, row, field, direct),
             };
         });
     }
@@ -124,7 +125,10 @@ export default class RasterMark extends Mark {
             ) {
                 return null;
             }
+            const { type, direct } = this.getColorCellBinding();
             if (
+                type !== "quantitative" ||
+                direct ||
                 branches.length !== 2 ||
                 !test ||
                 !("param" in test) ||
@@ -137,7 +141,7 @@ export default class RasterMark extends Mark {
                 )
             ) {
                 throw new ViewError(
-                    "Raster cell opacity requires a single gradient interval condition on color and value definitions for both branches.",
+                    "Raster cell opacity requires a single interval condition on a quantitative color gradient and value definitions for both branches.",
                     this.unitView
                 );
             }
@@ -169,7 +173,7 @@ export default class RasterMark extends Mark {
     }
 
     validateRenderingScales() {
-        const { strip, type } = this.getColorCellBinding();
+        const { strip, type, direct } = this.getColorCellBinding();
         const x = this.encoders.x.scale;
         const y = this.encoders.y.scale;
         if (strip && y?.type !== "band") {
@@ -192,6 +196,17 @@ export default class RasterMark extends Mark {
                 );
             }
         }
+        if (
+            this.encoders.opacity &&
+            !isValueDef(this.encoders.opacity.channelDef)
+        ) {
+            throw new ViewError(
+                "Raster opacity requires a value encoding.",
+                this.unitView
+            );
+        }
+        if (direct) return undefined;
+
         const resolution = this.unitView.getScaleResolution("color");
         const colorScale = resolution.getScale();
         if (
@@ -205,15 +220,6 @@ export default class RasterMark extends Mark {
                 this.unitView
             );
         }
-        if (
-            this.encoders.opacity &&
-            !isValueDef(this.encoders.opacity.channelDef)
-        ) {
-            throw new ViewError(
-                "Raster opacity requires a value encoding.",
-                this.unitView
-            );
-        }
         return resolution;
     }
 
@@ -222,9 +228,10 @@ export default class RasterMark extends Mark {
      * @param {import("../data/viewportDomain.js").ViewportConstraint[]} [constraints]
      */
     getColorDomain(collector, constraints = []) {
-        const { type, readTile } = this.getColorCellBinding();
+        const { type, direct, readTile } = this.getColorCellBinding();
         const domain = createDomain(type);
-        if (type !== "quantitative" || !collector.completed) return domain;
+        if (direct || type !== "quantitative" || !collector.completed)
+            return domain;
         const colorResolution = this.unitView.getScaleResolution("color");
         const logarithmic = colorResolution?.getResolvedScaleType() === "log";
         const xConstraint = constraints.find(({ channel }) => channel === "x");

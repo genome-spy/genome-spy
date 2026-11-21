@@ -8,7 +8,7 @@
 /**
  * @typedef {object} RasterTile
  * @prop {Record<string, RasterDimension>} dimensions
- * @prop {Record<string, Float32Array | string | (number | string | null)[]>} fields Cell values in row-major order.
+ * @prop {Record<string, Float32Array | Uint32Array | string | (number | string | null)[]>} fields Cell values in row-major order.
  */
 
 /**
@@ -16,8 +16,9 @@
  * @param {string} x
  * @param {string | undefined} y Vertical grid dimension for a two-dimensional tile.
  * @param {string} field
+ * @param {boolean} [direct] Read the field as packed RGBA8.
  */
-export function readRasterTile(datum, x, y, field) {
+export function readRasterTile(datum, x, y, field, direct = false) {
     const tile = /** @type {RasterTile} */ (datum);
     const horizontal = tile.dimensions?.[x];
     const vertical = y === undefined ? undefined : tile.dimensions?.[y];
@@ -38,19 +39,42 @@ export function readRasterTile(datum, x, y, field) {
             );
         }
     }
+    const supported =
+        Array.isArray(values) ||
+        (direct
+            ? values instanceof Uint32Array
+            : values instanceof Float32Array || typeof values === "string");
     if (
-        !(
-            values instanceof Float32Array ||
-            Array.isArray(values) ||
-            typeof values === "string"
-        ) ||
+        !supported ||
         values.length !== horizontal.count * (vertical?.count ?? 1)
     ) {
         throw new Error(
             `Raster field "${field}" must contain one value for each grid cell.`
         );
     }
-    return { horizontal, vertical, values };
+    return {
+        horizontal,
+        vertical,
+        values:
+            direct && Array.isArray(values)
+                ? Uint32Array.from(values, readPackedRasterCell)
+                : values,
+    };
+}
+
+/** @param {number | string | null} value */
+function readPackedRasterCell(value) {
+    if (
+        typeof value !== "number" ||
+        !Number.isInteger(value) ||
+        value < 0 ||
+        value > 0xffffffff
+    ) {
+        throw new Error(
+            "Direct raster colors need unsigned 32-bit RGBA values."
+        );
+    }
+    return value;
 }
 
 /** @param {number | string | null} value */

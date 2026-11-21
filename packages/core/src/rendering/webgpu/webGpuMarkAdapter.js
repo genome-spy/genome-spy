@@ -597,7 +597,7 @@ const rasterDataCache = new WeakMap();
 function createRasterConfig(mark, data, coords, placement) {
     const { strip, type } = mark.getColorCellBinding();
     const xScale = requireEncoder(mark, "x").scale;
-    const color = mark.validateRenderingScales().getScale();
+    const color = mark.validateRenderingScales()?.getScale();
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
@@ -705,12 +705,14 @@ function createRasterConfig(mark, data, coords, placement) {
         channels: {
             fill: {
                 input: "color",
-                scale: createColorScale(
-                    mark,
-                    "color",
-                    color,
-                    categories?.readDomain
-                ),
+                scale: color
+                    ? createColorScale(
+                          mark,
+                          "color",
+                          color,
+                          categories?.readDomain
+                      )
+                    : rgba8Unorm,
             },
             ...(opacity && {
                 opacity: /** @type {RasterConfig["channels"]["opacity"]} */ (
@@ -728,12 +730,14 @@ function createRasterConfig(mark, data, coords, placement) {
  * @param {Record<string, Uint32Array>} cellInputs
  */
 function packRasterTiles(mark, data, intern, cellInputs) {
-    const tiles = data.map(mark.getColorCellBinding().readTile);
+    const { direct, readTile } = mark.getColorCellBinding();
+    const tiles = data.map(readTile);
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
     const offsets = new Uint32Array(tiles.length);
     const length = tiles.reduce((count, tile) => count + tile.values.length, 0);
-    const color = intern ? new Uint32Array(length) : new Float32Array(length);
+    const color =
+        direct || intern ? new Uint32Array(length) : new Float32Array(length);
     const encodeCell = intern ?? readNumericRasterCell;
     const categoryFields = Object.entries(cellInputs).map(([name, values]) => ({
         name,
@@ -745,7 +749,10 @@ function packRasterTiles(mark, data, intern, cellInputs) {
         columns[index] = horizontal.count;
         rows[index] = vertical?.count ?? 1;
         offsets[index] = offset;
-        if (!intern && values instanceof Float32Array) {
+        if (
+            values instanceof Uint32Array ||
+            (!intern && values instanceof Float32Array)
+        ) {
             color.set(values, offset);
         } else {
             for (let cell = 0; cell < values.length; cell++) {

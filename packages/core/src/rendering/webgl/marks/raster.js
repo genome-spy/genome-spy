@@ -35,7 +35,7 @@ export default class WebGLRasterMark {
     /** @type {import("twgl.js").ProgramInfo} */
     #programInfo;
 
-    /** @type {import("../../../scales/scaleResolution.js").default} */
+    /** @type {ReturnType<import("../../../marks/raster.js").default["validateRenderingScales"]>} */
     #color;
 
     /** @type {import("../../../view/layout/rectangle.js").default} */
@@ -85,7 +85,7 @@ export default class WebGLRasterMark {
             this.glHelper.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER),
             this.glHelper.compileShader(
                 gl.FRAGMENT_SHADER,
-                rasterFragmentShader(this.mark, this.#color.getScale())
+                rasterFragmentShader(this.mark, this.#color?.getScale())
             )
         );
     }
@@ -112,10 +112,11 @@ export default class WebGLRasterMark {
         this.deleteGraphicsData();
         const gl = this.gl;
         const { readTile, type } = this.mark.getColorCellBinding();
-        const categorical = type !== "quantitative";
+        const palette = type !== "quantitative" && this.#color?.getScale();
         const indexer =
+            palette &&
             /** @type {{domainIndexer: (value: string | number | null) => number}} */ (
-                this.#color.getScale().props
+                palette.props
             ).domainIndexer;
         const size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
         try {
@@ -129,18 +130,25 @@ export default class WebGLRasterMark {
                         `Raster tile ${width} × ${height} exceeds WebGL texture size ${size}.`
                     );
                 }
-                const src = categorical
-                    ? Uint32Array.from({ length: values.length }, (_, i) =>
-                          indexer(values[i])
-                      )
-                    : values instanceof Float32Array
-                      ? values
-                      : Float32Array.from(values, readNumericRasterCell);
+                let src;
+                if (values instanceof Uint32Array) {
+                    src = values;
+                } else if (indexer) {
+                    src = Uint32Array.from({ length: values.length }, (_, i) =>
+                        indexer(values[i])
+                    );
+                } else {
+                    src =
+                        values instanceof Float32Array
+                            ? values
+                            : Float32Array.from(values, readNumericRasterCell);
+                }
                 const texture = createTexture(gl, {
                     width,
                     height,
                     src,
-                    internalFormat: categorical ? gl.R32UI : gl.R32F,
+                    internalFormat:
+                        src instanceof Uint32Array ? gl.R32UI : gl.R32F,
                     minMag: gl.NEAREST,
                     wrap: gl.CLAMP_TO_EDGE,
                     auto: false,
@@ -186,6 +194,7 @@ export default class WebGLRasterMark {
                     options.applyViewOpacity === false
                         ? 1
                         : this.mark.unitView.getEffectiveOpacity();
+                if (!this.#color) return;
                 const mapping = this.#color.getMappingRef().get();
                 const brush = this.#readCellOpacity?.();
                 if (brush) {
