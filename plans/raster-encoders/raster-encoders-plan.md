@@ -62,9 +62,9 @@ API or republish the tiles on every drag.
 
 Verify pointer brushing, transparency, clearing, half-open bounds, and unchanged
 color domains in Canvas and WebGPU. Use HiGlass to check lazy startup, value
-brushing, and navigation while a brush is active.
-Exercise a collapsed domain, an empty-width selection, and an unbounded upper
-limit. Keep the ramp's interaction target inactive while its domain is flat.
+brushing, and navigation while a brush is active. Exercise a collapsed domain,
+an empty-width selection, and an unbounded upper limit. Disable brush inversion
+while the domain is flat and preserve clearing.
 
 Tentative implementation commit:
 `feat(core): brush raster values from gradient legends`.

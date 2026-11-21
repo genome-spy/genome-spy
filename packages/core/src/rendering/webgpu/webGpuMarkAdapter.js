@@ -476,7 +476,10 @@ function createSelectionCondition(mark, predicate) {
                     predicate.projections.map(
                         ({ component, input, secondaryInput, hitTest }) => ({
                             component,
-                            input,
+                            input:
+                                mark instanceof RasterMark && input === "color"
+                                    ? "fill"
+                                    : input,
                             secondaryInput,
                             hitTest,
                         })
@@ -595,7 +598,10 @@ function createRasterConfig(mark, data, coords) {
         rasterDataCache.set(mark, cached);
     }
 
-    const opacity = mark.encoders.opacity;
+    const cellOpacity = mark.getCellOpacityBinding();
+    const opacity = mark.encoders.opacity
+        ? createNumericChannel(mark, "opacity", data)
+        : { value: 1 };
     const { cells, inputs } = cached.packed;
     const reverseIndex =
         strip && xScale.type === "index" && xScale.props.reverse;
@@ -628,9 +634,7 @@ function createRasterConfig(mark, data, coords) {
                     categories?.readDomain
                 ),
             },
-            opacity: opacity
-                ? createNumericChannel(mark, "opacity", data)
-                : { value: 1 },
+            ...(cellOpacity ? { cellOpacity: opacity } : { opacity }),
         },
         retainedProperties: { cells: { value: cells } },
     };

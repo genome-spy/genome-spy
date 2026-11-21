@@ -29,7 +29,7 @@ import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracke
  * @property {import("../view.js").default} view
  * @property {import("../containerView.js").default} layoutParent
  * @property {import("../../types/viewContext.js").default} context
- * @property {{ horizontal: boolean, getScale: () => import("../../scales/legendGradientMapping.js").NormalizedPositionScale, getDomain: () => [number, number], setDragActive: (active: boolean, creating: boolean) => void }} [ramp]
+ * @property {{ horizontal: boolean, getScale: () => import("../../scales/legendGradientMapping.js").NormalizedPositionScale | undefined, getDomain: () => [number, number], setDragActive: (active: boolean, creating: boolean) => void }} [ramp]
  * @property {boolean} [captureInteractions]
  * @property {(point: Point) => Rectangle | undefined} getInteractionCoords
  * @property {(name: string, point: Point) => boolean} [ownsInteraction]
@@ -429,6 +429,7 @@ export class IntervalSelectionController {
         const selectionRectAt = (/** @type {Point} */ point) => {
             const selection = selectionExpr();
             if (!isActiveIntervalSelection(selection)) return null;
+            if (ramp && !ramp.getScale()) return null;
             if (
                 Object.values(selection.intervals).some(
                     (interval) => interval && interval[0] === interval[1]
@@ -446,7 +447,8 @@ export class IntervalSelectionController {
         const canStartDrag = (event) =>
             event.mouseEvent.button === 0 &&
             isInsideHost(event.point) &&
-            ownsInteraction(event.point);
+            ownsInteraction(event.point) &&
+            (!ramp || !!ramp.getScale());
 
         /**
          * @param {import("../../utils/interaction.js").default} event

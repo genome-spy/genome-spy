@@ -927,6 +927,8 @@ export interface LinkProps
  * Experimental Canvas and WebGPU mark for regular grids. A grid dimension
  * on x and a band field on y draw one horizontal strip per record.
  * Categorical cell colors use an ordinal scale with an explicit domain.
+ * A single value condition on opacity can use a quantitative gradient legend
+ * interval to test each cell's raw color value.
  */
 export interface RasterProps extends MarkPropsBase {
     type: "raster";

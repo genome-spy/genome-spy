@@ -13,6 +13,10 @@ for (const renderer of /** @type {const} */ (["webgpu", "canvas"])) {
         playwright,
         baseURL,
     }) => checkRasterStrips(playwright, baseURL, renderer));
+    test(`${renderer} gradient brush controls opacity per raster cell`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterBrush(playwright, baseURL, renderer));
 }
 
 test("Canvas recolors clipped raster tiles when the viewport log domain changes", async ({
@@ -129,6 +133,241 @@ test("Canvas recolors clipped raster tiles when the viewport log domain changes"
 });
 
 /** @typedef {import("playwright/test").PlaywrightTestArgs["playwright"]} Playwright */
+
+/** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
+async function checkRasterBrush(playwright, baseURL, renderer) {
+    const browser = await launchRasterBrowser(playwright, renderer);
+    try {
+        const page = await browser.newPage({ deviceScaleFactor: 1 });
+        const errors = [];
+        page.on("pageerror", (error) => errors.push(error.message));
+        page.on("console", (message) => {
+            if (
+                /WGSL|Invalid ShaderModule|Invalid RenderPipeline/.test(
+                    message.text()
+                )
+            )
+                errors.push(message.text());
+        });
+        await page.route("**/raster-brush", (route) =>
+            route.fulfill({
+                contentType: "text/html",
+                body: "<body style='margin:0'><div id='plot'></div></body>",
+            })
+        );
+        await page.goto(new URL("/raster-brush", baseURL).href);
+        const result = await page.evaluate(
+            async ({ src, renderer }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(
+                    src +
+                        (renderer === "canvas"
+                            ? "rendering/registerCanvas.js"
+                            : "rendering/webgpu/register.js")
+                );
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        width: 150,
+                        height: 100,
+                        padding: 0,
+                        config: { background: null },
+                        view: { stroke: null },
+                        params: [
+                            { name: "upper", value: 1 },
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["color"],
+                                },
+                                bind: "legend",
+                            },
+                        ],
+                        data: {
+                            values: [
+                                {
+                                    dimensions: {
+                                        column: {
+                                            origin: 0,
+                                            step: 1,
+                                            count: 5,
+                                        },
+                                        row: { origin: 0, step: 1, count: 1 },
+                                    },
+                                    fields: { value: [1, 2, 4, 8, 16] },
+                                },
+                            ],
+                        },
+                        mark: "raster",
+                        encoding: {
+                            x: {
+                                dimension: "column",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                dimension: "row",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            color: {
+                                field: "value",
+                                type: "quantitative",
+                                scale: {
+                                    type: "log",
+                                    domain: [1, { expr: "upper" }],
+                                    scheme: "higlassFall",
+                                    clamp: true,
+                                },
+                                legend: {
+                                    orient: "bottom",
+                                    direction: "horizontal",
+                                },
+                            },
+                            opacity: {
+                                condition: { param: "brush", value: 1 },
+                                value: 0,
+                            },
+                        },
+                    },
+                    {
+                        renderer,
+                        onError: (error) => {
+                            throw new Error(error.message);
+                        },
+                    }
+                );
+                const views = api.debug.getViewRoot().getDescendants();
+                const raster = views.find(
+                    (view) => view.mark?.getType() === "raster"
+                );
+                const ramp = views.find((view) => view.name === "gradientRamp");
+                const scale = raster.getScaleResolution("color");
+                const initializedDomain = scale.getDomain();
+                api.params.get("upper").setValue(16);
+                const alpha = async () => {
+                    const { blob } = await api.imageExport.raster({
+                        pixelRatio: 1,
+                        background: null,
+                    });
+                    const image = await globalThis.createImageBitmap(blob);
+                    const context = new globalThis.OffscreenCanvas(
+                        image.width,
+                        image.height
+                    ).getContext("2d");
+                    context.drawImage(image, 0, 0);
+                    image.close();
+                    const { x, y, width, height } = raster.layoutCoords;
+                    return Array.from(
+                        { length: 5 },
+                        (_, i) =>
+                            context.getImageData(
+                                Math.floor(x + (width * (i + 0.5)) / 5),
+                                Math.floor(y + height / 2),
+                                1,
+                                1
+                            ).data[3]
+                    );
+                };
+                const setBounds = (bounds) =>
+                    raster.paramRuntime.setValue("brush", {
+                        type: "interval",
+                        intervals: { color: bounds },
+                    });
+                const baseline = await alpha();
+                setBounds([2, 8]);
+                const selected = await alpha();
+                setBounds([2, 8 + 1e-8]);
+                const upperBetweenFloats = await alpha();
+                setBounds([8 + 1e-8, Infinity]);
+                const lowerBetweenFloats = await alpha();
+                setBounds([8, 8]);
+                const zeroWidth = await alpha();
+                setBounds([8, Infinity]);
+                const unbounded = await alpha();
+                setBounds(null);
+                const reset = await alpha();
+
+                const rows = Array.from(ramp.getCollector().getData());
+                const enc = ramp.mark.encoders;
+                const edges = [rows[0], rows.at(-1)].flatMap((row) => [
+                    ramp.coords.denormalizePoint(enc.x(row), enc.y(row), true),
+                    ramp.coords.denormalizePoint(
+                        enc.x2(row),
+                        enc.y2(row),
+                        true
+                    ),
+                ]);
+                const xs = edges.map(({ x }) => x);
+                const ys = edges.map(({ y }) => y);
+                const rect = globalThis.document
+                    .querySelector("#plot canvas")
+                    .getBoundingClientRect();
+                globalThis.rasterBrushTest = { api, raster, alpha };
+                return {
+                    initializedDomain,
+                    baseline,
+                    selected,
+                    upperBetweenFloats,
+                    lowerBetweenFloats,
+                    zeroWidth,
+                    unbounded,
+                    reset,
+                    ramp: {
+                        left: rect.x + Math.min(...xs),
+                        right: rect.x + Math.max(...xs),
+                        y: rect.y + (Math.min(...ys) + Math.max(...ys)) / 2,
+                    },
+                };
+            },
+            { src: coreSource, renderer }
+        );
+        const { left, right, y } = result.ramp;
+        await page.mouse.move(left + (right - left) * 0.15, y);
+        await page.mouse.down();
+        await page.mouse.move(left + (right - left) * 0.85, y, { steps: 5 });
+        await page.mouse.up();
+        const brushed = await page.evaluate(() =>
+            globalThis.rasterBrushTest.alpha()
+        );
+        await page.mouse.dblclick(left + (right - left) / 2, y);
+        // WebGPU dispatches the double-click after asynchronous picking.
+        await page.waitForFunction(
+            () =>
+                globalThis.rasterBrushTest.raster.paramRuntime.findValue(
+                    "brush"
+                ).intervals.color === null
+        );
+        const cleared = await page.evaluate(async () => {
+            const { alpha, api, raster } = globalThis.rasterBrushTest;
+            const result = {
+                brush: raster.paramRuntime.findValue("brush").intervals.color,
+                alpha: await alpha(),
+                domain: raster.getScaleResolution("color").getDomain(),
+            };
+            api.finalize();
+            return result;
+        });
+        expect(errors).toEqual([]);
+        expect(result.initializedDomain).toEqual([1, 1]);
+        expect(result.baseline).toEqual([255, 255, 255, 255, 255]);
+        expect(result.selected).toEqual([0, 255, 255, 0, 0]);
+        expect(result.upperBetweenFloats).toEqual([0, 255, 255, 255, 0]);
+        expect(result.lowerBetweenFloats).toEqual([0, 0, 0, 0, 255]);
+        expect(result.zeroWidth).toEqual([0, 0, 0, 0, 0]);
+        expect(result.unbounded).toEqual([0, 0, 0, 255, 255]);
+        expect(result.reset).toEqual(result.baseline);
+        expect(brushed).toEqual([0, 255, 255, 255, 0]);
+        expect(cleared).toEqual({
+            brush: null,
+            alpha: result.baseline,
+            domain: [1, 16],
+        });
+    } finally {
+        await browser.close();
+    }
+}
 
 /** @param {Playwright} playwright @param {string} baseURL @param {"webgpu" | "canvas"} renderer */
 async function checkRasterGrid(playwright, baseURL, renderer) {

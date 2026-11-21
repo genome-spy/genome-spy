@@ -3,10 +3,29 @@ import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
+import { isGradientSelectionChannel } from "../selection/selection.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
+
+/** @typedef {[lower: number, upper: number, matching: number, fallback: number]} CellOpacity */
+
+/** @param {import("../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate */
+function usesGradientInterval(predicate) {
+    if ("param" in predicate) {
+        return (
+            predicate.type === "interval" &&
+            predicate.projections.some(({ component }) =>
+                isGradientSelectionChannel(component)
+            )
+        );
+    }
+    if ("not" in predicate) return usesGradientInterval(predicate.not);
+    if ("all" in predicate) return predicate.all.some(usesGradientInterval);
+    if ("any" in predicate) return predicate.any.some(usesGradientInterval);
+    return false;
+}
 
 /** @extends {Mark<import("../spec/mark.js").RasterProps>} */
 export default class RasterMark extends Mark {
@@ -97,6 +116,73 @@ export default class RasterMark extends Mark {
                 domainKey: "raster:" + JSON.stringify([x, y, field]),
                 readTile: (/** @type {object} */ datum) =>
                     readRasterTile(datum, x, y, field),
+            };
+        });
+    }
+
+    /** Resolves opacity driven by a gradient legend to the raw color cell. */
+    getCellOpacityBinding() {
+        return getCachedOrCall(this, "cellOpacityBinding", () => {
+            const branches = this.encoders.opacity?.branches;
+            const test = branches?.[0].predicate.selection;
+            if (
+                !branches?.some(
+                    ({ predicate }) =>
+                        predicate.selection &&
+                        usesGradientInterval(predicate.selection)
+                )
+            ) {
+                return null;
+            }
+            if (
+                branches.length !== 2 ||
+                !test ||
+                !("param" in test) ||
+                test.type !== "interval" ||
+                test.projections.length !== 1 ||
+                test.projections[0].input !== "color" ||
+                !branches.every(
+                    ({ accessor }) =>
+                        accessor.constant && isValueDef(accessor.channelDef)
+                )
+            ) {
+                throw new ViewError(
+                    "Raster cell opacity requires a single gradient interval condition on color and value definitions for both branches.",
+                    this.unitView
+                );
+            }
+            const { param, empty } = test;
+            const component =
+                /** @type {import("../spec/parameter.js").GradientSelectionChannel} */ (
+                    test.projections[0].component
+                );
+            const [matched, fallback] = branches.map(({ accessor }) =>
+                accessor.asNumberAccessor()
+            );
+            const runtime = this.unitView.paramRuntime;
+            return {
+                /** @param {object} datum @returns {CellOpacity} */
+                read(datum) {
+                    const selection =
+                        /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
+                            runtime.findValue(param)
+                        );
+                    const bounds = selection.intervals[component];
+                    const clampOpacity = (/** @type {number} */ value) =>
+                        Math.max(0, Math.min(1, value));
+                    if (!bounds) {
+                        const opacity = clampOpacity(
+                            (empty ? matched : fallback)(datum)
+                        );
+                        return [-Infinity, Infinity, opacity, opacity];
+                    }
+                    return [
+                        bounds[0],
+                        bounds[1],
+                        clampOpacity(matched(datum)),
+                        clampOpacity(fallback(datum)),
+                    ];
+                },
             };
         });
     }

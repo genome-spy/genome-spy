@@ -1,12 +1,20 @@
 {
   "description": [
     "Zoomable Hi-C contact map",
-    "Open with Canvas or WebGPU. Pan and zoom to explore the contact map. The logarithmic color scale follows the visible bins.",
+    "Open with Canvas or WebGPU. Pan and zoom to explore. Drag on the logarithmic color legend to show a range of contact values. Double-click the legend to clear the brush.",
     "Data source: Rao et al. (2014), GM12878 MboI all replicates on hg19, served by HiGlass."
   ],
   "assembly": "hg19",
   "width": 600,
   "height": 600,
+
+  "params": [
+    {
+      "name": "contactRange",
+      "select": { "type": "interval", "encodings": ["color"] },
+      "bind": "legend"
+    }
+  ],
 
   "data": {
     "lazy": {
@@ -53,6 +61,10 @@
         "scheme": "higlassFall",
         "clamp": true
       }
+    },
+    "opacity": {
+      "condition": { "param": "contactRange", "value": 1 },
+      "value": 0
     }
   }
 }

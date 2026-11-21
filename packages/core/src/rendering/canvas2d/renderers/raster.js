@@ -1,4 +1,5 @@
 import { readNumericRasterCell } from "../../../data/rasterTile.js";
+import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import ViewError from "../../../view/viewError.js";
 import { packCssColor } from "../../color.js";
 import { encodeNumber } from "../../immediate/markEncoding.js";
@@ -10,6 +11,7 @@ import { visitRasterTiles } from "../../immediate/marks/raster.js";
  * @type {WeakMap<import("../../../marks/raster.js").default, {
  *     revision: number,
  *     mapping: object,
+ *     cellOpacity: import("../../../marks/raster.js").CellOpacity | undefined,
  *     colorize: ReturnType<typeof makeCellColorMapper>,
  *     tiles: WeakMap<object, HTMLCanvasElement>
  * }>}
@@ -23,9 +25,11 @@ const bitmaps = new WeakMap();
 export function renderRasterCanvas(mark, options) {
     const { context } = options;
     const resolution = mark.validateRenderingScales();
-    const opacity = mark.encoders.opacity;
+    const firstDatum = options.data[options.start ?? 0];
+    const cellOpacity = mark.getCellOpacityBinding()?.read(firstDatum);
+    const opacity = cellOpacity ? undefined : mark.encoders.opacity;
     const constantOpacity = opacity?.constant
-        ? encodeNumber(opacity, options.data[options.start ?? 0])
+        ? encodeNumber(opacity, firstDatum)
         : 1;
     if (!(constantOpacity * options.viewOpacity > 0)) return 0;
 
@@ -33,13 +37,22 @@ export function renderRasterCanvas(mark, options) {
     const revision = mark.unitView.getCollector().dataRevision;
     const { readTile, type } = mark.getColorCellBinding();
     let cache = bitmaps.get(mark);
-    if (!cache || cache.mapping !== mapping || cache.revision !== revision) {
+    if (
+        !cache ||
+        cache.mapping !== mapping ||
+        cache.revision !== revision ||
+        (cellOpacity &&
+            (!cache.cellOpacity ||
+                !shallowArrayEquals(cellOpacity, cache.cellOpacity)))
+    ) {
         cache = {
             mapping,
             revision,
+            cellOpacity,
             colorize: makeCellColorMapper(
                 resolution.getScale(),
-                type !== "quantitative"
+                type !== "quantitative",
+                cellOpacity
             ),
             tiles: new WeakMap(),
         };
@@ -88,9 +101,10 @@ export function renderRasterCanvas(mark, options) {
 /**
  * @param {import("../../../types/encoder.js").VegaScale} scale
  * @param {boolean} categorical
+ * @param {import("../../../marks/raster.js").CellOpacity} [cellOpacity]
  * @returns {(value: string | number | null) => number}
  */
-function makeCellColorMapper(scale, categorical) {
+function makeCellColorMapper(scale, categorical, cellOpacity) {
     if (categorical) {
         const palette = new Map(
             scale.domain().map((value) => [value, packCssColor(scale(value))])
@@ -102,13 +116,23 @@ function makeCellColorMapper(scale, categorical) {
     const lower = Math.min(domain[0], domain.at(-1));
     const upper = Math.max(domain[0], domain.at(-1));
     const clamp = logarithmic && "clamp" in scale && scale.clamp();
+    const [min, max, matching, fallback] = cellOpacity ?? [];
     return (value) => {
         let number = readNumericRasterCell(value);
         if (!Number.isFinite(number)) return 0;
+        const alpha = cellOpacity
+            ? min <= number && number < max
+                ? matching
+                : fallback
+            : 1;
+        if (!(alpha > 0)) return 0;
         // Clamp in data coordinates before the log transform, including zero.
         if (clamp) number = Math.max(lower, Math.min(upper, number));
         if (logarithmic && Math.sign(number) !== Math.sign(lower)) return 0;
-        return packCssColor(scale(number));
+        const packed = packCssColor(scale(number));
+        return alpha === 1
+            ? packed
+            : (packed & 0xffffff) | (Math.round((packed >>> 24) * alpha) << 24);
     };
 }
 

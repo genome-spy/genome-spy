@@ -35,3 +35,21 @@ test covers viewport-driven log scaling, missing cells, and clipping through a
 tile. Chrome rendered the live MSA example with shared label placement at both
 alignment ends and loaded the HiGlass contact map at 16 kb and 4 kb resolutions.
 Panning updated the color domain with the newly loaded tiles.
+
+## Gradient legend brushing
+
+An opacity condition can now consume a legend interval as a cell predicate. The
+color scale uses all visible values, and the same raw brush range applies when a
+HiGlass viewport loads a different resolution. A flat domain temporarily
+prevents the legend from producing new bounds. Clearing the brush still works.
+
+WebGPU uses the existing selection uniforms in the fragment stage. The renderer
+accepts scalar opacity values and evaluates the condition against its float32
+cell input. Rounding bounds upward preserves both inclusive lower and exclusive
+upper comparisons when a threshold falls between float32 values. Canvas adds the
+current brush and branch opacity values to the bitmap cache key, so dragging may
+recolor visible tiles on the CPU.
+
+The ordinary row predicate looked for a scalar field on the tile record. A
+dataflow filter would republish tiles during brushing and could change the color
+domain. Spatial cell conditions still need their own projection semantics.
