@@ -213,6 +213,7 @@ export default class WebGLRasterMark {
      * @param {import("../../../types/rendering.js").ClipOptions} [clip]
      * @param {import("../../../types/rendering.js").ClipOptions} [_cullClip]
      * @param {number} [pixelOffset]
+     * @param {{width: number, height: number}} [framebufferSize]
      */
     setViewport(
         canvasSize,
@@ -220,7 +221,8 @@ export default class WebGLRasterMark {
         coords,
         clip,
         _cullClip,
-        pixelOffset = RASTER_COORDINATE_OFFSET
+        pixelOffset = RASTER_COORDINATE_OFFSET,
+        framebufferSize
     ) {
         this.#coords = coords;
         this.#bounds = createVisibleBounds(
@@ -230,9 +232,9 @@ export default class WebGLRasterMark {
         );
         this.#dpr = dpr;
         this.#pixelOffset = pixelOffset;
-        this.#target[0] = Math.round(canvasSize.width * dpr);
-        this.#target[1] = Math.round(canvasSize.height * dpr);
         const gl = this.gl;
+        this.#target[0] = framebufferSize?.width ?? gl.drawingBufferWidth;
+        this.#target[1] = framebufferSize?.height ?? gl.drawingBufferHeight;
         gl.viewport(0, 0, this.#target[0], this.#target[1]);
         gl.disable(gl.SCISSOR_TEST);
         setUniforms(this.#programInfo, { uTarget: this.#target });

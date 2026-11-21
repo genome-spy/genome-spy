@@ -971,13 +971,13 @@ export interface RasterExportResult {
 }
 
 export interface SvgExportOptions extends ImageExportOptions {
-    /** Rasterizes dense mark layers using an available rendering backend. */
+    /** Controls bitmap resolution and optional rasterization of dense vector layers. */
     rasterization?: SvgRasterizationOptions;
 }
 
 export interface SvgRasterizationOptions {
-    /** Rasterize a mark when its visible instance count is larger than this. */
-    maxVectorInstances: number;
+    /** Also rasterize vector layers whose visible instance count exceeds this threshold. */
+    maxVectorInstances?: number;
 
     /** Physical raster pixels per logical SVG pixel. __Default value:__ `2` */
     pixelRatio?: number;
@@ -987,7 +987,7 @@ export interface SvgRasterizationTargetInfo {
     /** Mark type included in the raster image. */
     markType: string;
 
-    /** Number of visible instances across all rendered facets. */
+    /** Number of visible instances across all rendered facets. For raster marks, counts tiles. */
     instanceCount: number;
 }
 
@@ -995,11 +995,11 @@ export interface SvgRasterizationInfo {
     /** Contiguous mark layers combined into this raster image. */
     targets: SvgRasterizationTargetInfo[];
 
-    /** Why the layers were rasterized. */
-    reason: "instance-threshold";
+    /** Raster-mark runs contain a raster layer that requires a bitmap. */
+    reason: "raster-mark" | "instance-threshold";
 
-    /** Threshold used for this export. */
-    maxVectorInstances: number;
+    /** Threshold used for optional rasterization, when configured. */
+    maxVectorInstances?: number;
 
     /** Physical raster pixels per logical SVG pixel. */
     pixelRatio: number;
@@ -1037,8 +1037,11 @@ export interface SvgExportLayerInfo {
     /** Mark type rendered by the layer. */
     markType: string;
 
-    /** Number of instances that SVG export would emit after culling. */
+    /** Number of visible instances. For raster marks, counts tiles. */
     instanceCount: number;
+
+    /** This layer is always embedded as an image. */
+    requiresRasterization?: true;
 }
 
 export interface SvgExportAnalysis {

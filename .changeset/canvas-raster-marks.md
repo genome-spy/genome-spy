@@ -1,5 +1,7 @@
 ---
 "@genome-spy/core": minor
+"@genome-spy/app": minor
+"@genome-spy/playground": minor
 ---
 
 <!-- category: feature -->
@@ -10,3 +12,6 @@ stay stable when zooming to individual bases.
 
 Use a gradient legend brush to control the opacity of individual raster cells.
 The HiGlass example makes contact values outside the brushed range transparent.
+
+SVG exports embed raster marks as transparent images while keeping surrounding
+vector layers editable.

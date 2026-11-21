@@ -227,11 +227,12 @@ setTimeout(() => URL.revokeObjectURL(url), 1000);
 
 ### Rasterizing dense layers
 
-Large mark layers can make SVG files slow to open and edit. The optional
-`rasterization` setting embeds a mark as a transparent PNG when its visible,
-post-culling instance count exceeds `maxVectorInstances`. Adjacent rasterized
-layers are combined into the same image when possible, while axes, labels, and
-other layers remain vectors.
+SVG export always embeds visible raster marks as transparent PNGs. Large vector
+layers can also make SVG files slow to open and edit. Set
+`rasterization.maxVectorInstances` to embed vector layers whose visible instance
+count exceeds the threshold. Adjacent bitmap layers share an image when their
+paint order and view opacity allow it. Axes, labels, and other vector layers
+remain editable.
 
 ```js
 const result = await api.imageExport.svg({
@@ -243,27 +244,27 @@ const result = await api.imageExport.svg({
 ```
 
 `pixelRatio` controls the resolution of embedded images and defaults to `2`.
-Higher values produce sharper raster layers and larger files. It does not
-change the SVG dimensions or vector elements.
+Higher values produce sharper images and larger files. Supply only `pixelRatio`
+to set the resolution for raster marks while preserving all vector layers.
 
-Rasterization first uses the active renderer when it supports selective
-rasterization. Otherwise, GenomeSpy tries a detached Canvas2D surface without
-initializing another GPU renderer. If neither is available, export remains
-functional and emits vectors instead, with a warning in the result. Omitting
-`rasterization` produces a vector-only SVG and does not load a raster backend.
+GenomeSpy uses the active renderer for bitmaps and can fall back to a detached
+Canvas2D surface. If bitmap rendering is unavailable, an export with visible
+raster marks fails. Exports that only request bitmap conversion of vector layers
+fall back to vectors and return a warning.
 
 ### Previewing rasterization
 
 `imageExport.analyzeSvg()` reports the visible instance count of each mark layer
-without creating an SVG or using a raster backend. It can be used to preview
-which layers would cross a rasterization threshold:
+without creating an SVG or using a raster backend. For raster marks it counts
+visible tiles and sets `requiresRasterization`. Use both fields to preview which
+layers will be embedded as images:
 
 ```js
 const { layers } = await api.imageExport.analyzeSvg();
 const threshold = 5000;
 
 const rasterizedLayers = layers.filter(
-  (layer) => layer.instanceCount > threshold
+  (layer) => layer.requiresRasterization || layer.instanceCount > threshold
 );
 ```
 

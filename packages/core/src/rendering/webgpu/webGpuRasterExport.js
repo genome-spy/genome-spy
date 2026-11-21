@@ -77,8 +77,11 @@ export async function rasterizeSvgRuns(surface, options) {
                 layoutResult,
                 target,
                 TRANSPARENT_GPU_COLOR,
-                (mark) => run.marks.has(mark),
-                false
+                {
+                    markPredicate: (mark) => run.marks.has(mark),
+                    applyViewOpacity: false,
+                    pixelOffset: 0,
+                }
             );
             await target.handle.onSubmittedWorkDone();
 

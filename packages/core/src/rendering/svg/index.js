@@ -92,6 +92,9 @@ export async function analyzeSvgExport({
                 viewPath: mark.unitView.getPathString(),
                 markType: mark.getType(),
                 instanceCount,
+                ...(mark.getType() === "raster" && {
+                    requiresRasterization: /** @type {const} */ (true),
+                }),
             })
         ).filter((layer) => layer.instanceCount > 0),
     };
@@ -107,40 +110,26 @@ export async function analyzeSvgExport({
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {string | null} [options.background]
- * @param {{maxVectorInstances: number, pixelRatio?: number}} [options.rasterization]
+ * @param {import("../../types/embedApi.js").SvgRasterizationOptions} [options.rasterization]
  */
 export async function createSvgExport(options) {
-    const textMetrics = await prepareSvgTextMetrics(options.viewRoot);
-    const preparedOptions = { ...options, textMetrics };
-    const rasterization = options.rasterization;
-    if (!rasterization) {
-        return { ...createSvg(preparedOptions), rasterized: [] };
-    }
-
-    validateRasterizationOptions(rasterization);
-    if (!options.rasterizeSvgRuns) {
-        return createVectorRasterizationFallback(preparedOptions);
-    }
-
     return createRasterizedSvg({
-        ...preparedOptions,
-        rasterizeSvgRuns: options.rasterizeSvgRuns,
-        maxVectorInstances: rasterization.maxVectorInstances,
-        pixelRatio: rasterization.pixelRatio,
+        ...options,
+        maxVectorInstances: options.rasterization?.maxVectorInstances,
+        pixelRatio: options.rasterization?.pixelRatio,
     });
 }
 
 /**
- * Creates a hybrid SVG for marks whose exact post-culling instance count
- * exceeds the supplied threshold.
+ * Embeds raster marks and optionally converts dense vector layers to images.
  *
  * @param {object} options
  * @param {import("../../view/view.js").default} options.viewRoot
- * @param {(options: import("../renderingBackend.js").SvgRunRasterizationOptions) => void | Promise<void>} options.rasterizeSvgRuns
+ * @param {(options: import("../renderingBackend.js").SvgRunRasterizationOptions) => void | Promise<void>} [options.rasterizeSvgRuns]
  * @param {number} options.logicalWidth
  * @param {number} options.logicalHeight
  * @param {string | null} [options.background]
- * @param {number} options.maxVectorInstances
+ * @param {number} [options.maxVectorInstances]
  * @param {number} [options.pixelRatio]
  * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
  */
@@ -164,6 +153,7 @@ export async function createRasterizedSvg({
             height: logicalHeight,
             background,
             maxVectorInstances,
+            embedRasterMarks: true,
             textMetrics,
         }
     );
@@ -172,14 +162,24 @@ export async function createRasterizedSvg({
         renderingOptions: { firstFacet: true },
     });
 
-    renderingContext.beginInstanceCounting();
-    layoutResult.collectRenderCommands(renderingContext);
-    renderingContext.endInstanceCounting();
+    if (maxVectorInstances != null) {
+        renderingContext.beginInstanceCounting();
+        layoutResult.collectRenderCommands(renderingContext);
+        renderingContext.endInstanceCounting();
+    }
 
     layoutResult.collectRenderCommands(renderingContext);
     const runs = renderingContext.getRasterRuns();
+    const requiresRasterization = (
+        /** @type {import("./svgViewRenderingContext.js").SvgRasterRun} */ run
+    ) => run.marks.values().some((mark) => mark.getType() === "raster");
     if (runs.length) {
         try {
+            if (!rasterizeSvgRuns) {
+                throw new RasterizationUnavailableError(
+                    "No SVG rasterizer is available."
+                );
+            }
             await rasterizeSvgRuns({
                 runs,
                 viewRoot,
@@ -191,6 +191,12 @@ export async function createRasterizedSvg({
             });
         } catch (error) {
             if (error instanceof RasterizationUnavailableError) {
+                if (runs.some(requiresRasterization)) {
+                    throw new RasterizationUnavailableError(
+                        "SVG export requires a raster rendering backend for raster marks.",
+                        { cause: error }
+                    );
+                }
                 return createVectorRasterizationFallback({
                     viewRoot,
                     logicalWidth,
@@ -207,12 +213,14 @@ export async function createRasterizedSvg({
         svg: renderingContext.getSvg(),
         warnings: renderingContext.getWarnings(),
         rasterized: runs.map((run) => ({
-            targets: run.targets.map((target) => ({
-                markType: target.mark.getType(),
-                instanceCount: target.instanceCount,
+            targets: Array.from(run.marks, (mark) => ({
+                markType: mark.getType(),
+                instanceCount: renderingContext.getVisibleInstanceCount(mark),
             })),
-            reason: /** @type {const} */ ("instance-threshold"),
-            maxVectorInstances,
+            reason: requiresRasterization(run)
+                ? /** @type {const} */ ("raster-mark")
+                : /** @type {const} */ ("instance-threshold"),
+            ...(maxVectorInstances != null && { maxVectorInstances }),
             pixelRatio,
         })),
     };
@@ -246,12 +254,13 @@ function createVectorRasterizationFallback(options) {
 }
 
 /**
- * @param {{maxVectorInstances: number, pixelRatio?: number}} options
+ * @param {import("../../types/embedApi.js").SvgRasterizationOptions} options
  */
 function validateRasterizationOptions(options) {
     if (
-        !Number.isInteger(options.maxVectorInstances) ||
-        options.maxVectorInstances < 0
+        options.maxVectorInstances !== undefined &&
+        (!Number.isInteger(options.maxVectorInstances) ||
+            options.maxVectorInstances < 0)
     ) {
         throw new RangeError(
             "maxVectorInstances must be a non-negative integer."

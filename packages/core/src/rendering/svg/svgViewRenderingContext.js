@@ -16,6 +16,8 @@ import {
     visitMarkOccurrences,
 } from "../immediate/markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
+import RasterMark from "../../marks/raster.js";
+import { visitRasterTiles } from "../immediate/marks/raster.js";
 import { partitionOrderData } from "../immediate/order.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
@@ -29,6 +31,7 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  * @prop {number} height Logical export height.
  * @prop {string | null} [background] Export background. Null is transparent.
  * @prop {number} [maxVectorInstances]
+ * @prop {boolean} [embedRasterMarks]
  */
 
 /**
@@ -48,15 +51,8 @@ import { createLinkArcFadeMask } from "./linkArcFadeMask.js";
  */
 
 /**
- * @typedef {object} SvgRasterTarget
- * @prop {import("../../marks/mark.js").default} mark
- * @prop {number} instanceCount
- */
-
-/**
  * @typedef {object} SvgRasterRun
  * @prop {Set<import("../../marks/mark.js").default>} marks
- * @prop {SvgRasterTarget[]} targets
  * @prop {Set<SVGElement>} viewNodes
  * @prop {SVGElement} opacityScope
  * @prop {Comment} anchor
@@ -149,6 +145,8 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @type {number | undefined} */
     #maxVectorInstances;
 
+    #embedRasterMarks = false;
+
     /** @type {SvgRasterRun[]} */
     #rasterRuns = [];
 
@@ -174,6 +172,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         this.height = options.height;
         this.textMetrics = options.textMetrics;
         this.#maxVectorInstances = options.maxVectorInstances;
+        this.#embedRasterMarks = options.embedRasterMarks ?? false;
         const width = formatSvgNumber(options.width);
         const height = formatSvgNumber(options.height);
 
@@ -394,6 +393,11 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
+        if (mark instanceof RasterMark) {
+            this.#visitRasterMark(mark, options, visibleBounds);
+            return;
+        }
+
         const visibleInstanceCount = this.getVisibleInstanceCount(mark);
         if (
             !this.#countingInstances &&
@@ -553,6 +557,63 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
+     * @param {RasterMark} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} options
+     * @param {import("../immediate/bounds.js").RenderBounds} visibleBounds
+     */
+    #visitRasterMark(mark, options, visibleBounds) {
+        visitMarkOccurrences(
+            mark,
+            options,
+            this.currentCoords,
+            this.#sampleFacetCoords,
+            (coords, data) => {
+                let count = 0;
+                const bounds = {
+                    x1: Infinity,
+                    y1: Infinity,
+                    x2: -Infinity,
+                    y2: -Infinity,
+                };
+                visitRasterTiles(
+                    mark,
+                    { coords, data, visibleBounds },
+                    (_datum, x, y, dx, dy) => {
+                        const tile = {
+                            x1: Math.max(visibleBounds.x1, Math.min(x, x + dx)),
+                            y1: Math.max(visibleBounds.y1, Math.min(y, y + dy)),
+                            x2: Math.min(visibleBounds.x2, Math.max(x, x + dx)),
+                            y2: Math.min(visibleBounds.y2, Math.max(y, y + dy)),
+                        };
+                        if (tile.x2 > tile.x1 && tile.y2 > tile.y1) {
+                            extendBounds(bounds, tile);
+                            count++;
+                        }
+                    }
+                );
+                if (!count) return;
+                if (
+                    this.#countingInstances ||
+                    this.#maxVectorInstances == null
+                ) {
+                    this.#instanceCounts.set(
+                        mark,
+                        this.getVisibleInstanceCount(mark) + count
+                    );
+                }
+                if (!this.#countingInstances) {
+                    if (!this.#embedRasterMarks) {
+                        throw new Error(
+                            "Raster marks require asynchronous SVG export."
+                        );
+                    }
+                    this.#recordRasterTarget(mark, bounds);
+                }
+            }
+        );
+    }
+
+    /**
      * @param {import("../../marks/mark.js").default} mark
      * @param {import("../immediate/bounds.js").RenderBounds} visibleBounds
      */
@@ -579,7 +640,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             this.currentNode.appendChild(anchor);
             run = {
                 marks: new Set(),
-                targets: [],
                 viewNodes: new Set(),
                 anchor,
                 opacityScope,
@@ -592,10 +652,6 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
         }
 
         run.marks.add(mark);
-        run.targets.push({
-            mark,
-            instanceCount: this.getVisibleInstanceCount(mark),
-        });
         run.viewNodes.add(this.currentNode);
         this.#sampleFacetBatch?.rasterRuns.set(mark, run);
     }
@@ -613,7 +669,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     /** @param {SvgRasterRun} run */
     #createRasterPlaceholder(run) {
         const commonParent = findNearestCommonParent(run.viewNodes);
-        const rasterTypes = run.targets.map((target) => target.mark.getType());
+        const rasterTypes = Array.from(run.marks, (mark) => mark.getType());
         const group = createSvgElement("g", {
             id: `rasterized-${rasterTypes.join("-")}-${this.#nextRasterRunId++}`,
             "data-name": `Rasterized ${rasterTypes.join(", ")}`,

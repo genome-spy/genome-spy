@@ -35,11 +35,13 @@ Tile seams and heavy minification use the same approximation as WebGPU.
 
 ## Export and follow-up
 
-Raster PNG export uses the WebGL delegate. The existing hybrid SVG tests still
-pass with WebGL selected. Exporting a spec containing a raster mark reaches
-SVG's unsupported-mark check during instance counting. Supporting it needs a
-decision about when to embed a bitmap, how to report it alongside
-threshold-selected runs, and how to handle an unavailable rasterizer.
+Raster PNG export uses the WebGL delegate. The first version reached SVG's
+unsupported-mark check during instance counting. The
+[SVG export work](../raster-svg/raster-svg-plan.md) routes every visible raster
+mark into the existing bitmap runs. A browser probe caught two export-specific
+alignment bugs: WebGL rounded its viewport down inside a rounded-up framebuffer,
+and WebGPU applied its live half-pixel shift. The browser regression now checks
+the top edge of a PNG embedded at 1.25×.
 
 The implementation review caught brush upload, dynamic color range, and string
 indexing issues. Packing the anchor into one uniform removes a per-tile upload

@@ -48,4 +48,4 @@ Overrides the visualization background. Null is transparent.
 
 > `optional` **rasterization?**: [`SvgRasterizationOptions`](SvgRasterizationOptions.md)
 
-Rasterizes dense mark layers using an available rendering backend.
+Controls bitmap resolution and optional rasterization of dense vector layers.

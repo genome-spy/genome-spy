@@ -361,6 +361,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             const { src, renderer, register } = args;
             const { embed } = await import(src + "minimal.js");
             await import(src + register);
+            await import(src + "rendering/registerSvg.js");
             const start = 2_000_000_001;
             const errors = [];
             const api = await embed(
@@ -405,7 +406,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                                     },
                                 ],
                             },
-                            mark: "raster",
+                            mark: { type: "raster", clip: true },
                             encoding: {
                                 x: {
                                     dimension: "column",
@@ -467,9 +468,53 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                     globalThis.AbortSignal.timeout(10000)
                 );
                 const before = await sample();
+
+                // Fractional output sizes exercise framebuffer rounding and SVG's zero pixel offset.
+                const { blob, rasterized } = await api.imageExport.svg({
+                    logicalWidth: 81,
+                    logicalHeight: 33,
+                    background: null,
+                    rasterization: { pixelRatio: 1.25 },
+                });
+                const svg = new globalThis.DOMParser().parseFromString(
+                    await blob.text(),
+                    "image/svg+xml"
+                );
+                const paintOrder = Array.from(
+                    svg.querySelectorAll(
+                        "[data-rasterized], [data-mark-type=rule]"
+                    ),
+                    (node) =>
+                        node.hasAttribute("data-rasterized") ? "image" : "rule"
+                );
+                const image = svg.querySelector("[data-rasterized] image");
+                const bitmap = await globalThis.createImageBitmap(
+                    await (
+                        await globalThis.fetch(image.getAttribute("href"))
+                    ).blob()
+                );
+                const size = [bitmap.width, bitmap.height];
+                const context = new globalThis.OffscreenCanvas(
+                    bitmap.width,
+                    bitmap.height
+                ).getContext("2d");
+                context.drawImage(bitmap, 0, 0);
+                bitmap.close();
+                const topRow = [20, 80].map((x) =>
+                    Array.from(context.getImageData(x, 0, 1, 1).data)
+                );
+
                 api.params.get("upper").setValue(8);
                 api.params.get("upperColor").setValue("blue");
-                return { before, after: await sample(), errors };
+                return {
+                    before,
+                    after: await sample(),
+                    errors,
+                    rasterized,
+                    paintOrder,
+                    size,
+                    topRow,
+                };
             } finally {
                 api.finalize();
             }
@@ -483,6 +528,19 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             [0, 0, 255],
         ]);
         expect(result.after[2]).toEqual([0, 0, 128]);
+        expect(result.paintOrder).toEqual(["image", "rule"]);
+        expect(result.size).toEqual([102, 42]);
+        expect(result.topRow).toEqual([
+            [0, 0, 0, 255],
+            [128, 0, 0, 255],
+        ]);
+        expect(result.rasterized).toEqual([
+            {
+                targets: [{ markType: "raster", instanceCount: 1 }],
+                reason: "raster-mark",
+                pixelRatio: 1.25,
+            },
+        ]);
     });
 }
 

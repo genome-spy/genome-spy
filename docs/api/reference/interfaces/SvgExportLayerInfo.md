@@ -40,4 +40,12 @@ Mark type rendered by the layer.
 
 > **instanceCount**: `number`
 
-Number of instances that SVG export would emit after culling.
+Number of visible instances. For raster marks, counts tiles.
+
+***
+
+### requiresRasterization?
+
+> `optional` **requiresRasterization?**: `true`
+
+This layer is always embedded as an image.

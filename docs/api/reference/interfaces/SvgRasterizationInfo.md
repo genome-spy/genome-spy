@@ -14,17 +14,17 @@ Contiguous mark layers combined into this raster image.
 
 ### reason
 
-> **reason**: `"instance-threshold"`
+> **reason**: `"raster-mark"` \| `"instance-threshold"`
 
-Why the layers were rasterized.
+Raster-mark runs contain a raster layer that requires a bitmap.
 
 ***
 
-### maxVectorInstances
+### maxVectorInstances?
 
-> **maxVectorInstances**: `number`
+> `optional` **maxVectorInstances?**: `number`
 
-Threshold used for this export.
+Threshold used for optional rasterization, when configured.
 
 ***
 

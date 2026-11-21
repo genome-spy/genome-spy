@@ -121,7 +121,6 @@ describe("WebGPU raster export", () => {
         const run =
             /** @type {import("../svg/svgViewRenderingContext.js").SvgRasterRun} */ ({
                 marks: new Set([selected]),
-                targets: [],
                 viewNodes: new Set(),
                 bounds: { x1: 1.25, y1: 2.25, x2: 10.1, y2: 12.6 },
                 image,
@@ -143,8 +142,8 @@ describe("WebGPU raster export", () => {
             target,
             { r: 0, g: 0, b: 0, a: 0 },
         ]);
-        expect(renderCall[3](selected)).toBe(true);
-        expect(renderCall[3](other)).toBe(false);
+        expect(renderCall[3].markPredicate(selected)).toBe(true);
+        expect(renderCall[3].markPredicate(other)).toBe(false);
         expect(cropContext.drawImage).toHaveBeenCalledWith(
             target.canvas,
             2,
