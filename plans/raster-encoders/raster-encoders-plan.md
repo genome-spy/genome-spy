@@ -36,6 +36,39 @@ regressions passing. Have a subagent review the implementation.
 
 Tentative implementation commit: `feat(core): render raster marks in Canvas2D`.
 
+## Milestone 2: Brush raster values from a gradient legend
+
+Use the existing legend-bound interval parameter and a single value condition on
+`opacity`. Resolve its quantitative `color` projection to the raster cell
+binding. The condition compares the raw cell value against the half-open
+interval. An empty brush follows the usual `empty` behavior. HiGlass uses
+opacity one inside the brush and zero outside it. Existing tile opacity
+predicates still evaluate against the tile record. Conditions combining cell and
+tile predicates and positional selection of cells are outside this milestone.
+
+Reuse the parameter runtime and selection shader generation. WebGPU evaluates
+cell opacity in the fragment stage using the existing raster buffer. A brush
+update changes selection uniforms. Canvas includes the effective selection and
+opacity values in its bitmap cache key. Keep the brush out of domain collection
+so values hidden by the brush still contribute to the viewport color domain.
+Allow the gradient legend to wait for an invertible mapping while lazy log
+scales have a provisional or flat domain.
+
+Vega-Lite's conditional value encoding is precedent for the condition and
+fallback. GenomeSpy's existing gradient legend supplies the predicate bounds. A
+dedicated raster filter or a dataflow transform would add a parallel selection
+API or republish the tiles on every drag.
+[Vega-Lite condition](https://vega.github.io/vega-lite/docs/condition.html)
+
+Verify pointer brushing, transparency, clearing, half-open bounds, and unchanged
+color domains in Canvas and WebGPU. Use HiGlass to check lazy startup, value
+brushing, and navigation while a brush is active.
+Exercise a collapsed domain, an empty-width selection, and an unbounded upper
+limit. Keep the ramp's interaction target inactive while its domain is flat.
+
+Tentative implementation commit:
+`feat(core): brush raster values from gradient legends`.
+
 ## Follow-up milestones
 
 - SVG export should recognize raster marks in the counting and emission passes
