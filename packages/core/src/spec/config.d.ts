@@ -2,6 +2,7 @@ import { FacetHeader } from "./channel.js";
 import { Axis, GenomeAxis } from "./axis.js";
 import {
     ArrowProps,
+    IconProps,
     LinkProps,
     MarkPropsBase,
     PointProps,
@@ -262,8 +263,11 @@ export interface GenomeSpyConfig {
      */
     rect?: RectConfig;
 
-    /** Defaults for experimental WebGPU raster marks. */
+    /** Defaults for raster marks. */
     raster?: Partial<Omit<RasterProps, "type">>;
+
+    /** Defaults for icon marks. */
+    icon?: Partial<Omit<IconProps, "type">>;
 
     /**
      * Defaults for arrow marks.

@@ -596,7 +596,6 @@ const rasterDataCache = new WeakMap();
  */
 function createRasterConfig(mark, data, coords, placement) {
     const { strip, type } = mark.getColorCellBinding();
-    const xScale = requireEncoder(mark, "x").scale;
     const color = mark.validateRenderingScales()?.getScale();
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
@@ -644,31 +643,28 @@ function createRasterConfig(mark, data, coords, placement) {
         rasterDataCache.set(mark, cached);
     }
 
-    // A raster endpoint is a genomic boundary. The renderer's index band 0
-    // is on the lower pixel side, which is the trailing side on a reversed range.
-    const xBand = xScale.props.reverse ? 1 : 0;
+    const icon = mark.isIcon;
+    // Grid endpoints are genomic boundaries. Index band 0 is on the lower
+    // pixel side, which is the trailing side on a reversed range.
+    const xScale = mark.encoders.x.scale;
+    const yScale = mark.encoders.y.scale;
+    const xBand = icon ? undefined : xScale.props.reverse ? 1 : 0;
+    const yBand = icon || strip ? undefined : yScale.props.reverse ? 0 : 1;
     const xEndBand = strip && xScale.type === "index" ? 1 - xBand : xBand;
-    const yBand = requireEncoder(mark, "y").scale.props.reverse ? 0 : 1;
+    /** @type {Partial<Record<"x" | "x2" | "y" | "y2" | "size", import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */
     const channels = {
         x: createPositionChannel(mark, "x", data, coords, xBand),
-        x2: createPositionChannel(mark, "x2", data, coords, xEndBand),
-        y: createPositionChannel(
-            mark,
-            "y",
-            data,
-            coords,
-            strip ? undefined : yBand
-        ),
-        y2: createPositionChannel(
-            mark,
-            "y2",
-            data,
-            coords,
-            strip ? undefined : yBand
-        ),
+        y: createPositionChannel(mark, "y", data, coords, yBand),
+        ...(icon
+            ? { size: createNumericChannel(mark, "size", data) }
+            : {
+                  x2: createPositionChannel(mark, "x2", data, coords, xEndBand),
+                  y2: createPositionChannel(mark, "y2", data, coords, yBand),
+              }),
     };
     const position = Object.fromEntries(
         Object.entries(channels).map(([name, channel]) => {
+            if ("value" in channel) return [name, channel];
             const { scale, inputComponents } = channel;
             const descriptor = { scale, inputComponents };
             SCALE_DEPENDENT_VALUES.set(
@@ -678,22 +674,21 @@ function createRasterConfig(mark, data, coords, placement) {
             return [name, descriptor];
         })
     );
-    /** @type {RasterData["tiles"]} */
-    const tiles = {
+    const tiles = /** @type {RasterData["tiles"]} */ ({
         ...cached.packed.tiles,
-        x0: /** @type {RasterData["tiles"]["x0"]} */ (channels.x.data),
-        x1: /** @type {RasterData["tiles"]["x1"]} */ (channels.x2.data),
-        y0: /** @type {RasterData["tiles"]["y0"]} */ (channels.y.data),
-        y1: /** @type {RasterData["tiles"]["y1"]} */ (channels.y2.data),
-        ...(placement &&
-            "data" in placement && { placementIndices: placement.data }),
-    };
+        x0: channels.x.data,
+        y0: channels.y.data,
+        x1: channels.x2?.data,
+        y1: channels.y2?.data,
+        size: channels.size?.data,
+        placementIndices:
+            placement && "data" in placement ? placement.data : undefined,
+    });
     if (
         !cached.snapshot ||
         Object.entries(tiles).some(
             ([key, array]) => array !== cached.snapshot.tiles[key]
-        ) ||
-        cached.snapshot.tiles.placementIndices !== tiles.placementIndices
+        )
     ) {
         cached.snapshot = { tiles, cells: cached.packed.cells };
     }

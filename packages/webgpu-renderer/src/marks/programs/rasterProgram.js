@@ -18,6 +18,7 @@ const channels = {
     x2: { type: "f32", components: 1, default: 1 },
     y: { type: "f32", components: 1, default: 0 },
     y2: { type: "f32", components: 1, default: 1 },
+    size: { type: "f32", components: 1, default: 1 },
     fill: { type: "f32", components: 4, default: [0, 0, 0, 1] },
     opacity: { type: "f32", components: 1, default: 1 },
 };
@@ -72,10 +73,29 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
 `;
 }
 
-/** @param {import("../shaders/channelIR.js").ChannelIR[]} irs */
-function rasterShader(irs) {
-    const x = indexAxisShader(irs, "x");
-    const y = indexAxisShader(irs, "y");
+/**
+ * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
+ * @param {boolean} icon
+ */
+function rasterShader(irs, icon) {
+    const x = icon ? "" : indexAxisShader(irs, "x");
+    const y = icon ? "" : indexAxisShader(irs, "y");
+    const bounds = icon
+        ? /* wgsl */ `
+    let area = getScaled_size(i);
+    if (!(area > 0.0 && area <= 0x1.fffffep+127)) {
+        out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
+        return out;
+    }
+    // Apply panel placement to the anchor only. The extent is in CSS pixels.
+    let halfSize = vec2<f32>(out.grid.xy) * (0.5 * sqrt(area) * globals.dpr);
+    let start = first - halfSize;
+    let end = first + halfSize;
+`
+        : /* wgsl */ `
+    let start = first;
+    let end = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x2(i), getScaled_y2(i)), i));
+`;
     return /* wgsl */ `
 fn rasterTargetPixel(pixel: vec2<f32>) -> vec2<f32> {
     return (globals.viewportOrigin - globals.renderTargetOrigin + pixel) * globals.dpr;
@@ -142,8 +162,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
     out.grid = vec3<u32>(read_columns(i), read_rows(i), read_cellOffset(i));
     out.pickId = 0u;
-    let start = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));
-    let end = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x2(i), getScaled_y2(i)), i));
+    let first = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));
+    ${bounds}
     let targetSize = globals.renderTargetSize * globals.dpr;
     let clipStart = clamp(start, vec2<f32>(0.0), targetSize);
     let clipEnd = clamp(end, vec2<f32>(0.0), targetSize);
@@ -257,7 +277,9 @@ export default class RasterProgram extends BaseProgram {
 
     /** @param {import("../shaders/channelIR.js").ChannelIR[]} irs */
     buildShaderBody(irs) {
-        return rasterShader(irs);
+        // BaseProgram builds the shader before RasterProgram's constructor
+        // stores the retained snapshot schema.
+        return rasterShader(irs, !!this._markConfig.icon);
     }
 
     get hasCellPredicates() {

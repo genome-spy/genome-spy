@@ -15,6 +15,12 @@ const edges = [
     ["y2", "y1", "y"],
 ];
 
+const anchors = /** @type {const} */ ([
+    ["x", "x0", "x"],
+    ["y", "y0", "y"],
+    ["size", "size", "size"],
+]);
+
 /**
  * @param {RasterCellArray} array
  * @returns {"f32" | "u32"}
@@ -48,9 +54,31 @@ export function compileRasterData(config) {
             return [data, type === "f32" ? `bitcast<f32>(${word})` : word];
         })
     );
-    const positions = edges.map(([channel, edge, axis]) => {
+    const icon = data.tiles.x1 === undefined && data.tiles.y1 === undefined;
+    if (
+        (data.tiles.x1 === undefined) !== (data.tiles.y1 === undefined) ||
+        (icon
+            ? position?.x2 || position?.y2
+            : position?.size || data.tiles.size)
+    ) {
+        throw new Error(
+            "Raster placement requires either two endpoints per axis or an anchor and optional size."
+        );
+    }
+    const positions = (icon ? anchors : edges).map(([channel, edge, axis]) => {
+        /** @type {import("../../raster.js").RasterAnchor | undefined} */
         const descriptor = position?.[channel] ?? position?.[axis];
-        const type = numericType(data.tiles[edge]);
+        const array = data.tiles[edge];
+        const value = descriptor && "value" in descriptor;
+        if (
+            (value && (array || !icon)) ||
+            (!array && !value && channel !== "size")
+        ) {
+            throw new Error(
+                `Raster position "${channel}" requires a single input.`
+            );
+        }
+        const type = array === undefined ? undefined : numericType(array);
         const components = descriptor?.inputComponents ?? 1;
         return { channel, edge, descriptor, type, components };
     });
@@ -60,7 +88,7 @@ export function compileRasterData(config) {
             "Raster placement must come from either the draw or the tiles."
         );
     }
-    return { fields, reads, positions, placementIndices };
+    return { fields, reads, positions, placementIndices, icon };
 }
 
 /** @typedef {ReturnType<typeof compileRasterData>} RasterSchema */
@@ -73,6 +101,14 @@ export function compileRasterData(config) {
 export function prepareRasterData(device, { tiles, cells }, schema) {
     const { columns, rows, offsets, placementIndices } = tiles;
     const count = columns.length;
+    if (
+        (schema.icon && (tiles.x1 !== undefined || tiles.y1 !== undefined)) ||
+        (!schema.icon && tiles.size !== undefined)
+    ) {
+        throw new Error(
+            "Raster data replacement must keep the original placement mode."
+        );
+    }
     if (
         !(
             columns instanceof Uint32Array &&
@@ -96,15 +132,16 @@ export function prepareRasterData(device, { tiles, cells }, schema) {
     if (placementIndices) series.__placementIndex = placementIndices;
     for (const { channel, edge, type, components } of schema.positions) {
         const array = tiles[edge];
+        const inputType = array === undefined ? undefined : numericType(array);
         if (
-            numericType(array) !== type ||
-            array.length !== count * components
+            inputType !== type ||
+            (array && array.length !== count * components)
         ) {
             throw new Error(
-                `Raster edge "${edge}" must keep its type and match the tile count.`
+                `Raster position "${edge}" must keep its input type and match the tile count.`
             );
         }
-        series[channel] = array;
+        if (array) series[channel] = array;
     }
 
     if (Object.keys(cells).length !== schema.fields.size) {
@@ -279,6 +316,7 @@ export function lowerRasterConfig(config, schema, prepared) {
     const fill = channels?.fill;
     return {
         count: prepared.count,
+        icon: schema.icon,
         reads: schema.reads,
         initialCells: prepared.cells,
         scalarSlots,
@@ -294,7 +332,10 @@ export function lowerRasterConfig(config, schema, prepared) {
             ...Object.fromEntries(
                 schema.positions.map(({ channel, descriptor, type }) => [
                     channel,
-                    { ...descriptor, type, data: prepared.series[channel] },
+                    {
+                        ...descriptor,
+                        ...(type && { type, data: prepared.series[channel] }),
+                    },
                 ])
             ),
             ...(fill && { fill: lowerChannel(fill) }),

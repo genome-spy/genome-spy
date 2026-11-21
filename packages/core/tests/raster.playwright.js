@@ -36,12 +36,154 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterImage(playwright, baseURL, renderer));
+    test(`${renderer} icons keep their encoded screen size through zoom`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterIcons(playwright, baseURL, renderer));
     if (renderer !== "webgpu") {
         test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
             playwright,
             baseURL,
         }) => checkRasterLogDomain(playwright, baseURL, renderer));
     }
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkRasterIcons(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const { layers, rasterized, ...samples } = await page.evaluate(
+            async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                await import(src + "rendering/registerSvg.js");
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        width: 100,
+                        height: 80,
+                        padding: 0,
+                        view: { stroke: null },
+                        data: {
+                            values: [
+                                {
+                                    at: 3,
+                                    area: 1,
+                                    dimensions: {
+                                        u: { count: 2 },
+                                        row: { count: 1 },
+                                    },
+                                    fields: {
+                                        pixels: [0xff0000ff, 0xffff0000],
+                                    },
+                                },
+                                {
+                                    at: 7,
+                                    area: 2,
+                                    dimensions: {
+                                        u: { count: 1 },
+                                        row: { count: 2 },
+                                    },
+                                    fields: {
+                                        pixels: [0xff00ff00, 0xff00ffff],
+                                    },
+                                },
+                            ],
+                        },
+                        mark: "icon",
+                        config: { icon: { columnDimension: "u" } },
+                        encoding: {
+                            x: {
+                                field: "at",
+                                type: "quantitative",
+                                axis: null,
+                                scale: { domain: [0, 10], zoom: true },
+                            },
+                            y: { value: 0.5 },
+                            size: {
+                                field: "area",
+                                type: "quantitative",
+                                legend: null,
+                                scale: {
+                                    domain: [1, 2],
+                                    range: [100, 400],
+                                    zero: false,
+                                },
+                            },
+                            color: { field: "pixels", scale: null },
+                        },
+                    },
+                    {
+                        renderer,
+                        onError: (error) => {
+                            throw error;
+                        },
+                    }
+                );
+                // Read inside and outside each image along both source dimensions.
+                const points = (a, b) => [
+                    [a - 8, 40],
+                    [a + 8, 40],
+                    [a - 12, 40],
+                    [a, 47],
+                    [b, 22],
+                    [b, 58],
+                    [b, 62],
+                    [b + 12, 30],
+                ];
+                try {
+                    const before = await globalThis.readRasterPixels(
+                        api,
+                        points(30, 70),
+                        null
+                    );
+                    const view = api.debug
+                        .getViewRoot()
+                        .getDescendants()
+                        .find((view) => view.mark?.getType() === "icon");
+                    await view.getScaleResolution("x").zoomTo([1, 9]);
+                    const after = await globalThis.readRasterPixels(
+                        api,
+                        points(25, 75),
+                        null
+                    );
+                    const { layers } = await api.imageExport.analyzeSvg();
+                    const { pixels: svg, rasterized } =
+                        await globalThis.readSvgRasterPixels(
+                            api,
+                            points(25, 75)
+                        );
+                    return { layers, rasterized, before, after, svg };
+                } finally {
+                    api.finalize();
+                }
+            },
+            setup
+        );
+        const transparent = [0, 0, 0, 0];
+        const expected = [
+            [255, 0, 0, 255],
+            [0, 0, 255, 255],
+            transparent,
+            transparent,
+            [0, 255, 0, 255],
+            [255, 255, 0, 255],
+            transparent,
+            transparent,
+        ];
+        for (const [stage, pixels] of Object.entries(samples)) {
+            expect(pixels, stage).toEqual(expected);
+        }
+        expect(layers).toMatchObject([
+            { markType: "icon", instanceCount: 2, requiresRasterization: true },
+        ]);
+        expect(rasterized).toEqual([
+            {
+                targets: [{ markType: "icon", instanceCount: 2 }],
+                reason: "raster-mark",
+                pixelRatio: 1,
+            },
+        ]);
+    });
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
@@ -110,22 +252,9 @@ async function checkRasterImage(playwright, baseURL, renderer) {
                         points,
                         null
                     );
-                    const { blob } = await api.imageExport.svg({
-                        background: null,
-                        rasterization: { pixelRatio: 1 },
-                    });
-                    const svg = new globalThis.DOMParser().parseFromString(
-                        await blob.text(),
-                        "image/svg+xml"
-                    );
-                    const image = svg.querySelector("[data-rasterized] image");
-                    const png = await (
-                        await globalThis.fetch(image.getAttribute("href"))
-                    ).blob();
-                    return {
-                        raster,
-                        svg: await globalThis.readImagePixels(png, points),
-                    };
+                    const { pixels: svg } =
+                        await globalThis.readSvgRasterPixels(api, points);
+                    return { raster, svg };
                 } finally {
                     api.finalize();
                 }
@@ -1022,6 +1151,27 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
                     background,
                 });
                 return globalThis.readImagePixels(blob, points);
+            };
+            globalThis.readSvgRasterPixels = async (api, points) => {
+                const { blob, rasterized } = await api.imageExport.svg({
+                    background: null,
+                    rasterization: { pixelRatio: 1 },
+                });
+                const svg = new globalThis.DOMParser().parseFromString(
+                    await blob.text(),
+                    "image/svg+xml"
+                );
+                const image = svg.querySelector("[data-rasterized] image");
+                const png = await (
+                    await globalThis.fetch(image.getAttribute("href"))
+                ).blob();
+                const x = Number(image.getAttribute("x"));
+                const y = Number(image.getAttribute("y"));
+                const pixels = await globalThis.readImagePixels(
+                    png,
+                    points.map(([px, py]) => [px - x, py - y])
+                );
+                return { pixels, rasterized };
             };
         });
         await check(page, {

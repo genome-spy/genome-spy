@@ -27,6 +27,7 @@ const markTypes = {
     point: WebGLPointMark,
     rect: WebGLRectMark,
     raster: WebGLRasterMark,
+    icon: WebGLRasterMark,
     arrow: WebGLArrowMark,
     rule: WebGLRuleMark,
     tick: WebGLRuleMark,

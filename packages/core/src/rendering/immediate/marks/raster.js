@@ -1,5 +1,6 @@
+import { readRasterDimension } from "../../../data/rasterTile.js";
 import { intersectsBounds } from "../bounds.js";
-import { prepareRangeProjection } from "../markEncoding.js";
+import { encodeNumber, prepareRangeProjection } from "../markEncoding.js";
 
 /**
  * Project both tile edges before clipping so partially visible tiles retain
@@ -35,11 +36,27 @@ export function visitRasterTiles(mark, options, draw) {
     );
     const x = /** @type {[number, number]} */ ([0, 0]);
     const y = /** @type {[number, number]} */ ([0, 0]);
+    const { column, row } = mark.getColorCellBinding();
+    const size = mark.isIcon ? mark.encoders.size : undefined;
     let count = 0;
     for (let i = start; i < end; i++) {
         const datum = data[i];
-        const [x0, x1] = projectX(datum, x);
-        const [y0, y1] = projectY(datum, y);
+        projectX(datum, x);
+        projectY(datum, y);
+        if (size) {
+            const pitch = Math.sqrt(encodeNumber(size, datum));
+            if (!(pitch > 0) || !Number.isFinite(pitch)) continue;
+            const halfWidth =
+                (readRasterDimension(datum, column).count * pitch) / 2;
+            const halfHeight =
+                (readRasterDimension(datum, row).count * pitch) / 2;
+            x[0] -= halfWidth;
+            x[1] += halfWidth;
+            y[0] -= halfHeight;
+            y[1] += halfHeight;
+        }
+        const [x0, x1] = x;
+        const [y0, y1] = y;
         const dx = x1 - x0;
         const dy = y1 - y0;
         if (

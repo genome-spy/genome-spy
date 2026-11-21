@@ -44,6 +44,8 @@ export const markTypes = {
     rect: RectMark,
     // @ts-ignore TODO: fix
     raster: RasterMark,
+    // @ts-ignore TODO: fix
+    icon: RasterMark,
     // @ts-ignore
     arrow: ArrowMark,
     // @ts-ignore

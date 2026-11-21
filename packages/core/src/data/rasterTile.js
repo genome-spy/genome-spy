@@ -1,7 +1,7 @@
 /**
  * @typedef {object} RasterDimension
- * @prop {number} origin First cell edge in data coordinates.
- * @prop {number} step Positive spacing between cell edges.
+ * @prop {number} [origin] First cell edge in data coordinates for grid placement.
+ * @prop {number} [step] Positive spacing between cell edges for grid placement.
  * @prop {number} count Number of cells on the dimension.
  */
 
@@ -13,32 +13,47 @@
 
 /**
  * @param {import("./flowNode.js").Datum} datum
+ * @param {string} name
+ * @param {boolean} [grid] Validate the coordinates used by a domain-aligned grid.
+ */
+export function readRasterDimension(datum, name, grid = false) {
+    const dimension = /** @type {RasterTile} */ (datum).dimensions?.[name];
+    if (
+        !dimension ||
+        !Number.isSafeInteger(dimension.count) ||
+        dimension.count <= 0
+    ) {
+        throw new Error(
+            `Raster dimension "${name}" needs a positive integer count.`
+        );
+    }
+    if (
+        grid &&
+        (!Number.isFinite(dimension.origin) ||
+            !Number.isFinite(dimension.step) ||
+            dimension.step <= 0)
+    ) {
+        throw new Error(
+            `Raster dimension "${name}" needs a finite origin and a positive step.`
+        );
+    }
+    return dimension;
+}
+
+/**
+ * @param {import("./flowNode.js").Datum} datum
  * @param {string} x
  * @param {string | undefined} y Vertical grid dimension for a two-dimensional tile.
  * @param {string} field
- * @param {boolean} [direct] Read the field as packed RGBA8.
+ * @param {{direct: boolean, icon: boolean}} options
  */
-export function readRasterTile(datum, x, y, field, direct = false) {
+export function readRasterTile(datum, x, y, field, options) {
+    const { direct, icon } = options;
     const tile = /** @type {RasterTile} */ (datum);
-    const horizontal = tile.dimensions?.[x];
-    const vertical = y === undefined ? undefined : tile.dimensions?.[y];
+    const horizontal = readRasterDimension(datum, x, !icon);
+    const vertical =
+        y === undefined ? undefined : readRasterDimension(datum, y, !icon);
     const values = tile.fields?.[field];
-    for (const dimension of y === undefined
-        ? [horizontal]
-        : [horizontal, vertical]) {
-        if (
-            !dimension ||
-            !Number.isFinite(dimension.origin) ||
-            !Number.isFinite(dimension.step) ||
-            dimension.step <= 0 ||
-            !Number.isSafeInteger(dimension.count) ||
-            dimension.count <= 0
-        ) {
-            throw new Error(
-                "Raster dimensions need a finite origin, a positive step, and a positive integer count."
-            );
-        }
-    }
     const supported =
         Array.isArray(values) ||
         (direct

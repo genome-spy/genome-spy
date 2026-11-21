@@ -18,16 +18,29 @@ export type RasterCellArray = Float32Array | Uint32Array;
  */
 export type RasterData = {
     tiles: {
-        x0: RasterCellArray;
-        x1: RasterCellArray;
-        y0: RasterCellArray;
-        y1: RasterCellArray;
         columns: Uint32Array;
         rows: Uint32Array;
         offsets: Uint32Array;
         /** Tile indices into the placement table supplied at draw time. */
         placementIndices?: Uint32Array;
-    };
+    } & (
+        | {
+              x0: RasterCellArray;
+              y0: RasterCellArray;
+              x1: RasterCellArray;
+              y1: RasterCellArray;
+              size?: never;
+          }
+        | {
+              /** Anchor coordinates when both trailing edges are omitted. */
+              x0?: RasterCellArray;
+              y0?: RasterCellArray;
+              x1?: never;
+              y1?: never;
+              /** One source-cell area per tile, in square logical pixels after scaling. */
+              size?: RasterCellArray;
+          }
+    );
     cells: Record<string, RasterCellArray>;
 };
 
@@ -39,6 +52,13 @@ export type RasterPosition = Pick<
     scale?: ChannelConfigWithScaleInput["scale"];
     /** Use two words per edge for a packed high-precision index. */
     inputComponents?: 1 | 2;
+};
+
+/** Constant or series mapping for anchored tile geometry. Series live in RasterData. */
+export type RasterAnchor = RasterPosition & {
+    value?: NumericValue;
+    type?: "f32" | "u32";
+    dynamic?: boolean;
 };
 
 /** The input names a raw cell field. A value is already in range space. */
@@ -59,15 +79,18 @@ export type RasterConfig = Pick<
 > & {
     data: RasterData;
     /**
-     * Cells divide each tile uniformly between its projected endpoints.
+     * A tile with endpoints divides each axis uniformly between them.
      * An omitted end descriptor takes the initial mapping from its axis.
-     * Retained scale slots are available separately for each edge.
+     * A tile with an anchor is centered in logical pixels at the projected x
+     * and y. Its cell width and height are the square root of the resolved
+     * size, which defaults to 1.
      */
     position?: {
-        x?: RasterPosition;
+        x?: RasterAnchor;
         x2?: RasterPosition;
-        y?: RasterPosition;
+        y?: RasterAnchor;
         y2?: RasterPosition;
+        size?: RasterAnchor;
     };
     /**
      * Conditions, visibility and order use cell inputs. Interval projections
