@@ -11,15 +11,15 @@ experimental WebGPU renderer.
 
 - Keep the FASTA parser and one flow record per sequence on the raster branch.
   Use existing formulas to provide the column dimension and the existing string
-  as cell data. Run `flattenSequence` on the branches that already consume base
-  records. Keep the existing sequence-logo processing and configuration after
-  moving its flattening into that branch.
+  as cell data. Publish one flattened dataset through an existing named dataflow
+  branch and reuse it for base labels and existing logo processing.
 - Extend `raster` to draw an x-bound grid dimension across an ordinary
   categorical y band. Reuse rect band coverage for both y edges and reuse the
   same y scale and scroll layout as the labels. The WebGPU program can draw the
-  strip as a grid with one row. For index strips, contribute the first and last
-  covered index to the data extent and use band edges for placement. Preserve
-  existing placement and extent behavior for two-dimensional tiles.
+  strip as a grid with one row. Index strips contribute `origin` and
+  `origin + step * count - 1` as inclusive observations. Draw from the outer
+  band edges, swapping anchors for a reversed index scale. Preserve existing
+  placement and extent behavior for two-dimensional tiles.
 - Keep the MSA's explicit ordinal domain and palette. Pack stable categorical
   IDs in Core using the existing interner. Supply both the typed fragment input
   and the active ordinal domain map to the renderer. Gaps are palette entries.

@@ -1,7 +1,9 @@
 import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
+import { findChannelDefWithScale } from "../encoder/encoder.js";
 import Mark from "./mark.js";
+import { fixCoveragePositional } from "./markUtils.js";
 
 /** @extends {Mark<import("../spec/mark.js").RasterProps>} */
 export default class RasterMark extends Mark {
@@ -16,10 +18,20 @@ export default class RasterMark extends Mark {
 
     /** @param {import("../spec/channel.js").Encoding} encoding */
     fixEncoding(encoding) {
+        const y = encoding.y;
+        const strip =
+            y &&
+            "field" in y &&
+            (y.type === "nominal" || y.type === "ordinal") &&
+            !encoding.y2;
         for (const [axis, end] of /** @type {const} */ ([
             ["x", "x2"],
             ["y", "y2"],
         ])) {
+            if (axis === "y" && strip) {
+                fixCoveragePositional(encoding, axis);
+                continue;
+            }
             const binding = encoding[axis];
             if (!binding || !("dimension" in binding) || encoding[end]) {
                 throw new Error(
@@ -28,31 +40,35 @@ export default class RasterMark extends Mark {
             }
             const { dimension, ...options } = binding;
             const path = "dimensions[" + JSON.stringify(dimension) + "]";
+            const indexStrip = strip && binding.type === "index";
+            const domainInert = binding.type !== "quantitative" && !indexStrip;
             encoding[axis] = inheritSpecOrigin(binding, {
                 ...options,
                 field: path + ".origin",
                 band: 0,
+                ...(domainInert && { domainInert: true }),
             });
             encoding[end] = {
-                expr: `datum.${path}.origin + datum.${path}.step * datum.${path}.count`,
-                band: 0,
-                // Index and locus contributions are inclusive observations.
-                // Their native scale extent is independent of loaded tiles.
-                domainInert: binding.type !== "quantitative",
+                // Index data domains use inclusive observations. Band 1 still
+                // draws the exclusive right edge of the last covered index.
+                expr:
+                    `datum.${path}.origin + datum.${path}.step * datum.${path}.count` +
+                    (indexStrip ? " - 1" : ""),
+                band: indexStrip ? 1 : 0,
+                domainInert,
             };
-            if (binding.type !== "quantitative") {
-                encoding[axis].domainInert = true;
-            }
         }
         if (
             !encoding.color ||
             !("field" in encoding.color) ||
-            encoding.color.type !== "quantitative" ||
+            !["quantitative", "nominal", "ordinal"].includes(
+                encoding.color.type
+            ) ||
             encoding.color.scale === null ||
             "condition" in encoding.color
         ) {
             throw new Error(
-                "Raster requires a quantitative color field with a scale."
+                "Raster requires a quantitative or categorical color field with a scale."
             );
         }
         return encoding;
@@ -62,7 +78,6 @@ export default class RasterMark extends Mark {
     getDimensionName(axis) {
         const binding = this.unitView.getEncoding()[axis];
         if (binding && "dimension" in binding) return binding.dimension;
-        throw new Error(`Raster has no dimension for "${axis}".`);
     }
 
     getColorField() {
@@ -76,8 +91,9 @@ export default class RasterMark extends Mark {
      * @param {import("../data/viewportDomain.js").ViewportConstraint[]} [constraints]
      */
     getColorDomain(collector, constraints = []) {
-        const domain = createDomain("quantitative");
-        if (!collector.completed) return domain;
+        const type = findChannelDefWithScale(this.encoding.color).type;
+        const domain = createDomain(type);
+        if (type !== "quantitative" || !collector.completed) return domain;
         const x = this.getDimensionName("x");
         const y = this.getDimensionName("y");
         const field = this.getColorField();
@@ -93,12 +109,15 @@ export default class RasterMark extends Mark {
                 field
             );
             const [left, right] = getVisibleCellRange(horizontal, xConstraint);
-            const [top, bottom] = getVisibleCellRange(vertical, yConstraint);
+            const [top, bottom] = vertical
+                ? getVisibleCellRange(vertical, yConstraint)
+                : [0, 1];
             for (let row = top; row < bottom; row++) {
                 const start = row * horizontal.count;
                 for (let column = left; column < right; column++) {
                     const value = values[start + column];
                     if (
+                        typeof value === "number" &&
                         Number.isFinite(value) &&
                         (!logarithmic || value !== 0)
                     ) {

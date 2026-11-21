@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { parseArgs } from "./captureScreenshots.mjs";
+import {
+    collectCuratedExamplePaths,
+    parseArgs,
+} from "./captureScreenshots.mjs";
 
 describe("captureScreenshots arguments", () => {
     test("enables non-writing example checks", () => {
@@ -35,4 +38,18 @@ describe("captureScreenshots arguments", () => {
             "Unknown renderer: unknown"
         );
     });
+});
+
+test("selects experimental raster examples for WebGPU batch capture", () => {
+    const rasterExamples = [
+        "examples/core/lazy-data/higlass-raster.json",
+        "examples/core/raster/msa.json",
+    ];
+    expect(collectCuratedExamplePaths("webgpu")).toEqual(
+        expect.arrayContaining(rasterExamples)
+    );
+    const auto = collectCuratedExamplePaths("auto");
+    for (const path of rasterExamples) {
+        expect(auto).not.toContain(path);
+    }
 });

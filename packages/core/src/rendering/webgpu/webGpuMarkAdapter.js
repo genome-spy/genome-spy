@@ -565,7 +565,7 @@ function createRectConfig(mark, data, coords) {
     };
 }
 
-/** @type {WeakMap<RasterMark, {data: object[], packed: ReturnType<typeof packRasterTiles>}>} */
+/** @type {WeakMap<RasterMark, {data: object[], palette: import("../../types/encoder.js").VegaScale | undefined, packed: ReturnType<typeof packRasterTiles>}>} */
 const rasterDataCache = new WeakMap();
 
 /**
@@ -574,13 +574,19 @@ const rasterDataCache = new WeakMap();
  * @param {import("../../view/layout/rectangle.js").default} coords
  */
 function createRasterConfig(mark, data, coords) {
-    let cached = rasterDataCache.get(mark);
-    if (cached?.data !== data) {
-        cached = { data, packed: packRasterTiles(mark, data) };
-        rasterDataCache.set(mark, cached);
-    }
+    const strip = mark.getDimensionName("y") === undefined;
+    const xScale = requireEncoder(mark, "x").scale;
     for (const axis of /** @type {const} */ (["x", "y"])) {
         const scale = requireEncoder(mark, axis).scale;
+        if (strip && axis === "y") {
+            if (scale?.type !== "band") {
+                throw unsupported(
+                    mark,
+                    "Raster strips need a band scale on y."
+                );
+            }
+            continue;
+        }
         if (
             !scale ||
             !["linear", "index", "locus"].includes(scale.type) ||
@@ -595,6 +601,32 @@ function createRasterConfig(mark, data, coords) {
         }
     }
     const color = requireEncoder(mark, "color").scale;
+    const colorResolution = mark.unitView.getScaleResolution("color");
+    const colorType = colorResolution.type;
+    const palette = colorType !== "quantitative" ? color : undefined;
+    if (
+        colorType !== "quantitative" &&
+        (palette?.type !== "ordinal" ||
+            !palette.domain().length ||
+            !colorResolution.isDomainDefinedExplicitly())
+    ) {
+        throw unsupported(
+            mark,
+            "Categorical raster colors need an ordinal scale with an explicit domain."
+        );
+    }
+    const categories = palette && getCategoricalMapping(mark, "color", palette);
+
+    let cached = rasterDataCache.get(mark);
+    if (cached?.data !== data || cached.palette !== palette) {
+        cached = {
+            data,
+            palette,
+            packed: packRasterTiles(mark, data, categories?.intern),
+        };
+        rasterDataCache.set(mark, cached);
+    }
+
     const opacity = mark.encoders.opacity;
     if (opacity && !isValueDef(opacity.channelDef)) {
         throw unsupported(
@@ -603,16 +635,37 @@ function createRasterConfig(mark, data, coords) {
         );
     }
     const { cells, inputs } = cached.packed;
+    const reverseIndex =
+        strip && xScale.type === "index" && xScale.props.reverse;
     return {
         count: data.length,
         inputs,
         cells,
         channels: {
-            x: createPositionChannel(mark, "x", data, coords),
-            x2: createPositionChannel(mark, "x2", data, coords),
+            x: createPositionChannel(
+                mark,
+                "x",
+                data,
+                coords,
+                reverseIndex ? 1 : undefined
+            ),
+            x2: createPositionChannel(
+                mark,
+                "x2",
+                data,
+                coords,
+                reverseIndex ? 0 : undefined
+            ),
             y: createPositionChannel(mark, "y", data, coords),
             y2: createPositionChannel(mark, "y2", data, coords),
-            fill: { value: 0, scale: createColorScale(mark, "color", color) },
+            fill: {
+                scale: createColorScale(
+                    mark,
+                    "color",
+                    color,
+                    categories?.readDomain
+                ),
+            },
             opacity: opacity
                 ? createNumericChannel(mark, "opacity", data)
                 : { value: 1 },
@@ -621,8 +674,12 @@ function createRasterConfig(mark, data, coords) {
     };
 }
 
-/** @param {RasterMark} mark @param {object[]} data */
-function packRasterTiles(mark, data) {
+/**
+ * @param {RasterMark} mark
+ * @param {object[]} data
+ * @param {(value: import("../../spec/channel.js").Scalar) => number} [intern]
+ */
+function packRasterTiles(mark, data, intern) {
     const x = mark.getDimensionName("x");
     const y = mark.getDimensionName("y");
     const field = mark.getColorField();
@@ -630,19 +687,29 @@ function packRasterTiles(mark, data) {
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
     const offsets = new Uint32Array(tiles.length);
-    const cells = new Float32Array(
-        tiles.reduce((count, tile) => count + tile.values.length, 0)
-    );
+    const length = tiles.reduce((count, tile) => count + tile.values.length, 0);
+    const cells = intern ? new Uint32Array(length) : new Float32Array(length);
     let offset = 0;
     for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
         columns[index] = horizontal.count;
-        rows[index] = vertical.count;
+        rows[index] = vertical?.count ?? 1;
         offsets[index] = offset;
-        if (values instanceof Float32Array) {
+        if (intern) {
+            for (let cell = 0; cell < values.length; cell++) {
+                cells[offset + cell] = intern(values[cell]);
+            }
+        } else if (values instanceof Float32Array) {
             cells.set(values, offset);
         } else {
             for (let cell = 0; cell < values.length; cell++) {
-                cells[offset + cell] = values[cell] ?? NaN;
+                const value = values[cell];
+                if (value != null && typeof value !== "number") {
+                    throw unsupported(
+                        mark,
+                        "Quantitative raster fields need numeric cells."
+                    );
+                }
+                cells[offset + cell] = typeof value === "number" ? value : NaN;
             }
         }
         offset += values.length;
@@ -1122,11 +1189,12 @@ function createArrowConfig(mark, data, coords) {
  * @param {"x" | "x2" | "y" | "y2"} channel
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {number} [bandOverride]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionChannel(mark, channel, data, coords) {
+function createPositionChannel(mark, channel, data, coords, bandOverride) {
     return createConditionalChannel(mark, channel, data, (encoder) =>
-        createPositionBranch(mark, channel, data, coords, encoder)
+        createPositionBranch(mark, channel, data, coords, encoder, bandOverride)
     );
 }
 
@@ -1136,15 +1204,24 @@ function createPositionChannel(mark, channel, data, coords) {
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {import("../../types/encoder.js").Encoder} encoder
+ * @param {number} [bandOverride]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionBranch(mark, channel, data, coords, encoder) {
+function createPositionBranch(
+    mark,
+    channel,
+    data,
+    coords,
+    encoder,
+    bandOverride
+) {
     const accessor = encoder.branches[0].accessor;
     // Value definitions are viewport-relative even when another conditional
     // branch uses a data scale. Datum definitions share the field scale path.
     const scale = isValueDef(encoder.channelDef) ? undefined : encoder.scale;
     const range = getPositionRange(channel, coords, scale);
     const band =
+        bandOverride ??
         /** @type {import("../../spec/channel.js").BandMixins} */ (
             encoder.channelDef
         ).band ??

@@ -923,7 +923,11 @@ export interface LinkProps
     noFadingOnPointSelection?: boolean | ExprRef;
 }
 
-/** Experimental WebGPU mark for regularly spaced two-dimensional tiles. */
+/**
+ * Experimental WebGPU mark for regular grids. A grid dimension on x and a
+ * band field on y draw one horizontal strip per record. Categorical cell
+ * colors use an ordinal scale with an explicit domain.
+ */
 export interface RasterProps extends MarkPropsBase {
     type: "raster";
 }

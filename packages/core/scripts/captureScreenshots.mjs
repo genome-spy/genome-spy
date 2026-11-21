@@ -15,6 +15,10 @@ const defaultLazyDataTimeoutMs = 30_000;
 const screenshotHarnessTimeoutPaddingMs = 60_000;
 
 const excludedExamples = new Set(["examples/core/app/samples.json"]);
+const webGpuExamples = new Set([
+    "examples/core/lazy-data/higlass-raster.json",
+    "examples/core/raster/msa.json",
+]);
 
 const helpText = `Usage:
   node packages/core/scripts/captureScreenshots.mjs [examples/...json ...]
@@ -33,6 +37,7 @@ Notes:
   - Screenshots are written next to their source specs as sibling .png files.
   - Check mode visits examples even when a sibling screenshot already exists.
   - The script excludes app-only examples for now.
+  - Batch capture includes experimental raster examples with --renderer webgpu.
   - Remote lazy-data examples require network access during capture.
   - Explicitly listed examples overwrite by default. Batch runs skip existing screenshots unless --overwrite is provided.
 `;
@@ -48,7 +53,7 @@ export async function main(args = process.argv.slice(2)) {
     const examplePaths =
         options.examplePaths.length > 0
             ? normalizeRequestedPaths(options.examplePaths)
-            : collectCuratedExamplePaths();
+            : collectCuratedExamplePaths(options.renderer);
     const overwrite = options.overwrite ?? options.examplePaths.length > 0;
 
     if (!examplePaths.length) {
@@ -200,7 +205,8 @@ function normalizeRequestedPaths(examplePaths) {
         });
 }
 
-function collectCuratedExamplePaths() {
+/** @param {string} renderer */
+export function collectCuratedExamplePaths(renderer) {
     /** @type {string[]} */
     const examplePaths = [];
 
@@ -211,7 +217,10 @@ function collectCuratedExamplePaths() {
                 .relative(repoRoot, absolutePath)
                 .split(path.sep)
                 .join("/");
-            if (!excludedExamples.has(examplePath)) {
+            if (
+                !excludedExamples.has(examplePath) &&
+                (renderer === "webgpu" || !webGpuExamples.has(examplePath))
+            ) {
                 examplePaths.push(examplePath);
             }
         });

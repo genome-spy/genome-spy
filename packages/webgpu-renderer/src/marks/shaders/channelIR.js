@@ -18,6 +18,7 @@ import { formatLiteral } from "../../wgsl/literals.js";
  *   WGSL binding name assigned by the mark program when it borrows a scale.
  * @prop {ChannelSourceKind} sourceKind
  *   Where the values originate: series buffer, uniform, or literal constant.
+ * @prop {boolean} [readInFragment] Whether the mark uses this scale in the fragment stage.
  * @prop {string} rawValueExpr
  *   WGSL expression that yields the raw (pre-scale) value for this channel.
  * @prop {"f32"|"u32"|"i32"} scalarType

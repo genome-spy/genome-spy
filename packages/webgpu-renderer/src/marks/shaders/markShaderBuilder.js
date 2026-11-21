@@ -178,9 +178,15 @@ export function buildMarkShader({
         domainMapChannelIRs.length
     ) {
         const binding = bindingIndex++;
+        const readInFragment = channelIRs.some(
+            (ir) =>
+                ir.readInFragment && (ir.needsDomainMap || ir.needsOrdinalRange)
+        );
         resourceBindings.push({
             binding,
-            visibility: vertexComputeVisibility,
+            visibility:
+                vertexComputeVisibility |
+                (readInFragment ? GPUShaderStage.FRAGMENT : 0),
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name: "scaleTables", role: "scaleTables" });

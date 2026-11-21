@@ -11,7 +11,10 @@ const channels = {
     opacity: { type: "f32", components: 1, default: 1 },
 };
 
-const shader = /* wgsl */ `
+/** @typedef {import("../raster.js").RasterConfig["cells"]} Cells */
+
+/** @param {boolean} integerCells */
+const rasterShader = (integerCells) => /* wgsl */ `
 struct VSOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -50,7 +53,7 @@ fn shade(in: VSOut) -> vec4<f32> {
     let shape = in.grid.xy;
     let cell = min(vec2<u32>(in.uv * vec2<f32>(shape)), shape - vec2<u32>(1u));
     let index = in.grid.z + cell.x + cell.y * shape.x;
-    if ((bitcast<u32>(rasterCells[index]) & 0x7f800000u) == 0x7f800000u) { discard; }
+    ${integerCells ? "" : "if ((bitcast<u32>(rasterCells[index]) & 0x7f800000u) == 0x7f800000u) { discard; }"}
     let color = getScaled_fill(index);
     return premultiplyAlpha(vec4<f32>(color.rgb, color.a * in.opacity));
 }
@@ -67,7 +70,7 @@ export default class RasterProgram extends BaseProgram {
     }
 
     get shaderBody() {
-        return shader;
+        return rasterShader(this._markConfig.cells instanceof Uint32Array);
     }
 
     get fragmentChannelReads() {
@@ -82,13 +85,16 @@ export default class RasterProgram extends BaseProgram {
                 kind: "buffer",
                 role: "extraBuffer",
                 visibility: "fragment",
-                wgslType: "array<f32>",
+                wgslType:
+                    this._markConfig.cells instanceof Uint32Array
+                        ? "array<u32>"
+                        : "array<f32>",
             },
         ];
     }
 
     _initializeExtraResources() {
-        this._writeCells(/** @type {Float32Array} */ (this._markConfig.cells));
+        this._writeCells(/** @type {Cells} */ (this._markConfig.cells));
     }
 
     getSlotHandles() {
@@ -97,7 +103,7 @@ export default class RasterProgram extends BaseProgram {
             ...slots,
             properties: {
                 cells: {
-                    set: (/** @type {Float32Array} */ cells) => {
+                    set: (/** @type {Cells} */ cells) => {
                         if (this._writeCells(cells)) {
                             this._rebuildBindGroup();
                         }
@@ -108,10 +114,18 @@ export default class RasterProgram extends BaseProgram {
     }
 
     /**
-     * @param {Float32Array} cells
+     * @param {Cells} cells
      * @returns {boolean} Whether the bound buffer changed.
      */
     _writeCells(cells) {
+        if (
+            cells.constructor !==
+            /** @type {Cells} */ (this._markConfig.cells).constructor
+        ) {
+            throw new Error(
+                "Retained raster cells must keep their original numeric type."
+            );
+        }
         validateStorageBufferSize(
             this.device,
             cells.byteLength,

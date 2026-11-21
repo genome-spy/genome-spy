@@ -8,28 +8,7 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
     playwright,
     baseURL,
 }) => {
-    const softwareWebGpu = process.platform === "linux";
-    const browser = await playwright.chromium.launch({
-        channel: "chrome",
-        args: [
-            "--enable-unsafe-webgpu",
-            softwareWebGpu
-                ? "--enable-features=Vulkan"
-                : "--enable-features=WebGPU",
-            "--ignore-gpu-blocklist",
-            ...(softwareWebGpu
-                ? [
-                      "--use-angle=swiftshader",
-                      "--enable-unsafe-swiftshader",
-                      "--use-vulkan=swiftshader",
-                      "--use-webgpu-adapter=swiftshader",
-                      "--disable-vulkan-surface",
-                  ]
-                : process.platform === "darwin"
-                  ? ["--use-angle=metal"]
-                  : []),
-        ],
-    });
+    const browser = await launchRasterBrowser(playwright);
     try {
         const page = await browser.newPage({ deviceScaleFactor: 1 });
         const browserErrors = [];
@@ -182,3 +161,178 @@ test("WebGPU raster maps cells and a row-backed rule onto the same locus axis", 
         await browser.close();
     }
 });
+
+test("WebGPU raster strips use index edges and share categorical band placement", async ({
+    playwright,
+    baseURL,
+}) => {
+    const browser = await launchRasterBrowser(playwright);
+    try {
+        const page = await browser.newPage({ deviceScaleFactor: 1 });
+        const errors = [];
+        page.on("console", (message) => {
+            if (
+                /WGSL|Invalid ShaderModule|Invalid RenderPipeline/.test(
+                    message.text()
+                )
+            ) {
+                errors.push(message.text());
+            }
+        });
+        await page.route("**/raster-strips", (route) =>
+            route.fulfill({
+                contentType: "text/html",
+                body: "<body style='margin:0'></body>",
+            })
+        );
+        await page.goto(new URL("/raster-strips", baseURL).href);
+        const results = await page.evaluate(async (src) => {
+            const { embed } = await import(src + "minimal.js");
+            await import(src + "rendering/webgpu/register.js");
+
+            async function render(reverse) {
+                const host = globalThis.document.createElement("div");
+                globalThis.document.body.append(host);
+                const api = await embed(
+                    host,
+                    {
+                        width: 80,
+                        height: 60,
+                        padding: 0,
+                        config: { background: null },
+                        view: { stroke: null },
+                        data: {
+                            values: ["AG?-", "-?GA"].map((sequence, row) => ({
+                                id: row ? "b" : "a",
+                                dimensions: {
+                                    column: { origin: 9, step: 2, count: 4 },
+                                },
+                                fields: { base: sequence },
+                            })),
+                        },
+                        mark: "raster",
+                        encoding: {
+                            x: {
+                                dimension: "column",
+                                type: "index",
+                                axis: null,
+                                scale: { reverse, zoom: { extent: "data" } },
+                            },
+                            y: {
+                                field: "id",
+                                type: "nominal",
+                                axis: null,
+                                scale: {
+                                    type: "band",
+                                    domain: ["a", "b"],
+                                    paddingInner: 0.4,
+                                },
+                            },
+                            color: {
+                                field: "base",
+                                type: "nominal",
+                                legend: null,
+                                scale: {
+                                    type: "ordinal",
+                                    domain: ["A", "G", "-"],
+                                    range: ["red", "blue", "gray"],
+                                },
+                            },
+                        },
+                    },
+                    {
+                        renderer: "webgpu",
+                        onError: (error) => {
+                            throw error;
+                        },
+                    }
+                );
+                try {
+                    const view = api.debug
+                        .getViewRoot()
+                        .getDescendants()
+                        .find(
+                            (candidate) =>
+                                candidate.mark?.getType() === "raster"
+                        );
+                    const x = view.getScaleResolution("x");
+                    const { blob } = await api.imageExport.raster({
+                        pixelRatio: 1,
+                        background: null,
+                    });
+                    const bitmap = await globalThis.createImageBitmap(blob);
+                    const context = new globalThis.OffscreenCanvas(
+                        bitmap.width,
+                        bitmap.height
+                    ).getContext("2d");
+                    context.drawImage(bitmap, 0, 0);
+                    bitmap.close();
+                    return {
+                        extent: x.zoomExtent,
+                        pixels: [
+                            [1, 12],
+                            [21, 12],
+                            [41, 12],
+                            [79, 12],
+                            [10, 30],
+                            [1, 48],
+                            [79, 48],
+                        ].map(([column, row]) =>
+                            Array.from(
+                                context.getImageData(column, row, 1, 1).data
+                            )
+                        ),
+                    };
+                } finally {
+                    api.finalize();
+                    host.remove();
+                }
+            }
+
+            return [await render(false), await render(true)];
+        }, coreSource);
+        expect(errors).toEqual([]);
+        const red = [255, 0, 0, 255];
+        const blue = [0, 0, 255, 255];
+        const gray = [128, 128, 128, 255];
+        const clear = [0, 0, 0, 0];
+        expect(results).toEqual([
+            {
+                extent: [9, 17],
+                pixels: [red, blue, clear, gray, clear, gray, red],
+            },
+            {
+                extent: [9, 17],
+                pixels: [gray, clear, blue, red, clear, red, gray],
+            },
+        ]);
+    } finally {
+        await browser.close();
+    }
+});
+
+/** @param {import("playwright/test").PlaywrightTestArgs["playwright"]} playwright */
+function launchRasterBrowser(playwright) {
+    const softwareWebGpu = process.platform === "linux";
+    return playwright.chromium.launch({
+        channel: "chrome",
+        args: [
+            "--enable-unsafe-webgpu",
+            softwareWebGpu
+                ? "--enable-features=Vulkan"
+                : "--enable-features=WebGPU",
+            "--ignore-gpu-blocklist",
+            ...(softwareWebGpu
+                ? [
+                      "--use-angle=swiftshader",
+                      "--enable-unsafe-swiftshader",
+                      "--use-vulkan=swiftshader",
+                      "--use-webgpu-adapter=swiftshader",
+                      "--disable-vulkan-surface",
+                  ]
+                : process.platform === "darwin"
+                  ? ["--use-angle=metal"]
+                  : []),
+        ],
+    });
+}

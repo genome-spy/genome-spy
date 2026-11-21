@@ -1,5 +1,6 @@
 import type {
     ChannelConfigInput,
+    ChannelConfigWithScaleInput,
     MarkConfig,
     MarkDefinition,
     TypedArray,
@@ -7,13 +8,15 @@ import type {
 
 export type RasterConfig = Omit<MarkConfig, "channels"> & {
     count: number;
-    channels: Record<string, ChannelConfigInput>;
-    /** Contiguous row-major numeric cells addressed by tile offset. */
-    cells: Float32Array;
+    channels: Record<string, ChannelConfigInput> & {
+        fill: { scale: ChannelConfigWithScaleInput["scale"] };
+    };
+    /** Row-major values or category IDs addressed by tile offset. The array type determines the fill scale input type. */
+    cells: Float32Array | Uint32Array;
 };
 
 export const rasterMark: MarkDefinition<
     RasterConfig,
     Record<string, TypedArray>,
-    { cells: Float32Array }
+    { cells: RasterConfig["cells"] }
 >;

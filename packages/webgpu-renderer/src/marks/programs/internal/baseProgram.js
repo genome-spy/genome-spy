@@ -329,6 +329,7 @@ export default class BaseProgram {
             const read = fragmentReads[channel.name];
             if (read !== undefined) {
                 channel.rawValueExpr = read;
+                channel.readInFragment = true;
             }
         }
         this.#logicalSeriesTargets = this.#collectLogicalSeriesTargets();
