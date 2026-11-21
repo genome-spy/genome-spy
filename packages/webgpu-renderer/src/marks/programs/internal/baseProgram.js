@@ -17,6 +17,7 @@ import {
 } from "../../shaders/visibilityPredicate.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
+import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import { sharedScaleResources } from "./sharedScale.js";
 
@@ -579,6 +580,39 @@ export default class BaseProgram {
      * @protected
      */
     _initializeExtraResources() {}
+
+    /**
+     * @param {string} name
+     * @param {ArrayBuffer | ArrayBufferView} data
+     * @param {number} minimumSize Byte size of one declared WGSL array element.
+     * @returns {boolean} Whether the buffer identity changed.
+     * @protected
+     */
+    _writeExtraBuffer(name, data, minimumSize) {
+        // Zero-instance draws still validate the storage element binding size.
+        const size = Math.max(minimumSize, data.byteLength);
+        const previous = this._extraBuffers.get(name);
+        const changed = !previous || previous.size < size;
+        const buffer = changed
+            ? this.device.createBuffer({
+                  label: gpuLabel(this.label, name),
+                  size,
+                  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+              })
+            : previous;
+        if (data.byteLength) {
+            this.device.queue.writeBuffer(
+                buffer,
+                0,
+                ArrayBuffer.isView(data) ? asGpuBufferSource(data) : data
+            );
+        }
+        if (changed) {
+            this._extraBuffers.set(name, buffer);
+            previous?.destroy();
+        }
+        return changed;
+    }
 
     /**
      * @returns {string}

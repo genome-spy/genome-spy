@@ -299,8 +299,10 @@ export default class RasterProgram extends BaseProgram {
     }
 
     _initializeExtraResources() {
-        this._writeCells(
-            /** @type {Uint32Array} */ (this._markConfig.initialCells)
+        this._writeExtraBuffer(
+            "rasterCells",
+            /** @type {Uint32Array} */ (this._markConfig.initialCells),
+            4
         );
     }
 
@@ -320,26 +322,10 @@ export default class RasterProgram extends BaseProgram {
             );
         }
         const prepared = this._seriesBuffers.prepareSeries(series, count);
-        this._applyPreparedSeries(prepared, count, this._writeCells(cells));
-    }
-
-    /** @param {Uint32Array} cells */
-    _writeCells(cells) {
-        const previous = this._extraBuffers.get("rasterCells");
-        const replace = !previous || previous.size < cells.byteLength;
-        const buffer = replace
-            ? this.device.createBuffer({
-                  label: this.label + " cells",
-                  size: Math.max(4, cells.byteLength),
-                  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-              })
-            : previous;
-
-        if (cells.length) this.device.queue.writeBuffer(buffer, 0, cells);
-        if (replace) {
-            this._extraBuffers.set("rasterCells", buffer);
-            previous?.destroy();
-        }
-        return replace;
+        this._applyPreparedSeries(
+            prepared,
+            count,
+            this._writeExtraBuffer("rasterCells", cells, 4)
+        );
     }
 }

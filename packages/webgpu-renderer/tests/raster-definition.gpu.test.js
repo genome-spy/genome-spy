@@ -7,27 +7,18 @@ test("raster conditions and order operate on cells across tile replacement", asy
     await ensureWebGPU(page);
     const result = await page.evaluate(async () => {
         const [
-            { createRenderer, rgba8Unorm },
+            { rgba8Unorm },
+            { createReadbackRenderer },
             { rasterMark },
             { thresholdScale },
         ] = await Promise.all([
             import("/src/index.js"),
+            import("/tests/fixtures/rgbaReadback.js"),
             import("/src/marks/raster.js"),
             import("/src/scales/threshold.js"),
         ]);
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 64;
-        document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
-        const { device } = renderer;
-        renderer.context.configure({
-            device,
-            format: renderer.format,
-            alphaMode: "premultiplied",
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-        });
-        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
-        device.pushErrorScope("validation");
+        const { renderer, renderPixels, finish } =
+            await createReadbackRenderer(64);
 
         const starts = new Float32Array([0, 0]);
         const ends = new Float32Array([64, 64]);
@@ -81,31 +72,12 @@ test("raster conditions and order operate on cells across tile replacement", asy
                 draws++;
                 draw.apply(this, args);
             };
-            renderer.render({
-                draws: [{ mark }],
-                clearColor: { r: 0, g: 0, b: 0, a: 0 },
-            });
+            const pixels = renderPixels(mark, [
+                [16, 32],
+                [48, 32],
+            ]);
             program.draw = draw;
-
-            const buffer = device.createBuffer({
-                size: 64 * 64 * 4,
-                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-            });
-            const encoder = device.createCommandEncoder();
-            encoder.copyTextureToBuffer(
-                { texture: renderer.context.getCurrentTexture() },
-                { buffer, bytesPerRow: 64 * 4 },
-                { width: 64, height: 64 }
-            );
-            device.queue.submit([encoder.finish()]);
-            await buffer.mapAsync(GPUMapMode.READ);
-            const bytes = new Uint8Array(buffer.getMappedRange());
-            const pixels = [16, 48].map((x) => {
-                const offset = (32 * 64 + x) * 4;
-                return Array.from(bytes.slice(offset, offset + 4));
-            });
-            buffer.destroy();
-            return { draws, pixels };
+            return { draws, pixels: await pixels };
         };
         const idle = await read(ordered);
         for (const mark of [unordered, ordered]) {
@@ -209,8 +181,7 @@ test("raster conditions and order operate on cells across tile replacement", asy
         const conditionOverridesMissing = await read(withMissing);
         withMissing.scalarSlots.visibleQuality.set(1);
         const hidden = await read(withMissing);
-        const validation = await device.popErrorScope();
-        renderer.destroy();
+        const validation = await finish();
         return {
             idle,
             selected,
@@ -222,7 +193,7 @@ test("raster conditions and order operate on cells across tile replacement", asy
             conditionOverridesMissing,
             hidden,
             invalid,
-            validation: validation?.message,
+            validation,
         };
     });
     expect(result.validation).toBeUndefined();
@@ -257,26 +228,14 @@ test("raster footprints filter encoded colors through zoom and selection", async
 }) => {
     await ensureWebGPU(page);
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { rasterMark }, { ordinalScale }] =
+        const [{ createReadbackRenderer }, { rasterMark }, { ordinalScale }] =
             await Promise.all([
-                import("/src/index.js"),
+                import("/tests/fixtures/rgbaReadback.js"),
                 import("/src/marks/raster.js"),
                 import("/src/scales/ordinal.js"),
             ]);
-        const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 64;
-        document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
-        const { device } = renderer;
-        renderer.context.configure({
-            device,
-            format: renderer.format,
-            alphaMode: "premultiplied",
-            usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT,
-        });
-        renderer.updateGlobals({ width: 64, height: 64, dpr: 1 });
-        device.pushErrorScope("validation");
+        const { renderer, renderPixels, finish } =
+            await createReadbackRenderer(64);
 
         // At (16, 32) the four categories cover different areas of the pixel.
         /** @param {number} x0 @param {number} x1 @param {number} y0 @param {number} y1 */
@@ -312,42 +271,16 @@ test("raster footprints filter encoded colors through zoom and selection", async
         });
         mark.selections.bases.set(new Uint32Array([11, 29, 47]));
 
-        const buffer = device.createBuffer({
-            size: 4,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-        });
-        const sample = async () => {
-            renderer.render({
-                draws: [{ mark }],
-                clearColor: { r: 0, g: 0, b: 0, a: 0 },
-            });
-            const encoder = device.createCommandEncoder();
-            encoder.copyTextureToBuffer(
-                {
-                    texture: renderer.context.getCurrentTexture(),
-                    origin: [16, 32],
-                },
-                { buffer },
-                [1, 1]
-            );
-            device.queue.submit([encoder.finish()]);
-            await buffer.mapAsync(GPUMapMode.READ);
-            const rgba = Array.from(new Uint8Array(buffer.getMappedRange()));
-            buffer.unmap();
-            return rgba;
-        };
-
+        const sample = async () => (await renderPixels(mark, [[16, 32]]))[0];
         const first = await sample();
         mark.series.replace(data(0.75, 32.75, 0.75, 64.75));
         const moved = await sample();
         mark.series.replace(data(16, 17, 32, 33));
         const minified = await sample();
-        const validation = await device.popErrorScope();
-        buffer.destroy();
-        renderer.destroy();
+        const validation = await finish();
         return {
             pixels: [first, moved, minified],
-            validation: validation?.message,
+            validation,
         };
     });
 

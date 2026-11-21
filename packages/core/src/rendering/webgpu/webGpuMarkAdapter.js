@@ -1,10 +1,7 @@
 import { pointStrokeAlign } from "../../marks/point.js";
 import { collectAppearanceSelections } from "../../selection/selection.js";
 import { resolveCategoryInput } from "../../selection/categorySelection.js";
-import {
-    collectSamplingSelections,
-    selectionPredicateLeaves,
-} from "../../selection/selectionPredicateTree.js";
+import { collectSamplingSelections } from "../../selection/selectionPredicateTree.js";
 import { cssColorToRgba, packCssColor } from "../color.js";
 import { format as numberFormat } from "d3-format";
 import { hasGroupingGaps } from "../../genome/indexGapMapping.js";
@@ -50,7 +47,7 @@ import forEachInBatch from "../../utils/forEachInBatch.js";
 import { readNumericRasterCell } from "../../data/rasterTile.js";
 import RasterMark from "../../marks/raster.js";
 
-/** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
+/** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string, membership: boolean}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
 
 /** Values evaluated by Core can depend on scales without a renderer scale slot.
@@ -73,15 +70,23 @@ export function getWebGpuCategorySelectionBinding(mark, slot) {
     return CATEGORY_SELECTION_BINDINGS.get(mark)?.get(slot);
 }
 
-/** @param {import("../../marks/mark.js").default} mark @param {string} param @param {string} input */
-function categorySelectionSlot(mark, param, input) {
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} param
+ * @param {string} input
+ * @param {boolean} [membership]
+ */
+function categorySelectionSlot(mark, param, input, membership = false) {
     let bindings = CATEGORY_SELECTION_BINDINGS.get(mark);
     if (!bindings) {
         bindings = new Map();
         CATEGORY_SELECTION_BINDINGS.set(mark, bindings);
     }
     for (const [slot, binding] of bindings) {
-        if (binding.param === param && binding.input === input) return slot;
+        if (binding.param === param && binding.input === input) {
+            binding.membership ||= membership;
+            return slot;
+        }
     }
     let index = bindings.size;
     let slot;
@@ -91,7 +96,7 @@ function categorySelectionSlot(mark, param, input) {
         mark.unitView.paramRuntime.findConfiguredParam(slot) ||
         bindings.has(slot)
     );
-    bindings.set(slot, { param, input });
+    bindings.set(slot, { param, input, membership });
     return slot;
 }
 
@@ -214,11 +219,11 @@ export function createWebGpuMarkConfig(
         definition = pointMark;
         config = createPointConfig(mark, data, coords);
     } else if (mark instanceof RasterMark) {
-        return createTranslation(
-            rasterMark,
-            createRasterConfig(mark, data, coords, placementIndex),
-            mark
-        );
+        return {
+            definition: rasterMark,
+            config: createRasterConfig(mark, data, coords, placementIndex),
+            properties: {},
+        };
     } else if (markType == "rect") {
         definition = rectMark;
         config = createRectConfig(mark, data, coords);
@@ -256,21 +261,7 @@ export function createWebGpuMarkConfig(
         };
     }
 
-    return createTranslation(
-        definition,
-        addOccurrenceConfig(config, placementIndex, mark, coords),
-        mark
-    );
-}
-
-/**
- * Keeps Core's live property readers outside the public renderer config.
- *
- * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
- * @param {Record<string, any>} config
- * @param {import("../../marks/mark.js").default} mark
- */
-function createTranslation(definition, config, mark) {
+    addOccurrenceConfig(config, placementIndex, mark, coords);
     const order = mark.getOrder?.();
     if (order) {
         config.order = {
@@ -278,6 +269,7 @@ function createTranslation(definition, config, mark) {
             matching: order.passes[0] === "matching" ? "first" : "last",
         };
     }
+
     const properties = config.retainedProperties ?? {};
     delete config.retainedProperties;
     return { definition, config, properties };
@@ -320,7 +312,6 @@ function addOccurrenceConfig(config, placementIndex, mark, coords) {
             };
         }
     }
-    return config;
 }
 
 /**
@@ -466,7 +457,12 @@ function createSelectionCondition(mark, predicate) {
     if (predicate.type === "categories") {
         const input = predicate.projections[0].input;
         return {
-            selection: categorySelectionSlot(mark, predicate.param, input),
+            selection: categorySelectionSlot(
+                mark,
+                predicate.param,
+                input,
+                true
+            ),
             type: "multi",
             input:
                 mark.getType() === "text" && input === "color" ? "fill" : input,
@@ -613,43 +609,25 @@ function createRasterConfig(mark, data, coords, placement) {
     let cached = rasterDataCache.get(mark);
     if (cached?.data !== data || cached.palette !== palette) {
         try {
-            /** @type {import("../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate[]} */
-            const predicates = [
-                ...(encoder?.branches ?? []).map(
-                    ({ predicate }) => predicate.selection
-                ),
-                mark.getOrder()?.predicate.selection,
-            ];
-            const categoryInputs = new Set(
-                predicates.flatMap((predicate) =>
-                    predicate
-                        ? Array.from(
-                              selectionPredicateLeaves(predicate)
-                          ).flatMap((leaf) =>
-                              "type" in leaf && leaf.type === "categories"
-                                  ? leaf.projections.map(({ input }) => input)
-                                  : []
-                          )
-                        : []
+            /** @type {Record<string, Uint32Array>} */
+            const cellInputs = {};
+            const bindings = CATEGORY_SELECTION_BINDINGS.get(mark)?.values();
+            for (const { input, membership } of bindings ?? []) {
+                if (
+                    !membership ||
+                    input === "color" ||
+                    Object.hasOwn(cellInputs, input)
                 )
-            );
-            const cellInputs = Object.fromEntries(
-                Array.from(categoryInputs)
-                    .filter((input) => input !== "color")
-                    .map((input) => {
-                        const inputEncoder = requireEncoder(mark, input);
-                        return [
-                            input,
-                            toCategoricalArray(
-                                mark,
-                                input,
-                                data,
-                                inputEncoder.branches[0].accessor,
-                                inputEncoder.scale
-                            ).values,
-                        ];
-                    })
-            );
+                    continue;
+                const inputEncoder = requireEncoder(mark, input);
+                cellInputs[input] = toCategoricalArray(
+                    mark,
+                    input,
+                    data,
+                    inputEncoder.branches[0].accessor,
+                    inputEncoder.scale
+                ).values;
+            }
             cached = {
                 data,
                 palette,

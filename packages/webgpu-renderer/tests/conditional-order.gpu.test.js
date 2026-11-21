@@ -8,28 +8,14 @@ for (const matching of /** @type {const} */ (["first", "last"])) {
     }) => {
         await ensureWebGPU(page);
         const result = await page.evaluate(async (matching) => {
-            const [{ createRenderer }, { pointMark }, { linearScale }] =
+            const [{ createReadbackRenderer }, { pointMark }, { linearScale }] =
                 await Promise.all([
-                    import("/src/index.js"),
+                    import("/tests/fixtures/rgbaReadback.js"),
                     import("/src/marks/point.js"),
                     import("/src/scales/linear.js"),
                 ]);
-            const canvas = document.createElement("canvas");
-            canvas.width = canvas.height = 128;
-            document.body.appendChild(canvas);
-            const renderer = await createRenderer(canvas, {
-                format: "rgba8unorm",
-            });
-            renderer.context.configure({
-                device: renderer.device,
-                format: renderer.format,
-                alphaMode: "premultiplied",
-                usage:
-                    GPUTextureUsage.RENDER_ATTACHMENT |
-                    GPUTextureUsage.COPY_SRC,
-            });
-            renderer.updateGlobals({ width: 128, height: 128, dpr: 1 });
-            renderer.device.pushErrorScope("validation");
+            const { renderer, renderPixels, finish } =
+                await createReadbackRenderer(128);
             const mark = renderer.createMark(pointMark, {
                 count: 2,
                 channels: {
@@ -62,33 +48,7 @@ for (const matching of /** @type {const} */ (["first", "last"])) {
                     matching,
                 },
             });
-            const read = async () => {
-                renderer.render({
-                    draws: [{ mark }],
-                    clearColor: { r: 0, g: 0, b: 0, a: 0 },
-                });
-                const buffer = renderer.device.createBuffer({
-                    size: 128 * 128 * 4,
-                    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-                });
-                const encoder = renderer.device.createCommandEncoder();
-                encoder.copyTextureToBuffer(
-                    { texture: renderer.context.getCurrentTexture() },
-                    { buffer, bytesPerRow: 128 * 4 },
-                    { width: 128, height: 128 }
-                );
-                renderer.device.queue.submit([encoder.finish()]);
-                await buffer.mapAsync(GPUMapMode.READ);
-                const pixel = Array.from(
-                    new Uint8Array(buffer.getMappedRange()).slice(
-                        (64 * 128 + 64) * 4,
-                        (64 * 128 + 64) * 4 + 4
-                    )
-                );
-                buffer.unmap();
-                buffer.destroy();
-                return pixel;
-            };
+            const read = async () => (await renderPixels(mark, [[64, 64]]))[0];
             const empty = await read();
             mark.selections.picked.set(41);
             const promoted = await read();
@@ -97,16 +57,14 @@ for (const matching of /** @type {const} */ (["first", "last"])) {
             const picked = await renderer.pick(64, 64);
             mark.selections.picked.set(0);
             const cleared = await read();
-            const validation = await renderer.device.popErrorScope();
-            renderer.destroy();
-            canvas.remove();
+            const validation = await finish();
             return {
                 empty,
                 promoted,
                 cleared,
                 picked,
                 implicitPicked,
-                validation: validation?.message,
+                validation,
             };
         }, matching);
         expect(result.validation).toBeUndefined();
@@ -128,24 +86,14 @@ test("logical order combines two independently updated interval components", asy
 }) => {
     await ensureWebGPU(page);
     const result = await page.evaluate(async () => {
-        const [{ createRenderer }, { pointMark }, { linearScale }] =
+        const [{ createReadbackRenderer }, { pointMark }, { linearScale }] =
             await Promise.all([
-                import("/src/index.js"),
+                import("/tests/fixtures/rgbaReadback.js"),
                 import("/src/marks/point.js"),
                 import("/src/scales/linear.js"),
             ]);
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 128;
-        document.body.appendChild(canvas);
-        const renderer = await createRenderer(canvas, { format: "rgba8unorm" });
-        renderer.context.configure({
-            device: renderer.device,
-            format: renderer.format,
-            alphaMode: "premultiplied",
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-        });
-        renderer.updateGlobals({ width: 128, height: 128, dpr: 1 });
-        renderer.device.pushErrorScope("validation");
+        const { renderer, renderPixels, finish } =
+            await createReadbackRenderer(128);
         const mark = renderer.createMark(pointMark, {
             count: 2,
             channels: {
@@ -192,33 +140,7 @@ test("logical order combines two independently updated interval components", asy
                 matching: "last",
             },
         });
-        const read = async () => {
-            renderer.render({
-                draws: [{ mark }],
-                clearColor: { r: 0, g: 0, b: 0, a: 0 },
-            });
-            const buffer = renderer.device.createBuffer({
-                size: 128 * 128 * 4,
-                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-            });
-            const encoder = renderer.device.createCommandEncoder();
-            encoder.copyTextureToBuffer(
-                { texture: renderer.context.getCurrentTexture() },
-                { buffer, bytesPerRow: 128 * 4 },
-                { width: 128, height: 128 }
-            );
-            renderer.device.queue.submit([encoder.finish()]);
-            await buffer.mapAsync(GPUMapMode.READ);
-            const pixel = Array.from(
-                new Uint8Array(buffer.getMappedRange()).slice(
-                    (64 * 128 + 64) * 4,
-                    (64 * 128 + 64) * 4 + 4
-                )
-            );
-            buffer.unmap();
-            buffer.destroy();
-            return pixel;
-        };
+        const read = async () => (await renderPixels(mark, [[64, 64]]))[0];
         const empty = await read();
         mark.selections.from.set({ range0: [1, 2] });
         const fromOnly = await read();
@@ -228,16 +150,14 @@ test("logical order combines two independently updated interval components", asy
         const toOnly = await read();
         mark.selections.to.set({});
         const cleared = await read();
-        const validation = await renderer.device.popErrorScope();
-        renderer.destroy();
-        canvas.remove();
+        const validation = await finish();
         return {
             empty,
             fromOnly,
             both,
             toOnly,
             cleared,
-            validation: validation?.message,
+            validation,
         };
     });
     expect(result.validation).toBeUndefined();

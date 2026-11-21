@@ -11,8 +11,6 @@ import {
     OUTLINE_ATLAS_OPTIONS,
 } from "../../fonts/outlineTextLayout.js";
 import { getOutlineFontAtlas } from "../../fonts/outlineFontAtlas.js";
-import { asGpuBufferSource } from "../../utils/webgpuTextureUtils.js";
-import { gpuLabel } from "../../utils/gpuLabel.js";
 import { TEXT_GEOMETRY_WGSL } from "./textGeometry.wgsl.js";
 import {
     buildGlyphOffsets,
@@ -1328,38 +1326,6 @@ export default class TextProgram extends BaseProgram {
             this._drawOffsets = renderItems.offsets;
         } else {
             this._drawOffsets = buildGlyphOffsets(layout);
-        }
-        return changed;
-    }
-
-    /**
-     * @param {string} name
-     * @param {ArrayBuffer | ArrayBufferView} data
-     * @param {number} minimumSize Byte size of one declared WGSL array element.
-     * @returns {boolean} Whether the buffer identity changed.
-     * @internal Called by initialization hooks during super(), before private branding.
-     */
-    _writeExtraBuffer(name, data, minimumSize) {
-        const byteLength = data.byteLength;
-        // Zero-instance draws still validate the storage element binding size.
-        const requiredSize = Math.max(minimumSize, byteLength);
-        let buffer = this._extraBuffers.get(name);
-        const changed = !buffer || buffer.size < requiredSize;
-        if (changed) {
-            buffer?.destroy();
-            buffer = this.device.createBuffer({
-                label: gpuLabel(this.label, name),
-                size: requiredSize,
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            });
-            this._extraBuffers.set(name, buffer);
-        }
-        if (byteLength > 0) {
-            this.device.queue.writeBuffer(
-                buffer,
-                0,
-                ArrayBuffer.isView(data) ? asGpuBufferSource(data) : data
-            );
         }
         return changed;
     }

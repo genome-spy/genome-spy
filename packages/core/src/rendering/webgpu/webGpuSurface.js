@@ -434,12 +434,20 @@ export default class WebGpuSurface {
                 resourceExpressionsRevision !== undefined &&
                 retained.resourceExpressionsRevision ===
                     resourceExpressionsRevision;
-            if (configChanged && hasSeriesChanges(retained, config)) {
+            if (configChanged) {
                 const series = collectSeries(config);
-                retained.handle.series.replace(series, config.count);
-                retained.series = series;
-                retained.count = config.count;
-                writes++;
+                const seriesChanged = config.data
+                    ? series !== retained.series
+                    : config.count !== retained.count ||
+                      Object.entries(series).some(
+                          ([name, data]) => data !== retained.series[name]
+                      );
+                if (seriesChanged) {
+                    retained.handle.series.replace(series, config.count);
+                    retained.series = series;
+                    retained.count = config.count;
+                    writes++;
+                }
             }
             if (configChanged || retained.properties !== properties) {
                 // Renderer slot shape is immutable for one definition.
@@ -1023,36 +1031,6 @@ function uint32ArraysEqual(previous, next) {
         return false;
     }
     return previous.every((value, index) => value == next[index]);
-}
-
-/**
- * @param {RetainedMark} retained
- * @param {any} config
- */
-function hasSeriesChanges(retained, config) {
-    if (config.data) return retained.series !== config.data;
-    if (retained.count != config.count) {
-        return true;
-    }
-
-    for (const [name, channel] of Object.entries(config.channels)) {
-        const series = getLogicalChannelSeries(channel);
-        if (series !== undefined && retained.series[name] !== series) {
-            return true;
-        }
-    }
-    for (const [name, input] of Object.entries(config.inputs ?? {})) {
-        if (retained.series[name] !== input.data) {
-            return true;
-        }
-    }
-    if (
-        config.placementIndex?.data &&
-        retained.series.__placementIndex !== config.placementIndex.data
-    ) {
-        return true;
-    }
-    return false;
 }
 
 /**
