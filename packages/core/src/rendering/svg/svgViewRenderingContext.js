@@ -17,7 +17,10 @@ import {
 } from "../immediate/markData.js";
 import { renderMarkSvg } from "./renderers/index.js";
 import RasterMark from "../../marks/raster.js";
-import { visitRasterTiles } from "../immediate/marks/raster.js";
+import {
+    getRasterTileBounds,
+    visitRasterTiles,
+} from "../immediate/marks/raster.js";
 import { partitionOrderData } from "../immediate/order.js";
 import { createSvgElement, SVG_NS } from "./svgElement.js";
 import { formatSvgNumber, formatSvgUnitless } from "./svgNumber.js";
@@ -578,13 +581,19 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                 visitRasterTiles(
                     mark,
                     { coords, data, visibleBounds },
-                    (_datum, x, y, dx, dy) => {
-                        const tile = {
-                            x1: Math.max(visibleBounds.x1, Math.min(x, x + dx)),
-                            y1: Math.max(visibleBounds.y1, Math.min(y, y + dy)),
-                            x2: Math.min(visibleBounds.x2, Math.max(x, x + dx)),
-                            y2: Math.min(visibleBounds.y2, Math.max(y, y + dy)),
-                        };
+                    (_datum, x, y, dx, dy, triangle) => {
+                        const tile = getRasterTileBounds(
+                            x,
+                            y,
+                            dx,
+                            dy,
+                            triangle
+                        );
+                        const clip = triangle?.clip ?? visibleBounds;
+                        tile.x1 = Math.max(clip.x1, tile.x1);
+                        tile.y1 = Math.max(clip.y1, tile.y1);
+                        tile.x2 = Math.min(clip.x2, tile.x2);
+                        tile.y2 = Math.min(clip.y2, tile.y2);
                         if (tile.x2 > tile.x1 && tile.y2 > tile.y1) {
                             extendBounds(bounds, tile);
                             count++;

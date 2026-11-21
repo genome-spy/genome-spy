@@ -18,6 +18,9 @@ Use the `icon` mark to anchor raster tiles to data positions and keep their
 screen dimensions while panning or zooming. Encode `size` to vary the area per
 source cell while preserving each icon's aspect ratio.
 
+Use the raster mark's triangle projection to display a HiGlass contact map above
+a single genomic axis. Track height controls the visible contact distance.
+
 Use a gradient legend brush to control the opacity of individual raster cells.
 The HiGlass example makes contact values outside the brushed range transparent.
 

@@ -14,7 +14,7 @@
 /**
  * @param {import("./flowNode.js").Datum} datum
  * @param {string} name
- * @param {boolean} [grid] Validate the coordinates used by a domain-aligned grid.
+ * @param {boolean | "locus"} [grid] Validate grid coordinates and locus endpoints.
  */
 export function readRasterDimension(datum, name, grid = false) {
     const dimension = /** @type {RasterTile} */ (datum).dimensions?.[name];
@@ -37,6 +37,21 @@ export function readRasterDimension(datum, name, grid = false) {
             `Raster dimension "${name}" needs a finite origin and a positive step.`
         );
     }
+    if (grid === "locus") {
+        const { origin, step, count } = dimension;
+        const end = origin + step * count;
+        // Locus GPU buffers store endpoints as an unsigned 32-bit chunk and a 12-bit remainder.
+        if (
+            !Number.isInteger(origin) ||
+            origin < 0 ||
+            !Number.isInteger(end) ||
+            end >= 2 ** 44
+        ) {
+            throw new Error(
+                `Raster dimension "${name}" needs nonnegative whole-base endpoints below 2^44.`
+            );
+        }
+    }
     return dimension;
 }
 
@@ -45,14 +60,14 @@ export function readRasterDimension(datum, name, grid = false) {
  * @param {string} x
  * @param {string | undefined} y Vertical grid dimension for a two-dimensional tile.
  * @param {string} field
- * @param {{direct: boolean, icon: boolean}} options
+ * @param {{direct: boolean, grid: boolean | "locus"}} options
  */
 export function readRasterTile(datum, x, y, field, options) {
-    const { direct, icon } = options;
+    const { direct, grid } = options;
     const tile = /** @type {RasterTile} */ (datum);
-    const horizontal = readRasterDimension(datum, x, !icon);
+    const horizontal = readRasterDimension(datum, x, grid);
     const vertical =
-        y === undefined ? undefined : readRasterDimension(datum, y, !icon);
+        y === undefined ? undefined : readRasterDimension(datum, y, grid);
     const values = tile.fields?.[field];
     const supported =
         Array.isArray(values) ||
@@ -116,4 +131,40 @@ export function getVisibleCellRange({ origin, step, count }, constraint) {
         Math.max(0, contain ? Math.ceil(start) : Math.floor(start)),
         Math.min(count, contain ? Math.floor(end) : Math.ceil(end)),
     ];
+}
+
+/**
+ * @param {number[]} domain Visible midpoints in data coordinates.
+ * @param {number} width Logical track width.
+ * @param {number} height Logical track height.
+ */
+export function getTriangleViewport(domain, width, height) {
+    const lo = Math.min(...domain);
+    const hi = Math.max(...domain);
+    return { lo, hi, depth: ((hi - lo) * height) / width };
+}
+
+/**
+ * Column-coordinate interval covered by the triangle within a row slab.
+ * @param {ReturnType<typeof getTriangleViewport>} viewport
+ * @param {number} rowStart
+ * @param {number} rowEnd
+ * @param {boolean} [contain]
+ * @returns {[number, number]}
+ */
+export function getTriangleColumnDomain(
+    { lo, hi, depth },
+    rowStart,
+    rowEnd,
+    contain = false
+) {
+    return contain
+        ? [
+              Math.max(2 * lo - rowStart, rowEnd - 2 * depth),
+              Math.min(2 * hi - rowEnd, rowStart),
+          ]
+        : [
+              Math.max(2 * lo - rowEnd, rowStart - 2 * depth, lo - depth),
+              Math.min(2 * hi - rowStart, rowEnd, hi),
+          ];
 }

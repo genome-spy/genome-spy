@@ -40,12 +40,129 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterIcons(playwright, baseURL, renderer));
+    test(`${renderer} triangle uses one locus axis and keeps tile seams aligned`, ({
+        playwright,
+        baseURL,
+    }) => checkTriangleRaster(playwright, baseURL, renderer));
     if (renderer !== "webgpu") {
         test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
             playwright,
             baseURL,
         }) => checkRasterLogDomain(playwright, baseURL, renderer));
     }
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkTriangleRaster(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const results = await page.evaluate(
+            async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                await import(src + "rendering/registerSvg.js");
+                const start = 2_000_000_001;
+                const tile = (column, row, color) => ({
+                    dimensions: {
+                        column: { origin: start + column, step: 1, count: 2 },
+                        row: { origin: start + row, step: 1, count: 2 },
+                    },
+                    fields: { color: [color, color, color, color] },
+                });
+                const samples = [];
+                for (const reverse of [false, true]) {
+                    const api = await embed(
+                        globalThis.document.querySelector("#plot"),
+                        {
+                            assembly: "hg19",
+                            width: 160,
+                            height: 60,
+                            padding: 0,
+                            view: { stroke: null },
+                            data: {
+                                values: [
+                                    tile(0, 0, 0xff00ff00),
+                                    tile(0, 2, 0xff0000ff),
+                                    tile(0, 4, 0xffff0000),
+                                    tile(-2, 2, 0xff00ffff),
+                                ],
+                            },
+                            mark: { type: "raster", projection: "triangle" },
+                            encoding: {
+                                x: {
+                                    dimension: "column",
+                                    type: "locus",
+                                    axis: null,
+                                    scale: {
+                                        domain: [start, start + 15],
+                                        reverse,
+                                    },
+                                },
+                                color: { field: "color", scale: null },
+                            },
+                        },
+                        {
+                            renderer,
+                            onError: (error) => {
+                                throw error;
+                            },
+                        }
+                    );
+                    try {
+                        const view = api.debug
+                            .getViewRoot()
+                            .getDescendants()
+                            .find((view) => view.mark?.getType() === "raster");
+                        // Opposite sides of the row tile seam, a diagonal cell,
+                        // and a contact with a column endpoint left of the domain.
+                        const points = [
+                            [21.25, 43.75],
+                            [23.75, 41.25],
+                            [5, 57.5],
+                            [10, 45],
+                            [22.5, 42.5],
+                        ].map(([x, y]) => [
+                            Math.floor(reverse ? 160 - x : x),
+                            Math.floor(y),
+                        ]);
+                        const raster = await globalThis.readRasterPixels(
+                            api,
+                            points,
+                            null
+                        );
+                        const { pixels: svg } =
+                            await globalThis.readSvgRasterPixels(api, points);
+                        samples.push({
+                            raster,
+                            svg,
+                            yScale: !!view.getScaleResolution("y"),
+                        });
+                    } finally {
+                        api.finalize();
+                    }
+                }
+                return samples;
+            },
+            setup
+        );
+        const expected = [
+            [255, 0, 0, 255],
+            [0, 0, 255, 255],
+            [0, 255, 0, 255],
+            [255, 255, 0, 255],
+        ];
+        for (const { raster, svg, yScale } of results) {
+            expect(yScale).toBe(false);
+            for (const pixels of [raster, svg]) {
+                expect(pixels.slice(0, -1)).toEqual(expected);
+                if (renderer !== "canvas") {
+                    // MSAA can resolve a mix of the two opaque neighbors.
+                    const [r, g, b, a] = pixels.at(-1);
+                    expect([g, a]).toEqual([0, 255]);
+                    expect(Math.abs(r + b - 255)).toBeLessThanOrEqual(1);
+                }
+            }
+        }
+    });
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */

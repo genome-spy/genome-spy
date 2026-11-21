@@ -57,6 +57,7 @@ export function compileRasterData(config) {
     const icon = data.tiles.x1 === undefined && data.tiles.y1 === undefined;
     if (
         (data.tiles.x1 === undefined) !== (data.tiles.y1 === undefined) ||
+        (icon && config.projection === "triangle") ||
         (icon
             ? position?.x2 || position?.y2
             : position?.size || data.tiles.size)
@@ -317,6 +318,7 @@ export function lowerRasterConfig(config, schema, prepared) {
     return {
         count: prepared.count,
         icon: schema.icon,
+        triangle: config.projection === "triangle",
         reads: schema.reads,
         initialCells: prepared.cells,
         scalarSlots,

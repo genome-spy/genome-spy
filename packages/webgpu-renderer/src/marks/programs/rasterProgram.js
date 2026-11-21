@@ -30,8 +30,9 @@ const channels = {
  *
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
  * @param {"x" | "y"} axis
+ * @param {"x" | "y"} [screenAxis]
  */
-function indexAxisShader(irs, axis) {
+function indexAxisShader(irs, axis, screenAxis = axis) {
     const first = irs.find(({ name }) => name === axis);
     const last = irs.find(({ name }) => name === axis + "2");
     if (
@@ -55,7 +56,8 @@ function indexAxisShader(irs, axis) {
         const read = `read_${name}(i)`;
         return inputComponents === 2 ? read : `rasterIndexKey(${read})`;
     };
-    const position = axis === "x" ? "vec2<f32>(p, 0.0)" : "vec2<f32>(0.0, p)";
+    const position =
+        screenAxis === "x" ? "vec2<f32>(p, 0.0)" : "vec2<f32>(0.0, p)";
     return /* wgsl */ `
 fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
     let domain = ${domain(first)};
@@ -68,7 +70,7 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
 
     let p = projectRasterAnchor(${key(first)}, ${key(last)}, count, anchor,
         vec2<f32>(${band(first)}, ${band(last)}), domain, range);
-    return rasterTargetPixel(applyPlacementPixel(${position}, i)).${axis};
+    return rasterTargetPixel(applyPlacementPixel(${position}, i)).${screenAxis};
 }
 `;
 }
@@ -76,12 +78,35 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
 /**
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
  * @param {boolean} icon
+ * @param {boolean} triangle
  */
-function rasterShader(irs, icon) {
+function rasterShader(irs, icon, triangle) {
     const x = icon ? "" : indexAxisShader(irs, "x");
-    const y = icon ? "" : indexAxisShader(irs, "y");
-    const bounds = icon
+    const y = icon ? "" : indexAxisShader(irs, "y", triangle ? "x" : "y");
+    const bounds = triangle
         ? /* wgsl */ `
+    let start = vec2<f32>(
+        rasterHorizontal(i, getScaled_x(i)), rasterHorizontal(i, getScaled_y(i))
+    );
+    let end = vec2<f32>(
+        rasterHorizontal(i, getScaled_x2(i)), rasterHorizontal(i, getScaled_y2(i))
+    );
+    let topLeft = rasterTargetPixel(applyPlacementPixel(vec2<f32>(0.0), i));
+    let bottomRight = rasterTargetPixel(applyPlacementPixel(vec2<f32>(globals.width, globals.height), i));
+    out.triangleClip = vec4<f32>(max(topLeft, vec2<f32>(0.0)), min(bottomRight, targetSize));
+    if (any(out.triangleClip.xy >= out.triangleClip.zw)) {
+        out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
+        return out;
+    }
+    out.triangle = vec2<f32>(bottomRight.y, select(-1.0, 1.0, start.x < end.x));
+    let vertical = (out.triangleClip.yw - out.triangle.x) * out.triangle.y;
+    let lo = min(vertical.x, vertical.y);
+    let hi = max(vertical.x, vertical.y);
+    let sourceMin = out.triangleClip.x + vec2<f32>(lo, -hi);
+    let sourceMax = out.triangleClip.z + vec2<f32>(hi, -lo);
+`
+        : icon
+          ? /* wgsl */ `
     let area = getScaled_size(i);
     if (!(area > 0.0 && area <= 0x1.fffffep+127)) {
         out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
@@ -92,13 +117,22 @@ function rasterShader(irs, icon) {
     let start = first - halfSize;
     let end = first + halfSize;
 `
-        : /* wgsl */ `
+          : /* wgsl */ `
     let start = first;
     let end = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x2(i), getScaled_y2(i)), i));
 `;
     return /* wgsl */ `
 fn rasterTargetPixel(pixel: vec2<f32>) -> vec2<f32> {
     return (globals.viewportOrigin - globals.renderTargetOrigin + pixel) * globals.dpr;
+}
+${
+    triangle
+        ? /* wgsl */ `
+fn rasterHorizontal(i: u32, position: f32) -> f32 {
+    return rasterTargetPixel(applyPlacementPixel(vec2<f32>(position, 0.0), i)).x;
+}
+`
+        : ""
 }
 
 fn rasterIndexKey(value: u32) -> vec2<u32> {
@@ -144,6 +178,14 @@ struct VSOut {
     @location(3) @interpolate(flat) anchor: vec2<u32>,
     @location(1) @interpolate(flat) grid: vec3<u32>,
     @location(2) @interpolate(flat) pickId: u32,
+${
+    triangle
+        ? /* wgsl */ `
+    @location(5) @interpolate(flat) triangle: vec2<f32>,
+    @location(6) @interpolate(flat) triangleClip: vec4<f32>,
+`
+        : ""
+}
 #if defined(PLACEMENT_ENABLED)
     @location(15) @interpolate(flat) placementClip: vec4<f32>,
 #endif
@@ -162,11 +204,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
     out.grid = vec3<u32>(read_columns(i), read_rows(i), read_cellOffset(i));
     out.pickId = 0u;
-    let first = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));
-    ${bounds}
     let targetSize = globals.renderTargetSize * globals.dpr;
-    let clipStart = clamp(start, vec2<f32>(0.0), targetSize);
-    let clipEnd = clamp(end, vec2<f32>(0.0), targetSize);
+    ${triangle ? "" : "let first = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));"}
+    ${bounds}
+    let clipStart = clamp(start, ${triangle ? "sourceMin, sourceMax" : "vec2<f32>(0.0), targetSize"});
+    let clipEnd = clamp(end, ${triangle ? "sourceMin, sourceMax" : "vec2<f32>(0.0), targetSize"});
     if (any(clipStart == clipEnd)) {
         out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
         return out;
@@ -184,7 +226,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         ${y ? "anchor_y(i, out.grid.y, out.anchor.y, approx.y)" : "approx.y"}
     );
     out.cellsPerPixel = shape / span;
-    let pixel = mix(clipStart, clipEnd, vertices[v]);
+    let source = mix(clipStart, clipEnd, vertices[v]);
+    let pixel = ${triangle ? "vec2<f32>(0.5 * (source.x + source.y), out.triangle.x + 0.5 * out.triangle.y * (source.x - source.y))" : "source"};
     out.pos = vec4<f32>(pixel / targetSize * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
 #if defined(PLACEMENT_ENABLED)
     out.placementClip = placementClipBounds(i);
@@ -235,6 +278,18 @@ fn shade(in: VSOut) -> vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
+${
+    triangle
+        ? /* wgsl */ `
+    if (any(in.pos.xy < in.triangleClip.xy) || any(in.pos.xy >= in.triangleClip.zw)) { discard; }
+    let separation = (in.pos.y - in.triangle.x) * in.triangle.y;
+    let source = in.pos.x + vec2<f32>(separation, -separation);
+    let center = (source - in.anchorPixel) * in.cellsPerPixel;
+    let column = rasterCellIndex(in.anchor.x, in.grid.x - 1u, center.x);
+    let row = rasterCellIndex(in.anchor.y, in.grid.y - 1u, center.y);
+    return rasterCellColor(in, vec2<u32>(column, row));
+`
+        : /* wgsl */ `
     let center = (in.pos.xy - in.anchorPixel) * in.cellsPerPixel;
     let width = abs(in.cellsPerPixel);
     let x = rasterAxisSamples(center.x, width.x, in.anchor.x, in.grid.x);
@@ -242,6 +297,8 @@ fn shade(in: VSOut) -> vec4<f32> {
     let first = rasterRowColor(in, x, y.first);
     if (y.secondWeight == 0.0) { return first; }
     return mix(first, rasterRowColor(in, x, y.second), y.secondWeight);
+`
+}
 }
 
 @fragment
@@ -279,7 +336,11 @@ export default class RasterProgram extends BaseProgram {
     buildShaderBody(irs) {
         // BaseProgram builds the shader before RasterProgram's constructor
         // stores the retained snapshot schema.
-        return rasterShader(irs, !!this._markConfig.icon);
+        return rasterShader(
+            irs,
+            !!this._markConfig.icon,
+            !!this._markConfig.triangle
+        );
     }
 
     get hasCellPredicates() {

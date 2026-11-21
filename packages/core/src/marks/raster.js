@@ -1,6 +1,11 @@
 import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
-import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
+import {
+    getTriangleColumnDomain,
+    getTriangleViewport,
+    getVisibleCellRange,
+    readRasterTile,
+} from "../data/rasterTile.js";
 import {
     matchesViewport,
     normalizeViewportConstraint,
@@ -30,6 +35,15 @@ export default class RasterMark extends Mark {
 
     get isIcon() {
         return this.getType() === "icon";
+    }
+
+    get isTriangle() {
+        return (
+            this.getType() === "raster" &&
+            /** @type {import("../spec/mark.js").RasterProps} */ (
+                this.properties
+            ).projection === "triangle"
+        );
     }
 
     isPickingParticipant() {
@@ -81,6 +95,10 @@ export default class RasterMark extends Mark {
     /** @param {import("../spec/channel.js").Encoding} encoding */
     #fixGridPosition(encoding) {
         const y = encoding.y;
+        const triangle = this.isTriangle;
+        if (triangle && (y || encoding.y2)) {
+            throw new Error("Triangle rasters use only the x locus axis.");
+        }
         const strip =
             y &&
             "field" in y &&
@@ -90,6 +108,7 @@ export default class RasterMark extends Mark {
             ["x", "x2"],
             ["y", "y2"],
         ])) {
+            if (axis === "y" && triangle) break;
             if (axis === "y" && strip) {
                 fixCoveragePositional(encoding, axis);
                 continue;
@@ -109,6 +128,7 @@ export default class RasterMark extends Mark {
                 title: options.title ?? null,
                 field: path + ".origin",
                 band: 0,
+                ...(triangle && { buildIndex: false }),
                 ...(domainInert && { domainInert: true }),
             });
             encoding[end] = {
@@ -142,10 +162,13 @@ export default class RasterMark extends Mark {
             const row =
                 y && "dimension" in y
                     ? y.dimension
-                    : icon
+                    : icon || this.isTriangle
                       ? rowDimension
                       : undefined;
-            const options = { direct, icon };
+            const options = {
+                direct,
+                grid: this.isTriangle ? /** @type {const} */ ("locus") : !icon,
+            };
             return {
                 type,
                 direct,
@@ -256,14 +279,21 @@ export default class RasterMark extends Mark {
     /** @param {boolean} strip */
     #validateGridScales(strip) {
         const x = this.encoders.x.scale;
-        const y = this.encoders.y.scale;
+        const y = this.encoders.y?.scale;
+        const triangle = this.isTriangle;
+        if (triangle && x?.type !== "locus") {
+            throw new ViewError(
+                "Triangle rasters need a locus scale on x.",
+                this.unitView
+            );
+        }
         if (strip && y?.type !== "band") {
             throw new ViewError(
                 "Raster strips need a band scale on y.",
                 this.unitView
             );
         }
-        for (const scale of strip ? [x] : [x, y]) {
+        for (const scale of strip || triangle ? [x] : [x, y]) {
             if (
                 !scale ||
                 !["linear", "index", "locus"].includes(scale.type) ||
@@ -295,6 +325,15 @@ export default class RasterMark extends Mark {
         const grid = icon ? [] : constraints;
         const xConstraint = grid.find(({ channel }) => channel === "x");
         const yConstraint = grid.find(({ channel }) => channel === "y");
+        const coords = this.unitView.layoutCoords;
+        const triangle =
+            this.isTriangle && xConstraint && coords?.width > 0
+                ? getTriangleViewport(
+                      xConstraint.domain,
+                      coords.width,
+                      coords.height
+                  )
+                : undefined;
         for (const datum of collector.getData()) {
             if (
                 anchors &&
@@ -304,11 +343,29 @@ export default class RasterMark extends Mark {
             )
                 continue;
             const { horizontal, vertical, values } = readTile(datum);
-            const [left, right] = getVisibleCellRange(horizontal, xConstraint);
+            const columns = getVisibleCellRange(
+                horizontal,
+                triangle ? undefined : xConstraint
+            );
             const [top, bottom] = vertical
                 ? getVisibleCellRange(vertical, yConstraint)
                 : [0, 1];
             for (let row = top; row < bottom; row++) {
+                let [left, right] = columns;
+                if (triangle) {
+                    const rowStart = vertical.origin + row * vertical.step;
+                    const columnDomain = getTriangleColumnDomain(
+                        triangle,
+                        rowStart,
+                        rowStart + vertical.step,
+                        xConstraint.mode === "contain"
+                    );
+                    if (columnDomain[0] >= columnDomain[1]) continue;
+                    [left, right] = getVisibleCellRange(horizontal, {
+                        ...xConstraint,
+                        domain: columnDomain,
+                    });
+                }
                 const start = row * horizontal.count;
                 for (let column = left; column < right; column++) {
                     const value = values[start + column];

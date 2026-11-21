@@ -32,8 +32,9 @@ the view, and clip to the view. Reversing x reverses horizontal order and
 preserves the triangle above the baseline. Track height limits visible
 separation. Coordinates are in the assembly's concatenated space as in the
 rectangular matrix, with a single-chromosome initial viewport for the example.
-Chromosome masking, alternative height fitting, picking, and additional
-filtering are outside this change.
+Both tile axes use nonnegative whole-base endpoints, validated in Core's shared
+tile reader before renderer-specific encoding. Chromosome masking, alternative
+height fitting, picking, and additional filtering are outside this change.
 
 ## Milestones
 
@@ -49,18 +50,20 @@ filtering are outside this change.
    axis-aligned paths for regular rasters and icons. Verify the baseline,
    reversed x, a diagonal cell straddling the baseline, and a seam close to
    base-pair zoom.
-2. **Wire viewport loading and the example.** When the HiGlass source is
-   declared on a triangle raster unit, use its x extent and the actual width and
-   height of its layout. With viewport `[L,R]` and height covering `D` bases,
-   the source spans are `[L-D,R]` and `[L,R+D]`. Filter whole tiles by projected
-   midpoint and separation. Key readiness on the surviving tile set, select
-   resolution from x before padding, and reuse the existing cache, tile symmetry
-   and requests. Derive the viewport color domain from a visible column range
-   per row and invalidate it on layout changes as well as x-domain changes. Copy
-   the current HiGlass example, retain its dataset, gradient brush and scheme,
-   and use one horizontal genomic axis. Verify load, pan and zoom including an
-   endpoint outside the visible x domain. Update the raster changeset and spec
-   JSDoc.
+2. **Wire viewport loading and the example.** `data.lazy.projection: "triangle"`
+   selects the HiGlass request window. The source uses the declaring view's x
+   extent, width and height. The mark configures drawing independently, so the
+   source can also be configured on a layer with a shared x scale. Omitting the
+   source option keeps the rectangular request window. With viewport `[L,R]` and
+   height covering `D` bases, the source spans are `[L-D,R]` and `[L,R+D]`.
+   Filter whole tiles by projected midpoint and separation. Key readiness on the
+   surviving tile set, select resolution from x before padding, and reuse the
+   existing cache, tile symmetry and requests. Derive the viewport color domain
+   from a visible column range per row and invalidate it on layout changes as
+   well as x-domain changes. Copy the current HiGlass example, retain its
+   dataset, gradient brush and scheme, and use one horizontal genomic axis.
+   Verify load, pan and zoom including an endpoint outside the visible x domain.
+   Update the raster changeset and spec JSDoc.
 
 The original example, strips and icon placement serve as regression cases. Run
 the Core raster browser and relevant HiGlass tests, generate the schema, and

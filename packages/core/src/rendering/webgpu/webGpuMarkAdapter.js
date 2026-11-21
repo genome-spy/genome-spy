@@ -644,24 +644,51 @@ function createRasterConfig(mark, data, coords, placement) {
     }
 
     const icon = mark.isIcon;
+    const { rowEdges } = cached.packed;
     // Grid endpoints are genomic boundaries. Index band 0 is on the lower
     // pixel side, which is the trailing side on a reversed range.
     const xScale = mark.encoders.x.scale;
-    const yScale = mark.encoders.y.scale;
+    const yScale = mark.encoders.y?.scale;
     const xBand = icon ? undefined : xScale.props.reverse ? 1 : 0;
-    const yBand = icon || strip ? undefined : yScale.props.reverse ? 0 : 1;
     const xEndBand = strip && xScale.type === "index" ? 1 - xBand : xBand;
     /** @type {Partial<Record<"x" | "x2" | "y" | "y2" | "size", import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */
     const channels = {
         x: createPositionChannel(mark, "x", data, coords, xBand),
-        y: createPositionChannel(mark, "y", data, coords, yBand),
         ...(icon
             ? { size: createNumericChannel(mark, "size", data) }
             : {
                   x2: createPositionChannel(mark, "x2", data, coords, xEndBand),
-                  y2: createPositionChannel(mark, "y2", data, coords, yBand),
               }),
     };
+    if (rowEdges) {
+        const { scale, inputComponents } = channels.x;
+        const rowMapping = {
+            scale,
+            inputComponents,
+            type: /** @type {const} */ ("u32"),
+        };
+        channels.y = { ...rowMapping, data: rowEdges.start };
+        channels.y2 = { ...rowMapping, data: rowEdges.end };
+        SCALE_DEPENDENT_VALUES.set(
+            channels.y,
+            getWebGpuChannelResolution(channels.x)
+        );
+        SCALE_DEPENDENT_VALUES.set(
+            channels.y2,
+            getWebGpuChannelResolution(channels.x2)
+        );
+    } else {
+        const yBand = icon || strip ? undefined : yScale.props.reverse ? 0 : 1;
+        channels.y = createPositionChannel(mark, "y", data, coords, yBand);
+        if (!icon)
+            channels.y2 = createPositionChannel(
+                mark,
+                "y2",
+                data,
+                coords,
+                yBand
+            );
+    }
     const position = Object.fromEntries(
         Object.entries(channels).map(([name, channel]) => {
             if ("value" in channel) return [name, channel];
@@ -695,6 +722,7 @@ function createRasterConfig(mark, data, coords, placement) {
 
     return {
         data: cached.snapshot,
+        ...(rowEdges && { projection: /** @type {const} */ ("triangle") }),
         placement: placement && "source" in placement ? "draw" : undefined,
         position,
         channels: {
@@ -764,6 +792,17 @@ function packRasterTiles(mark, data, intern, cellInputs) {
         offset += values.length;
     }
     return {
+        rowEdges: mark.isTriangle && {
+            start: packHighPrecisionU32Array(
+                tiles.map(({ vertical }) => vertical.origin)
+            ),
+            end: packHighPrecisionU32Array(
+                tiles.map(
+                    ({ vertical }) =>
+                        vertical.origin + vertical.step * vertical.count
+                )
+            ),
+        },
         cells: {
             color,
             ...Object.fromEntries(

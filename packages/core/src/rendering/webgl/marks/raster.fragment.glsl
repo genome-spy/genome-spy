@@ -2,6 +2,8 @@ uniform vec2 uTarget;
 uniform vec4 uAnchor; // Pixel coordinates in xy, cell indices in zw.
 uniform vec2 uCellsPerPixel;
 uniform float uOpacity;
+uniform vec2 uTriangle;
+uniform vec4 uTriangleClip;
 
 out vec4 fragColor;
 
@@ -22,6 +24,14 @@ vec4 sampleRow(ivec2 firstCell, int secondColumn, float weight) {
 
 void main() {
     vec2 pixel = vec2(gl_FragCoord.x, uTarget.y - gl_FragCoord.y);
+    ivec2 lastCell = textureSize(uCells, 0) - 1;
+    if (uTriangle.y != 0.0) {
+        if (any(lessThan(pixel, uTriangleClip.xy)) || any(greaterThanEqual(pixel, uTriangleClip.zw))) discard;
+        float separation = (pixel.y - uTriangle.x) * uTriangle.y;
+        vec2 source = pixel.x + vec2(separation, -separation);
+        fragColor = sampleCell(cellAt((source - uAnchor.xy) * uCellsPerPixel, lastCell)) * uOpacity;
+        return;
+    }
     vec2 center = (pixel - uAnchor.xy) * uCellsPerPixel;
     vec2 width = abs(uCellsPerPixel);
 
@@ -29,7 +39,6 @@ void main() {
     // piece at its midpoint. Equal texel coordinates collapse to one fetch.
     vec2 weight = clamp(0.5 + (center - round(center)) / width, 0.0, 1.0);
     vec2 halfWidth = 0.5 * width;
-    ivec2 lastCell = textureSize(uCells, 0) - 1;
     ivec2 first = cellAt(center - halfWidth * weight, lastCell);
     ivec2 second = cellAt(center + halfWidth * (1.0 - weight), lastCell);
 

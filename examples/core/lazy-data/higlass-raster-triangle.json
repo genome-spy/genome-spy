@@ -1,0 +1,73 @@
+{
+  "description": [
+    "Hi-C triangle track",
+    "Pan or zoom along the genomic axis. Height above the axis shows contact separation. Drag on the logarithmic color legend to filter contact values.",
+    "Data source: Rao et al. (2014), GM12878 MboI all replicates on hg19, served by HiGlass."
+  ],
+  "assembly": "hg19",
+
+  "params": [
+    {
+      "name": "contactRange",
+      "select": {
+        "type": "interval",
+        "encodings": ["color"]
+      },
+      "bind": "legend"
+    }
+  ],
+
+  "data": {
+    "lazy": {
+      "type": "higlass",
+      "url": "https://higlass.io/api/v1/",
+      "tileset": "CQMd6V_cRw6iCI_-Unl3PQ",
+      "projection": "triangle"
+    }
+  },
+
+  "mark": {
+    "type": "raster",
+    "projection": "triangle"
+  },
+  "encoding": {
+    "x": {
+      "dimension": "column",
+      "type": "locus",
+      "scale": {
+        "domain": [
+          {
+            "chrom": "chr1",
+            "pos": 49152000
+          },
+          {
+            "chrom": "chr1",
+            "pos": 57343999
+          }
+        ],
+        "zoom": true,
+        "name": "matrixX"
+      }
+    },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Contact value",
+      "scale": {
+        "type": "log",
+        "domain": {
+          "source": "viewport"
+        },
+        "scheme": "higlassFall",
+        "clamp": true
+      }
+    },
+    "opacity": {
+      "condition": {
+        "param": "contactRange",
+        "value": 1
+      },
+      "value": 0
+    }
+  }
+}

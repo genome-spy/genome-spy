@@ -57,6 +57,8 @@ export default class WebGLRasterMark {
         uRect: [0, 0, 0, 0],
         uAnchor: [0, 0, 0, 0],
         uCellsPerPixel: [0, 0],
+        uTriangle: [0, 0],
+        uTriangleClip: [0, 0, 0, 0],
         uCells: /** @type {WebGLTexture | null} */ (null),
         uOpacity: 1,
     };
@@ -277,8 +279,11 @@ export default class WebGLRasterMark {
         );
     };
 
-    /** @param {object} datum @param {number} x0 @param {number} y0 @param {number} dx @param {number} dy */
-    #drawTile = (datum, x0, y0, dx, dy) => {
+    /**
+     * @param {object} datum @param {number} x0 @param {number} y0 @param {number} dx @param {number} dy
+     * @param {ReturnType<import("../../immediate/marks/raster.js").getRasterTriangle>} [triangle]
+     */
+    #drawTile = (datum, x0, y0, dx, dy, triangle) => {
         const opacity = this.#readCellOpacity
             ? undefined
             : this.mark.encoders.opacity;
@@ -287,11 +292,21 @@ export default class WebGLRasterMark {
         if (!(alpha > 0)) return;
 
         const { texture, width, height } = this.#tiles.get(datum);
-        const { x1, y1, x2, y2 } = this.#bounds;
+        const { x1, y1, x2, y2 } = triangle?.sourceBounds ?? this.#bounds;
         this.#setAxis(0, x0, dx, width, x1, x2);
         this.#setAxis(1, y0, dy, height, y1, y2);
         const { uRect } = this.#tileUniforms;
         if (uRect[0] >= uRect[2] || uRect[1] >= uRect[3]) return;
+        if (triangle) {
+            const { uTriangle, uTriangleClip } = this.#tileUniforms;
+            const { clip, baseline, direction } = triangle;
+            uTriangle[0] = baseline * this.#dpr;
+            uTriangle[1] = direction;
+            uTriangleClip[0] = clip.x1 * this.#dpr;
+            uTriangleClip[1] = clip.y1 * this.#dpr;
+            uTriangleClip[2] = clip.x2 * this.#dpr;
+            uTriangleClip[3] = clip.y2 * this.#dpr;
+        }
         this.#tileUniforms.uCells = texture;
         this.#tileUniforms.uOpacity = Math.min(1, alpha);
         setUniforms(this.#programInfo, this.#tileUniforms);

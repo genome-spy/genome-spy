@@ -79,6 +79,11 @@ export type RasterConfig = Pick<
 > & {
     data: RasterData;
     /**
+     * Rotate bounded tiles onto a diagonal baseline. Both axes must supply
+     * endpoints projected in the horizontal view's logical pixels.
+     */
+    projection?: "triangle";
+    /**
      * A tile with endpoints divides each axis uniformly between them.
      * An omitted end descriptor takes the initial mapping from its axis.
      * A tile with an anchor is centered in logical pixels at the projected x

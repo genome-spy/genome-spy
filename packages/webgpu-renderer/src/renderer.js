@@ -1588,7 +1588,7 @@ export class Renderer {
         const state = new RenderPassState(pass);
         pass.setViewport(0, 0, target.width, target.height, 0, 1);
         for (const draw of draws) {
-            if (picking && draw.orderPass & 4) {
+            if (draw.instanceCount === 0 || (picking && draw.orderPass & 4)) {
                 continue;
             }
             const mark = this._marks.get(draw.markId);

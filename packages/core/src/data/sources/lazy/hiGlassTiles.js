@@ -1,3 +1,8 @@
+import {
+    getTriangleColumnDomain,
+    getTriangleViewport,
+} from "../../rasterTile.js";
+
 /**
  * @typedef {object} HiGlassMetadata
  * @prop {number[]} min_pos
@@ -39,6 +44,51 @@ export function getTileWindow(metadata, domains, lengths) {
             : [0, 0];
     });
     return { level, width, ranges, key: [level, ...ranges.flat()].join(".") };
+}
+
+/**
+ * @param {HiGlassMetadata} metadata
+ * @param {number[]} domain
+ * @param {number} viewWidth
+ * @param {number} height
+ */
+export function getTriangleTileWindow(metadata, domain, viewWidth, height) {
+    const { level, width } = getTileWindow(metadata, [domain], [viewWidth]);
+    const viewport = getTriangleViewport(domain, viewWidth, height);
+    const { lo, hi, depth } = viewport;
+    const positions = [];
+    const start = Math.max(lo, metadata.min_pos[1]);
+    const end = Math.min(hi + depth, metadata.max_pos[1]);
+    for (
+        let y = Math.floor(start / width);
+        y * width < end && end > start;
+        y++
+    ) {
+        const [min, max] = getTriangleColumnDomain(
+            viewport,
+            Math.max(start, y * width),
+            Math.min(end, (y + 1) * width)
+        );
+        const left = Math.max(min, metadata.min_pos[0]);
+        const right = Math.min(max, metadata.max_pos[0]);
+        if (left >= right) continue;
+        for (let x = Math.floor(left / width); x * width < right; x++) {
+            positions.push([x, y]);
+        }
+    }
+    return {
+        level,
+        width,
+        positions,
+        key: [level, ...positions.flat()].join("."),
+    };
+}
+
+/** @param {number[][]} ranges */
+export function* getTilePositions([[x0, x1], [y0, y1]]) {
+    for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) yield [x, y];
+    }
 }
 
 /**

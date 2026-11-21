@@ -364,6 +364,13 @@ export interface HiGlassData {
 
     /** HiGlass tileset UID. */
     tileset: string;
+
+    /**
+     * Request tiles for a triangle track using the view's x locus axis and
+     * height. Set the raster mark's `projection` to `"triangle"` to draw this
+     * track. Omit this option for a matrix with two locus axes.
+     */
+    projection?: "triangle";
 }
 
 /** Generates group endpoints from resolved positional band/point/index/locus scales. */

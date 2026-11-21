@@ -944,6 +944,14 @@ export interface LinkProps
  */
 export interface RasterProps extends MarkPropsBase {
     type: "raster";
+
+    /**
+     * Project the matrix above its diagonal onto a single locus axis. The
+     * horizontal position is the midpoint of the two loci, and height above
+     * the baseline is half their separation at the current x scale. Tile
+     * endpoints on both dimensions must be nonnegative whole-base positions.
+     */
+    projection?: "triangle";
 }
 
 /**

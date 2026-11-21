@@ -3,6 +3,8 @@ import { resolveUrl } from "../../../utils/url.js";
 import {
     decodeTile,
     getTileWindow,
+    getTilePositions,
+    getTriangleTileWindow,
     mirrorDiagonal,
     transposeTile,
 } from "./hiGlassTiles.js";
@@ -40,10 +42,14 @@ export default class HiGlassSource extends DataSource {
         this.params = params;
         this.baseUrl = new URL(resolveUrl(view.getBaseUrl(), params.url));
         if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
+        this.triangle = params.projection === "triangle";
         this.x = view.getScaleResolution("x");
-        this.y = view.getScaleResolution("y");
-        if (this.x?.type !== "locus" || this.y?.type !== "locus") {
-            throw new Error("HiGlass needs two locus scales.");
+        this.y = this.triangle ? undefined : view.getScaleResolution("y");
+        if (
+            this.x?.type !== "locus" ||
+            (!this.triangle && this.y?.type !== "locus")
+        ) {
+            throw new Error("HiGlass needs a locus scale on each matrix axis.");
         }
         this.registerDisposer(() => {
             this.#metadataRequest.abort();
@@ -60,7 +66,7 @@ export default class HiGlassSource extends DataSource {
         if (this.#listening) return;
         this.#listening = true;
         const refresh = () => this.ensureViewportData();
-        for (const scale of [this.x, this.y]) {
+        for (const scale of this.triangle ? [this.x] : [this.x, this.y]) {
             scale.addEventListener("domain", refresh);
             this.registerDisposer(() =>
                 scale.removeEventListener("domain", refresh)
@@ -131,7 +137,7 @@ export default class HiGlassSource extends DataSource {
                 "HiGlass raster needs a square-bin, power-of-two matrix tileset."
             );
         }
-        for (const scale of [this.x, this.y]) {
+        for (const scale of this.triangle ? [this.x] : [this.x, this.y]) {
             const { contigs } = scale.getAssembly();
             if (
                 contigs.length !== metadata.chromsizes.length ||
@@ -150,14 +156,23 @@ export default class HiGlassSource extends DataSource {
 
     /** @param {DataReadinessRequest} [request] */
     #window(request) {
+        if (!this.#metadata) return;
+        const x = request?.x ?? this.x.getDomain();
+        if (this.triangle) {
+            const coords = this.view.layoutCoords;
+            if (!(coords?.width > 0 && coords.height > 0)) return;
+            return getTriangleTileWindow(
+                this.#metadata,
+                x,
+                coords.width,
+                coords.height
+            );
+        }
         const lengths = [this.x.getAxisLength(), this.y.getAxisLength()];
-        if (!this.#metadata || !lengths.every((length) => length > 0)) return;
+        if (!lengths.every((length) => length > 0)) return;
         return getTileWindow(
             this.#metadata,
-            [
-                request?.x ?? this.x.getDomain(),
-                request?.y ?? this.y.getDomain(),
-            ],
+            [x, request?.y ?? this.y.getDomain()],
             lengths
         );
     }
@@ -217,27 +232,30 @@ export default class HiGlassSource extends DataSource {
     }
 
     /**
-     * @param {ReturnType<typeof getTileWindow>} window
+     * @param {ReturnType<typeof getTileWindow> | ReturnType<typeof getTriangleTileWindow>} window
      * @param {AbortSignal} signal
      * @returns {Promise<import("../../rasterTile.js").RasterTile[]>}
      */
-    async #fetchTiles({ level, width, ranges: [[x0, x1], [y0, y1]] }, signal) {
+    async #fetchTiles(window, signal) {
+        const { level, width } = window;
         const { bins_per_dimension: bins, mirror_tiles: mirrorTiles } =
             this.#metadata;
         const tiles = [];
         const missing = new Set();
-        for (let y = y0; y < y1; y++) {
-            for (let x = x0; x < x1; x++) {
-                const mirrored = mirrorTiles !== false && x > y;
-                const id = [
-                    this.params.tileset,
-                    level,
-                    mirrored ? y : x,
-                    mirrored ? x : y,
-                ].join(".");
-                tiles.push({ x, y, id, mirrored });
-                if (!this.#cache.has(id)) missing.add(id);
-            }
+        const positions =
+            "positions" in window
+                ? window.positions
+                : getTilePositions(window.ranges);
+        for (const [x, y] of positions) {
+            const mirrored = mirrorTiles !== false && x > y;
+            const id = [
+                this.params.tileset,
+                level,
+                mirrored ? y : x,
+                mirrored ? x : y,
+            ].join(".");
+            tiles.push({ x, y, id, mirrored });
+            if (!this.#cache.has(id)) missing.add(id);
         }
         const response = missing.size
             ? await this.#fetch("tiles/", missing, signal)

@@ -4,7 +4,10 @@ import clamp from "../../../utils/clamp.js";
 import ViewError from "../../../view/viewError.js";
 import { packCssColor } from "../../color.js";
 import { encodeNumber } from "../../immediate/markEncoding.js";
-import { visitRasterTiles } from "../../immediate/marks/raster.js";
+import {
+    getRasterTriangle,
+    visitRasterTiles,
+} from "../../immediate/marks/raster.js";
 
 /**
  * A collector publication replaces its tile payloads. Mapping updates can
@@ -62,11 +65,21 @@ export function renderRasterCanvas(mark, options) {
         bitmaps.set(mark, cache);
     }
 
+    const triangle = getRasterTriangle(mark, options.coords, visibleBounds);
+    const sourceBounds = triangle?.sourceBounds ?? visibleBounds;
+    const placement = triangle ? { ...options, triangle } : options;
     const transform = context.getTransform();
     context.save();
     try {
         context.imageSmoothingEnabled = false;
-        return visitRasterTiles(mark, options, (datum, x0, y0, dx, dy) => {
+        if (triangle) {
+            const { x1, x2, y1, y2 } = triangle.clip;
+            if (x1 >= x2 || y1 >= y2) return 0;
+            context.beginPath();
+            context.rect(x1, y1, x2 - x1, y2 - y1);
+            context.clip();
+        }
+        return visitRasterTiles(mark, placement, (datum, x0, y0, dx, dy) => {
             const alpha =
                 options.viewOpacity *
                 (opacity && !opacity.constant
@@ -91,19 +104,23 @@ export function renderRasterCanvas(mark, options) {
                 x0,
                 dx / bitmap.width,
                 bitmap.width,
-                visibleBounds.x1,
-                visibleBounds.x2
+                sourceBounds.x1,
+                sourceBounds.x2
             );
             const y = cropRasterAxis(
                 y0,
                 dy / bitmap.height,
                 bitmap.height,
-                visibleBounds.y1,
-                visibleBounds.y2
+                sourceBounds.y1,
+                sourceBounds.y2
             );
             const signX = Math.sign(dx);
             const signY = Math.sign(dy);
             context.setTransform(transform);
+            if (triangle) {
+                const half = triangle.direction * 0.5;
+                context.transform(0.5, half, 0.5, -half, 0, triangle.baseline);
+            }
             context.globalAlpha = Math.min(1, alpha);
             context.scale(signX, signY);
             for (const row of y) {
