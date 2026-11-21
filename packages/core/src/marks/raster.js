@@ -81,6 +81,8 @@ export default class RasterMark extends Mark {
         const x = this.getDimensionName("x");
         const y = this.getDimensionName("y");
         const field = this.getColorField();
+        const colorResolution = this.unitView.getScaleResolution("color");
+        const logarithmic = colorResolution?.getResolvedScaleType() === "log";
         const xConstraint = constraints.find(({ channel }) => channel === "x");
         const yConstraint = constraints.find(({ channel }) => channel === "y");
         for (const datum of collector.getData()) {
@@ -96,7 +98,12 @@ export default class RasterMark extends Mark {
                 const start = row * horizontal.count;
                 for (let column = left; column < right; column++) {
                     const value = values[start + column];
-                    if (Number.isFinite(value)) domain.extend(value);
+                    if (
+                        Number.isFinite(value) &&
+                        (!logarithmic || value !== 0)
+                    ) {
+                        domain.extend(value);
+                    }
                 }
             }
         }

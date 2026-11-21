@@ -335,11 +335,12 @@ test("Scale warns for zero in log domain", function () {
     expect(logScale([-2, -1])).not.toThrow();
 });
 
-test("does not warn for an uninitialized log domain", function () {
+test("uses a valid placeholder for an uninitialized log domain", function () {
     let warnings = 0;
 
-    scale({ type: "log" }, { warn: () => warnings++ });
+    const pending = scale({ type: "log" }, { warn: () => warnings++ });
 
+    expect(pending.domain()).toEqual([1, 1]);
     expect(warnings).toBe(0);
 });
 

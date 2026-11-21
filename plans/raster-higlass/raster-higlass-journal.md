@@ -83,6 +83,14 @@ missing and constant color extents and late arrivals.
   interpolating scale path as other named palettes.
   [HiGlass heatmap palette](https://docs.higlass.io/track_types.html#heatmap)
 
+- The example uses a log color scale. Zero is excluded from the extent and
+  remains in the tile buffer. With distinct positive bounds, clamping maps zero
+  to the white end of the palette. A zero-only view retains the last valid
+  extent. Chrome verified both bounds changing on zoom and sampled the zero-bin
+  color from the WebGPU render. A provisional `[1, 1]` log domain prevents a
+  legend warning during loading.
+  [HiGlass logarithmic heatmap scaling](https://docs.higlass.io/track_types.html#heatmap)
+
 ## Measurements and decisions
 
 - A 256 × 256 tile takes one dataflow record, six vertex invocations, and 256

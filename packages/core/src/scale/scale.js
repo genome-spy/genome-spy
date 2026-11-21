@@ -227,8 +227,8 @@ export default function createScale(_, logger) {
     const scaleProps = suppressUninitializedDomain
         ? {
               ..._,
-              // [0, 0] indicates an uninitialized domain.
-              domain: [0, 0],
+              // A pending log domain must remain valid when copied to guides.
+              domain: isLogarithmic(_.type) ? [1, 1] : [0, 0],
           }
         : _;
 
@@ -429,8 +429,7 @@ function domainCheck(
     logger,
     suppressUninitializedDomain = false
 ) {
-    // createScale seeds continuous scales with [0, 0] before data initializes
-    // their domain. Do not report that internal placeholder as user input.
+    // A provisional domain can be replaced when data arrives.
     if (isLogarithmic(type) && !suppressUninitializedDomain) {
         // sum signs of domain values
         // if all pos or all neg, abs(sum) === domain.length
