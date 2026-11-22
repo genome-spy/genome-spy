@@ -148,7 +148,7 @@ missing and constant color extents and late arrivals.
 The lens now uses the ordinary brush outline. The inset shadow was removed
 from the example and brush grammar.
 
-The main simplification would be to use Core's existing cell-opacity evaluator
+One option was to use Core's existing cell-opacity evaluator
 for all renderers. WebGPU could update a separate retained opacity buffer
 while keeping tile values and geometry resident. This would remove Core's use
 of derived positional predicate inputs and the associated packed-coordinate
@@ -156,8 +156,64 @@ shader path. The standalone renderer can still evaluate conditions on
 explicitly supplied cell fields.
 
 A dense float mask costs 256 KiB per 256 × 256 tile on each changed selection.
-Measure brush dragging on both the comparison lens and the gradient legend
-before choosing that representation. Positional brushes can also use the
-constant-opacity spans the CPU evaluator already finds. Clipping a layer to
+Positional brushes can use the constant-opacity spans the CPU evaluator
+already finds. Clipping a layer to
 the brush in screen coordinates would change how partially intersected cells
 are selected.
+
+The renderer-owned range table kept the public predicate clean, but its buffer
+lifecycle made it larger. Changes in brush bounds, tile snapshots, and movable
+icon anchors all invalidated the table. It added roughly 160 source lines in
+the prototype. The implementation uses the explicit position projection with
+the shared shader comparisons. Positional and field projections can coexist
+even when the cell field is named `x` or `y`. Brush movement uses the existing
+selection uniforms, and a moving icon automatically uses its current anchor.
+
+### Sharing the CPU opacity path
+
+Canvas and WebGL resolve uniform raster opacity once per draw. Conditional
+opacity uses one traversal over groups of cells. Positional brushes find the
+groups by bisecting the tile edges at each active threshold. Cells in each
+group use the same opacity, so the mask can fill a row span and copy it to
+adjacent rows. Color predicates visit every cell through the same traversal.
+
+The two simplification passes removed 53 net runtime lines across Core and
+the standalone renderer, measured from the snapshot before the API refactor
+with the pending tooltip edits held constant. The CPU pass accounts for 38
+of those lines.
+
+The new positional reader matched the previous reader on 4,000 synthetic
+interval cases. On 18 tiles of 256 × 256 cells, positional mask generation
+took about 0.6 ms per brush update, down from 1.5–1.8 ms. Both gradient runs
+took about 65 ms. These measurements cover CPU mask generation and exclude
+browser drawing and texture uploads.
+
+### Mask-free WebGL interval probe
+
+The ordinary WebGL encoder generates its interval operands from vertex
+attributes. The reusable GLSL generator already emits Boolean composition
+and ordered branches. A raster can reuse that generator by supplying leaf
+expressions that read a tile-local cell index or a value from the existing
+cell texture.
+
+For a positional interval, compute the matching index range on the CPU
+using the tile's data-space edges. WebGL already has a draw per visible tile,
+so the range can go into that draw's uniforms. A rectangular brush needs four
+integer bounds per tile. The gradient predicate instead uses the raw float
+cell value with directed rounding of the brush thresholds. Sampling opacity
+before antialiasing keeps the existing color and picking paths usable.
+
+A standalone Chrome probe used the existing raster shader and conditional
+GLSL generator with these bindings. Pixel readback passed for a moved brush,
+an empty brush, reversed orientation, combined position and color tests,
+and picking. The range calculation matched the host predicate on 189,440
+synthetic membership comparisons. The viewport range helper disagreed at
+an exact fractional edge, so precise membership needs to compare directly
+against the tile edges.
+
+This probe did not integrate the resource bindings into the mark delegate.
+Categorical cell predicates would also need the existing integer membership
+texture and palette mapping. Canvas still needs its own evaluator for bitmaps
+and software picking. A WebGL replacement should be measured after removing
+the mask path, since retaining a second path would preserve most of the
+current code and lifecycle.

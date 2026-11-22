@@ -1,3 +1,4 @@
+import { matchesProjection } from "../programs/internal/selectionResources.js";
 import {
     SELECTION_CHECKER_PREFIX,
     SELECTION_EMPTY_PREFIX,
@@ -208,12 +209,8 @@ export function emitPredicateExpression(node, selectionDefs, emitComparison) {
     }
     if (node.type === "interval") {
         const checks = node.projections.map((projection) => {
-            const index = def.projections?.findIndex(
-                (item) =>
-                    item.component === projection.component &&
-                    item.input === projection.input &&
-                    item.secondaryInput === projection.secondaryInput &&
-                    item.hitTest === (projection.hitTest ?? "intersects")
+            const index = def.projections?.findIndex((item) =>
+                matchesProjection(item, projection)
             );
             if (index === undefined || index < 0) {
                 throw new Error(

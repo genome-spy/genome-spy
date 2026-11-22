@@ -2,7 +2,6 @@ import { readNumericRasterCell } from "../../../data/rasterTile.js";
 import clamp from "../../../utils/clamp.js";
 import ViewError from "../../../view/viewError.js";
 import { packCssColor } from "../../color.js";
-import { encodeNumber } from "../../immediate/markEncoding.js";
 import {
     getRasterTriangle,
     visitRasterTiles,
@@ -28,13 +27,9 @@ const bitmaps = new WeakMap();
 export function renderRasterCanvas(mark, options) {
     const { context, visibleBounds } = options;
     const resolution = mark.validateRenderingScales();
-    const firstDatum = options.data[options.start ?? 0];
+    const alpha = mark.getUniformOpacity() * options.viewOpacity;
+    if (!(alpha > 0)) return 0;
     const cellOpacity = mark.getCellOpacityReader()?.();
-    const opacity = cellOpacity ? undefined : mark.encoders.opacity;
-    const constantOpacity = opacity?.constant
-        ? encodeNumber(opacity, firstDatum)
-        : 1;
-    if (!(constantOpacity * options.viewOpacity > 0)) return 0;
 
     const mapping = resolution?.getMappingRef().get();
     const revision = mark.unitView.getCollector().dataRevision;
@@ -67,6 +62,7 @@ export function renderRasterCanvas(mark, options) {
     context.save();
     try {
         context.imageSmoothingEnabled = false;
+        context.globalAlpha = Math.min(1, alpha);
         if (triangle) {
             const { x1, x2, y1, y2 } = triangle.clip;
             if (x1 >= x2 || y1 >= y2) return 0;
@@ -78,13 +74,6 @@ export function renderRasterCanvas(mark, options) {
         }
         const transform = context.getTransform();
         return visitRasterTiles(mark, placement, (datum, x0, y0, dx, dy) => {
-            const alpha =
-                options.viewOpacity *
-                (opacity && !opacity.constant
-                    ? encodeNumber(opacity, datum)
-                    : constantOpacity);
-            if (!(alpha > 0)) return;
-
             let bitmap = cache.tiles.get(datum);
             if (!bitmap) {
                 try {
@@ -117,7 +106,6 @@ export function renderRasterCanvas(mark, options) {
             const signX = Math.sign(dx);
             const signY = Math.sign(dy);
             context.setTransform(transform);
-            context.globalAlpha = Math.min(1, alpha);
             context.scale(signX, signY);
             for (const row of y) {
                 for (const column of x) {

@@ -87,36 +87,7 @@ export function compileRasterData(config) {
             "Raster placement must come from either the draw or the tiles."
         );
     }
-    const coordinates = /** @type {const} */ (["x", "y"]).flatMap((axis) => {
-        const options = config.cellCoordinates?.[axis];
-        if (!options) return [];
-        const point = icon || !!options.point;
-        const packed =
-            positions.find(({ channel }) => channel === axis).components === 2;
-        const inputs = (point ? [axis] : [axis, axis + "2"]).map(
-            (name, index) => {
-                if (fields.has(name)) {
-                    throw new Error(
-                        `Raster cell field "${name}" conflicts with a derived coordinate.`
-                    );
-                }
-                const data = packed ? new Uint32Array(0) : new Float32Array(0);
-                reads.set(data, `rasterCoordinate_${axis}(${index}u)`);
-                return { input: name, name: "cellCoordinate_" + name, data };
-            }
-        );
-        return [
-            { axis, point, packed, endOffset: options.endOffset ?? 0, inputs },
-        ];
-    });
-    return {
-        fields,
-        reads,
-        positions,
-        placementIndices,
-        icon,
-        coordinates,
-    };
+    return { fields, reads, positions, placementIndices, icon };
 }
 
 /** @typedef {ReturnType<typeof compileRasterData>} RasterSchema */
@@ -235,18 +206,12 @@ export function lowerRasterConfig(config, schema, prepared) {
         if (!binding) throw new Error(`Unknown raster cell field "${name}".`);
         return binding;
     };
-    const coordinates = new Map(
-        schema.coordinates.flatMap(({ inputs }) =>
-            inputs.map(({ input, name }) => [input, name])
-        )
-    );
     /** @param {string} name */
     const intervalInput = (name) => {
-        if (coordinates.has(name)) return coordinates.get(name);
         const input = field(name);
         if (input.type !== "f32") {
             throw new Error(
-                "Raster interval projections require a coordinate or Float32Array field."
+                "Raster field interval projections require a Float32Array."
             );
         }
         return input.name;
@@ -290,15 +255,31 @@ export function lowerRasterConfig(config, schema, prepared) {
                 ...node,
                 projections: /** @type {typeof node.projections} */ (
                     /** @type {unknown} */ (
-                        node.projections.map((projection) => ({
-                            ...projection,
-                            input: intervalInput(projection.input),
-                            ...(projection.secondaryInput && {
-                                secondaryInput: intervalInput(
-                                    projection.secondaryInput
-                                ),
-                            }),
-                        }))
+                        node.projections.map(
+                            /** @returns {import("../../../index.d.ts").IntervalSelectionProjection} */
+                            (projection) => {
+                                if ("position" in projection) {
+                                    return schema.icon &&
+                                        projection.edge === undefined
+                                        ? {
+                                              ...projection,
+                                              edge: "start",
+                                              hitTest: undefined,
+                                          }
+                                        : projection;
+                                }
+                                return {
+                                    ...projection,
+                                    input: intervalInput(projection.input),
+                                    ...(projection.secondaryInput !==
+                                        undefined && {
+                                        secondaryInput: intervalInput(
+                                            projection.secondaryInput
+                                        ),
+                                    }),
+                                };
+                            }
+                        )
                     )
                 ),
             };
@@ -344,7 +325,7 @@ export function lowerRasterConfig(config, schema, prepared) {
     }
 
     const { channels, visibleWhen, order, scalarSlots } = config;
-    /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig & {packed?: true}>} */
+    /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig>} */
     const inputs = Object.fromEntries(
         Array.from(schema.fields.values(), ({ name, type, data }) => [
             name,
@@ -354,18 +335,10 @@ export function lowerRasterConfig(config, schema, prepared) {
     for (const name of ["columns", "rows", "cellOffset"]) {
         inputs[name] = { data: prepared.series[name], type: "u32" };
     }
-    for (const { inputs: coordinateInputs, packed } of schema.coordinates) {
-        for (const { name, data } of coordinateInputs) {
-            inputs[name] = packed
-                ? { data, type: "u32", packed: true }
-                : { data, type: "f32" };
-        }
-    }
     const fill = channels?.fill;
     return {
         count: prepared.count,
         icon: schema.icon,
-        coordinates: schema.coordinates,
         triangle: config.projection === "triangle",
         reads: schema.reads,
         initialCells: prepared.cells,

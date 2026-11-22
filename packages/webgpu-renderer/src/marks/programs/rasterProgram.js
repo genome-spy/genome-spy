@@ -79,7 +79,7 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
  * @param {boolean} icon
  * @param {boolean} triangle
- * @param {ReturnType<typeof compileRasterData>["coordinates"]} coordinates
+ * @param {ReadonlySet<"x" | "y">} coordinates
  */
 function rasterShader(irs, icon, triangle, coordinates) {
     const x = icon ? "" : indexAxisShader(irs, "x");
@@ -88,31 +88,34 @@ function rasterShader(irs, icon, triangle, coordinates) {
     const copyCoordinates = [];
     const coordinatePrograms = [];
     const useCoordinates = [];
-    for (const { axis, point, packed, endOffset } of coordinates) {
+    for (const axis of coordinates) {
         const field = `bounds_${axis}`;
+        const start = irs.find((ir) => ir.name === axis);
+        const packed = start.inputComponents === 2;
         const type = packed ? "vec2<u32>" : "f32";
-        const boundsType = point ? type : packed ? "vec4<u32>" : "vec2<f32>";
-        const first = irs.find((ir) => ir.name === axis).rawValueExpr;
+        const boundsType = icon ? type : packed ? "vec4<u32>" : "vec2<f32>";
+        const first = packed
+            ? start.rawValueExpr
+            : `f32(${start.rawValueExpr})`;
         const location = axis === "x" ? 7 : 8;
-        const read = packed ? first : `f32(${first})`;
         coordinateFields.push(
             `@location(${location}) @interpolate(flat) ${field}: ${boundsType},`
         );
         useCoordinates.push(`raster_${field} = in.${field};`);
         let value = `raster_${field}`;
-        if (point) {
-            copyCoordinates.push(`out.${field} = ${read};`);
+        if (icon) {
+            copyCoordinates.push(`out.${field} = ${first};`);
             if (packed) value = `vec2<u32>(${value}.x, 2u * ${value}.y)`;
         } else {
             const last = irs.find((ir) => ir.name === axis + "2").rawValueExpr;
             copyCoordinates.push(
-                `out.${field} = ${boundsType}(${read}, ${packed ? last : `f32(${last})`});`
+                `out.${field} = ${boundsType}(${first}, ${packed ? last : `f32(${last})`});`
             );
             const cell = `rasterCell.${axis} + edge`;
             const count = `rasterShape.${axis}`;
             value = packed
-                ? `rasterGridKey(${value}.xy, ${value}.zw, ${count}, ${cell}, ${endOffset}u)`
-                : `mix(${value}.x, ${value}.y + ${endOffset}.0, f32(${cell}) / f32(${count}))`;
+                ? `rasterGridKey(${value}.xy, ${value}.zw, ${count}, ${cell})`
+                : `mix(${value}.x, ${value}.y, f32(${cell}) / f32(${count}))`;
         }
         coordinatePrograms.push(/* wgsl */ `
 var<private> raster_${field}: ${boundsType};
@@ -229,14 +232,12 @@ fn projectRasterAnchor(first: vec2<u32>, last: vec2<u32>, count: u32, anchor: u3
 }
 
 ${
-    coordinates.length
+    coordinates.size
         ? /* wgsl */ `
 var<private> rasterCell: vec2<u32>;
 var<private> rasterShape: vec2<u32>;
 
-fn rasterGridKey(first: vec2<u32>, end: vec2<u32>, count: u32, index: u32, endOffset: u32) -> vec2<u32> {
-    let lowEnd = end.y + endOffset;
-    let last = vec2<u32>(end.x + (lowEnd >> 12u), lowEnd & 4095u);
+fn rasterGridKey(first: vec2<u32>, last: vec2<u32>, count: u32, index: u32) -> vec2<u32> {
     let edge = rasterGridEdge(first, last, count, index);
     return vec2<u32>(edge.high, edge.selectionLow);
 }
@@ -341,13 +342,7 @@ fn rasterAxisSamples(center: f32, width: f32, anchor: u32, count: u32) -> AxisSa
 }
 
 fn rasterCellColor(in: VSOut, cell: vec2<u32>) -> vec4<f32> {
-    ${
-        coordinates.length
-            ? `rasterCell = cell;
-    rasterShape = in.grid.xy;
-    ${useCoordinates.join("\n    ")}`
-            : ""
-    }
+    ${coordinates.size ? "rasterCell = cell;" : ""}
     let i = in.grid.z + cell.x + cell.y * in.grid.x;
     if (!isInstanceVisible(i)) { return vec4<f32>(0.0); }
     let color = getScaled_fill(i);
@@ -364,6 +359,12 @@ fn shade(in: VSOut) -> vec4<f32> {
 #if defined(PLACEMENT_ENABLED)
     if (!isInsidePlacementClip(in.pos, in.placementClip)) { discard; }
 #endif
+    ${
+        coordinates.size
+            ? `rasterShape = in.grid.xy;
+    ${useCoordinates.join("\n    ")}`
+            : ""
+    }
 ${
     triangle
         ? /* wgsl */ `
@@ -418,17 +419,23 @@ export default class RasterProgram extends BaseProgram {
         return channels;
     }
 
-    /** @param {import("../shaders/channelIR.js").ChannelIR[]} irs */
-    buildShaderBody(irs) {
-        // BaseProgram builds the shader before RasterProgram's constructor
-        // stores the retained snapshot schema.
+    /**
+     * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
+     * @param {import("./internal/selectionResources.js").SelectionDef[]} selections
+     */
+    buildShaderBody(irs, selections) {
+        const coordinates = new Set(
+            selections.flatMap(({ projections }) =>
+                (projections ?? []).flatMap((projection) =>
+                    "position" in projection ? [projection.position] : []
+                )
+            )
+        );
         return rasterShader(
             irs,
             !!this._markConfig.icon,
             !!this._markConfig.triangle,
-            /** @type {ReturnType<typeof compileRasterData>["coordinates"]} */ (
-                this._markConfig.coordinates
-            )
+            coordinates
         );
     }
 

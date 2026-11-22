@@ -46,7 +46,6 @@ import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
 import { readNumericRasterCell } from "../../data/rasterTile.js";
 import RasterMark from "../../marks/raster.js";
-import { selectionPredicateLeaves } from "../../selection/selectionPredicateTree.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string, membership: boolean}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
@@ -477,12 +476,28 @@ function createSelectionCondition(mark, predicate) {
             projections:
                 /** @type {[import("@genome-spy/webgpu-renderer").IntervalSelectionProjection, ...import("@genome-spy/webgpu-renderer").IntervalSelectionProjection[]]} */ (
                     predicate.projections.map(
-                        ({ component, input, secondaryInput, hitTest }) => ({
-                            component,
-                            input,
-                            secondaryInput,
-                            hitTest,
-                        })
+                        ({ component, input, secondaryInput, hitTest }) => {
+                            if (
+                                !(mark instanceof RasterMark) ||
+                                !/^[xy]2?$/.test(input)
+                            ) {
+                                return {
+                                    component,
+                                    input,
+                                    secondaryInput,
+                                    hitTest,
+                                };
+                            }
+                            const position = input.startsWith("x") ? "x" : "y";
+                            if (secondaryInput && secondaryInput !== input) {
+                                return { component, position, hitTest };
+                            }
+                            return {
+                                component,
+                                position,
+                                edge: input.endsWith("2") ? "end" : "start",
+                            };
+                        }
                     )
                 ),
             empty: predicate.empty,
@@ -631,40 +646,20 @@ function createRasterConfig(mark, data, coords, placement) {
     }
 
     const icon = mark.isIcon;
-    const { rowEdges } = cached.packed;
+    const { rowEdges, xEnd } = cached.packed;
     // Grid endpoints are genomic boundaries. Index band 0 is on the lower
     // pixel side, which is the trailing side on a reversed range.
     const xScale = mark.encoders.x.scale;
     const yScale = mark.encoders.y?.scale;
-    /** @type {RasterConfig["cellCoordinates"]} */
-    const cellCoordinates = {};
-    for (const { predicate } of encoder?.branches ?? []) {
-        if (!predicate.selection) continue;
-        for (const leaf of selectionPredicateLeaves(predicate.selection)) {
-            if (!("type" in leaf) || leaf.type !== "interval") continue;
-            for (const { input } of leaf.projections) {
-                if (input === "x" || input === "x2") {
-                    cellCoordinates.x =
-                        strip && xScale.type === "index"
-                            ? { endOffset: 1 }
-                            : {};
-                }
-                if (input === "y" || input === "y2") {
-                    cellCoordinates.y = { point: strip };
-                }
-            }
-        }
-    }
     const xBand = icon ? undefined : xScale.props.reverse ? 1 : 0;
-    const xEndBand = strip && xScale.type === "index" ? 1 - xBand : xBand;
     /** @type {Partial<Record<"x" | "x2" | "y" | "y2" | "size", import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */
     const channels = {
         x: createPositionChannel(mark, "x", data, coords, xBand),
-        ...(icon
-            ? { size: createNumericChannel(mark, "size", data) }
-            : {
-                  x2: createPositionChannel(mark, "x2", data, coords, xEndBand),
-              }),
+        ...(icon && { size: createNumericChannel(mark, "size", data) }),
+        ...(!icon &&
+            !xEnd && {
+                x2: createPositionChannel(mark, "x2", data, coords, xBand),
+            }),
     };
     if (!rowEdges) {
         const yBand = icon || strip ? undefined : yScale.props.reverse ? 0 : 1;
@@ -690,6 +685,7 @@ function createRasterConfig(mark, data, coords, placement) {
             return [name, descriptor];
         })
     );
+    if (xEnd) position.x2 = position.x;
     if (rowEdges) {
         position.y = position.x;
         position.y2 = position.x2;
@@ -698,7 +694,7 @@ function createRasterConfig(mark, data, coords, placement) {
         ...cached.packed.tiles,
         x0: channels.x.data,
         y0: rowEdges ? rowEdges.start : channels.y.data,
-        x1: channels.x2?.data,
+        x1: xEnd ?? channels.x2?.data,
         y1: rowEdges ? rowEdges.end : channels.y2?.data,
         size: channels.size?.data,
         placementIndices:
@@ -718,7 +714,6 @@ function createRasterConfig(mark, data, coords, placement) {
         ...(rowEdges && { projection: /** @type {const} */ ("triangle") }),
         placement: placement && "source" in placement ? "draw" : undefined,
         position,
-        cellCoordinates,
         channels: {
             fill: {
                 input: "color",
@@ -747,7 +742,7 @@ function createRasterConfig(mark, data, coords, placement) {
  * @param {Record<string, Uint32Array>} cellInputs
  */
 function packRasterTiles(mark, data, intern, cellInputs) {
-    const { direct, readTile } = mark.getColorCellBinding();
+    const { direct, readTile, strip } = mark.getColorCellBinding();
     const tiles = data.map(readTile);
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
@@ -783,6 +778,16 @@ function packRasterTiles(mark, data, intern, cellInputs) {
         }
     }
     return {
+        // Core keeps the last covered index for domain inference. The tile
+        // snapshot uses a grid edge for both rendering and brush membership.
+        xEnd:
+            strip && !mark.isIcon && mark.encoders.x.scale.type === "index"
+                ? packHighPrecisionU32Array(
+                      tiles.map(({ horizontal: { origin, step, count } }) =>
+                          readIndexValue(mark, "x2", origin + step * count)
+                      )
+                  )
+                : undefined,
         rowEdges: mark.isTriangle && {
             start: packHighPrecisionU32Array(
                 tiles.map(({ vertical }) => vertical.origin)

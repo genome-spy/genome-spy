@@ -45,8 +45,9 @@ const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
 
 /**
  * @typedef {{ scalarType: ScalarType, inputComponents: 1 | 2 }} IntervalRepresentation
- * @typedef {import("../../../index.d.ts").IntervalSelectionProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
- * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean, preciseFloatRanges?: Set<string> }} SelectionDef
+ * @typedef {import("../../../index.d.ts").IntervalSelectionProjection} IntervalProjection
+ * @typedef {IntervalProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
+ * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean, preciseFloat?: boolean }} SelectionDef
  */
 
 /**
@@ -65,46 +66,52 @@ function resolveProjection(selectionName, projection, getAnalysis) {
             `Interval selection "${selectionName}" projections require a component.`
         );
     }
-    if (typeof projection.input !== "string" || !projection.input) {
-        throw new Error(
-            `Interval selection "${selectionName}" projections require an input.`
-        );
-    }
+    const raster = "position" in projection;
+    const input = raster ? projection.position : projection.input;
+    const secondary = raster
+        ? projection.edge
+            ? undefined
+            : input + "2"
+        : projection.secondaryInput;
+    const keys = raster ? ["position", "edge"] : ["input", "secondaryInput"];
     if (
+        typeof input !== "string" ||
+        !input ||
         Object.keys(projection).some(
-            (key) =>
-                !["component", "input", "secondaryInput", "hitTest"].includes(
-                    key
-                )
-        )
+            (key) => !["component", "hitTest", ...keys].includes(key)
+        ) ||
+        (raster &&
+            (!["x", "y"].includes(input) ||
+                (projection.edge !== undefined &&
+                    !["start", "end"].includes(projection.edge))))
     ) {
         throw new Error(
-            `Interval selection "${selectionName}" projection has unsupported properties.`
+            `Interval selection "${selectionName}" has an invalid projection.`
         );
     }
-    const analysis = getAnalysis(projection.input);
-    if (
-        analysis.inputComponents !== 1 &&
-        !(analysis.inputComponents === 2 && analysis.scalarType === "u32")
-    ) {
+
+    const analysis = getAnalysis(input);
+    const packed =
+        analysis.inputComponents === 2 && analysis.scalarType === "u32";
+    if (analysis.inputComponents !== 1 && !packed) {
         throw new Error(
-            `Interval selection "${selectionName}" requires a scalar or packed numeric input "${projection.input}".`
+            `Interval selection "${selectionName}" requires a scalar or packed numeric input "${input}".`
         );
     }
-    if (projection.secondaryInput !== undefined) {
-        const secondary = getAnalysis(projection.secondaryInput);
+    if (secondary !== undefined) {
+        const end = getAnalysis(secondary);
         if (
-            secondary.inputComponents !== analysis.inputComponents ||
-            secondary.scalarType !== analysis.scalarType
+            end.inputComponents !== analysis.inputComponents ||
+            (!raster && end.scalarType !== analysis.scalarType)
         ) {
             throw new Error(
-                `Interval selection "${selectionName}" requires matching representations for inputs "${projection.input}" and "${projection.secondaryInput}".`
+                `Interval selection "${selectionName}" requires matching representations for inputs "${input}" and "${secondary}".`
             );
         }
     }
     if (
         projection.hitTest !== undefined &&
-        (!projection.secondaryInput ||
+        (!secondary ||
             !["intersects", "encloses", "endpoints"].includes(
                 projection.hitTest
             ))
@@ -116,9 +123,31 @@ function resolveProjection(selectionName, projection, getAnalysis) {
     return {
         ...projection,
         hitTest: projection.hitTest ?? "intersects",
-        scalarType: analysis.scalarType,
-        inputComponents: /** @type {1 | 2} */ (analysis.inputComponents),
+        scalarType: raster && !packed ? "f32" : analysis.scalarType,
+        inputComponents: packed ? 2 : 1,
     };
+}
+
+/**
+ * @param {IntervalProjectionDef} a
+ * @param {IntervalProjection} b
+ */
+export function matchesProjection(a, b) {
+    if (
+        a.component !== b.component ||
+        a.hitTest !== (b.hitTest ?? "intersects")
+    )
+        return false;
+    if ("position" in a) {
+        return (
+            "position" in b && a.position === b.position && a.edge === b.edge
+        );
+    }
+    return (
+        "input" in b &&
+        a.input === b.input &&
+        a.secondaryInput === b.secondaryInput
+    );
 }
 
 /**
@@ -255,27 +284,21 @@ function collectSelections(node, defs, getAnalysis) {
             if (!def.components?.includes(resolved.component)) {
                 def.components?.push(resolved.component);
             }
-            const current = def.representations?.get(resolved.component);
+            const { component, scalarType, inputComponents } = resolved;
+            const current = def.representations.get(component);
             if (
                 current &&
-                (current.scalarType !== resolved.scalarType ||
-                    current.inputComponents !== resolved.inputComponents)
+                (current.scalarType !== scalarType ||
+                    current.inputComponents !== inputComponents)
             ) {
                 throw new Error(
-                    `Interval selection "${node.selection}" component "${resolved.component}" must keep one comparison representation.`
+                    `Interval selection "${node.selection}" component "${component}" must keep one comparison representation.`
                 );
             }
-            def.representations?.set(resolved.component, {
-                scalarType: resolved.scalarType,
-                inputComponents: resolved.inputComponents,
-            });
+            def.representations.set(component, { scalarType, inputComponents });
             if (
-                !def.projections?.some(
-                    (item) =>
-                        item.component === resolved.component &&
-                        item.input === resolved.input &&
-                        item.secondaryInput === resolved.secondaryInput &&
-                        item.hitTest === resolved.hitTest
+                !def.projections.some((item) =>
+                    matchesProjection(item, resolved)
                 )
             ) {
                 def.projections?.push(resolved);
@@ -426,18 +449,14 @@ export class SelectionResourceManager {
             visibleWhen,
             order
         );
-        if (cellPredicates) {
-            for (const def of this.#selectionDefs.values()) {
-                def.preciseFloatRanges = new Set(
-                    def.projections
-                        ?.filter(
-                            ({ inputComponents, scalarType, secondaryInput }) =>
-                                inputComponents === 1 &&
-                                scalarType === "f32" &&
-                                secondaryInput
-                        )
-                        .map(({ component }) => component)
-                );
+        for (const def of this.#selectionDefs.values()) {
+            if (def.type !== "interval") continue;
+            if (cellPredicates) {
+                def.preciseFloat = true;
+            } else if (
+                def.projections.some((projection) => "position" in projection)
+            ) {
+                throw new Error("Cell positions require a raster mark.");
             }
         }
         this.#orderSelectionActive = new Map(
@@ -498,7 +517,8 @@ export class SelectionResourceManager {
                             type: representation.scalarType,
                             components:
                                 representation.inputComponents === 2 ||
-                                def.preciseFloatRanges?.has(component)
+                                (def.preciseFloat &&
+                                    representation.scalarType === "f32")
                                     ? 4
                                     : 2,
                         });
@@ -602,17 +622,15 @@ export class SelectionResourceManager {
                 }
                 const active = interval !== undefined && interval !== null;
                 const representation = def.representations?.get(component);
-                const precise = def.preciseFloatRanges?.has(component);
+                const precise =
+                    def.preciseFloat && representation?.scalarType === "f32";
                 const bounds = representation
                     ? active
                         ? representation.inputComponents === 2
                             ? packHighPrecisionU32Array(interval)
                             : precise
                               ? packFloatRange(interval)
-                              : Array.from(
-                                    interval,
-                                    this.cellPredicates ? ceilFloat32 : Number
-                                )
+                              : interval
                         : representation.inputComponents === 2 || precise
                           ? INACTIVE_PACKED_BOUNDS
                           : INACTIVE_INTERVAL_BOUNDS

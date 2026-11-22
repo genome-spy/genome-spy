@@ -24,13 +24,10 @@ test("raster cell ranges intersect a brush between adjacent f32 values", async (
                 },
                 cells: {},
             },
-            cellCoordinates: { x: {} },
             visibleWhen: {
                 selection: "brush",
                 type: "interval",
-                projections: [
-                    { component: "x", input: "x", secondaryInput: "x2" },
-                ],
+                projections: [{ component: "x", position: "x" }],
                 empty: false,
             },
             channels: { fill: { value: [1, 0, 0, 1] } },
@@ -57,6 +54,57 @@ test("raster cell ranges intersect a brush between adjacent f32 values", async (
             [0, 0, 0, 0],
             [255, 0, 0, 255],
         ],
+    ]);
+});
+
+test("raster position follows a moving icon independently of its cell fields", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+    const pixels = await page.evaluate(async () => {
+        const { createReadbackRenderer } =
+            await import("/tests/fixtures/rgbaReadback.js");
+        const { rasterMark } = await import("/src/marks/raster.js");
+        const { renderer, renderPixels, finish } =
+            await createReadbackRenderer(64);
+        const mark = renderer.createMark(rasterMark, {
+            data: {
+                tiles: {
+                    columns: new Uint32Array([1]),
+                    rows: new Uint32Array([1]),
+                    offsets: new Uint32Array([0]),
+                },
+                cells: { x: new Float32Array([1]) },
+            },
+            position: {
+                x: { value: 16, dynamic: true },
+                y: { value: 32 },
+                size: { value: 64 },
+            },
+            visibleWhen: {
+                selection: "brush",
+                type: "interval",
+                projections: [
+                    { component: "anchor", position: "x" },
+                    { component: "value", input: "x" },
+                ],
+                empty: false,
+            },
+            channels: { fill: { value: [1, 0, 0, 1] } },
+        });
+        mark.selections.brush.set({ anchor: [40, 56], value: [0, 2] });
+        const before = await renderPixels(mark, [[16, 32]]);
+        mark.values.x.set(48);
+        const after = await renderPixels(mark, [[48, 32]]);
+        mark.selections.brush.set({ anchor: [40, 56], value: [2, 3] });
+        const excluded = await renderPixels(mark, [[48, 32]]);
+        await finish();
+        return [before, after, excluded];
+    });
+    expect(pixels).toEqual([
+        [[0, 0, 0, 0]],
+        [[255, 0, 0, 255]],
+        [[0, 0, 0, 0]],
     ]);
 });
 

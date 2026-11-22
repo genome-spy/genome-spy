@@ -152,7 +152,7 @@ export function buildMarkShader({
         const returnType =
             channelIR.outputComponents === 1
                 ? channelIR.outputScalarType
-                : `vec${channelIR.outputComponents}<${channelIR.scalarType}>`;
+                : `vec${channelIR.outputComponents}<f32>`;
         return `fn ${SCALED_FUNCTION_PREFIX}${functionName}(i: u32) -> ${returnType} { return ${channelIR.rawValueExpr}; }`;
     }
 
@@ -311,15 +311,22 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         const componentIndex = components.indexOf(
                             projection.component
                         );
-                        const channelIR = channelIRByName.get(projection.input);
-                        const secondaryIR = projection.secondaryInput
-                            ? channelIRByName.get(projection.secondaryInput)
-                            : undefined;
-                        if (
-                            componentIndex < 0 ||
-                            !channelIR ||
-                            (projection.secondaryInput && !secondaryIR)
-                        ) {
+                        const raster = "position" in projection;
+                        const [value, secondary] = raster
+                            ? [
+                                  `rasterCoordinate_${projection.position}(${projection.edge === "end" ? 1 : 0}u)`,
+                                  !projection.edge &&
+                                      `rasterCoordinate_${projection.position}(1u)`,
+                              ]
+                            : [
+                                  channelIRByName.get(projection.input)
+                                      ?.rawValueExpr,
+                                  projection.secondaryInput &&
+                                      channelIRByName.get(
+                                          projection.secondaryInput
+                                      )?.rawValueExpr,
+                              ];
+                        if (componentIndex < 0 || !value) {
                             throw new Error(
                                 `Selection "${def.name}" has an unresolved projection input or component.`
                             );
@@ -339,31 +346,23 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         /** @param {string} a @param {string} b */
                         const lt = (a, b) =>
                             packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
-                        const precise = def.preciseFloatRanges?.has(
-                            projection.component
-                        );
-                        const lo = packed
-                            ? "lo"
-                            : precise
-                              ? projection.secondaryInput &&
-                                projection.hitTest === "intersects"
-                                  ? "bound.y"
-                                  : "bound.x"
-                              : "min(bound.x, bound.y)";
-                        const hi = packed
-                            ? "hi"
-                            : precise
-                              ? projection.secondaryInput &&
-                                projection.hitTest === "encloses"
-                                  ? "bound.w"
-                                  : "bound.z"
-                              : "max(bound.x, bound.y)";
-                        const value = channelIR.rawValueExpr;
-                        const secondary = secondaryIR?.rawValueExpr;
-                        const readPackedBound = (
-                            /** @type {string} */ field
-                        ) =>
-                            channelIR.readInFragment
+                        const precise =
+                            def.preciseFloat && projection.scalarType === "f32";
+                        let lo = packed ? "lo" : "min(bound.x, bound.y)";
+                        let hi = packed ? "hi" : "max(bound.x, bound.y)";
+                        if (precise) {
+                            lo =
+                                secondary && projection.hitTest === "intersects"
+                                    ? "bound.y"
+                                    : "bound.x";
+                            hi =
+                                secondary && projection.hitTest === "encloses"
+                                    ? "bound.w"
+                                    : "bound.z";
+                        }
+                        /** @param {string} field */
+                        const readPackedBound = (field) =>
+                            raster
                                 ? `vec2<u32>(${field}.x, 2u * ${field}.y)`
                                 : field;
                         const boundsSetup = packed

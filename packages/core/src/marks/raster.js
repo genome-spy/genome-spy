@@ -10,7 +10,6 @@ import {
     matchesViewport,
     normalizeViewportConstraint,
 } from "../data/viewportDomain.js";
-import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
@@ -203,18 +202,14 @@ export default class RasterMark extends Mark {
         );
     }
 
+    getUniformOpacity() {
+        const opacity = this.encoders.opacity;
+        return opacity?.constant ? Number(opacity(null)) : 1;
+    }
+
     validateRenderingScales() {
         const { strip, type, direct } = this.getColorCellBinding();
         if (!this.isIcon) this.#validateGridScales(strip);
-        if (
-            this.encoders.opacity &&
-            !isValueDef(this.encoders.opacity.channelDef)
-        ) {
-            throw new ViewError(
-                "Raster opacity requires a value encoding.",
-                this.unitView
-            );
-        }
         this.getCellOpacityReader();
         if (direct) return undefined;
 

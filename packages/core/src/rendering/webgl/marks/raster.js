@@ -11,7 +11,6 @@ import {
     SampleFacetCoordsResolver,
     visitMarkOccurrences,
 } from "../../immediate/markData.js";
-import { encodeNumber } from "../../immediate/markEncoding.js";
 import {
     getRasterTriangle,
     visitRasterTiles,
@@ -51,10 +50,6 @@ export default class WebGLRasterMark {
 
     #dpr = 1;
     #pixelOffset = 0;
-    #viewOpacity = 1;
-
-    /** @type {ReturnType<import("../../../marks/raster.js").default["getCellOpacityReader"]>} */
-    #readCellOpacity;
 
     /** @type {ReadCellOpacity | undefined} */
     #cellOpacity;
@@ -90,7 +85,6 @@ export default class WebGLRasterMark {
     initializeGraphics() {
         this.#color = this.mark.validateRenderingScales();
         this.mark.initializeRenderingRevisions([]);
-        this.#readCellOpacity = this.mark.getCellOpacityReader();
         const gl = this.gl;
         // Mask uploads during a draw must leave the active scale samplers bound.
         this.#uploadTextureUnit =
@@ -208,11 +202,15 @@ export default class WebGLRasterMark {
                 gl.useProgram(this.#programInfo.program);
                 gl.bindVertexArray(null);
                 gl.enable(gl.BLEND);
-                this.#viewOpacity =
+                const viewOpacity =
                     options.applyViewOpacity === false
                         ? 1
                         : this.mark.unitView.getEffectiveOpacity();
-                const cellOpacity = this.#readCellOpacity?.();
+                this.#tileUniforms.uOpacity = Math.min(
+                    1,
+                    viewOpacity * this.mark.getUniformOpacity()
+                );
+                const cellOpacity = this.mark.getCellOpacityReader()?.();
                 if (cellOpacity !== this.#cellOpacity) {
                     this.#cellOpacity = cellOpacity;
                     this.#opacityRevision++;
@@ -308,12 +306,7 @@ export default class WebGLRasterMark {
      * @param {ReturnType<import("../../immediate/marks/raster.js").getRasterTriangle>} [triangle]
      */
     #drawTile = (datum, x0, y0, dx, dy, triangle) => {
-        const opacity = this.#readCellOpacity
-            ? undefined
-            : this.mark.encoders.opacity;
-        const alpha =
-            this.#viewOpacity * (opacity ? encodeNumber(opacity, datum) : 1);
-        if (!(alpha > 0)) return;
+        if (!(this.#tileUniforms.uOpacity > 0)) return;
 
         const tile = this.#tiles.get(datum);
         const { texture, width, height } = tile;
@@ -327,37 +320,31 @@ export default class WebGLRasterMark {
             this.#cellOpacity &&
             tile.opacityRevision !== this.#opacityRevision
         ) {
-            const src = this.#cellOpacity(datum);
             gl.activeTexture(this.#uploadTextureUnit);
-            if (tile.opacity) {
-                gl.bindTexture(gl.TEXTURE_2D, tile.opacity);
-                gl.texSubImage2D(
-                    gl.TEXTURE_2D,
-                    0,
-                    0,
-                    0,
-                    width,
-                    height,
-                    gl.RED,
-                    gl.FLOAT,
-                    src
-                );
-            } else {
-                tile.opacity = createTexture(gl, {
-                    width,
-                    height,
-                    src,
-                    internalFormat: gl.R32F,
-                    minMag: gl.NEAREST,
-                    wrap: gl.CLAMP_TO_EDGE,
-                    auto: false,
-                });
-            }
+            tile.opacity ??= createTexture(gl, {
+                width,
+                height,
+                internalFormat: gl.R32F,
+                minMag: gl.NEAREST,
+                wrap: gl.CLAMP_TO_EDGE,
+                auto: false,
+            });
+            gl.bindTexture(gl.TEXTURE_2D, tile.opacity);
+            gl.texSubImage2D(
+                gl.TEXTURE_2D,
+                0,
+                0,
+                0,
+                width,
+                height,
+                gl.RED,
+                gl.FLOAT,
+                this.#cellOpacity(datum)
+            );
             tile.opacityRevision = this.#opacityRevision;
         }
         this.#tileUniforms.uCells = texture;
         this.#tileUniforms.uCellOpacity = tile.opacity ?? null;
-        this.#tileUniforms.uOpacity = Math.min(1, alpha);
         setUniforms(this.#programInfo, this.#tileUniforms);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };

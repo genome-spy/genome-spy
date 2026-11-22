@@ -53,7 +53,7 @@ function normalizeScalarInputs(inputs, channelNames) {
     /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */
     const normalized = {};
     const inputConfigs =
-        /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig & {packed?: true}>} */ (
+        /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig>} */ (
             inputs
         );
     for (const [name, config] of Object.entries(inputConfigs)) {
@@ -86,14 +86,13 @@ function normalizeScalarInputs(inputs, channelNames) {
                 `Scalar input "${name}" must specify type "f32", "u32", or "i32".`
             );
         }
-        const components = config.packed ? 2 : 1;
         normalized[name] =
             /** @type {import("../../../index.d.ts").ChannelConfigResolved} */ (
                 /** @type {unknown} */ ({
                     data: config.data,
                     type: config.type,
-                    components,
-                    inputComponents: components,
+                    components: 1,
+                    inputComponents: 1,
                 })
             );
     }
@@ -456,7 +455,10 @@ export default class BaseProgram {
             pickFormat: renderer.pickFormat,
             compiledChannels,
             uniformLayout: this.#uniformLayout,
-            shaderBody: this.buildShaderBody(compiledChannels.channelIRs),
+            shaderBody: this.buildShaderBody(
+                compiledChannels.channelIRs,
+                this.#selectionResources.selectionDefs
+            ),
             usesPickingEnabledInVertex: this.usesPickingEnabledInVertex,
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
@@ -625,9 +627,10 @@ export default class BaseProgram {
 
     /**
      * @param {import("../../shaders/channelIR.js").ChannelIR[]} _channels
+     * @param {import("./selectionResources.js").SelectionDef[]} _selections
      * @protected
      */
-    buildShaderBody(_channels) {
+    buildShaderBody(_channels, _selections) {
         return this.shaderBody;
     }
 

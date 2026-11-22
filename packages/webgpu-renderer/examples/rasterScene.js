@@ -53,8 +53,8 @@ export default async function runRasterScene(canvas) {
                 selection: "region",
                 type: "interval",
                 projections: [
-                    { component: "x", input: "x", secondaryInput: "x2" },
-                    { component: "y", input: "y", secondaryInput: "y2" },
+                    { component: "x", position: "x" },
+                    { component: "y", position: "y" },
                 ],
                 empty: false,
             },
@@ -62,7 +62,6 @@ export default async function runRasterScene(canvas) {
     };
     const mark = renderer.createMark(rasterMark, {
         data: rasterData(16),
-        cellCoordinates: { x: {}, y: {} },
         position: {
             x: { scale: linearScale({ domain: [0, 1], range: [0, 1] }) },
             y: { scale: linearScale({ domain: [0, 1], range: [0, 1] }) },

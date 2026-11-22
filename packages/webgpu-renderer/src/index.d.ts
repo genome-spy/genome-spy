@@ -25,7 +25,7 @@ export type NumericValue =
 
 export type SelectionType = "single" | "multi" | "interval";
 
-export type IntervalSelectionProjection = Readonly<{
+type FieldIntervalProjection = Readonly<{
     /** Opaque identifier of the retained interval component. */
     component: string;
     /** Primary input tested by this component. */
@@ -35,6 +35,18 @@ export type IntervalSelectionProjection = Readonly<{
     /** Hit-test mode for ranged data; omitted means intersects. */
     hitTest?: "intersects" | "encloses" | "endpoints";
 }>;
+
+/** Test a raster cell's unscaled grid bounds. Icons use their anchor. */
+type RasterIntervalProjection = Readonly<{
+    component: string;
+    position: "x" | "y";
+    /** Test one edge as a point instead of testing the cell bounds. */
+    edge?: "start" | "end";
+    hitTest?: FieldIntervalProjection["hitTest"];
+}>;
+
+export type IntervalSelectionProjection =
+    FieldIntervalProjection | RasterIntervalProjection;
 
 export type SelectionStateReference =
     | Readonly<{
