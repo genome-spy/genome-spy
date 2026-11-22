@@ -1,4 +1,5 @@
 import { makeFnHeader } from "../scaleEmitUtils.js";
+import { getFragmentInput } from "../../../types.js";
 
 /** @type {import("../../../index.d.ts").ScaleDef} */
 const definition = {
@@ -15,7 +16,8 @@ const definition = {
         needsOrdinalRange: false,
     },
     validate({ name, channel, outputComponents }) {
-        return channel.data != null && outputComponents === 4
+        return (channel.data != null || getFragmentInput(channel)) &&
+            outputComponents === 4
             ? null
             : `RGBA8 decoding on "${name}" requires a u32 series and four output components.`;
     },

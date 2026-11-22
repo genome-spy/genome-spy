@@ -110,3 +110,39 @@ Clamp the samples to the tile drawn at the pixel center and keep the existing
 conditional order passes. This can leave visible seams between tiles or between
 the two order passes. A few samples can still alias repeating patterns at strong
 minification.
+
+## Standalone raster simplification
+
+Scalar cell fields already have a stable type and read expression when
+`rasterData.js` binds the packed buffer. Carry that expression through channel
+normalization and compilation as an internal fragment source. The ordinary
+series manager continues to own per-instance attributes. Keep the authored
+raster config, buffer ownership, scale slots, and tile replacement contract.
+Verify both data-backed fill and opacity branches, ordinary series marks, and
+the Core gradient and positional brushes.
+
+Resolve named predicate inputs in the compiler that checks their types and emits
+comparisons. Raster fields keep their authored names in predicates, with a
+separate namespace for positions. Resolve point placement to an anchor in that
+compiler. Preserve cell visibility, conditional order, and field names that also
+name tile positions.
+
+An independent fragment channel compiler would have duplicated scale and
+selection logic. The existing compiler can use the fragment read expression
+directly and let the series manager pack the tile attributes. The first round
+removed 19 net runtime lines. The second removed 39 by resolving field names in
+the existing predicate compiler and consolidating tile metadata validation.
+Raster data preparation went from 325 to 249 lines.
+
+The standalone GPU tests cover direct RGBA color, named field visibility,
+categorical membership, cell ordering, and tile replacement. The Core WebGPU
+raster tests cover positional brushing, gradient brushing, close locus zoom,
+triangle placement, and picking.
+
+WebGPU now uploads Float32 brush bounds in the same format for raster and
+ordinary marks. The separate directed-rounding path supported brushes narrower
+than the gap between adjacent Float32 values. The scratch removal lost that case
+and passed the other six focused GPU tests. The Core gradient test now covers
+the resulting boundary behavior. Packed locus brushes still compare their
+high-precision grid edges. Removing the duplicate rounding path saved 37 net
+production lines, for 95 across the simplification.

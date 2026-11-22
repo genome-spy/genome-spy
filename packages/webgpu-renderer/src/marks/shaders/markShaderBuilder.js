@@ -108,7 +108,8 @@ export function buildMarkShader({
     extraResources = [],
     placementIndex,
 }) {
-    const { channels, channelIRs, channelNames, inputNames } = compiledChannels;
+    const { channels, channelIRs, channelNames, inputNames, cellPredicates } =
+        compiledChannels;
     const drawPlacement =
         placementIndex &&
         "source" in placementIndex &&
@@ -160,8 +161,7 @@ export function buildMarkShader({
     const vertexComputeVisibility =
         GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
     const seriesChannelIRs = channelIRs.filter(
-        (channelIR) =>
-            channelIR.sourceKind === "series" && !channelIR.readInFragment
+        (channelIR) => channelIR.sourceKind === "series"
     );
     const ordinalRangeChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsOrdinalRange
@@ -181,7 +181,8 @@ export function buildMarkShader({
         const binding = bindingIndex++;
         const readInFragment = channelIRs.some(
             (ir) =>
-                ir.readInFragment && (ir.needsDomainMap || ir.needsOrdinalRange)
+                ir.sourceKind === "fragment" &&
+                (ir.needsDomainMap || ir.needsOrdinalRange)
         );
         resourceBindings.push({
             binding,
@@ -202,28 +203,33 @@ export function buildMarkShader({
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
     );
+    /** @param {string} name */
+    const getSelectionInput = (name) =>
+        channelIRByName.get(
+            cellPredicates ? cellPredicates.fields.get(name)?.name : name
+        );
     const selectionDefsByName = new Map(
         selectionDefs.map((def) => [def.name, def])
     );
-    const visibilityPredicate = buildVisibilityPredicate({
-        predicate: visibleWhen,
-        functionName:
-            order || hasGaps ? "isInstanceVisibleBase" : "isInstanceVisible",
+    const predicateInputs = {
         channelIRs,
         channelNames,
         inputNames,
+        cellPredicates,
         scalarSlots,
         selectionDefs,
+    };
+    const visibilityPredicate = buildVisibilityPredicate({
+        ...predicateInputs,
+        predicate: visibleWhen,
+        functionName:
+            order || hasGaps ? "isInstanceVisibleBase" : "isInstanceVisible",
     });
     const orderPredicate = order
         ? buildVisibilityPredicate({
+              ...predicateInputs,
               predicate: order.when,
               functionName: "isInstanceOrderMatch",
-              channelIRs,
-              channelNames,
-              inputNames,
-              scalarSlots,
-              selectionDefs,
           })
         : "";
     const gapChecks = gapChannels.map(({ name, channel, sharedScaleName }) => {
@@ -287,7 +293,7 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
 `;
             }
             case "multi": {
-                const input = channelIRByName.get(def.input ?? "uniqueId");
+                const input = getSelectionInput(def.input ?? "uniqueId");
                 const bufferName = SELECTION_BUFFER_PREFIX + def.name;
                 const lookupName = hashLookupFunctionName(bufferName);
                 return /* wgsl */ `
@@ -314,15 +320,15 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         const raster = "position" in projection;
                         const [value, secondary] = raster
                             ? [
-                                  `rasterCoordinate_${projection.position}(${projection.edge === "end" ? 1 : 0}u)`,
-                                  !projection.edge &&
+                                  `rasterCoordinate_${projection.position}(${projection.positionEdge === "end" ? 1 : 0}u)`,
+                                  !projection.positionEdge &&
                                       `rasterCoordinate_${projection.position}(1u)`,
                               ]
                             : [
-                                  channelIRByName.get(projection.input)
+                                  getSelectionInput(projection.input)
                                       ?.rawValueExpr,
                                   projection.secondaryInput &&
-                                      channelIRByName.get(
+                                      getSelectionInput(
                                           projection.secondaryInput
                                       )?.rawValueExpr,
                               ];
@@ -346,20 +352,8 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         /** @param {string} a @param {string} b */
                         const lt = (a, b) =>
                             packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
-                        const precise =
-                            def.preciseFloat && projection.scalarType === "f32";
-                        let lo = packed ? "lo" : "min(bound.x, bound.y)";
-                        let hi = packed ? "hi" : "max(bound.x, bound.y)";
-                        if (precise) {
-                            lo =
-                                secondary && projection.hitTest === "intersects"
-                                    ? "bound.y"
-                                    : "bound.x";
-                            hi =
-                                secondary && projection.hitTest === "encloses"
-                                    ? "bound.w"
-                                    : "bound.z";
-                        }
+                        const lo = packed ? "lo" : "min(bound.x, bound.y)";
+                        const hi = packed ? "hi" : "max(bound.x, bound.y)";
                         /** @param {string} field */
                         const readPackedBound = (field) =>
                             raster
@@ -392,7 +386,7 @@ fn ${fnName}_p${projectionIndex}(i: u32) -> bool {
     if (params.${active} == 0u) { return false; }
 ${boundsSetup}
 ${datumSetup}
-    return ${precise ? "bound.y < bound.z" : lt(lo, hi)} && (${test});
+    return ${lt(lo, hi)} && (${test});
 }
 `;
                     }

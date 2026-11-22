@@ -2,7 +2,12 @@ import {
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
 } from "../../../wgsl/prefixes.js";
-import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
+import {
+    fragmentInput,
+    getFragmentInput,
+    isSeriesChannelConfig,
+    isValueChannelConfig,
+} from "../../../types.js";
 import { UniformBuffer } from "../../../utils/uniformBuffer.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
 import { buildBindGroup } from "./bindGroupBuilder.js";
@@ -70,8 +75,9 @@ function normalizeScalarInputs(inputs, channelNames) {
         if (
             !config ||
             typeof config !== "object" ||
-            !ArrayBuffer.isView(config.data) ||
-            config.data instanceof DataView
+            (!getFragmentInput(config) &&
+                (!ArrayBuffer.isView(config.data) ||
+                    config.data instanceof DataView))
         ) {
             throw new Error(
                 `Scalar input "${name}" must specify typed-array data.`
@@ -90,6 +96,7 @@ function normalizeScalarInputs(inputs, channelNames) {
             /** @type {import("../../../index.d.ts").ChannelConfigResolved} */ (
                 /** @type {unknown} */ ({
                     data: config.data,
+                    [fragmentInput]: getFragmentInput(config),
                     type: config.type,
                     components: 1,
                     inputComponents: 1,
@@ -309,6 +316,10 @@ export default class BaseProgram {
         );
         /** @internal */
         this._order = normalizeOrder(config.order);
+        const cellPredicates =
+            /** @type {import("../../shaders/channelIR.js").CellPredicateInputs | undefined} */ (
+                config.cellPredicates
+            );
         this._channels = { ...this._channels, ...normalizedInputs };
         for (const [name, channel] of Object.entries(normalizedInputs)) {
             normalizedChannels.analysisByChannel.set(
@@ -321,29 +332,20 @@ export default class BaseProgram {
             analysisByChannel: normalizedChannels.analysisByChannel,
             channelNames: publicChannelNames,
             inputNames: new Set(Object.keys(normalizedInputs)),
+            cellPredicates,
             seriesIndexExpression:
                 typeof config.seriesIndexExpression === "string"
                     ? config.seriesIndexExpression
                     : undefined,
         });
-        const drawSeries = { ...this._channels };
-        for (const channel of compiledChannels.channelIRs) {
-            const read = this.getFragmentSeriesRead(channel);
-            if (read !== undefined) {
-                channel.rawValueExpr = read.expression;
-                channel.transparentOnNonFinite = read.transparentOnNonFinite;
-                channel.readInFragment = true;
-                delete drawSeries[channel.name];
-            }
-        }
         this.#logicalSeriesTargets = this.#collectLogicalSeriesTargets();
         /** @protected */
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
-            drawSeries,
+            this._channels,
             this.channelSpecs,
             this.label,
-            !this.hasCellPredicates
+            !cellPredicates
         );
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
         const initialSeries = this._seriesBuffers.prepareSeries({}, this.count);
@@ -362,7 +364,7 @@ export default class BaseProgram {
             channels: this._channels,
             analysisByChannel: compiledChannels.analysisByChannel,
             visibleWhen,
-            cellPredicates: this.hasCellPredicates,
+            cellPredicates,
             order: this._order,
             label: this.label,
             setUniformValue: (name, value) =>
@@ -434,7 +436,7 @@ export default class BaseProgram {
                     name: bindingName,
                     kind: "buffer",
                     role: "extraBuffer",
-                    visibility: this.hasCellPredicates ? "all" : "vertex",
+                    visibility: cellPredicates ? "all" : "vertex",
                     bufferType: "uniform",
                     wgslType: "array<vec4<f32>, 3>",
                 });
@@ -560,20 +562,6 @@ export default class BaseProgram {
      */
     getExtraResourceDefs() {
         return [];
-    }
-
-    /**
-     * @param {import("../../shaders/channelIR.js").ChannelIR} _channel
-     * @returns {{expression: string, transparentOnNonFinite?: boolean} | undefined}
-     * @protected
-     */
-    getFragmentSeriesRead(_channel) {
-        return undefined;
-    }
-
-    /** @protected */
-    get hasCellPredicates() {
-        return false;
     }
 
     /**
@@ -1218,10 +1206,7 @@ export default class BaseProgram {
                         channel.inputComponents ?? channel.components ?? 1,
                 });
             }
-            if (isSeriesChannelConfig(channel) && channel.scale) {
-                this.#scaleResources.addScaleUniforms(layout, name, channel);
-            }
-            if (isValueChannelConfig(channel) && channel.scale) {
+            if (channel.scale) {
                 this.#scaleResources.addScaleUniforms(layout, name, channel);
             }
         }
@@ -1252,11 +1237,7 @@ export default class BaseProgram {
      */
     #initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (
-                (isSeriesChannelConfig(channel) ||
-                    isValueChannelConfig(channel)) &&
-                channel.scale
-            ) {
+            if (channel.scale) {
                 const updater = this.#scaleResources.initializeScale(
                     name,
                     channel

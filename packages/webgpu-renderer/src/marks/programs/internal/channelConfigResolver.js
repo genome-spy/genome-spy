@@ -1,5 +1,6 @@
 import { isSharedScale, sharedScaleResources } from "./sharedScale.js";
 import {
+    getFragmentInput,
     isNumericArray,
     isSeriesChannelConfig,
     isValueChannelConfig,
@@ -131,17 +132,19 @@ export function normalizeChannel({ name, configChannel, context }) {
     );
 
     const merged = resolveChannelScale(name, input, context.renderer);
+    const hasInput =
+        isSeriesChannelConfig(merged) || !!getFragmentInput(merged);
 
     if (!merged.components) {
         merged.components = 1;
     }
-    if (isSeriesChannelConfig(merged) && !merged.inputComponents) {
+    if (hasInput && !merged.inputComponents) {
         const scaleType = merged.scale?.type ?? "identity";
         merged.inputComponents =
             scaleType === "identity" ? merged.components : 1;
     }
     if (
-        isSeriesChannelConfig(merged) &&
+        hasInput &&
         (configChannel?.value !== undefined ||
             configChannel?.default !== undefined)
     ) {
@@ -149,19 +152,15 @@ export function normalizeChannel({ name, configChannel, context }) {
             `Channel "${name}" must not specify both data and value.`
         );
     }
-    if (isSeriesChannelConfig(merged)) {
+    if (hasInput) {
         delete merged.value;
         delete merged.default;
     }
     // Provide sensible defaults early so downstream code can assume data or value.
-    if (!isSeriesChannelConfig(merged) && merged.value === undefined) {
+    if (!hasInput && merged.value === undefined) {
         merged.value = merged.default ?? spec.default;
     }
-    if (
-        spec.optional &&
-        !isSeriesChannelConfig(merged) &&
-        !isValueChannelConfig(merged)
-    ) {
+    if (spec.optional && !hasInput && !isValueChannelConfig(merged)) {
         return null;
     }
 
@@ -242,6 +241,8 @@ function normalizeConditionChannel({
     );
 
     const merged = resolveChannelScale(name, input, context.renderer);
+    const hasInput =
+        isSeriesChannelConfig(merged) || !!getFragmentInput(merged);
 
     if (merged.conditions !== undefined) {
         throw new Error(
@@ -256,26 +257,26 @@ function normalizeConditionChannel({
     if (!merged.components) {
         merged.components = channelSpecs[name]?.components ?? 1;
     }
-    if (isSeriesChannelConfig(merged) && !merged.inputComponents) {
+    if (hasInput && !merged.inputComponents) {
         const scaleType = merged.scale?.type ?? "identity";
         merged.inputComponents =
             scaleType === "identity" ? merged.components : 1;
     }
-    if (isSeriesChannelConfig(merged) && merged.value !== undefined) {
+    if (hasInput && merged.value !== undefined) {
         throw new Error(
             `Channel "${name}" conditions must not specify both data and value.`
         );
     }
-    if (!isSeriesChannelConfig(merged) && merged.value === undefined) {
+    if (!hasInput && merged.value === undefined) {
         throw new Error(
             `Channel "${name}" conditions must specify either data or value.`
         );
     }
-    if (isSeriesChannelConfig(merged)) {
+    if (hasInput) {
         delete merged.value;
         delete merged.default;
     }
-    if (isSeriesChannelConfig(merged) && !merged.type) {
+    if (hasInput && !merged.type) {
         throw new Error(
             `Channel "${name}" conditions require a series data type.`
         );
@@ -309,7 +310,7 @@ export function validateChannel(name, channel, context, analysisName = name) {
     }
 
     const analysis = buildChannelAnalysis(analysisName, channel);
-    const { scaleDef, outputComponents } = analysis;
+    const { scaleDef, outputComponents, sourceKind } = analysis;
     const allowsTypeOverride =
         ((scaleDef.allowsU32InputOverride === true &&
             spec?.type === "f32" &&
@@ -327,22 +328,15 @@ export function validateChannel(name, channel, context, analysisName = name) {
     ) {
         throw new Error(`Channel "${name}" must use type "${spec.type}"`);
     }
-    if (
-        !spec.optional &&
-        !isSeriesChannelConfig(channel) &&
-        !isValueChannelConfig(channel)
-    ) {
+    if (sourceKind === "missing") {
+        if (spec.optional) return analysis;
         throw new Error(`Channel "${name}" must specify either data or value.`);
     }
-    if (isSeriesChannelConfig(channel) && !channel.type) {
-        throw new Error(`Channel "${name}" requires a series data type.`);
-    }
     if (
-        spec.optional &&
-        !isSeriesChannelConfig(channel) &&
-        !isValueChannelConfig(channel)
+        (sourceKind === "series" || sourceKind === "fragment") &&
+        !channel.type
     ) {
-        return analysis;
+        throw new Error(`Channel "${name}" requires a series data type.`);
     }
     if (channel.components && ![1, 2, 4].includes(channel.components)) {
         throw new Error(`Invalid component count for "${name}"`);

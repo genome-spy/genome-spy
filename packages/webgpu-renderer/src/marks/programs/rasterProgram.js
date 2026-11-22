@@ -446,31 +446,6 @@ export default class RasterProgram extends BaseProgram {
         );
     }
 
-    get hasCellPredicates() {
-        return true;
-    }
-
-    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
-    getFragmentSeriesRead(ir) {
-        const reads =
-            /** @type {ReturnType<typeof compileRasterData>["reads"]} */ (
-                this._markConfig.reads
-            );
-        const expression = reads.get(
-            /** @type {import("../raster.js").RasterCellArray} */ (
-                ir.channel.data
-            )
-        );
-        if (expression !== undefined) {
-            return {
-                expression,
-                transparentOnNonFinite:
-                    ir.scalarType === "f32" &&
-                    /^fill(?:$|__cond)/.test(ir.name),
-            };
-        }
-    }
-
     /** @returns {ReturnType<BaseProgram["getExtraResourceDefs"]>} */
     getExtraResourceDefs() {
         return [

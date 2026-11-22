@@ -1044,8 +1044,14 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
         expect(result.initializedDomain).toEqual([1, 1]);
         expect(result.baseline).toEqual([255, 255, 255, 255, 255]);
         expect(result.selected).toEqual([0, 255, 255, 0, 0]);
-        expect(result.upperBetweenFloats).toEqual([0, 255, 255, 255, 0]);
-        expect(result.lowerBetweenFloats).toEqual([0, 0, 0, 0, 255]);
+        if (renderer === "webgpu") {
+            // Both thresholds round to 8 when uploaded as Float32.
+            expect(result.upperBetweenFloats).toEqual(result.selected);
+            expect(result.lowerBetweenFloats).toEqual(result.unbounded);
+        } else {
+            expect(result.upperBetweenFloats).toEqual([0, 255, 255, 255, 0]);
+            expect(result.lowerBetweenFloats).toEqual([0, 0, 0, 0, 255]);
+        }
         expect(result.zeroWidth).toEqual([0, 0, 0, 0, 0]);
         expect(result.unbounded).toEqual([0, 0, 0, 255, 255]);
         expect(result.reset).toEqual(result.baseline);

@@ -1,10 +1,10 @@
 import { validateStorageBufferSize } from "../../../utils/bufferLimits.js";
+import { fragmentInput } from "../../../types.js";
 
 /**
  * @typedef {import("../../raster.js").RasterConfig} RasterConfig
  * @typedef {import("../../raster.js").RasterData} RasterData
  * @typedef {import("../../raster.js").RasterCellArray} RasterCellArray
- * @typedef {import("../../../index.d.ts").VisibilityPredicate} VisibilityPredicate
  */
 
 /** @type {readonly (readonly ["x" | "x2" | "y" | "y2", "x0" | "x1" | "y0" | "y1", "x" | "y"])[]} */
@@ -33,23 +33,25 @@ function numericType(array) {
 
 /**
  * Compile the snapshot schema, mapping arbitrary field names to private WGSL
- * identifiers. Empty typed arrays identify fragment sources during ordinary
- * channel validation, without adding them to the packed tile series.
+ * identifiers and binding each field to its packed cell read.
  * @param {RasterConfig} config
  */
 export function compileRasterData(config) {
     const { data, position } = config;
     const entries = Object.entries(data.cells);
-    /** @type {Map<RasterCellArray, string>} */
-    const reads = new Map();
     const fields = new Map(
         entries.map(([name, array], offset) => {
             const type = numericType(array);
-            const data =
-                type === "u32" ? new Uint32Array(0) : new Float32Array(0);
             const word = `rasterCells[i * ${entries.length}u + ${offset}u]`;
-            reads.set(data, type === "f32" ? `bitcast<f32>(${word})` : word);
-            return [name, { name: "cellField" + offset, type, data }];
+            return [
+                name,
+                {
+                    name: "cellField" + offset,
+                    type,
+                    [fragmentInput]:
+                        type === "f32" ? `bitcast<f32>(${word})` : word,
+                },
+            ];
         })
     );
     const icon = data.tiles.x1 === undefined && data.tiles.y1 === undefined;
@@ -88,7 +90,7 @@ export function compileRasterData(config) {
         );
     }
     const picking = data.tiles.pickingIds !== undefined;
-    return { fields, reads, positions, placementIndices, icon, picking };
+    return { fields, positions, placementIndices, icon, picking };
 }
 
 /** @typedef {ReturnType<typeof compileRasterData>} RasterSchema */
@@ -110,37 +112,28 @@ export function prepareRasterData(device, { tiles, cells }, schema) {
         );
     }
     if (
-        !(
-            columns instanceof Uint32Array &&
-            rows instanceof Uint32Array &&
-            offsets instanceof Uint32Array &&
-            rows.length === count &&
-            offsets.length === count
-        ) ||
         schema.placementIndices !== (placementIndices !== undefined) ||
-        (placementIndices !== undefined &&
-            (!(placementIndices instanceof Uint32Array) ||
-                placementIndices.length !== count))
+        schema.picking !== (pickingIds !== undefined)
     ) {
         throw new Error(
-            "Raster tile metadata must use Uint32Array columns of equal length."
+            "Raster data replacement must keep its placement indices and picking IDs."
         );
     }
 
     /** @type {Record<string, RasterCellArray>} */
     const series = { columns, rows, cellOffset: offsets };
-    if (placementIndices) series.__placementIndex = placementIndices;
+    if (placementIndices !== undefined)
+        series.__placementIndex = placementIndices;
+    if (pickingIds !== undefined) series.tilePickingId = pickingIds;
     if (
-        schema.picking !== (pickingIds !== undefined) ||
-        (pickingIds !== undefined &&
-            (!(pickingIds instanceof Uint32Array) ||
-                pickingIds.length !== count))
+        Object.values(series).some(
+            (array) => !(array instanceof Uint32Array) || array.length !== count
+        )
     ) {
         throw new Error(
-            "Raster picking IDs must keep their presence and match the tile count."
+            "Raster tile metadata must use Uint32Array columns of equal length."
         );
     }
-    if (pickingIds) series.tilePickingId = pickingIds;
     for (const { channel, edge, type, components } of schema.positions) {
         const array = tiles[edge];
         const inputType = array === undefined ? undefined : numericType(array);
@@ -212,105 +205,21 @@ export function prepareRasterData(device, { tiles, cells }, schema) {
  * @param {ReturnType<typeof prepareRasterData>} prepared
  */
 export function lowerRasterConfig(config, schema, prepared) {
-    /** @param {string} name */
-    const field = (name) => {
-        const binding = schema.fields.get(name);
-        if (!binding) throw new Error(`Unknown raster cell field "${name}".`);
-        return binding;
-    };
-    /** @param {string} name */
-    const intervalInput = (name) => {
-        const input = field(name);
-        if (input.type !== "f32") {
-            throw new Error(
-                "Raster field interval projections require a Float32Array."
-            );
-        }
-        return input.name;
-    };
-
-    /** @param {import("../../../index.d.ts").ScalarOperand} operand */
-    const lowerOperand = (operand) => {
-        if ("input" in operand) return { input: field(operand.input).name };
-        if (
-            "channel" in operand &&
-            !["fill", "opacity"].includes(operand.channel)
-        ) {
-            throw new Error(
-                `Raster visibility cannot compare tile channel "${operand.channel}".`
-            );
-        }
-        return operand;
-    };
-
-    /**
-     * @param {VisibilityPredicate} node
-     * @returns {VisibilityPredicate}
-     */
-    function lowerPredicate(node) {
-        if ("all" in node) return { all: node.all.map(lowerPredicate) };
-        if ("any" in node) return { any: node.any.map(lowerPredicate) };
-        if ("not" in node) return { not: lowerPredicate(node.not) };
-        if ("compare" in node) {
-            return {
-                ...node,
-                left: lowerOperand(node.left),
-                right: lowerOperand(node.right),
-            };
-        }
-        if ("selectionActive" in node) return node;
-        if (node.type === "multi") {
-            return { ...node, input: field(node.input ?? "uniqueId").name };
-        }
-        if (node.type === "interval") {
-            return {
-                ...node,
-                projections: /** @type {typeof node.projections} */ (
-                    /** @type {unknown} */ (
-                        node.projections.map(
-                            /** @returns {import("../../../index.d.ts").IntervalSelectionProjection} */
-                            (projection) => {
-                                if ("position" in projection) {
-                                    return schema.icon &&
-                                        projection.edge === undefined
-                                        ? {
-                                              ...projection,
-                                              edge: "start",
-                                              hitTest: undefined,
-                                          }
-                                        : projection;
-                                }
-                                return {
-                                    ...projection,
-                                    input: intervalInput(projection.input),
-                                    ...(projection.secondaryInput !==
-                                        undefined && {
-                                        secondaryInput: intervalInput(
-                                            projection.secondaryInput
-                                        ),
-                                    }),
-                                };
-                            }
-                        )
-                    )
-                ),
-            };
-        }
-        throw new Error(
-            "Raster cells do not support single-ID selection membership."
-        );
-    }
-
     /**
      * @param {import("../../raster.js").RasterCellChannel} channel
-     * @returns {import("../../../index.d.ts").ChannelConfigInput}
+     * @returns {import("../../../index.d.ts").ChannelConfigInput & {[fragmentInput]?: string}}
      */
     function lowerValue(channel) {
         if ("input" in channel) {
-            const { data, type } = field(channel.input);
+            const field = schema.fields.get(channel.input);
+            if (!field) {
+                throw new Error(
+                    `Unknown raster cell field "${channel.input}".`
+                );
+            }
             return {
-                data,
-                type,
+                type: field.type,
+                [fragmentInput]: field[fragmentInput],
                 inputComponents: /** @type {const} */ (1),
                 scale: channel.scale,
             };
@@ -325,23 +234,20 @@ export function lowerRasterConfig(config, schema, prepared) {
     function lowerChannel(channel) {
         return {
             ...lowerValue(channel),
-            conditions: channel.conditions?.map((condition) => ({
-                when: /** @type {import("../../../index.d.ts").SelectionPredicate} */ (
-                    lowerPredicate(condition.when)
-                ),
-                ...("channel" in condition
-                    ? { channel: lowerValue(condition.channel) }
-                    : { value: condition.value }),
-            })),
+            conditions: channel.conditions?.map((condition) =>
+                "channel" in condition
+                    ? { ...condition, channel: lowerValue(condition.channel) }
+                    : condition
+            ),
         };
     }
 
     const { channels, visibleWhen, order, scalarSlots } = config;
-    /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig>} */
+    /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig | import("../../../types.js").FragmentInput>} */
     const inputs = Object.fromEntries(
-        Array.from(schema.fields.values(), ({ name, type, data }) => [
+        Array.from(schema.fields.values(), ({ name, ...input }) => [
             name,
-            { type, data },
+            input,
         ])
     );
     for (const name of ["columns", "rows", "cellOffset"]) {
@@ -359,12 +265,16 @@ export function lowerRasterConfig(config, schema, prepared) {
         icon: schema.icon,
         picking: schema.picking,
         triangle: config.projection === "triangle",
-        reads: schema.reads,
         initialCells: prepared.cells,
         scalarSlots,
         inputs,
-        visibleWhen: visibleWhen && lowerPredicate(visibleWhen),
-        order: order && { ...order, when: lowerPredicate(order.when) },
+        cellPredicates: {
+            fields: schema.fields,
+            channels: new Set(["fill", "opacity"]),
+            point: schema.icon,
+        },
+        visibleWhen,
+        order,
         placementIndex: config.placement
             ? { source: "draw" }
             : schema.placementIndices

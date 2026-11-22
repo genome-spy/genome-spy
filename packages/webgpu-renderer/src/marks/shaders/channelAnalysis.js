@@ -10,6 +10,7 @@ import {
     getScaleResourceRequirements,
     getScaleType,
 } from "../scales/scaleDefinition.js";
+import { getFragmentInput } from "../../types.js";
 
 /**
  * @typedef {import("../../index.d.ts").LocalChannelConfigInput} LocalChannelConfigInput
@@ -19,7 +20,7 @@ import {
 
 /** @typedef {import("../../index.d.ts").ScaleIOContext} ScaleIOContext */
 
-/** @typedef {"series"|"value"|"missing"} ChannelSourceKind */
+/** @typedef {"series"|"fragment"|"value"|"missing"} ChannelSourceKind */
 
 /**
  * @typedef {ScaleIOContext & {
@@ -58,6 +59,7 @@ export function normalizeScalarType(type) {
  * @returns {ChannelSourceKind}
  */
 function getSourceKind(channel) {
+    if (getFragmentInput(channel)) return "fragment";
     if (channel.data != null) {
         return "series";
     }
@@ -84,7 +86,9 @@ export function buildChannelAnalysis(name, channel) {
             ? getScaleOutputType(scaleDef, scalarType)
             : "f32";
     const defaultInputComponents =
-        sourceKind === "series" || scaleType === "identity"
+        sourceKind === "series" ||
+        sourceKind === "fragment" ||
+        scaleType === "identity"
             ? outputComponents
             : 1;
     const inputComponents = channel.inputComponents ?? defaultInputComponents;

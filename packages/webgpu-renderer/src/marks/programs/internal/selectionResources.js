@@ -46,17 +46,25 @@ const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
 /**
  * @typedef {{ scalarType: ScalarType, inputComponents: 1 | 2 }} IntervalRepresentation
  * @typedef {import("../../../index.d.ts").IntervalSelectionProjection} IntervalProjection
- * @typedef {IntervalProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
- * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean, preciseFloat?: boolean }} SelectionDef
+ * @typedef {import("../../shaders/channelIR.js").CellPredicateInputs} CellPredicateInputs
+ * @typedef {(name: string, position?: boolean) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} GetAnalysis
+ * @typedef {IntervalProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints", positionEdge?: "start" | "end" }} IntervalProjectionDef
+ * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
  */
 
 /**
  * @param {string} selectionName
  * @param {import("../../../index.d.ts").IntervalSelectionProjection} projection
- * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
+ * @param {GetAnalysis} getAnalysis
+ * @param {CellPredicateInputs | undefined} cellPredicates
  * @returns {IntervalProjectionDef}
  */
-function resolveProjection(selectionName, projection, getAnalysis) {
+function resolveProjection(
+    selectionName,
+    projection,
+    getAnalysis,
+    cellPredicates
+) {
     if (
         !projection ||
         typeof projection.component !== "string" ||
@@ -67,9 +75,15 @@ function resolveProjection(selectionName, projection, getAnalysis) {
         );
     }
     const raster = "position" in projection;
+    if (raster && !cellPredicates) {
+        throw new Error("Cell positions require a raster mark.");
+    }
     const input = raster ? projection.position : projection.input;
+    const positionEdge = raster
+        ? (projection.edge ?? (cellPredicates.point ? "start" : undefined))
+        : undefined;
     const secondary = raster
-        ? projection.edge
+        ? positionEdge
             ? undefined
             : input + "2"
         : projection.secondaryInput;
@@ -90,7 +104,12 @@ function resolveProjection(selectionName, projection, getAnalysis) {
         );
     }
 
-    const analysis = getAnalysis(input);
+    const analysis = getAnalysis(input, raster);
+    if (cellPredicates && !raster && analysis.scalarType !== "f32") {
+        throw new Error(
+            "Raster field interval projections require a Float32Array."
+        );
+    }
     const packed =
         analysis.inputComponents === 2 && analysis.scalarType === "u32";
     if (analysis.inputComponents !== 1 && !packed) {
@@ -99,7 +118,7 @@ function resolveProjection(selectionName, projection, getAnalysis) {
         );
     }
     if (secondary !== undefined) {
-        const end = getAnalysis(secondary);
+        const end = getAnalysis(secondary, raster);
         if (
             end.inputComponents !== analysis.inputComponents ||
             (!raster && end.scalarType !== analysis.scalarType)
@@ -111,6 +130,7 @@ function resolveProjection(selectionName, projection, getAnalysis) {
     }
     if (
         projection.hitTest !== undefined &&
+        !(raster && cellPredicates.point && !projection.edge) &&
         (!secondary ||
             !["intersects", "encloses", "endpoints"].includes(
                 projection.hitTest
@@ -122,6 +142,7 @@ function resolveProjection(selectionName, projection, getAnalysis) {
     }
     return {
         ...projection,
+        ...(raster && { positionEdge }),
         hitTest: projection.hitTest ?? "intersects",
         scalarType: raster && !packed ? "f32" : analysis.scalarType,
         inputComponents: packed ? 2 : 1,
@@ -231,19 +252,20 @@ function addSelectionReference(defs, reference) {
 /**
  * @param {import("../../../index.d.ts").VisibilityPredicate | undefined} node
  * @param {Map<string, SelectionDef>} defs
- * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
+ * @param {GetAnalysis} getAnalysis
+ * @param {CellPredicateInputs | undefined} cellPredicates
  * @returns {void}
  */
-function collectSelections(node, defs, getAnalysis) {
+function collectSelections(node, defs, getAnalysis, cellPredicates) {
     if (!node) {
         return;
     }
     if ("all" in node || "any" in node) {
         for (const child of "all" in node ? node.all : node.any) {
-            collectSelections(child, defs, getAnalysis);
+            collectSelections(child, defs, getAnalysis, cellPredicates);
         }
     } else if ("not" in node) {
-        collectSelections(node.not, defs, getAnalysis);
+        collectSelections(node.not, defs, getAnalysis, cellPredicates);
     } else if ("selectionActive" in node) {
         addSelectionReference(defs, node.selectionActive);
     } else if ("selection" in node) {
@@ -279,7 +301,8 @@ function collectSelections(node, defs, getAnalysis) {
             const resolved = resolveProjection(
                 node.selection,
                 projection,
-                getAnalysis
+                getAnalysis,
+                cellPredicates
             );
             if (!def.components?.includes(resolved.component)) {
                 def.components?.push(resolved.component);
@@ -312,14 +335,25 @@ function collectSelections(node, defs, getAnalysis) {
  * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} analysisByChannel
  * @param {import("../../../index.d.ts").VisibilityPredicate | undefined} visibleWhen
  * @param {import("../../../index.d.ts").MarkOrder | undefined} order
+ * @param {CellPredicateInputs | undefined} cellPredicates
  * @returns {Map<string, SelectionDef>}
  */
-function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
+function collectSelectionDefs(
+    channels,
+    analysisByChannel,
+    visibleWhen,
+    order,
+    cellPredicates
+) {
     /** @type {Map<string, SelectionDef>} */
     const defs = new Map();
-    /** @param {string} name */
-    const getAnalysis = (name) => {
-        const analysis = analysisByChannel.get(name);
+    /** @type {GetAnalysis} */
+    const getAnalysis = (name, position) => {
+        const input =
+            cellPredicates && !position
+                ? cellPredicates.fields.get(name)?.name
+                : name;
+        const analysis = analysisByChannel.get(input);
         if (!analysis) {
             throw new Error(`Selection references unknown input "${name}".`);
         }
@@ -328,11 +362,16 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
 
     for (const channel of Object.values(channels)) {
         for (const condition of channel.conditions ?? []) {
-            collectSelections(condition.when, defs, getAnalysis);
+            collectSelections(
+                condition.when,
+                defs,
+                getAnalysis,
+                cellPredicates
+            );
         }
     }
-    collectSelections(visibleWhen, defs, getAnalysis);
-    collectSelections(order?.when, defs, getAnalysis);
+    collectSelections(visibleWhen, defs, getAnalysis, cellPredicates);
+    collectSelections(order?.when, defs, getAnalysis, cellPredicates);
 
     for (const def of defs.values()) {
         if (
@@ -380,21 +419,6 @@ function predicateReferences(node, name) {
     return node.selection === name;
 }
 
-const floatBits = new DataView(new ArrayBuffer(4));
-
-/**
- * Rounding a threshold up preserves both low <= cell and cell < high
- * for float32 cells, even when the brush bounds fall between float32 values.
- * @param {number} threshold
- */
-function ceilFloat32(threshold) {
-    const rounded = Math.fround(threshold);
-    if (!(rounded < threshold)) return rounded;
-    floatBits.setFloat32(0, rounded);
-    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
-    return floatBits.getFloat32(0);
-}
-
 /**
  * Manages GPU resources for selection predicates declared in channel configs.
  */
@@ -423,7 +447,7 @@ export class SelectionResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
-     * @param {boolean} [params.cellPredicates]
+     * @param {CellPredicateInputs} [params.cellPredicates]
      * @param {import("../../../index.d.ts").MarkOrder} [params.order]
      * @param {string} [params.label]
      * @param {(name: string, value: UniformValue) => void} params.setUniformValue
@@ -433,12 +457,12 @@ export class SelectionResourceManager {
         channels,
         analysisByChannel,
         visibleWhen,
-        cellPredicates = false,
+        cellPredicates,
         order,
         label = "mark",
         setUniformValue,
     }) {
-        this.cellPredicates = cellPredicates;
+        this.cellPredicates = !!cellPredicates;
         this.#device = device;
         this.#label = label;
         this.#setUniformValue = setUniformValue;
@@ -447,18 +471,9 @@ export class SelectionResourceManager {
             channels,
             analysisByChannel,
             visibleWhen,
-            order
+            order,
+            cellPredicates
         );
-        for (const def of this.#selectionDefs.values()) {
-            if (def.type !== "interval") continue;
-            if (cellPredicates) {
-                def.preciseFloat = true;
-            } else if (
-                def.projections.some((projection) => "position" in projection)
-            ) {
-                throw new Error("Cell positions require a raster mark.");
-            }
-        }
         this.#orderSelectionActive = new Map(
             Array.from(this.#selectionDefs.values())
                 .filter(
@@ -516,11 +531,7 @@ export class SelectionResourceManager {
                             name: intervalSelectionBoundsName(def.name, index),
                             type: representation.scalarType,
                             components:
-                                representation.inputComponents === 2 ||
-                                (def.preciseFloat &&
-                                    representation.scalarType === "f32")
-                                    ? 4
-                                    : 2,
+                                representation.inputComponents === 2 ? 4 : 2,
                         });
                     }
                 }
@@ -622,16 +633,12 @@ export class SelectionResourceManager {
                 }
                 const active = interval !== undefined && interval !== null;
                 const representation = def.representations?.get(component);
-                const precise =
-                    def.preciseFloat && representation?.scalarType === "f32";
                 const bounds = representation
                     ? active
                         ? representation.inputComponents === 2
                             ? packHighPrecisionU32Array(interval)
-                            : precise
-                              ? packFloatRange(interval)
-                              : interval
-                        : representation.inputComponents === 2 || precise
+                            : interval
+                        : representation.inputComponents === 2
                           ? INACTIVE_PACKED_BOUNDS
                           : INACTIVE_INTERVAL_BOUNDS
                     : undefined;
@@ -703,15 +710,4 @@ export class SelectionResourceManager {
 
         return false;
     }
-}
-
-/** @param {readonly [number, number]} interval */
-function packFloatRange(interval) {
-    const lo = Math.min(...interval);
-    const hi = Math.max(...interval);
-    const lower = ceilFloat32(lo);
-    // Keep both directed roundings so strict and inclusive edge tests agree.
-    return lo === hi
-        ? [lower, lower, lower, lower]
-        : [lower, -ceilFloat32(-lo), ceilFloat32(hi), -ceilFloat32(-hi)];
 }

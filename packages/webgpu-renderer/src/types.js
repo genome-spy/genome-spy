@@ -5,6 +5,16 @@
  * @typedef {import("./index.d.ts").ScalarType} ScalarType
  */
 
+// Internal shader source, set only by mark programs.
+export const fragmentInput = Symbol();
+
+/** @typedef {{type: ScalarType, [fragmentInput]: string}} FragmentInput */
+
+/** @param {object} config @returns {string | undefined} */
+export function getFragmentInput(config) {
+    return Reflect.get(config, fragmentInput);
+}
+
 /**
  * @param {ChannelConfigInput} config
  * @returns {config is SeriesChannelConfigInput}

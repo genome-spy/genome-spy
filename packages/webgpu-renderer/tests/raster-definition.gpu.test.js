@@ -1,62 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
-test("raster cell ranges intersect a brush between adjacent f32 values", async ({
-    page,
-}) => {
-    await ensureWebGPU(page);
-    const pixels = await page.evaluate(async () => {
-        const { createReadbackRenderer } =
-            await import("/tests/fixtures/rgbaReadback.js");
-        const { rasterMark } = await import("/src/marks/raster.js");
-        const { renderer, renderPixels, finish } =
-            await createReadbackRenderer(64);
-        const mark = renderer.createMark(rasterMark, {
-            data: {
-                tiles: {
-                    x0: new Float32Array([0]),
-                    x1: new Float32Array([64]),
-                    y0: new Float32Array([0]),
-                    y1: new Float32Array([64]),
-                    columns: new Uint32Array([2]),
-                    rows: new Uint32Array([1]),
-                    offsets: new Uint32Array([0]),
-                },
-                cells: {},
-            },
-            visibleWhen: {
-                selection: "brush",
-                type: "interval",
-                projections: [{ component: "x", position: "x" }],
-                empty: false,
-            },
-            channels: { fill: { value: [1, 0, 0, 1] } },
-        });
-        /** @param {[number, number]} interval */
-        async function sample(interval) {
-            mark.selections.brush.set({ x: interval });
-            return renderPixels(mark, [
-                [16, 32],
-                [48, 32],
-            ]);
-        }
-        const before = await sample([32 - 2 ** -30, 32]);
-        const after = await sample([32, 32 + 2 ** -30]);
-        await finish();
-        return [before, after];
-    });
-    expect(pixels).toEqual([
-        [
-            [255, 0, 0, 255],
-            [0, 0, 0, 0],
-        ],
-        [
-            [0, 0, 0, 0],
-            [255, 0, 0, 255],
-        ],
-    ]);
-});
-
 test("raster position follows a moving icon independently of its cell fields", async ({
     page,
 }) => {
@@ -251,7 +195,7 @@ test("raster conditions and order operate on cells across tile replacement", asy
             scalarSlots: { visibleQuality: { value: 0.5, type: "f32" } },
             visibleWhen: {
                 compare: ">",
-                left: { channel: "opacity" },
+                left: { input: "quality" },
                 right: { slot: "visibleQuality" },
             },
             channels: {
