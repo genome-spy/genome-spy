@@ -14,6 +14,15 @@ import {
 
 afterEach(() => vi.unstubAllGlobals());
 
+const smallTileset = {
+    min_pos: [0, 0],
+    max_pos: [8, 8],
+    max_width: 8,
+    max_zoom: 2,
+    bins_per_dimension: 2,
+    chromsizes: [["chr1", 8]],
+};
+
 test("triangle windows include an offscreen endpoint and key the projected tile set", () => {
     /** @type {import("./hiGlassTiles.js").HiGlassMetadata} */
     const metadata = {
@@ -58,8 +67,9 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
             getAssembly: () => ({ contigs: [{ name: "chr1", size: 8 }] }),
         };
         // Supply the view graph used by the embed API's lazy-data wait.
+        const context = createBroadcastingTestViewContext();
         const view = Object.assign(Object.create(UnitView.prototype), {
-            context: createBroadcastingTestViewContext(),
+            context,
             getBaseUrl: () => "",
             getScaleResolution: (/** @type {string} */ channel) =>
                 projection && channel === "y" ? undefined : scale,
@@ -103,14 +113,7 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
                 expect(id).toBe("test");
                 return Promise.resolve(
                     Response.json({
-                        test: {
-                            min_pos: [0, 0],
-                            max_pos: [8, 8],
-                            max_width: 8,
-                            max_zoom: 2,
-                            bins_per_dimension: 2,
-                            chromsizes: [["chr1", 8]],
-                        },
+                        test: smallTileset,
                     })
                 );
             }
@@ -123,8 +126,23 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
         try {
             await source.load();
             await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-            domain = [0, 2];
-            source.ensureViewportData();
+            vi.useFakeTimers();
+            try {
+                // Zoom frames arrive in separate turns and can change the tile level.
+                for (const end of [6, 4, 3]) {
+                    domain = [0, end];
+                    source.ensureViewportData();
+                    await vi.advanceTimersByTimeAsync(16);
+                }
+                expect(fetch).toHaveBeenCalledTimes(2);
+                expect(fetch.mock.calls[1][1].signal.aborted).toBe(false);
+
+                domain = [0, 2];
+                source.ensureViewportData();
+                await vi.runOnlyPendingTimersAsync();
+            } finally {
+                vi.useRealTimers();
+            }
             await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
             expect(fetch.mock.calls[1][1].signal.aborted).toBe(true);
             const ready = vi.fn();
@@ -166,8 +184,108 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
 
             expect(collector.dataRevision).toBe(revision);
             expect(source.isDataReadyForDomain({})).toBe(true);
+
+            vi.useFakeTimers();
+            /** @type {Set<(timestamp: number) => void>} */
+            const frameCallbacks = new Set();
+            const requestFrame = vi
+                .spyOn(context.animator, "requestTransition")
+                .mockImplementation((callback) => {
+                    frameCallbacks.add(callback);
+                });
+            const runFrame = () => {
+                const callbacks = [...frameCallbacks];
+                frameCallbacks.clear();
+                for (const callback of callbacks) callback(0);
+            };
+            try {
+                domain = [0, 4];
+                source.ensureViewportData();
+                runFrame();
+                await vi.advanceTimersByTimeAsync(100);
+                expect(fetch).toHaveBeenCalledTimes(4);
+
+                domain = [0, 2];
+                source.ensureViewportData();
+                source.ensureViewportData();
+                expect(collector.dataRevision).toBe(revision);
+                runFrame();
+                expect(source.isDataReadyForDomain({})).toBe(true);
+                expect(
+                    Array.from(collector.getData())[0].dimensions.column.step
+                ).toBe(1);
+                await vi.runOnlyPendingTimersAsync();
+                expect(fetch).toHaveBeenCalledTimes(4);
+            } finally {
+                requestFrame.mockRestore();
+                vi.useRealTimers();
+            }
         } finally {
             source.dispose();
         }
     }
 );
+
+test("debounces domain changes within one tile window and honors the cache budget", async () => {
+    let domain = [0, 8];
+    const view = Object.assign(Object.create(UnitView.prototype), {
+        context: createBroadcastingTestViewContext(),
+        getBaseUrl: () => "",
+        getLayoutAncestors: () => [view],
+        getPathString: () => "test",
+        isVisible: () => true,
+        getScaleResolution: () => ({
+            type: "locus",
+            getDomain: () => domain,
+            getAxisLength: () => 2,
+            getAssembly: () => ({ contigs: [{ name: "chr1", size: 8 }] }),
+        }),
+    });
+    const dense = new Uint8Array(16).toBase64();
+    const fetch = vi.fn(async (/** @type {URL} */ url) => {
+        const id = url.searchParams.get("d");
+        return Response.json(
+            id === "test"
+                ? { test: smallTileset }
+                : { [id]: { dense, dtype: "float32" } }
+        );
+    });
+    vi.stubGlobal("fetch", fetch);
+    vi.useFakeTimers();
+    const source = new HiGlassSource(
+        {
+            type: "higlass",
+            url: "https://tiles.example/",
+            tileset: "test",
+            cacheSizeMiB: 16 / 1024 ** 2,
+            debounce: 100,
+        },
+        view
+    );
+    try {
+        await source.load();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(source.isViewportReady()).toBe(true);
+
+        domain = [0, 3.5];
+        source.ensureViewportData();
+        await vi.advanceTimersByTimeAsync(60);
+        domain = [0, 3.75];
+        source.ensureViewportData();
+        await vi.advanceTimersByTimeAsync(99);
+        expect(fetch).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(fetch.mock.calls[2][0].searchParams.get("d")).toBe("test.1.0.0");
+        expect(source.isViewportReady()).toBe(true);
+
+        domain = [0, 8];
+        source.ensureViewportData();
+        expect(source.isViewportReady()).toBe(false);
+        await vi.advanceTimersByTimeAsync(100);
+        expect(fetch.mock.calls[3][0].searchParams.get("d")).toBe("test.0.0.0");
+        expect(source.isViewportReady()).toBe(true);
+    } finally {
+        source.dispose();
+        vi.useRealTimers();
+    }
+});

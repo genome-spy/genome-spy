@@ -54,6 +54,10 @@ tiles, and keep the displayed tile origins. Check diagonal handling against
 actual data. Skip missing samples when reducing color extents and preserve zero
 values.
 
+The source uses the shared `debounce` option for missing-tile requests. Viewport
+changes restart the delay, which defaults to 200 ms. Cached windows publish on
+the next frame. `cacheSizeMiB` bounds the per-source cache of decoded tiles.
+
 ## Milestones
 
 1. Implement the renderer mark and integrate prepared tiles through the Core

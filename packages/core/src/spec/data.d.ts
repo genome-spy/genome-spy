@@ -355,8 +355,12 @@ export type LazyDataParams =
     | Gff3Data
     | VcfData;
 
-/** Fetches a HiGlass contact matrix as regular two-dimensional raster tiles. */
-export interface HiGlassData {
+/**
+ * Fetches a HiGlass contact matrix as regular two-dimensional raster tiles.
+ * During navigation, `debounce` delays requests for missing tiles until the
+ * viewport settles. Cached windows appear on the next frame.
+ */
+export interface HiGlassData extends Pick<DebouncedData, "debounce"> {
     type: "higlass";
 
     /** Base URL of the HiGlass API, for example `https://higlass.io/api/v1/`. */
@@ -371,6 +375,15 @@ export interface HiGlassData {
      * track. Omit this option for a matrix with two locus axes.
      */
     projection?: "triangle";
+
+    /**
+     * Maximum memory for decoded tiles cached by this source, in MiB.
+     * Set to zero to disable retaining tiles for later requests.
+     *
+     * __Default value:__ `64`
+     * @minimum 0
+     */
+    cacheSizeMiB?: number;
 }
 
 /** Generates group endpoints from resolved positional band/point/index/locus scales. */

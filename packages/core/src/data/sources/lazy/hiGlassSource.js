@@ -1,4 +1,9 @@
 import DataSource from "../dataSource.js";
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../paramRuntime/paramUtils.js";
+import { debounce } from "../../../utils/debounce.js";
 import { resolveUrl } from "../../../utils/url.js";
 import {
     decodeTile,
@@ -7,8 +12,6 @@ import {
     transposeTile,
 } from "./hiGlassTiles.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
-
-const CACHE_SIZE = 96;
 
 /** @typedef {import("./hiGlassTiles.js").HiGlassMetadata} HiGlassMetadata */
 /** @typedef {import("./singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest */
@@ -20,6 +23,9 @@ export default class HiGlassSource extends DataSource {
     /** @type {Map<string, Float32Array>} */
     #cache = new Map();
 
+    /** @type {number} */
+    #cacheBudgetBytes;
+
     #metadataRequest = new AbortController();
 
     /** @type {{key: string, controller: AbortController} | undefined} */
@@ -29,7 +35,14 @@ export default class HiGlassSource extends DataSource {
     #publishedKey;
 
     #listening = false;
-    #scheduled = false;
+    #refreshOnFrame = () => {
+        void this.#refresh(true);
+    };
+    #scheduleFetch = debounce(
+        () => this.#refresh(),
+        () => withoutExprRef(this.params.debounce),
+        false
+    );
 
     /**
      * @param {import("../../../spec/data.js").HiGlassData} params
@@ -37,7 +50,19 @@ export default class HiGlassSource extends DataSource {
      */
     constructor(params, view) {
         super(view);
-        this.params = params;
+        this.params = activateExprRefProps(this.paramRuntime, {
+            ...params,
+            debounce: params.debounce ?? 200,
+        });
+        this.#cacheBudgetBytes = (params.cacheSizeMiB ?? 64) * 1024 ** 2;
+        if (
+            !Number.isFinite(this.#cacheBudgetBytes) ||
+            this.#cacheBudgetBytes < 0
+        ) {
+            throw new Error(
+                "HiGlass cacheSizeMiB must be a finite nonnegative number."
+            );
+        }
         this.baseUrl = new URL(resolveUrl(view.getBaseUrl(), params.url));
         if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
         this.scales = [view.getScaleResolution("x")];
@@ -47,6 +72,8 @@ export default class HiGlassSource extends DataSource {
             throw new Error("HiGlass needs a locus scale on each matrix axis.");
         }
         this.registerDisposer(() => {
+            this.view.context.animator.cancelTransition(this.#refreshOnFrame);
+            this.#scheduleFetch.cancel();
             this.#metadataRequest.abort();
             this.#pending?.controller.abort();
             this.#cache.clear();
@@ -94,7 +121,7 @@ export default class HiGlassSource extends DataSource {
             const metadata = response[this.params.tileset];
             this.#validateMetadata(metadata);
             this.#metadata = metadata;
-            this.ensureViewportData();
+            void this.#refresh();
         } catch (error) {
             if (!signal.aborted) this.setLoadingStatus("error", error.message);
         }
@@ -185,30 +212,48 @@ export default class HiGlassSource extends DataSource {
     }
 
     ensureViewportData() {
-        if (this.#scheduled || this.disposed) return;
-        this.#scheduled = true;
-        queueMicrotask(() => {
-            this.#scheduled = false;
-            if (!this.disposed && this.view.isVisible()) void this.#refresh();
-        });
+        if (!this.#metadata || this.disposed) return;
+        this.#scheduleFetch.cancel();
+        this.view.context.animator.requestTransition(this.#refreshOnFrame);
     }
 
-    async #refresh() {
+    async #refresh(deferFetch = false) {
+        if (this.disposed || !this.view.isVisible()) return;
         const window = this.#window();
         if (!window || this.#pending?.key === window.key) return;
-        this.#pending?.controller.abort();
-        this.#pending = undefined;
         if (this.#publishedKey === window.key) {
+            this.#pending?.controller.abort();
+            this.#pending = undefined;
             this.setLoadingStatus("complete");
             return;
         }
 
-        const controller = new AbortController();
-        this.#pending = { key: window.key, controller };
-        this.setLoadingStatus("loading");
+        const { positions, missing } = this.#planTiles(window);
+        if (deferFetch && missing.size) {
+            void this.#scheduleFetch();
+            return;
+        }
+
+        this.#pending?.controller.abort();
+        const controller = missing.size ? new AbortController() : undefined;
+        this.#pending = controller
+            ? { key: window.key, controller }
+            : undefined;
         try {
-            const tiles = await this.#fetchTiles(window, controller.signal);
-            controller.signal.throwIfAborted();
+            /** @type {Record<string, {dense: string, dtype: string}>} */
+            let response = {};
+            if (controller) {
+                this.setLoadingStatus("loading");
+                response = await this.#fetch(
+                    "tiles/",
+                    missing,
+                    controller.signal
+                );
+                controller.signal.throwIfAborted();
+                // Navigation can change the viewport before the next fetch starts.
+                if (this.#window()?.key !== window.key) return;
+            }
+            const tiles = this.#readTiles(window.width, positions, response);
             this.#publishedKey = undefined;
             this.reset();
             this.beginBatch({ type: "file" });
@@ -217,46 +262,52 @@ export default class HiGlassSource extends DataSource {
             this.complete();
             this.setLoadingStatus("complete");
         } catch (error) {
-            if (controller.signal.aborted) return;
+            if (
+                controller?.signal.aborted ||
+                this.#window()?.key !== window.key
+            )
+                return;
             if (this.#publishedKey === window.key)
                 this.#publishedKey = undefined;
             this.setLoadingStatus("error", error.message);
         } finally {
-            if (this.#pending?.controller === controller)
+            if (controller && this.#pending?.controller === controller)
                 this.#pending = undefined;
         }
     }
 
-    /**
-     * @param {ReturnType<typeof getTileWindow>} window
-     * @param {AbortSignal} signal
-     * @returns {Promise<import("../../rasterTile.js").RasterTile[]>}
-     */
-    async #fetchTiles({ level, width, rows }, signal) {
-        const { bins_per_dimension: bins, mirror_tiles: mirrorTiles } =
-            this.#metadata;
-        const tiles = [];
+    /** @param {ReturnType<typeof getTileWindow>} window */
+    #planTiles({ level, rows }) {
+        const mirror = this.#metadata.mirror_tiles !== false;
+        const positions = [];
         const missing = new Set();
         for (const [y, start, end] of rows) {
             for (let x = start; x < end; x++) {
-                const mirrored = mirrorTiles !== false && x > y;
+                const mirrored = mirror && x > y;
                 const id = [
                     this.params.tileset,
                     level,
                     mirrored ? y : x,
                     mirrored ? x : y,
                 ].join(".");
-                tiles.push({ x, y, id, mirrored });
+                positions.push({ x, y, id, mirrored });
                 if (!this.#cache.has(id)) missing.add(id);
             }
         }
-        const response = missing.size
-            ? await this.#fetch("tiles/", missing, signal)
-            : {};
-        signal.throwIfAborted();
+        return { positions, missing };
+    }
 
+    /**
+     * @param {number} width
+     * @param {{x: number, y: number, id: string, mirrored: boolean}[]} positions
+     * @param {Record<string, {dense: string, dtype: string}>} response
+     * @returns {import("../../rasterTile.js").RasterTile[]}
+     */
+    #readTiles(width, positions, response) {
+        const { bins_per_dimension: bins, mirror_tiles: mirrorTiles } =
+            this.#metadata;
         const step = width / bins;
-        const result = tiles.map(({ x, y, id, mirrored }) => {
+        const result = positions.map(({ x, y, id, mirrored }) => {
             let values = this.#cache.get(id);
             if (values) {
                 this.#cache.delete(id);
@@ -278,7 +329,8 @@ export default class HiGlassSource extends DataSource {
                 },
             };
         });
-        while (this.#cache.size > CACHE_SIZE)
+        const tileBytes = bins ** 2 * Float32Array.BYTES_PER_ELEMENT;
+        while (this.#cache.size * tileBytes > this.#cacheBudgetBytes)
             this.#cache.delete(this.#cache.keys().next().value);
         return result;
     }
