@@ -19,7 +19,6 @@ const packageLabels = new Map([
     ["@genome-spy/inspector", "Inspector"],
     ["@genome-spy/playground", "Playground"],
     ["@genome-spy/react-component", "React"],
-    ["@genome-spy/ui-components", "UI Components"],
 ]);
 
 export const publicPackages = [
@@ -27,7 +26,6 @@ export const publicPackages = [
     "@genome-spy/core",
     "@genome-spy/inspector",
     "@genome-spy/react-component",
-    "@genome-spy/ui-components",
 ];
 
 /** @param {string} filename */
@@ -76,12 +74,12 @@ export async function readReleasePlan(cwd) {
         )
     ) {
         throw new Error(
-            "Only App, Core, Inspector, React, and UI Components may be published."
+            "Only App, Core, Inspector, and React may be published."
         );
     }
     if (
         config.fixed.length !== 1 ||
-        names.size !== 9 ||
+        names.size !== 8 ||
         names.has("@genome-spy/webgpu-renderer") ||
         config.ignore.length !== 1 ||
         !config.ignore.includes("@genome-spy/webgpu-renderer") ||
@@ -91,7 +89,7 @@ export async function readReleasePlan(cwd) {
         config.privatePackages.tag
     ) {
         throw new Error(
-            "Preserve the nine-package group and private-package policy."
+            "Preserve the eight-package group and private-package policy."
         );
     }
     if (versions.size !== 1 || !versions.has(await releaseVersion(cwd))) {

@@ -203,3 +203,12 @@ The independent API review added typed command item variants, consistent
 disabled and submenu error behavior, and focus preservation for keyed rows.
 Checks and icons share a leading slot, and the command row inset keeps the focus
 highlight away from the border.
+
+## Consume the standalone package
+
+The component source, documentation, and publishing now live in
+[genome-spy/ui-components](https://github.com/genome-spy/ui-components). App
+uses the npm release, and Playground pins a pkg.pr.new preview. Both apps
+resolve imports and types through the package's public exports. The standalone
+Storybook owns the shared examples, and App's Storybook covers App-specific
+stories.

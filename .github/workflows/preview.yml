@@ -49,8 +49,7 @@ jobs:
                     ./packages/core \
                     ./packages/app \
                     ./packages/inspector \
-                    ./packages/react-component \
-                    ./packages/ui-components
+                    ./packages/react-component
 
             - name: Show installation commands
               env:

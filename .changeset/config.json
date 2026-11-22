@@ -14,8 +14,7 @@
       "@genome-spy/embed-examples",
       "@genome-spy/inspector",
       "@genome-spy/playground",
-      "@genome-spy/react-component",
-      "@genome-spy/ui-components"
+      "@genome-spy/react-component"
     ]
   ],
   "linked": [],

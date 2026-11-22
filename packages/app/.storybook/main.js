@@ -1,9 +1,6 @@
 /** @type {import('@storybook/web-components-vite').StorybookConfig} */
 const config = {
-    stories: [
-        "../../ui-components/stories/**/*.stories.js",
-        "../src/sampleView/**/*.stories.js",
-    ],
+    stories: ["../src/sampleView/**/*.stories.js"],
     addons: ["@storybook/addon-links", "@storybook/addon-docs"],
     viteFinal(config) {
         // This verifier expects the complete production App library entry.

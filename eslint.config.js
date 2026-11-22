@@ -14,10 +14,7 @@ export default defineConfig(
 
     {
         name: "genomespy/files",
-        files: [
-            "packages/*/src/**/*.{js,mjs,cjs,jsx,ts,tsx,d.ts}",
-            "packages/ui-components/stories/**/*.js",
-        ],
+        files: ["packages/*/src/**/*.{js,mjs,cjs,jsx,ts,tsx,d.ts}"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "module",

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import process from "node:process";
 import { readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -72,16 +73,17 @@ describe("bundled package split", () => {
     });
 
     it("loads the packaged app and agent bundles together", async () => {
-        const appModule = await import(
-            pathToFileURL(resolve(repoRoot, "packages/app/dist/app.es.js")).href
-        );
+        const appEntry = resolve(repoRoot, "packages/app/dist/app.es.js");
+        const appModule = await import(pathToFileURL(appEntry).href);
         const dialogModule = await import(
             pathToFileURL(resolve(repoRoot, "packages/app/dist/dialog.es.js"))
                 .href
         );
         const uiModule = await import(
             pathToFileURL(
-                resolve(repoRoot, "packages/ui-components/src/dialog.js")
+                createRequire(appEntry).resolve(
+                    "@genome-spy/ui-components/dialog"
+                )
             ).href
         );
         const appAgentModule = await import(

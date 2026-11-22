@@ -38,8 +38,11 @@ GenomeSpy is a fully client-side visualization system with three main layers:
 - `packages/embed-examples`: standalone embedding examples
 - `packages/react-component`: React integration
 - `packages/playground`: interactive specification editor
-- `packages/ui-components`: shared, themeable web components for embedders
 - `docs`: user-facing documentation site sources
+
+App and Playground consume shared, themeable controls from the standalone
+[`@genome-spy/ui-components` package](https://github.com/genome-spy/ui-components).
+Each host owns its application-specific UI and theme.
 
 ## Product and interaction context
 

@@ -3,41 +3,32 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { html } from "lit";
 
-const { computePosition } = vi.hoisted(() => ({
-    computePosition: vi.fn(() => Promise.resolve({ x: 0, y: 0 })),
-}));
-
-vi.mock("@floating-ui/dom", () => ({
-    computePosition,
-    autoUpdate: (_opener, _menu, update) => {
-        update();
-        return () => {};
-    },
-    shift: () => undefined,
-    flip: () => undefined,
-    offset: () => undefined,
-}));
-
+import {
+    FREEZE_INTERACTION_CLASS_NAME,
+    SUPPRESS_TOOLTIP_CLASS_NAME,
+} from "@genome-spy/core/utils/ui/tooltip.js";
 import { dropdownMenu } from "./contextMenu.js";
 
 describe("dropdownMenu", () => {
     afterEach(() => {
         document.querySelector(".gs-context-menu-backdrop")?.click();
         document.body.replaceChildren();
-        vi.clearAllMocks();
     });
 
-    it("positions fixed menus in viewport coordinates", () => {
+    it("suppresses tooltips and freezes App interactions while open", () => {
         const opener = document.createElement("button");
         document.body.append(opener);
 
         dropdownMenu({ items: [{ label: "Menu item" }] }, opener);
 
-        const menu = computePosition.mock.calls[0][1];
-        expect(menu.style.top).toBe("0px");
-        expect(computePosition.mock.calls[0][2]).toMatchObject({
-            strategy: "fixed",
-        });
+        const { classList } = document.body;
+        expect(classList.contains(SUPPRESS_TOOLTIP_CLASS_NAME)).toBe(true);
+        expect(classList.contains(FREEZE_INTERACTION_CLASS_NAME)).toBe(true);
+
+        document.querySelector(".gs-context-menu-backdrop").click();
+
+        expect(classList.contains(SUPPRESS_TOOLTIP_CLASS_NAME)).toBe(false);
+        expect(classList.contains(FREEZE_INTERACTION_CLASS_NAME)).toBe(false);
     });
 
     it("exposes command semantics and invokes focused items", () => {
