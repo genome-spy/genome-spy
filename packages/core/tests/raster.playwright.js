@@ -187,12 +187,15 @@ async function checkRasterLens(playwright, baseURL, renderer) {
                         );
                     const before = await read();
                     const pick = async () => {
-                        const result = await api.views
-                            .root()
-                            .marks.pick({ x: 34, y: 34 });
-                        return (
-                            result.status === "hit" && result.hit.datum.sample
-                        );
+                        const marks = api.views.root().marks;
+                        const point = { x: 34, y: 34 };
+                        let result = await marks.pick(point);
+                        // A pending redraw can invalidate the GPU readback.
+                        if (result.status === "invalidated")
+                            result = await marks.pick(point);
+                        return result.status === "hit"
+                            ? result.hit.datum.sample
+                            : result.status;
                     };
                     const beforePick = await pick();
                     runtime.setValue("brush", {

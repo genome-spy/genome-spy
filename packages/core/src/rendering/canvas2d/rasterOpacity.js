@@ -1,5 +1,5 @@
 import { range } from "d3-array";
-import { findRasterEdge } from "../../data/rasterTile.js";
+import { getRasterCellRange } from "../../data/rasterTile.js";
 import {
     compileSelectionPredicateTree,
     isSelectionPredicateActive,
@@ -59,8 +59,8 @@ function createOpacitySpans(
                 ? () => !tree
                 : compileSelectionPredicateTree(tree, lookup)
         );
-        /** @type {{ x: number[], y: number[] }} */
-        const thresholds = { x: [], y: [] };
+        /** @type {{ x: number[][], y: number[][] }} */
+        const intervals = { x: [], y: [] };
         let varyingColor = false;
         for (const { param, projections, type } of memberships) {
             const selection = lookup(param);
@@ -74,8 +74,8 @@ function createOpacitySpans(
             for (const { component, input } of projections) {
                 if (input === "color") varyingColor = true;
                 else if (interval)
-                    thresholds[input[0] === "x" ? "x" : "y"].push(
-                        ...interval.intervals[component]
+                    intervals[input[0] === "x" ? "x" : "y"].push(
+                        interval.intervals[component]
                     );
             }
         }
@@ -89,23 +89,15 @@ function createOpacitySpans(
                 color: null,
             };
             if (bandAxis) cell[bandAxis] = readBand(datum);
-            const rows = gridCuts(
-                y.count,
-                bandAxis === "y" ? undefined : y,
-                varyingColor ? undefined : thresholds.y
-            );
-            const columns = gridCuts(
-                x.count,
-                bandAxis === "x" ? undefined : x,
-                varyingColor ? undefined : thresholds.x
-            );
+            const rows = gridCuts(y, varyingColor ? undefined : intervals.y);
+            const columns = gridCuts(x, varyingColor ? undefined : intervals.x);
             const alpha = () => {
                 for (let branch = 0; branch < predicates.length; branch++) {
                     if (predicates[branch](cell)) return opacity[branch];
                 }
             };
-            const projectX = bandAxis !== "x" && thresholds.x.length > 0;
-            const projectY = bandAxis !== "y" && thresholds.y.length > 0;
+            const projectX = intervals.x.length > 0;
+            const projectY = intervals.y.length > 0;
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i - 1];
                 const start = row * x.count;
@@ -141,22 +133,18 @@ function createOpacitySpans(
 }
 
 /**
- * Cell tests can change next to a brush boundary. Both bisectors account
- * for strict and inclusive comparisons, including repeated edge values.
- * @param {number} count
- * @param {import("../../data/rasterTile.js").RasterDimension | undefined} dimension
- * @param {number[] | undefined} thresholds Omit when the predicate reads cell values.
+ * Partition the grid wherever a brush can change the opacity.
+ * @param {import("../../data/rasterTile.js").RasterDimension} dimension
+ * @param {number[][] | undefined} intervals Omit when the predicate reads cell values.
  */
-function gridCuts(count, dimension, thresholds) {
-    if (!thresholds) return range(count + 1);
-    if (!dimension || !thresholds.length) return [0, count];
+function gridCuts(dimension, intervals) {
+    const { count } = dimension;
+    if (!intervals) return range(count + 1);
+    if (!intervals.length) return [0, count];
     const cuts = new Set([0, count]);
-    for (const threshold of thresholds) {
-        for (const strict of [false, true]) {
-            const i = findRasterEdge(dimension, threshold, strict);
-            cuts.add(Math.min(count, i));
-            cuts.add(Math.max(0, i - 1));
-        }
+    for (const bounds of intervals) {
+        const [start, end] = getRasterCellRange(dimension, bounds);
+        cuts.add(start).add(end);
     }
     return [...cuts].sort((a, b) => a - b);
 }

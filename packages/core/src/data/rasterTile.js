@@ -139,7 +139,7 @@ export function getVisibleCellRange({ origin, step, count }, constraint) {
  * @param {number} bound
  * @param {boolean} [strict]
  */
-export function findRasterEdge({ origin, step, count }, bound, strict = false) {
+function findRasterEdge({ origin, step, count }, bound, strict = false) {
     let lo = 0;
     let hi = count + 1;
     while (lo < hi) {
@@ -154,18 +154,12 @@ export function findRasterEdge({ origin, step, count }, bound, strict = false) {
 /**
  * @param {RasterDimension} dimension
  * @param {readonly number[]} bounds
- * @param {"start" | "end" | "intersects"} mode
- * @returns {[number, number]} Half-open range of matching cell indices.
+ * @returns {[number, number]} Half-open range of cells overlapping the brush.
  */
-export function getRasterCellRange(dimension, [lo, hi], mode) {
+export function getRasterCellRange(dimension, [lo, hi]) {
     if (!(lo < hi)) return [0, 0];
-    const first = findRasterEdge(dimension, lo, mode === "intersects");
-    const last = findRasterEdge(dimension, hi);
-    const start = Math.min(
-        dimension.count,
-        Math.max(0, first - Number(mode !== "start"))
-    );
-    const end = last - Number(mode === "end");
+    const start = Math.max(0, findRasterEdge(dimension, lo, true) - 1);
+    const end = findRasterEdge(dimension, hi);
     return [start, Math.min(dimension.count, Math.max(start, end))];
 }
 

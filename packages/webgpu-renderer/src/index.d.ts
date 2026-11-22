@@ -36,13 +36,10 @@ type FieldIntervalProjection = Readonly<{
     hitTest?: "intersects" | "encloses" | "endpoints";
 }>;
 
-/** Test a raster cell's unscaled grid bounds. */
+/** Test whether the brush overlaps a raster cell's unscaled grid bounds. */
 type RasterIntervalProjection = Readonly<{
     component: string;
     position: "x" | "y";
-    /** Test one edge as a point instead of testing the cell bounds. */
-    edge?: "start" | "end";
-    hitTest?: FieldIntervalProjection["hitTest"];
 }>;
 
 export type IntervalSelectionProjection =

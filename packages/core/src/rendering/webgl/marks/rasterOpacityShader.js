@@ -36,7 +36,7 @@ export function createRasterOpacityShader(
 ) {
     const plan = mark.getOpacityPlan();
     if (!plan) return;
-    const { conditions, params, bandAxis, readBand } = plan;
+    const { conditions, params, readBand } = plan;
     /** @type {Map<string, Selection | undefined>} */
     const selections = new Map();
     /** @type {Map<string, (datum?: Datum, tile?: TileGeometry) => Uniform>} */
@@ -78,9 +78,7 @@ export function createRasterOpacityShader(
      * @param {Membership["type"]} type
      * @param {Projection} projection
      */
-    function bindProjection(param, type, { component, input, secondaryInput }) {
-        const axis = input[0] === "x" ? "x" : "y";
-        const readAnchor = axis === bandAxis ? readBand : undefined;
+    function bindProjection(param, type, { component, input }) {
         if (type === "categories") {
             if (input !== "color") {
                 return bind(
@@ -91,7 +89,7 @@ export function createRasterOpacityShader(
                             selection?.type === "categories" &&
                             testCategorySelection(
                                 selection,
-                                readAnchor(datum),
+                                readBand(datum),
                                 false
                             )
                         );
@@ -139,22 +137,15 @@ export function createRasterOpacityShader(
             return `(${uniform}.x <= value && value < ${uniform}.y)`;
         }
 
-        const mode = secondaryInput
-            ? "intersects"
-            : input.endsWith("2")
-              ? "end"
-              : "start";
+        const axis = input[0] === "x" ? "x" : "y";
         const uniform = bind(
             "ivec2",
-            (datum, tile) => {
+            (_datum, tile) => {
                 const bounds = readBounds();
                 if (!bounds) return [0, 0];
                 const dimension =
                     axis === "x" ? tile.horizontal : tile.vertical;
-                if (!readAnchor)
-                    return getRasterCellRange(dimension, bounds, mode);
-                const value = Number(readAnchor(datum));
-                return [0, bounds[0] <= value && value < bounds[1] ? 1 : 0];
+                return getRasterCellRange(dimension, bounds);
             },
             true
         );

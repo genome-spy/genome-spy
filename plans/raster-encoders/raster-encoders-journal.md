@@ -187,3 +187,17 @@ cell selection and picking contracts.
 The raster browser suite checks categorical selection, band gaps, and index
 placement for both orientations in WebGL2, Canvas2D, and WebGPU. The tooltip
 test covers row indexing and genomic intervals in a one-column strip.
+
+RasterMark rejects interval predicates targeting the strip's band axis. These
+predicates previously compared raw labels on the CPU and internal category IDs
+on WebGPU. Categorical membership still applies across the strip. Positional
+predicates use the grid dimension for cell overlap.
+
+Core raster position brushes use cell overlap. The mark rejects explicit
+endpoint projections during opacity validation. Canvas2D and WebGL2 share the
+cell range calculation. Standalone WebGPU uses overlap for position projections
+and retains the ordinary hit-test modes for field projections.
+
+The three SVG rasterizers share the export layout setup. Canvas2D and WebGPU use
+one PNG crop helper, with GPU target ownership and readback kept in their
+respective backends.

@@ -95,11 +95,23 @@ test("raster conditions and order operate on cells across tile replacement", asy
             },
         };
         /** @type {import("../src/index.js").SelectionPredicate} */
-        const when = {
+        const signal = {
             selection: "signalRange",
             type: "interval",
             projections: [{ component: "signal", input: "signal" }],
             empty: false,
+        };
+        /** @type {import("../src/index.js").SelectionPredicate} */
+        const when = {
+            all: [
+                signal,
+                {
+                    selection: "region",
+                    type: "interval",
+                    projections: [{ component: "x", position: "x" }],
+                    empty: false,
+                },
+            ],
         };
         /** @type {import("../src/marks/raster.js").RasterConfig} */
         const config = {
@@ -136,6 +148,11 @@ test("raster conditions and order operate on cells across tile replacement", asy
         const idle = await read(ordered);
         for (const mark of [unordered, ordered]) {
             mark.selections.signalRange.set({ signal: [1, 2] });
+            mark.selections.region.set({ x: [32, 33] });
+        }
+        const touching = await read(ordered);
+        for (const mark of [unordered, ordered]) {
+            mark.selections.region.set({ x: [31, 32] });
         }
         const selected = await read(ordered);
         const unpromoted = await read(unordered);
@@ -207,7 +224,7 @@ test("raster conditions and order operate on cells across tile replacement", asy
                     }),
                     conditions: [
                         {
-                            when,
+                            when: signal,
                             channel: {
                                 input: "signal",
                                 scale: thresholdScale({
@@ -230,6 +247,7 @@ test("raster conditions and order operate on cells across tile replacement", asy
         const validation = await finish();
         return {
             idle,
+            touching,
             selected,
             unpromoted,
             replaced,
@@ -243,6 +261,7 @@ test("raster conditions and order operate on cells across tile replacement", asy
     });
     expect(result.validation).toBeUndefined();
     expect(result.idle.draws).toBe(1);
+    expect(result.touching.pixels).toEqual(result.idle.pixels);
     expect(result.unpromoted.draws).toBe(1);
     expect(result.selected.draws).toBe(2);
     expect(result.selected.pixels[0].slice(0, 3)).toEqual([64, 0, 96]);

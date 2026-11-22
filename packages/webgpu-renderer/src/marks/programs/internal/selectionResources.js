@@ -79,22 +79,16 @@ function resolveProjection(
         throw new Error("Cell positions require a raster mark.");
     }
     const input = raster ? projection.position : projection.input;
-    const secondary = raster
-        ? projection.edge
-            ? undefined
-            : input + "2"
-        : projection.secondaryInput;
-    const keys = raster ? ["position", "edge"] : ["input", "secondaryInput"];
+    const secondary = raster ? input + "2" : projection.secondaryInput;
+    const hitTest = raster ? undefined : projection.hitTest;
+    const keys = raster
+        ? ["component", "position"]
+        : ["component", "input", "secondaryInput", "hitTest"];
     if (
         typeof input !== "string" ||
         !input ||
-        Object.keys(projection).some(
-            (key) => !["component", "hitTest", ...keys].includes(key)
-        ) ||
-        (raster &&
-            (!["x", "y"].includes(input) ||
-                (projection.edge !== undefined &&
-                    !["start", "end"].includes(projection.edge))))
+        Object.keys(projection).some((key) => !keys.includes(key)) ||
+        (raster && !["x", "y"].includes(input))
     ) {
         throw new Error(
             `Interval selection "${selectionName}" has an invalid projection.`
@@ -126,11 +120,9 @@ function resolveProjection(
         }
     }
     if (
-        projection.hitTest !== undefined &&
+        hitTest !== undefined &&
         (!secondary ||
-            !["intersects", "encloses", "endpoints"].includes(
-                projection.hitTest
-            ))
+            !["intersects", "encloses", "endpoints"].includes(hitTest))
     ) {
         throw new Error(
             `Interval selection "${selectionName}" has an invalid hit-test mode.`
@@ -138,7 +130,7 @@ function resolveProjection(
     }
     return {
         ...projection,
-        hitTest: projection.hitTest ?? "intersects",
+        hitTest: hitTest ?? "intersects",
         scalarType: raster && !packed ? "f32" : analysis.scalarType,
         inputComponents: packed ? 2 : 1,
     };
@@ -149,20 +141,15 @@ function resolveProjection(
  * @param {IntervalProjection} b
  */
 export function matchesProjection(a, b) {
-    if (
-        a.component !== b.component ||
-        a.hitTest !== (b.hitTest ?? "intersects")
-    )
-        return false;
+    if (a.component !== b.component) return false;
     if ("position" in a) {
-        return (
-            "position" in b && a.position === b.position && a.edge === b.edge
-        );
+        return "position" in b && a.position === b.position;
     }
     return (
         "input" in b &&
         a.input === b.input &&
-        a.secondaryInput === b.secondaryInput
+        a.secondaryInput === b.secondaryInput &&
+        a.hitTest === (b.hitTest ?? "intersects")
     );
 }
 

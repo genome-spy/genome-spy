@@ -185,22 +185,35 @@ export default class RasterMark extends Mark {
             );
             const memberships = conditions
                 .values()
-                .flatMap(({ tree }) =>
-                    tree ? selectionPredicateLeaves(tree) : []
-                )
+                .map(({ tree }) => tree)
+                .filter((tree) => tree !== undefined)
+                .flatMap(selectionPredicateLeaves)
                 .filter((leaf) => "type" in leaf)
                 .toArray();
-            if (
-                memberships.some(
-                    ({ type }) => type === "single" || type === "multi"
-                )
-            ) {
-                throw new ViewError(
-                    "Point selection membership requires individual raster cell identities.",
-                    this.unitView
-                );
-            }
             const { bandAxis } = this.getColorCellBinding();
+            for (const { type, projections } of memberships) {
+                if (type === "single" || type === "multi") {
+                    throw new ViewError(
+                        "Point selection membership requires individual raster cell identities.",
+                        this.unitView
+                    );
+                }
+                if (type !== "interval") continue;
+                for (const { input, secondaryInput } of projections) {
+                    if (input[0] === bandAxis) {
+                        throw new ViewError(
+                            `Raster band axis "${bandAxis}" requires a categorical selection.`,
+                            this.unitView
+                        );
+                    }
+                    if (input !== "color" && !secondaryInput) {
+                        throw new ViewError(
+                            `Raster position brushes use cell overlap. Remove the explicit projection on "${input}".`,
+                            this.unitView
+                        );
+                    }
+                }
+            }
             return {
                 conditions,
                 memberships,

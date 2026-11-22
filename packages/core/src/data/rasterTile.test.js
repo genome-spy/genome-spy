@@ -26,10 +26,6 @@ test.each([
 test("brush ranges honor exact fractional cell edges", () => {
     const grid = { origin: 0.1, step: 0.1, count: 4 };
     const bounds = [0.1 + 0.1, 0.1 + 2 * 0.1];
-    expect(getRasterCellRange(grid, bounds, "intersects")).toEqual([1, 2]);
-    expect(getRasterCellRange(grid, bounds, "start")).toEqual([1, 2]);
-    expect(getRasterCellRange(grid, bounds, "end")).toEqual([0, 1]);
-    expect(
-        getRasterCellRange(grid, [bounds[0], bounds[0]], "intersects")
-    ).toEqual([0, 0]);
+    expect(getRasterCellRange(grid, bounds)).toEqual([1, 2]);
+    expect(getRasterCellRange(grid, [bounds[0], bounds[0]])).toEqual([0, 0]);
 });

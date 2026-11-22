@@ -929,14 +929,15 @@ export interface LinkProps
 /**
  * Experimental mark for regular grids. A grid dimension on one axis and a band
  * field on the other draw one strip per record. Put the grid dimension on x
- * for horizontal strips or on y for vertical strips.
+ * for horizontal strips or on y for vertical strips. Use categorical selections
+ * on the band axis.
  * Categorical cell colors use an ordinal scale with an explicit domain.
  * To draw an image, use `color: { field: "pixels", scale: null }` and
  * store one packed unsigned RGBA8 value (`0xAABBGGRR`) per cell in
  * `fields.pixels`. Use a row-major `Uint32Array` or array of integers
  * with straight alpha. Set alpha to 255 for opaque RGB pixels.
- * A single value condition on opacity can use a quantitative gradient legend
- * interval to test each cell's raw color value.
+ * Positional interval selections test overlap with each cell's extent. Gradient
+ * legend intervals test each cell's raw color value.
  */
 export interface RasterProps extends MarkPropsBase {
     type: "raster";

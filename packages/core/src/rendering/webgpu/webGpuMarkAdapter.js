@@ -478,24 +478,16 @@ function createSelectionCondition(mark, predicate) {
                     predicate.projections.map(
                         ({ component, input, secondaryInput, hitTest }) => {
                             if (
-                                !(mark instanceof RasterMark) ||
-                                !/^[xy]2?$/.test(input)
+                                mark instanceof RasterMark &&
+                                (input === "x" || input === "y")
                             ) {
-                                return {
-                                    component,
-                                    input,
-                                    secondaryInput,
-                                    hitTest,
-                                };
-                            }
-                            const position = input.startsWith("x") ? "x" : "y";
-                            if (secondaryInput && secondaryInput !== input) {
-                                return { component, position, hitTest };
+                                return { component, position: input };
                             }
                             return {
                                 component,
-                                position,
-                                edge: input.endsWith("2") ? "end" : "start",
+                                input,
+                                secondaryInput,
+                                hitTest,
                             };
                         }
                     )
