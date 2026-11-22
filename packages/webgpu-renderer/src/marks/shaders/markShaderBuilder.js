@@ -152,7 +152,7 @@ export function buildMarkShader({
         const returnType =
             channelIR.outputComponents === 1
                 ? channelIR.outputScalarType
-                : `vec${channelIR.outputComponents}<f32>`;
+                : `vec${channelIR.outputComponents}<${channelIR.scalarType}>`;
         return `fn ${SCALED_FUNCTION_PREFIX}${functionName}(i: u32) -> ${returnType} { return ${channelIR.rawValueExpr}; }`;
     }
 
@@ -339,13 +339,36 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         /** @param {string} a @param {string} b */
                         const lt = (a, b) =>
                             packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
-                        const lo = packed ? "lo" : "min(bound.x, bound.y)";
-                        const hi = packed ? "hi" : "max(bound.x, bound.y)";
+                        const precise = def.preciseFloatRanges?.has(
+                            projection.component
+                        );
+                        const lo = packed
+                            ? "lo"
+                            : precise
+                              ? projection.secondaryInput &&
+                                projection.hitTest === "intersects"
+                                  ? "bound.y"
+                                  : "bound.x"
+                              : "min(bound.x, bound.y)";
+                        const hi = packed
+                            ? "hi"
+                            : precise
+                              ? projection.secondaryInput &&
+                                projection.hitTest === "encloses"
+                                  ? "bound.w"
+                                  : "bound.z"
+                              : "max(bound.x, bound.y)";
                         const value = channelIR.rawValueExpr;
                         const secondary = secondaryIR?.rawValueExpr;
+                        const readPackedBound = (
+                            /** @type {string} */ field
+                        ) =>
+                            channelIR.readInFragment
+                                ? `vec2<u32>(${field}.x, 2u * ${field}.y)`
+                                : field;
                         const boundsSetup = packed
-                            ? `    let bound0 = params.${bounds}.xy;
-    let bound1 = params.${bounds}.zw;
+                            ? `    let bound0 = ${readPackedBound(`params.${bounds}.xy`)};
+    let bound1 = ${readPackedBound(`params.${bounds}.zw`)};
     let lo = select(bound1, bound0, hpLessEq(bound0, bound1));
     let hi = select(bound0, bound1, hpLessEq(bound0, bound1));`
                             : `    let bound = params.${bounds};`;
@@ -370,7 +393,7 @@ fn ${fnName}_p${projectionIndex}(i: u32) -> bool {
     if (params.${active} == 0u) { return false; }
 ${boundsSetup}
 ${datumSetup}
-    return ${lt(lo, hi)} && (${test});
+    return ${precise ? "bound.y < bound.z" : lt(lo, hi)} && (${test});
 }
 `;
                     }

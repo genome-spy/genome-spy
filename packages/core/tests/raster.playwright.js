@@ -32,6 +32,10 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterBrush(playwright, baseURL, renderer));
+    test(`${renderer} positional brush swaps cells between overlapping rasters`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterLens(playwright, baseURL, renderer));
     test(`${renderer} raster preserves direct RGBA colors in display and SVG export`, ({
         playwright,
         baseURL,
@@ -50,6 +54,164 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
             baseURL,
         }) => checkRasterLogDomain(playwright, baseURL, renderer));
     }
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkRasterLens(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const samples = await page.evaluate(
+            async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                const start = 2_000_000_001;
+                const column = { origin: start, step: 1.5, count: 2 };
+                const row = { origin: start, step: 4, count: 2 };
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        assembly: "hg19",
+                        width: 100,
+                        height: 100,
+                        padding: 0,
+                        view: { stroke: null },
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x", "y"],
+                                    mark: { opacity: 0 },
+                                },
+                            },
+                        ],
+                        encoding: {
+                            x: {
+                                dimension: "column",
+                                type: "locus",
+                                axis: null,
+                                scale: { domain: [start, start + 2] },
+                            },
+                            y: {
+                                dimension: "row",
+                                type: "locus",
+                                axis: null,
+                                scale: {
+                                    domain: [start, start + 7],
+                                    reverse: true,
+                                },
+                            },
+                            color: { field: "color", scale: null },
+                        },
+                        layer: [false, true].map((upper) => ({
+                            mark: "raster",
+                            data: {
+                                values: [
+                                    {
+                                        dimensions: { column, row },
+                                        fields: {
+                                            color: Array.from(
+                                                { length: 4 },
+                                                () =>
+                                                    upper
+                                                        ? 0x8000ff00
+                                                        : 0xff0000ff
+                                            ),
+                                        },
+                                    },
+                                ],
+                            },
+                            encoding: {
+                                opacity: {
+                                    condition: upper
+                                        ? [
+                                              {
+                                                  test: {
+                                                      and: [
+                                                          {
+                                                              param: "brush",
+                                                              empty: false,
+                                                          },
+                                                          {
+                                                              param: {
+                                                                  or: ["brush"],
+                                                              },
+                                                              empty: false,
+                                                          },
+                                                      ],
+                                                  },
+                                                  value: 1,
+                                              },
+                                              {
+                                                  param: "brush",
+                                                  empty: false,
+                                                  value: 0.5,
+                                              },
+                                          ]
+                                        : {
+                                              param: "brush",
+                                              empty: false,
+                                              value: 0,
+                                          },
+                                    value: upper ? 0 : 1,
+                                },
+                            },
+                        })),
+                    },
+                    {
+                        renderer,
+                        onError: (error) => {
+                            throw error;
+                        },
+                    }
+                );
+                try {
+                    const runtime = api.debug
+                        .getViewRoot()
+                        .getDescendants()
+                        .find((view) => view.mark?.getType() === "raster")
+                        .paramRuntime.findRuntimeForParam("brush");
+                    const read = () =>
+                        globalThis.readRasterPixels(
+                            api,
+                            [
+                                [34, 34],
+                                [75, 25],
+                                [25, 75],
+                                [75, 75],
+                            ],
+                            null
+                        );
+                    const before = await read();
+                    // Intersect a fractional x edge and lie wholly inside the first y bin.
+                    runtime.setValue("brush", {
+                        type: "interval",
+                        intervals: {
+                            x: [start + 1, start + 2],
+                            y: [start + 1, start + 2],
+                        },
+                    });
+                    const active = await read();
+                    runtime.setValue("brush", {
+                        type: "interval",
+                        intervals: { x: null, y: null },
+                    });
+                    return {
+                        before,
+                        active,
+                        cleared: await read(),
+                    };
+                } finally {
+                    api.finalize();
+                }
+            },
+            setup
+        );
+        const red = [255, 0, 0, 255];
+        const green = [0, 255, 0, 128];
+        expect(samples.before).toEqual([red, red, red, red]);
+        expect(samples.active).toEqual([green, green, red, red]);
+        expect(samples.cleared).toEqual(samples.before);
+    });
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
@@ -1291,12 +1453,15 @@ async function withRasterPage(playwright, baseURL, renderer, check) {
                 return { pixels, rasterized };
             };
         });
-        await check(page, {
-            src: coreSource,
-            renderer,
-            register: registrations[renderer],
-        });
-        expect(errors).toEqual([]);
+        try {
+            await check(page, {
+                src: coreSource,
+                renderer,
+                register: registrations[renderer],
+            });
+        } finally {
+            expect(errors).toEqual([]);
+        }
     } finally {
         await browser.close();
     }

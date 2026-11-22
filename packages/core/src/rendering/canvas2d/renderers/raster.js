@@ -1,5 +1,4 @@
 import { readNumericRasterCell } from "../../../data/rasterTile.js";
-import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import clamp from "../../../utils/clamp.js";
 import ViewError from "../../../view/viewError.js";
 import { packCssColor } from "../../color.js";
@@ -15,7 +14,7 @@ import {
  * @type {WeakMap<import("../../../marks/raster.js").default, {
  *     revision: number,
  *     mapping: object | undefined,
- *     cellOpacity: import("../../../marks/raster.js").CellOpacity | undefined,
+ *     cellOpacity: import("../../../marks/rasterOpacity.js").ReadCellOpacity | undefined,
  *     colorize: ReturnType<typeof makeCellColorMapper> | undefined,
  *     tiles: WeakMap<object, HTMLCanvasElement>
  * }>}
@@ -45,9 +44,7 @@ export function renderRasterCanvas(mark, options) {
         !cache ||
         cache.mapping !== mapping ||
         cache.revision !== revision ||
-        (cellOpacity &&
-            (!cache.cellOpacity ||
-                !shallowArrayEquals(cellOpacity, cache.cellOpacity)))
+        cache.cellOpacity !== cellOpacity
     ) {
         cache = {
             mapping,
@@ -57,8 +54,7 @@ export function renderRasterCanvas(mark, options) {
                 resolution &&
                 makeCellColorMapper(
                     resolution.getScale(),
-                    type !== "quantitative",
-                    cellOpacity
+                    type !== "quantitative"
                 ),
             tiles: new WeakMap(),
         };
@@ -92,10 +88,12 @@ export function renderRasterCanvas(mark, options) {
             let bitmap = cache.tiles.get(datum);
             if (!bitmap) {
                 try {
+                    const tile = readTile(datum);
                     bitmap = createTileBitmap(
                         context.canvas.ownerDocument,
-                        readTile(datum),
-                        cache.colorize
+                        tile,
+                        cache.colorize,
+                        cellOpacity?.(datum, tile)
                     );
                 } catch (error) {
                     throw new ViewError(error.message, mark.unitView);
@@ -178,10 +176,9 @@ function cropRasterAxis(start, step, count, min, max) {
 /**
  * @param {import("../../../types/encoder.js").VegaScale} scale
  * @param {boolean} categorical
- * @param {import("../../../marks/raster.js").CellOpacity} [cellOpacity]
  * @returns {(value: string | number | null) => number}
  */
-function makeCellColorMapper(scale, categorical, cellOpacity) {
+export function makeCellColorMapper(scale, categorical) {
     if (categorical) {
         const palette = new Map(
             scale.domain().map((value) => [value, packCssColor(scale(value))])
@@ -193,23 +190,13 @@ function makeCellColorMapper(scale, categorical, cellOpacity) {
     const lower = Math.min(domain[0], domain.at(-1));
     const upper = Math.max(domain[0], domain.at(-1));
     const clampLog = logarithmic && "clamp" in scale && scale.clamp();
-    const [min, max, matching, fallback] = cellOpacity ?? [];
     return (value) => {
         let number = readNumericRasterCell(value);
         if (!Number.isFinite(number)) return 0;
-        const alpha = cellOpacity
-            ? min <= number && number < max
-                ? matching
-                : fallback
-            : 1;
-        if (!(alpha > 0)) return 0;
         // Clamp in data coordinates before the log transform, including zero.
         if (clampLog) number = clamp(number, lower, upper);
         if (logarithmic && Math.sign(number) !== Math.sign(lower)) return 0;
-        const packed = packCssColor(scale(number));
-        return alpha === 1
-            ? packed
-            : (packed & 0xffffff) | (Math.round((packed >>> 24) * alpha) << 24);
+        return packCssColor(scale(number));
     };
 }
 
@@ -217,11 +204,13 @@ function makeCellColorMapper(scale, categorical, cellOpacity) {
  * @param {Document} document
  * @param {ReturnType<import("../../../data/rasterTile.js").readRasterTile>} tile
  * @param {((value: string | number | null) => number) | undefined} colorize
+ * @param {Float32Array} [opacity]
  */
 function createTileBitmap(
     document,
     { horizontal, vertical, values },
-    colorize
+    colorize,
+    opacity
 ) {
     const bitmap = document.createElement("canvas");
     bitmap.width = horizontal.count;
@@ -235,8 +224,14 @@ function createTileBitmap(
         pixels.data.byteLength
     );
     for (let i = 0; i < values.length; i++) {
-        const packed =
+        if (opacity?.[i] === 0) continue;
+        let packed =
             values instanceof Uint32Array ? values[i] : colorize(values[i]);
+        if (opacity) {
+            packed =
+                (packed & 0xffffff) |
+                (Math.round((packed >>> 24) * opacity[i]) << 24);
+        }
         bytes.setUint32(i * 4, packed, true);
     }
     context.putImageData(pixels, 0, 0);

@@ -247,6 +247,7 @@ The brush outline follows `defaultThemeColors.foreground` in the default theme. 
 its appearance with `select.mark`, using rect properties such as fill, stroke,
 opacity, rounded corners, hatching, and shadow. Numeric and color properties can
 be expressions. Use `config.style["selection-brush"]` to set shared brush defaults.
+Set `select.mark.shadowInset` for a shadow inside a positional brush.
 
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 

@@ -123,3 +123,22 @@ missing and constant color extents and late arrivals.
   Core's generated schema recognizes the experimental grammar while WebGPU
   remains unpublished. Review how to expose the grammar when preparing a
   release. The reusable color scheme is release-noted as a Core feature.
+
+## Cell opacity and the comparison lens
+
+- The normal predicate resolver needs cell endpoints explicitly. The raster's
+  x2/y2 encoders previously exposed expressions for tile endpoints, which the
+  resolver treated as missing fields. Raster predicates now resolve against
+  cell coordinates while placement continues to read tile endpoints.
+- WebGPU derives positional inputs from tile bounds and fragment cell indices.
+  Packed locus comparisons preserve the low part of fractional cell edges.
+  Brush updates change selection uniforms without repacking the tiles.
+- Canvas and WebGL reuse Core's predicate evaluator for opacity masks. For
+  positional conditions, evaluating once per rectangular span reduced a
+  synthetic 18-tile CPU mask run from roughly 75 ms to a 1.1 ms median on the
+  development machine. This measures mask generation alone. Canvas still
+  colorizes affected bitmaps and WebGL uploads the changed masks.
+- The example uses the same tilesets and region as the original HiGlass
+  comparison. Its shared viewport color domain settles after initial tile
+  readiness. Compare the lens pixels after the scale has settled.
+  [HiGlass comparison](https://link.springer.com/article/10.1186/s13059-018-1486-1#Fig4)

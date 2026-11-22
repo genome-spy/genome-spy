@@ -13,6 +13,9 @@ ivec2 cellAt(vec2 offset, ivec2 lastCell) {
 
 vec4 sampleCell(ivec2 cell) {
     vec4 color = cellColor(cell);
+#ifdef RASTER_CELL_OPACITY
+    color.a *= texelFetch(uCellOpacity, cell, 0).r;
+#endif
     return vec4(color.rgb * color.a, color.a);
 }
 

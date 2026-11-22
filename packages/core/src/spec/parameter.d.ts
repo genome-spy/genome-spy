@@ -502,6 +502,12 @@ export interface BrushConfig
     clip?: RectProps["clip"];
 
     /**
+     * Draw the positional brush's shadow inside its border.
+     * Uses shadowColor, shadowOpacity, and shadowBlur.
+     */
+    shadowInset?: boolean;
+
+    /**
      * Z-order of the interval mark relative to the view content.
      *
      * Values greater than `0` render after the view marks. Values less than or

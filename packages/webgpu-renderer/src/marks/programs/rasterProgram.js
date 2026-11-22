@@ -79,10 +79,48 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
  * @param {boolean} icon
  * @param {boolean} triangle
+ * @param {ReturnType<typeof compileRasterData>["coordinates"]} coordinates
  */
-function rasterShader(irs, icon, triangle) {
+function rasterShader(irs, icon, triangle, coordinates) {
     const x = icon ? "" : indexAxisShader(irs, "x");
     const y = icon ? "" : indexAxisShader(irs, "y", triangle ? "x" : "y");
+    const coordinateFields = [];
+    const copyCoordinates = [];
+    const coordinatePrograms = [];
+    const useCoordinates = [];
+    for (const { axis, point, packed, endOffset } of coordinates) {
+        const field = `bounds_${axis}`;
+        const type = packed ? "vec2<u32>" : "f32";
+        const boundsType = point ? type : packed ? "vec4<u32>" : "vec2<f32>";
+        const first = irs.find((ir) => ir.name === axis).rawValueExpr;
+        const location = axis === "x" ? 7 : 8;
+        const read = packed ? first : `f32(${first})`;
+        coordinateFields.push(
+            `@location(${location}) @interpolate(flat) ${field}: ${boundsType},`
+        );
+        useCoordinates.push(`raster_${field} = in.${field};`);
+        let value = `raster_${field}`;
+        if (point) {
+            copyCoordinates.push(`out.${field} = ${read};`);
+            if (packed) value = `vec2<u32>(${value}.x, 2u * ${value}.y)`;
+        } else {
+            const last = irs.find((ir) => ir.name === axis + "2").rawValueExpr;
+            copyCoordinates.push(
+                `out.${field} = ${boundsType}(${read}, ${packed ? last : `f32(${last})`});`
+            );
+            const cell = `rasterCell.${axis} + edge`;
+            const count = `rasterShape.${axis}`;
+            value = packed
+                ? `rasterGridKey(${value}.xy, ${value}.zw, ${count}, ${cell}, ${endOffset}u)`
+                : `mix(${value}.x, ${value}.y + ${endOffset}.0, f32(${cell}) / f32(${count}))`;
+        }
+        coordinatePrograms.push(/* wgsl */ `
+var<private> raster_${field}: ${boundsType};
+fn rasterCoordinate_${axis}(edge: u32) -> ${type} {
+    return ${value};
+}
+`);
+    }
     const bounds = triangle
         ? /* wgsl */ `
     let start = vec2<f32>(
@@ -138,34 +176,73 @@ fn rasterHorizontal(i: u32, position: f32) -> f32 {
 fn rasterIndexKey(value: u32) -> vec2<u32> {
     return vec2<u32>(value >> 12u, value & 4095u);
 }
+struct RasterGridEdge {
+    high: u32,
+    low: f32,
+    selectionLow: u32,
+};
+
 // Interpolate the integer cell boundary in packed coordinates. Doing the
 // coarse division before the multiplication keeps the residual local even for
 // tiles wider than u32. The residual product is exact for common tile sizes.
-fn projectRasterAnchor(first: vec2<u32>, last: vec2<u32>, count: u32, anchor: u32,
-        band: vec2<f32>, domain: vec3<f32>, range: vec2<f32>) -> f32 {
+fn rasterGridEdge(first: vec2<u32>, last: vec2<u32>, count: u32, anchor: u32) -> RasterGridEdge {
     let descending = first.x > last.x || (first.x == last.x && first.y > last.y);
     let start = select(first, last, descending);
     let end = select(last, first, descending);
     let cell = select(anchor, count - anchor, descending);
     let span = end.x - start.x;
     let remainder = span % count;
-    var highOffset: u32;
-    var lowOffset: f32;
+    let base = start.x + (span / count) * cell;
     if (count <= 65536u) {
         let residual = remainder * cell;
-        highOffset = residual / count;
-        lowOffset = 4096.0 * (f32(residual % count) / f32(count));
-    } else {
-        let residual = f32(remainder) * (f32(cell) / f32(count));
-        highOffset = u32(residual);
-        lowOffset = 4096.0 * fract(residual);
+        let numerator = 4096u * (residual % count) + start.y * (count - cell) + end.y * cell;
+        let whole = numerator / count;
+        let fraction = numerator % count;
+        let low = whole & 4095u;
+        // Packed brush bounds are integers. A single extra bit distinguishes
+        // fractional edges from the preceding integer without float rounding.
+        return RasterGridEdge(
+            base + residual / count + (whole >> 12u),
+            f32(low) + f32(fraction) / f32(count),
+            2u * low + select(0u, 1u, fraction != 0u)
+        );
     }
-    let high = start.x + (span / count) * cell + highOffset;
-    let low = f32(start.y) + lowOffset + f32(i32(end.y) - i32(start.y)) * (f32(cell) / f32(count));
-    let relative = stableSub(f32(high) * 4096.0, domain.x) + stableSub(low, domain.y);
+    let t = f32(cell) / f32(count);
+    let residual = f32(remainder) * t;
+    let low = 4096.0 * fract(residual) + mix(f32(start.y), f32(end.y), t);
+    let carry = u32(low) >> 12u;
+    let local = low - f32(carry) * 4096.0;
+    return RasterGridEdge(
+        base + u32(residual) + carry,
+        local,
+        2u * u32(local) + select(0u, 1u, fract(local) != 0.0)
+    );
+}
+
+fn projectRasterAnchor(first: vec2<u32>, last: vec2<u32>, count: u32, anchor: u32,
+        band: vec2<f32>, domain: vec3<f32>, range: vec2<f32>) -> f32 {
+    let edge = rasterGridEdge(first, last, count, anchor);
+    let relative = stableSub(f32(edge.high) * 4096.0, domain.x) + stableSub(edge.low, domain.y);
     let edgeBand = mix(band.x, band.y, f32(anchor) / f32(count));
     let offset = select(edgeBand, 1.0 - edgeBand, range.y < range.x);
     return range.x + (relative + offset) * ((range.y - range.x) / domain.z);
+}
+
+${
+    coordinates.length
+        ? /* wgsl */ `
+var<private> rasterCell: vec2<u32>;
+var<private> rasterShape: vec2<u32>;
+
+fn rasterGridKey(first: vec2<u32>, end: vec2<u32>, count: u32, index: u32, endOffset: u32) -> vec2<u32> {
+    let lowEnd = end.y + endOffset;
+    let last = vec2<u32>(end.x + (lowEnd >> 12u), lowEnd & 4095u);
+    let edge = rasterGridEdge(first, last, count, index);
+    return vec2<u32>(edge.high, edge.selectionLow);
+}
+${coordinatePrograms.join("\n")}
+`
+        : ""
 }
 
 ${x}
@@ -178,6 +255,7 @@ struct VSOut {
     @location(3) @interpolate(flat) anchor: vec2<u32>,
     @location(1) @interpolate(flat) grid: vec3<u32>,
     @location(2) @interpolate(flat) pickId: u32,
+    ${coordinateFields.join("\n    ")}
 ${
     triangle
         ? /* wgsl */ `
@@ -203,6 +281,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         return out;
     }
     out.grid = vec3<u32>(read_columns(i), read_rows(i), read_cellOffset(i));
+    ${copyCoordinates.join("\n    ")}
     out.pickId = 0u;
     let targetSize = globals.renderTargetSize * globals.dpr;
     ${triangle ? "" : "let first = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));"}
@@ -262,6 +341,13 @@ fn rasterAxisSamples(center: f32, width: f32, anchor: u32, count: u32) -> AxisSa
 }
 
 fn rasterCellColor(in: VSOut, cell: vec2<u32>) -> vec4<f32> {
+    ${
+        coordinates.length
+            ? `rasterCell = cell;
+    rasterShape = in.grid.xy;
+    ${useCoordinates.join("\n    ")}`
+            : ""
+    }
     let i = in.grid.z + cell.x + cell.y * in.grid.x;
     if (!isInstanceVisible(i)) { return vec4<f32>(0.0); }
     let color = getScaled_fill(i);
@@ -339,7 +425,10 @@ export default class RasterProgram extends BaseProgram {
         return rasterShader(
             irs,
             !!this._markConfig.icon,
-            !!this._markConfig.triangle
+            !!this._markConfig.triangle,
+            /** @type {ReturnType<typeof compileRasterData>["coordinates"]} */ (
+                this._markConfig.coordinates
+            )
         );
     }
 

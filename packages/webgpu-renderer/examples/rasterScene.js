@@ -45,8 +45,24 @@ export default async function runRasterScene(canvas) {
         projections: [{ component: "signal", input: "signal" }],
         empty: false,
     };
+    /** @type {import("../src/index.js").SelectionPredicate} */
+    const highlighted = {
+        all: [
+            strongSignal,
+            {
+                selection: "region",
+                type: "interval",
+                projections: [
+                    { component: "x", input: "x", secondaryInput: "x2" },
+                    { component: "y", input: "y", secondaryInput: "y2" },
+                ],
+                empty: false,
+            },
+        ],
+    };
     const mark = renderer.createMark(rasterMark, {
         data: rasterData(16),
+        cellCoordinates: { x: {}, y: {} },
         position: {
             x: { scale: linearScale({ domain: [0, 1], range: [0, 1] }) },
             y: { scale: linearScale({ domain: [0, 1], range: [0, 1] }) },
@@ -66,10 +82,10 @@ export default async function runRasterScene(canvas) {
             },
             opacity: {
                 input: "quality",
-                conditions: [{ when: strongSignal, value: 0.94 }],
+                conditions: [{ when: highlighted, value: 0.94 }],
             },
         },
-        order: { when: strongSignal, matching: "last" },
+        order: { when: highlighted, matching: "last" },
     });
 
     const frame = () => ({ draws: [{ mark }] });
@@ -93,6 +109,9 @@ export default async function runRasterScene(canvas) {
             mark.series.replace(rasterData(selected ? 8 : 16));
             mark.selections.signalBrush.set(
                 selected ? { signal: [0.6, 1.01] } : {}
+            );
+            mark.selections.region.set(
+                selected ? { x: [0.28, 0.72], y: [0.22, 0.78] } : {}
             );
         });
         renderer.render(frame());

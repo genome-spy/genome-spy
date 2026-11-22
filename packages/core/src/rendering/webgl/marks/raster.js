@@ -22,7 +22,8 @@ import { createProgram } from "../gl/webGLHelper.js";
 import VERTEX_SHADER from "./raster.vertex.glsl";
 import { rasterFragmentShader } from "./rasterShader.js";
 
-/** @typedef {{texture: WebGLTexture, width: number, height: number}} TileTexture */
+/** @typedef {import("../../../marks/rasterOpacity.js").ReadCellOpacity} ReadCellOpacity */
+/** @typedef {{texture: WebGLTexture, width: number, height: number, opacity?: WebGLTexture, opacityRevision?: number}} TileTexture */
 /** @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions */
 
 /** @typedef {import("../types.js").WebGLMark} WebGLMark */
@@ -55,12 +56,20 @@ export default class WebGLRasterMark {
     /** @type {ReturnType<import("../../../marks/raster.js").default["getCellOpacityReader"]>} */
     #readCellOpacity;
 
+    /** @type {ReadCellOpacity | undefined} */
+    #cellOpacity;
+
+    #opacityRevision = 0;
+
+    #uploadTextureUnit = 0;
+
     #target = [0, 0];
     #tileUniforms = {
         uRect: [0, 0, 0, 0],
         uAnchor: [0, 0, 0, 0],
         uCellsPerPixel: [0, 0],
         uCells: /** @type {WebGLTexture | null} */ (null),
+        uCellOpacity: /** @type {WebGLTexture | null} */ (null),
         uOpacity: 1,
     };
 
@@ -83,6 +92,11 @@ export default class WebGLRasterMark {
         this.mark.initializeRenderingRevisions([]);
         this.#readCellOpacity = this.mark.getCellOpacityReader();
         const gl = this.gl;
+        // Mask uploads during a draw must leave the active scale samplers bound.
+        this.#uploadTextureUnit =
+            gl.TEXTURE0 +
+            gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) -
+            1;
         this.#programStatus = createProgram(
             gl,
             this.glHelper.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER),
@@ -165,8 +179,9 @@ export default class WebGLRasterMark {
     }
 
     deleteGraphicsData() {
-        for (const { texture } of this.#tiles.values()) {
+        for (const { texture, opacity } of this.#tiles.values()) {
             this.gl.deleteTexture(texture);
+            if (opacity) this.gl.deleteTexture(opacity);
         }
         this.#tiles.clear();
     }
@@ -197,15 +212,14 @@ export default class WebGLRasterMark {
                     options.applyViewOpacity === false
                         ? 1
                         : this.mark.unitView.getEffectiveOpacity();
+                const cellOpacity = this.#readCellOpacity?.();
+                if (cellOpacity !== this.#cellOpacity) {
+                    this.#cellOpacity = cellOpacity;
+                    this.#opacityRevision++;
+                }
                 if (!this.#color) return;
                 const mapping = this.#color.getMappingRef().get();
-                const brush = this.#readCellOpacity?.();
-                if (brush) {
-                    brush[0] = ceilFloat32(brush[0]);
-                    brush[1] = ceilFloat32(brush[1]);
-                }
                 setUniforms(this.#programInfo, {
-                    uBrush: brush,
                     uDomain_color: readScaleDomainUniform(mapping),
                     uRangeTexture_color: this.glHelper.rangeTextures.get(
                         mapping.scale
@@ -301,16 +315,51 @@ export default class WebGLRasterMark {
             this.#viewOpacity * (opacity ? encodeNumber(opacity, datum) : 1);
         if (!(alpha > 0)) return;
 
-        const { texture, width, height } = this.#tiles.get(datum);
+        const tile = this.#tiles.get(datum);
+        const { texture, width, height } = tile;
         const { x1, y1, x2, y2 } = triangle?.sourceBounds ?? this.#bounds;
         this.#setAxis(0, x0, dx, width, x1, x2);
         this.#setAxis(1, y0, dy, height, y1, y2);
         const { uRect } = this.#tileUniforms;
         if (uRect[0] >= uRect[2] || uRect[1] >= uRect[3]) return;
+        const gl = this.gl;
+        if (
+            this.#cellOpacity &&
+            tile.opacityRevision !== this.#opacityRevision
+        ) {
+            const src = this.#cellOpacity(datum);
+            gl.activeTexture(this.#uploadTextureUnit);
+            if (tile.opacity) {
+                gl.bindTexture(gl.TEXTURE_2D, tile.opacity);
+                gl.texSubImage2D(
+                    gl.TEXTURE_2D,
+                    0,
+                    0,
+                    0,
+                    width,
+                    height,
+                    gl.RED,
+                    gl.FLOAT,
+                    src
+                );
+            } else {
+                tile.opacity = createTexture(gl, {
+                    width,
+                    height,
+                    src,
+                    internalFormat: gl.R32F,
+                    minMag: gl.NEAREST,
+                    wrap: gl.CLAMP_TO_EDGE,
+                    auto: false,
+                });
+            }
+            tile.opacityRevision = this.#opacityRevision;
+        }
         this.#tileUniforms.uCells = texture;
+        this.#tileUniforms.uCellOpacity = tile.opacity ?? null;
         this.#tileUniforms.uOpacity = Math.min(1, alpha);
         setUniforms(this.#programInfo, this.#tileUniforms);
-        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
 
     /**
@@ -337,17 +386,4 @@ export default class WebGLRasterMark {
         uAnchor[axis + 2] = anchor;
         uCellsPerPixel[axis] = 1 / (step * this.#dpr);
     }
-}
-
-const floatBits = new DataView(new ArrayBuffer(4));
-
-/** Round upward so lower <= cell < upper holds for the Float32 texels.
- * @param {number} threshold
- */
-function ceilFloat32(threshold) {
-    const rounded = Math.fround(threshold);
-    if (!(rounded < threshold)) return rounded;
-    floatBits.setFloat32(0, rounded);
-    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
-    return floatBits.getFloat32(0);
 }

@@ -98,8 +98,16 @@ export type RasterConfig = Pick<
         size?: RasterAnchor;
     };
     /**
+     * Expose derived cell bounds as interval inputs x/x2 or y/y2. Anchored
+     * rasters use their anchor as a point. Set endOffset to 1 when a grid's
+     * last position is an inclusive index.
+     */
+    cellCoordinates?: Partial<
+        Record<"x" | "y", { point?: boolean; endOffset?: 1 }>
+    >;
+    /**
      * Conditions, visibility and order use cell inputs. Interval projections
-     * use one Float32Array field each. Multi selections use Uint32Array IDs.
+     * use cell coordinates or Float32Array fields. Multi selections use Uint32Array IDs.
      * Membership by a picked single ID is unavailable for raster cells.
      */
     channels?: { fill?: RasterCellChannel; opacity?: RasterCellChannel };

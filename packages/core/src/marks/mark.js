@@ -504,6 +504,10 @@ export default class Mark {
         this.encoders = createEncoders(this.unitView, this.encoding);
     }
 
+    get selectionEncoding() {
+        return this.encoding;
+    }
+
     /**
      * Returns the normalized conditional order metadata for this mark. Inert
      * definitions are folded away before selection dependencies are retained.

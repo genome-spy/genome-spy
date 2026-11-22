@@ -46,6 +46,7 @@ import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
 import { readNumericRasterCell } from "../../data/rasterTile.js";
 import RasterMark from "../../marks/raster.js";
+import { selectionPredicateLeaves } from "../../selection/selectionPredicateTree.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string, membership: boolean}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
@@ -470,18 +471,6 @@ function createSelectionCondition(mark, predicate) {
         };
     }
     if (predicate.type === "interval") {
-        if (
-            mark instanceof RasterMark &&
-            predicate.projections.some(
-                ({ input, secondaryInput }) =>
-                    input !== "color" || secondaryInput !== undefined
-            )
-        ) {
-            throw unsupported(
-                mark,
-                "Raster interval predicates in Core require a color cell projection."
-            );
-        }
         return {
             selection: predicate.param,
             type: "interval",
@@ -601,8 +590,6 @@ function createRasterConfig(mark, data, coords, placement) {
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
     const encoder = mark.encoders.opacity;
-    // Keep the declarative gradient subset shared with Canvas.
-    mark.getCellOpacityReader();
     const opacity = encoder && createNumericChannel(mark, "opacity", data);
 
     let cached = rasterDataCache.get(mark);
@@ -649,6 +636,25 @@ function createRasterConfig(mark, data, coords, placement) {
     // pixel side, which is the trailing side on a reversed range.
     const xScale = mark.encoders.x.scale;
     const yScale = mark.encoders.y?.scale;
+    /** @type {RasterConfig["cellCoordinates"]} */
+    const cellCoordinates = {};
+    for (const { predicate } of encoder?.branches ?? []) {
+        if (!predicate.selection) continue;
+        for (const leaf of selectionPredicateLeaves(predicate.selection)) {
+            if (!("type" in leaf) || leaf.type !== "interval") continue;
+            for (const { input } of leaf.projections) {
+                if (input === "x" || input === "x2") {
+                    cellCoordinates.x =
+                        strip && xScale.type === "index"
+                            ? { endOffset: 1 }
+                            : {};
+                }
+                if (input === "y" || input === "y2") {
+                    cellCoordinates.y = { point: strip };
+                }
+            }
+        }
+    }
     const xBand = icon ? undefined : xScale.props.reverse ? 1 : 0;
     const xEndBand = strip && xScale.type === "index" ? 1 - xBand : xBand;
     /** @type {Partial<Record<"x" | "x2" | "y" | "y2" | "size", import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */
@@ -712,6 +718,7 @@ function createRasterConfig(mark, data, coords, placement) {
         ...(rowEdges && { projection: /** @type {const} */ ("triangle") }),
         placement: placement && "source" in placement ? "draw" : undefined,
         position,
+        cellCoordinates,
         channels: {
             fill: {
                 input: "color",

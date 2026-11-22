@@ -46,7 +46,7 @@ const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
 /**
  * @typedef {{ scalarType: ScalarType, inputComponents: 1 | 2 }} IntervalRepresentation
  * @typedef {import("../../../index.d.ts").IntervalSelectionProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
- * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
+ * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean, preciseFloatRanges?: Set<string> }} SelectionDef
  */
 
 /**
@@ -426,6 +426,20 @@ export class SelectionResourceManager {
             visibleWhen,
             order
         );
+        if (cellPredicates) {
+            for (const def of this.#selectionDefs.values()) {
+                def.preciseFloatRanges = new Set(
+                    def.projections
+                        ?.filter(
+                            ({ inputComponents, scalarType, secondaryInput }) =>
+                                inputComponents === 1 &&
+                                scalarType === "f32" &&
+                                secondaryInput
+                        )
+                        .map(({ component }) => component)
+                );
+            }
+        }
         this.#orderSelectionActive = new Map(
             Array.from(this.#selectionDefs.values())
                 .filter(
@@ -483,7 +497,10 @@ export class SelectionResourceManager {
                             name: intervalSelectionBoundsName(def.name, index),
                             type: representation.scalarType,
                             components:
-                                representation.inputComponents === 2 ? 4 : 2,
+                                representation.inputComponents === 2 ||
+                                def.preciseFloatRanges?.has(component)
+                                    ? 4
+                                    : 2,
                         });
                     }
                 }
@@ -585,15 +602,18 @@ export class SelectionResourceManager {
                 }
                 const active = interval !== undefined && interval !== null;
                 const representation = def.representations?.get(component);
+                const precise = def.preciseFloatRanges?.has(component);
                 const bounds = representation
                     ? active
                         ? representation.inputComponents === 2
                             ? packHighPrecisionU32Array(interval)
-                            : Array.from(
-                                  interval,
-                                  this.cellPredicates ? ceilFloat32 : Number
-                              )
-                        : representation.inputComponents === 2
+                            : precise
+                              ? packFloatRange(interval)
+                              : Array.from(
+                                    interval,
+                                    this.cellPredicates ? ceilFloat32 : Number
+                                )
+                        : representation.inputComponents === 2 || precise
                           ? INACTIVE_PACKED_BOUNDS
                           : INACTIVE_INTERVAL_BOUNDS
                     : undefined;
@@ -665,4 +685,15 @@ export class SelectionResourceManager {
 
         return false;
     }
+}
+
+/** @param {readonly [number, number]} interval */
+function packFloatRange(interval) {
+    const lo = Math.min(...interval);
+    const hi = Math.max(...interval);
+    const lower = ceilFloat32(lo);
+    // Keep both directed roundings so strict and inclusive edge tests agree.
+    return lo === hi
+        ? [lower, lower, lower, lower]
+        : [lower, -ceilFloat32(-lo), ceilFloat32(hi), -ceilFloat32(-hi)];
 }

@@ -12,17 +12,11 @@ import {
 } from "../data/viewportDomain.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
-import {
-    isGradientIntervalPredicate,
-    selectionPredicateLeaves,
-} from "../selection/selectionPredicateTree.js";
-import clamp from "../utils/clamp.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
-
-/** @typedef {[lower: number, upper: number, matching: number, fallback: number]} CellOpacity */
+import { createRasterCellOpacity } from "./rasterOpacity.js";
 
 /** @extends {Mark<import("../spec/mark.js").RasterProps | import("../spec/mark.js").IconProps>} */
 export default class RasterMark extends Mark {
@@ -183,67 +177,30 @@ export default class RasterMark extends Mark {
         });
     }
 
-    /** Resolves opacity driven by a gradient legend to the raw color cell. */
+    get selectionEncoding() {
+        const encoding = { ...this.encoding };
+        for (const axis of /** @type {const} */ (["x", "y"])) {
+            const position = encoding[axis];
+            if (!position || !("field" in position)) continue;
+            encoding[axis] = { ...position, field: axis };
+            const secondary = /** @type {const} */ (`${axis}2`);
+            if (encoding[secondary]) {
+                encoding[secondary] =
+                    "expr" in encoding[secondary]
+                        ? { field: secondary }
+                        : { field: axis };
+            }
+        }
+        if ("field" in encoding.color) {
+            encoding.color = { ...encoding.color, field: "color" };
+        }
+        return encoding;
+    }
+
     getCellOpacityReader() {
-        return getCachedOrCall(this, "cellOpacityBinding", () => {
-            const branches = this.encoders.opacity?.branches;
-            const test = branches?.[0].predicate.selection;
-            if (
-                !branches?.some(
-                    ({ predicate }) =>
-                        predicate.selection &&
-                        selectionPredicateLeaves(predicate.selection).some(
-                            isGradientIntervalPredicate
-                        )
-                )
-            ) {
-                return null;
-            }
-            const { type, direct } = this.getColorCellBinding();
-            if (
-                type !== "quantitative" ||
-                direct ||
-                branches.length !== 2 ||
-                !test ||
-                !("param" in test) ||
-                test.type !== "interval" ||
-                test.projections.length !== 1 ||
-                test.projections[0].input !== "color" ||
-                !branches.every(
-                    ({ accessor }) =>
-                        accessor.constant && isValueDef(accessor.channelDef)
-                )
-            ) {
-                throw new ViewError(
-                    "Raster cell opacity requires a single interval condition on a quantitative color gradient and value definitions for both branches.",
-                    this.unitView
-                );
-            }
-            const { param, empty } = test;
-            const component =
-                /** @type {import("../spec/parameter.js").GradientSelectionChannel} */ (
-                    test.projections[0].component
-                );
-            const [matched, fallback] = branches.map(({ accessor }) =>
-                accessor.asNumberAccessor()
-            );
-            const runtime = this.unitView.paramRuntime;
-            /** @returns {CellOpacity} */
-            return () => {
-                const selection =
-                    /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
-                        runtime.findValue(param)
-                    );
-                const bounds = selection.intervals[component];
-                const outside = bounds || !empty ? fallback : matched;
-                return [
-                    bounds?.[0] ?? 0,
-                    bounds?.[1] ?? 0,
-                    bounds ? clamp(matched(null)) : 0,
-                    clamp(outside(null)),
-                ];
-            };
-        });
+        return getCachedOrCall(this, "cellOpacityBinding", () =>
+            createRasterCellOpacity(this)
+        );
     }
 
     validateRenderingScales() {
@@ -258,6 +215,7 @@ export default class RasterMark extends Mark {
                 this.unitView
             );
         }
+        this.getCellOpacityReader();
         if (direct) return undefined;
 
         const resolution = this.unitView.getScaleResolution("color");

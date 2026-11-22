@@ -26,7 +26,7 @@ export function createSelectionRectSpec({
     ),
     brushConfig = {},
 }) {
-    const brushMarkProps = { ...brushConfig };
+    const { shadowInset, ...brushMarkProps } = brushConfig;
     delete brushMarkProps.zindex;
 
     if (primaryPositionalChannels.every((c) => !channels.includes(c))) {
@@ -110,8 +110,77 @@ export function createSelectionRectSpec({
                 expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
             },
             ...brushMarkProps,
+            ...(shadowInset && { shadowOpacity: 0 }),
         },
     });
+
+    if (shadowInset) {
+        const {
+            shadowColor = "black",
+            shadowOpacity = 0.5,
+            shadowBlur = 4,
+        } = brushMarkProps;
+        const depth =
+            typeof shadowBlur === "number" ? shadowBlur : shadowBlur.expr;
+        const strength =
+            typeof shadowOpacity === "number"
+                ? shadowOpacity
+                : shadowOpacity.expr;
+        const reversed = (/** @type {PrimaryPositionalChannel} */ axis) =>
+            channels.includes(axis) &&
+            scaleResolutionSource.getScaleResolution(axis).getScale().props
+                ?.reverse;
+        const xInward = reversed("x") ? -1 : 1;
+        const yInward = reversed("y") ? 1 : -1;
+        const spans = channels.map((axis) => {
+            const lo = makeIntervalBoundExpression(
+                selectionExpression,
+                axis,
+                0
+            );
+            const hi = makeIntervalBoundExpression(
+                selectionExpression,
+                axis,
+                1
+            );
+            return `abs(scale('${axis}', ${hi}) - scale('${axis}', ${lo})) * ${axis === "x" ? "width" : "height"} / 2`;
+        });
+        const strokeWidth = `max(0, min((${depth}), ${spans.join(", ")})) / 3`;
+        for (const [band, fade] of [1, 0.5, 0.2].entries()) {
+            const inset = `(${strokeWidth}) * ${band + 0.5}`;
+            const radii = Object.fromEntries(
+                Object.entries(brushMarkProps)
+                    .filter(
+                        ([key, value]) =>
+                            key.startsWith("cornerRadius") &&
+                            value !== undefined
+                    )
+                    .map(([key, radius]) => [
+                        key,
+                        {
+                            expr: `max(0, (${typeof radius === "number" ? radius : /** @type {import("../../spec/parameter.js").ExprRef} */ (radius).expr}) - (${inset}))`,
+                        },
+                    ])
+            );
+            layerSpec.layer.push({
+                mark: {
+                    type: "rect",
+                    clip: brushMarkProps.clip ?? clip,
+                    opacity: brushMarkProps.opacity,
+                    ...radii,
+                    fillOpacity: 0,
+                    stroke: shadowColor,
+                    strokeOpacity: { expr: `(${strength}) * ${fade}` },
+                    strokeWidth: { expr: strokeWidth },
+                    xOffset: { expr: `${xInward} * (${inset})` },
+                    x2Offset: { expr: `${-xInward} * (${inset})` },
+                    yOffset: { expr: `${yInward} * (${inset})` },
+                    y2Offset: { expr: `${-yInward} * (${inset})` },
+                    tooltip: null,
+                },
+            });
+        }
+    }
 
     const makeExpr = (/** @type {PrimaryPositionalChannel} */ channel) => {
         const resolution = scaleResolutionSource.getScaleResolution(channel);
