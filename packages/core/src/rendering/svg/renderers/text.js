@@ -31,33 +31,14 @@ export function renderTextSvg(baseMark, options) {
     const fontMeasurement = textMetrics.requestFont(props);
     const measureLogoInkBounds = requestLogoInkBounds(textMetrics, props);
     const properties = resolveTextProperties(mark);
-    const {
-        coords,
-        data,
-        group,
-        viewOpacity,
-        visibleBounds,
-        anchorCullBounds,
-    } = options;
+    const { coords, data, group, visibleBounds, anchorCullBounds } = options;
     const encoders =
         /** @type {Record<string, import("../../../types/encoder.js").Encoder>} */ (
             mark.encoders
         );
-    const encodeOpacity = Object.assign(
-        (/** @type {object} */ datum) =>
-            encodeNumber(encoders.opacity, datum) *
-            encodeNumber(encoders.fillOpacity, datum) *
-            viewOpacity,
-        {
-            constant:
-                encoders.opacity.constant && encoders.fillOpacity.constant,
-        }
-    );
     const encodeStyles = createSvgAttributeEncoder(group, {
         fill: { encoder: encoders.fill, transform: toPaintString },
-        "fill-opacity": {
-            encoder: encodeOpacity,
-        },
+        "fill-opacity": { encoder: encoders.fillOpacity },
         "font-size": {
             encoder: encoders.size,
             transform: (value) => formatSvgNumber(+value),
@@ -117,6 +98,18 @@ export function renderTextSvg(baseMark, options) {
             if (options.countOnly) {
                 return;
             }
+            const opacity =
+                encodeNumber(encoders.opacity, instance.datum) *
+                instance.fadeOpacity;
+
+            // Each completed label owns opacity, including its overlapping glyphs.
+            const styles = {
+                ...encodeStyles(instance.datum),
+                ...(opacity == 1
+                    ? {}
+                    : { opacity: formatSvgUnitless(opacity) }),
+            };
+
             if (instance.logoTransform) {
                 if (instance.multiCharacterLogo) {
                     options.warn(
@@ -147,7 +140,7 @@ export function renderTextSvg(baseMark, options) {
                     y: 0,
                     "text-anchor": "start",
                     transform: transforms.join(" "),
-                    ...encodeStyles(instance.datum),
+                    ...styles,
                     "font-size": instance.size,
                 });
                 text.textContent = instance.text;
@@ -175,10 +168,7 @@ export function renderTextSvg(baseMark, options) {
                 dy: formatSvgNumber(
                     getNativeBaselineOffset(properties.baseline, instance.size)
                 ),
-                ...encodeStyles(instance.datum),
-                ...(instance.fadeOpacity == 1
-                    ? {}
-                    : { opacity: formatSvgUnitless(instance.fadeOpacity) }),
+                ...styles,
                 transform: transforms.join(" "),
             });
             text.textContent = instance.text;
