@@ -31,7 +31,7 @@ export function getCanvasOpacitySpans(mark) {
  */
 function createOpacitySpans(
     mark,
-    { conditions, memberships, params, readRow }
+    { conditions, memberships, params, bandAxis, readBand }
 ) {
     const { type, direct } = mark.getColorCellBinding();
     const numericColor = type === "quantitative" && !direct;
@@ -80,22 +80,23 @@ function createOpacitySpans(
             }
         }
         paintSpans = (datum, { horizontal: x, vertical: y, values }, paint) => {
+            /** @type {import("../../data/flowNode.js").Datum} */
             const cell = {
                 x: 0,
                 x2: 0,
-                y: readRow ? readRow(datum) : 0,
+                y: 0,
                 y2: 0,
-                color: /** @type {string | number | null} */ (null),
+                color: null,
             };
-            const height = y?.count ?? 1;
+            if (bandAxis) cell[bandAxis] = readBand(datum);
             const rows = gridCuts(
-                height,
-                readRow ? undefined : y,
+                y.count,
+                bandAxis === "y" ? undefined : y,
                 varyingColor ? undefined : thresholds.y
             );
             const columns = gridCuts(
                 x.count,
-                x,
+                bandAxis === "x" ? undefined : x,
                 varyingColor ? undefined : thresholds.x
             );
             const alpha = () => {
@@ -103,8 +104,8 @@ function createOpacitySpans(
                     if (predicates[branch](cell)) return opacity[branch];
                 }
             };
-            const projectX = thresholds.x.length > 0;
-            const projectY = !readRow && y && thresholds.y.length > 0;
+            const projectX = bandAxis !== "x" && thresholds.x.length > 0;
+            const projectY = bandAxis !== "y" && thresholds.y.length > 0;
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i - 1];
                 const start = row * x.count;

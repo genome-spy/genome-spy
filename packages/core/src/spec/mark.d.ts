@@ -927,8 +927,9 @@ export interface LinkProps
 }
 
 /**
- * Experimental mark for regular grids. A grid dimension on x and a band
- * field on y draw one horizontal strip per record.
+ * Experimental mark for regular grids. A grid dimension on one axis and a band
+ * field on the other draw one strip per record. Put the grid dimension on x
+ * for horizontal strips or on y for vertical strips.
  * Categorical cell colors use an ordinal scale with an explicit domain.
  * To draw an image, use `color: { field: "pixels", scale: null }` and
  * store one packed unsigned RGBA8 value (`0xAABBGGRR`) per cell in

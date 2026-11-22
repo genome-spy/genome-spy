@@ -36,7 +36,7 @@ export function createRasterOpacityShader(
 ) {
     const plan = mark.getOpacityPlan();
     if (!plan) return;
-    const { conditions, params, readRow } = plan;
+    const { conditions, params, bandAxis, readBand } = plan;
     /** @type {Map<string, Selection | undefined>} */
     const selections = new Map();
     /** @type {Map<string, (datum?: Datum, tile?: TileGeometry) => Uniform>} */
@@ -80,7 +80,7 @@ export function createRasterOpacityShader(
      */
     function bindProjection(param, type, { component, input, secondaryInput }) {
         const axis = input[0] === "x" ? "x" : "y";
-        const readAnchor = axis === "y" ? readRow : undefined;
+        const readAnchor = axis === bandAxis ? readBand : undefined;
         if (type === "categories") {
             if (input !== "color") {
                 return bind(
@@ -154,12 +154,7 @@ export function createRasterOpacityShader(
                 if (!readAnchor)
                     return getRasterCellRange(dimension, bounds, mode);
                 const value = Number(readAnchor(datum));
-                return [
-                    0,
-                    bounds[0] <= value && value < bounds[1]
-                        ? (dimension?.count ?? 1)
-                        : 0,
-                ];
+                return [0, bounds[0] <= value && value < bounds[1] ? 1 : 0];
             },
             true
         );

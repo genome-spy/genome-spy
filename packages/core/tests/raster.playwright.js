@@ -20,7 +20,7 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterGrid(playwright, baseURL, renderer));
-    test(`${renderer} raster strips use index edges, band placement, and tile opacity`, ({
+    test(`${renderer} horizontal and vertical raster strips use index edges, band placement, and cell opacity`, ({
         playwright,
         baseURL,
     }) => checkRasterStrips(playwright, baseURL, renderer));
@@ -1304,22 +1304,28 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
             const { embed } = await import(src + "minimal.js");
             await import(src + register);
 
-            async function render(reverse) {
+            async function render(reverse, vertical) {
+                const gridAxis = vertical ? "y" : "x";
+                const bandAxis = vertical ? "x" : "y";
+                const dimension = vertical ? "row" : "column";
                 const host = globalThis.document.createElement("div");
                 globalThis.document.body.append(host);
                 const api = await embed(
                     host,
                     {
-                        width: 80,
-                        height: 60,
+                        width: vertical ? 60 : 80,
+                        height: vertical ? 80 : 60,
                         padding: 0,
                         config: { background: null },
                         view: { stroke: null },
                         params: [
                             {
                                 name: "highlight",
-                                select: { type: "point", encodings: ["y"] },
-                                value: [{ y: "a" }],
+                                select: {
+                                    type: "point",
+                                    encodings: [bandAxis],
+                                },
+                                value: [{ [bandAxis]: "a" }],
                             },
                             {
                                 name: "bases",
@@ -1334,7 +1340,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                             values: ["AG?-", "-🙂A"].map((sequence, row) => ({
                                 id: row ? "b" : "a",
                                 dimensions: {
-                                    column: {
+                                    [dimension]: {
                                         origin: 9,
                                         step: 2,
                                         count: 4,
@@ -1345,8 +1351,8 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                         },
                         mark: "raster",
                         encoding: {
-                            x: {
-                                dimension: "column",
+                            [gridAxis]: {
+                                dimension,
                                 type: "index",
                                 axis: null,
                                 scale: {
@@ -1354,7 +1360,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                                     zoom: { extent: "data" },
                                 },
                             },
-                            y: {
+                            [bandAxis]: {
                                 field: "id",
                                 type: "nominal",
                                 axis: null,
@@ -1403,26 +1409,37 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                             (candidate) =>
                                 candidate.mark?.getType() === "raster"
                         );
-                    const x = view.getScaleResolution("x");
-                    const pixels = await globalThis.readRasterPixels(
-                        api,
-                        [
-                            [1, 12],
-                            [21, 12],
-                            [41, 12],
-                            [79, 12],
-                            [10, 30],
-                            [1, 48],
-                            [79, 48],
-                            ...(renderer === "webgl" && !reverse
-                                ? [
-                                      [20, 12],
-                                      [40, 12],
-                                  ]
-                                : []),
-                        ],
-                        null
-                    );
+                    const scale = view.getScaleResolution(gridAxis);
+                    // Leave room for pixel offsets when transposing the samples.
+                    const [first, second, third, last] = vertical
+                        ? [4, 24, 44, 75]
+                        : [1, 21, 41, 79];
+                    const sampleEdge =
+                        renderer === "webgl" && !reverse && !vertical;
+                    // Vertical index scales start at the bottom by default.
+                    const read = (points) =>
+                        globalThis.readRasterPixels(
+                            api,
+                            vertical
+                                ? points.map(([x, y]) => [y, 79 - x])
+                                : points,
+                            null
+                        );
+                    const pixels = await read([
+                        [first, 12],
+                        [second, 12],
+                        [third, 12],
+                        [last, 12],
+                        [10, 30],
+                        [first, 48],
+                        [last, 48],
+                        ...(sampleEdge
+                            ? [
+                                  [20, 12],
+                                  [40, 12],
+                              ]
+                            : []),
+                    ]);
                     const selected = [];
                     for (const base of ["G", "-"]) {
                         view.paramRuntime.setValue("bases", {
@@ -1431,31 +1448,32 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                             values: new Set([base]),
                         });
                         selected.push(
-                            await globalThis.readRasterPixels(
-                                api,
+                            await read(
                                 reverse
                                     ? [
-                                          [79, 12],
-                                          [59, 12],
-                                          [1, 12],
+                                          [last, 12],
+                                          [80 - second, 12],
+                                          [first, 12],
                                       ]
                                     : [
-                                          [1, 12],
-                                          [21, 12],
-                                          [79, 12],
-                                      ],
-                                null
+                                          [first, 12],
+                                          [second, 12],
+                                          [last, 12],
+                                      ]
                             )
                         );
                     }
-                    return { extent: x.zoomExtent, pixels, selected };
+                    return { extent: scale.zoomExtent, pixels, selected };
                 } finally {
                     api.finalize();
                     host.remove();
                 }
             }
 
-            return [await render(false), await render(true)];
+            return [
+                [await render(false, false), await render(true, false)],
+                [await render(false, true), await render(true, true)],
+            ];
         }, setup);
         const red = [255, 0, 0, 255];
         const blue = [0, 0, 255, 255];
@@ -1468,7 +1486,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
             [fadedRed, blue, fadedGray],
             [fadedRed, fadedBlue, gray],
         ];
-        expect(results).toEqual([
+        const expected = (vertical) => [
             {
                 extent: [9, 17],
                 selected,
@@ -1481,7 +1499,7 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                     fadedGray,
                     fadedRed,
                     // The internal edges mix colors and preserve transparent cells.
-                    ...(renderer === "webgl"
+                    ...(renderer === "webgl" && !vertical
                         ? [
                               [128, 0, 128, 255],
                               [0, 0, 255, 128],
@@ -1494,7 +1512,8 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
                 selected,
                 pixels: [gray, clear, blue, red, clear, fadedRed, fadedGray],
             },
-        ]);
+        ];
+        expect(results).toEqual([expected(false), expected(true)]);
     });
 }
 

@@ -11,12 +11,16 @@
  * @prop {Record<string, Float32Array | Uint32Array | string | (number | string | null)[]>} fields Cell values in row-major order.
  */
 
+// A strip occupies one cell along its categorical axis.
+const bandDimension = Object.freeze({ origin: 0, step: 1, count: 1 });
+
 /**
  * @param {import("./flowNode.js").Datum} datum
- * @param {string} name
+ * @param {string | undefined} name Dimension name. Omit for a categorical band.
  * @param {boolean} [locus] Require nonnegative whole-base endpoints.
  */
 export function readRasterDimension(datum, name, locus = false) {
+    if (name === undefined) return bandDimension;
     const dimension = /** @type {RasterTile} */ (datum).dimensions?.[name];
     if (
         !dimension ||
@@ -56,8 +60,8 @@ export function readRasterDimension(datum, name, locus = false) {
 
 /**
  * @param {import("./flowNode.js").Datum} datum
- * @param {string} x
- * @param {string | undefined} y Vertical grid dimension for a two-dimensional tile.
+ * @param {string | undefined} x
+ * @param {string | undefined} y
  * @param {string} field
  * @param {{direct: boolean, locus: boolean}} options
  */
@@ -65,18 +69,14 @@ export function readRasterTile(datum, x, y, field, options) {
     const { direct, locus } = options;
     const tile = /** @type {RasterTile} */ (datum);
     const horizontal = readRasterDimension(datum, x, locus);
-    const vertical =
-        y === undefined ? undefined : readRasterDimension(datum, y, locus);
+    const vertical = readRasterDimension(datum, y, locus);
     const values = tile.fields?.[field];
     const supported =
         Array.isArray(values) ||
         (direct
             ? values instanceof Uint32Array
             : values instanceof Float32Array || typeof values === "string");
-    if (
-        !supported ||
-        values.length !== horizontal.count * (vertical?.count ?? 1)
-    ) {
+    if (!supported || values.length !== horizontal.count * vertical.count) {
         throw new Error(
             `Raster field "${field}" must contain one value for each grid cell.`
         );

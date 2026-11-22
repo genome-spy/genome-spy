@@ -207,7 +207,7 @@ function makeCellColorMapper(scale, categorical) {
 function paintTile(datum, tile, colorize, opacitySpans, pickable) {
     const { horizontal, vertical, values } = tile;
     const width = horizontal.count;
-    const height = vertical?.count ?? 1;
+    const height = vertical.count;
     const pixels = new ImageData(width, height);
     const alpha = pickable ? new Uint8Array(values.length) : undefined;
     const direct = values instanceof Uint32Array;

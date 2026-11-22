@@ -175,3 +175,15 @@ indices with the geometry and cell data.
 Raster tiles use grid bounds in all renderers. The renderer still computes a
 nearby cell boundary for close locus zoom. An overlapping RGBA grid verifies
 that transparent pixels expose the underlying Hi-C cell in picking.
+
+## Vertical strips
+
+A Core strip can bind either axis to a categorical band. The other axis binds to
+a dimension in the tile record. The band contributes one cell to the tile shape.
+A vertical strip is a one-column, row-major tile. Core normalizes both
+orientations through the existing positional encoders and retains the existing
+cell selection and picking contracts.
+
+The raster browser suite checks categorical selection, band gaps, and index
+placement for both orientations in WebGL2, Canvas2D, and WebGPU. The tooltip
+test covers row indexing and genomic intervals in a one-column strip.

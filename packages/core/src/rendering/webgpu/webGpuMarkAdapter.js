@@ -599,7 +599,7 @@ const rasterDataCache = new WeakMap();
  * @returns {RasterConfig}
  */
 function createRasterConfig(mark, data, coords, placementIndex) {
-    const { strip, type } = mark.getColorCellBinding();
+    const { bandAxis, type } = mark.getColorCellBinding();
     const color = mark.validateRenderingScales()?.getScale();
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
@@ -645,13 +645,14 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         rasterDataCache.set(mark, cached);
     }
 
-    const { rowEdges, xEnd } = cached.packed;
+    const { rowEdges, stripEnd } = cached.packed;
     // Grid endpoints are genomic boundaries. Index band 0 is on the lower
     // pixel side, which is the trailing side on a reversed range.
     const xScale = mark.encoders.x.scale;
     const yScale = mark.encoders.y?.scale;
-    const xBand = xScale.props.reverse ? 1 : 0;
-    const yBand = strip || rowEdges ? undefined : yScale.props.reverse ? 0 : 1;
+    const xBand = bandAxis === "x" ? undefined : xScale.props.reverse ? 1 : 0;
+    const yBand =
+        bandAxis === "y" || rowEdges ? undefined : yScale.props.reverse ? 0 : 1;
     const channels = {
         x: createPositionChannel(mark, "x", data, coords, xBand),
         ...(rowEdges
@@ -663,7 +664,7 @@ function createRasterConfig(mark, data, coords, placementIndex) {
             const { scale, inputComponents } = channel;
             // A strip covers the symmetric interval within its band.
             const bandEnd =
-                strip && name === "y" && "band" in scale
+                name === bandAxis && "band" in scale
                     ? 1 - scale.band
                     : undefined;
             const descriptor = { scale, inputComponents, bandEnd };
@@ -679,12 +680,17 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         ...cached.packed.tiles,
         x0: channels.x.data,
         y0: rowEdges ? rowEdges.start : channels.y.data,
-        x1: xEnd ?? createPositionChannel(mark, "x2", data, coords, xBand).data,
+        x1:
+            bandAxis === "x"
+                ? channels.x.data
+                : (stripEnd ??
+                  createPositionChannel(mark, "x2", data, coords, xBand).data),
         y1: rowEdges
             ? rowEdges.end
-            : strip
+            : bandAxis === "y"
               ? channels.y.data
-              : createPositionChannel(mark, "y2", data, coords, yBand).data,
+              : (stripEnd ??
+                createPositionChannel(mark, "y2", data, coords, yBand).data),
     });
     if (
         !cached.snapshot ||
@@ -728,7 +734,7 @@ function createRasterConfig(mark, data, coords, placementIndex) {
  * @param {Record<string, Uint32Array>} cellInputs
  */
 function packRasterTiles(mark, data, intern, cellInputs) {
-    const { direct, readTile, strip } = mark.getColorCellBinding();
+    const { direct, readTile, bandAxis } = mark.getColorCellBinding();
     const tiles = data.map(readTile);
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
@@ -742,7 +748,7 @@ function packRasterTiles(mark, data, intern, cellInputs) {
     let offset = 0;
     for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
         columns[index] = horizontal.count;
-        rows[index] = vertical?.count ?? 1;
+        rows[index] = vertical.count;
         offsets[index] = offset;
         if (
             values instanceof Uint32Array ||
@@ -763,15 +769,22 @@ function packRasterTiles(mark, data, intern, cellInputs) {
             field.fill(values[index], start, offsets[index + 1] ?? length);
         }
     }
+    const gridAxis = bandAxis === "x" ? "y" : "x";
     return {
         // Core keeps the last covered index for domain inference. The tile
         // snapshot uses a grid edge for both rendering and brush membership.
-        xEnd:
-            strip && mark.encoders.x.scale.type === "index"
+        stripEnd:
+            bandAxis && mark.encoders[gridAxis].scale.type === "index"
                 ? packHighPrecisionU32Array(
-                      tiles.map(({ horizontal: { origin, step, count } }) =>
-                          readIndexValue(mark, "x2", origin + step * count)
-                      )
+                      tiles.map(({ horizontal, vertical }) => {
+                          const { origin, step, count } =
+                              gridAxis === "x" ? horizontal : vertical;
+                          return readIndexValue(
+                              mark,
+                              gridAxis + "2",
+                              origin + step * count
+                          );
+                      })
                   )
                 : undefined,
         rowEdges: mark.isTriangle && {

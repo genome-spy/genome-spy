@@ -52,7 +52,7 @@ const UNBOUNDED = { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity };
 export function resolveRasterCell(layout, mark, datum, point, facetId) {
     const { column, row } = mark.getColorCellBinding();
     const columns = readRasterDimension(datum, column).count;
-    const rows = row === undefined ? 1 : readRasterDimension(datum, row).count;
+    const rows = readRasterDimension(datum, row).count;
     const occurrences = layout.getMarkOccurrences(mark);
     /** @type {SampleFacetCoordsResolver | undefined} */
     let sampleCoords;

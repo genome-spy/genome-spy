@@ -120,7 +120,8 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
             tile
         );
     delete attributes[UNIQUE_ID_KEY];
-    const horizontal = dimensions[columnDimension];
+    const horizontal =
+        columnDimension === undefined ? undefined : dimensions[columnDimension];
     const vertical =
         rowDimension === undefined ? undefined : dimensions[rowDimension];
     const datum = {
@@ -132,8 +133,9 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
             ])
         ),
     };
-    const column = index % horizontal.count;
-    const row = Math.floor(index / horizontal.count);
+    const columns = horizontal?.count ?? 1;
+    const column = index % columns;
+    const row = Math.floor(index / columns);
     const genomeAxis = (/** @type {"x" | "y"} */ axis) =>
         mark.isTriangle ? "x" : axis;
     /** @type {TooltipRow[]} */

@@ -52,22 +52,28 @@ export default class RasterMark extends Mark {
 
     /** @param {import("../spec/channel.js").Encoding} encoding */
     #fixGridPosition(encoding) {
-        const y = encoding.y;
         const triangle = this.isTriangle;
-        if (triangle && (y || encoding.y2)) {
+        if (triangle && (encoding.y || encoding.y2)) {
             throw new Error("Triangle rasters use only the x locus axis.");
         }
-        const strip =
-            y &&
-            "field" in y &&
-            (y.type === "nominal" || y.type === "ordinal") &&
-            !encoding.y2;
-        for (const [axis, end] of /** @type {const} */ ([
+        const axes = /** @type {const} */ ([
             ["x", "x2"],
             ["y", "y2"],
-        ])) {
+        ]);
+        const bandAxis =
+            !triangle &&
+            axes.find(([axis, end]) => {
+                const def = encoding[axis];
+                return (
+                    def &&
+                    "field" in def &&
+                    (def.type === "nominal" || def.type === "ordinal") &&
+                    !encoding[end]
+                );
+            })?.[0];
+        for (const [axis, end] of axes) {
             if (axis === "y" && triangle) break;
-            if (axis === "y" && strip) {
+            if (axis === bandAxis) {
                 fixCoveragePositional(encoding, axis);
                 continue;
             }
@@ -79,7 +85,7 @@ export default class RasterMark extends Mark {
             }
             const { dimension, ...options } = binding;
             const path = "dimensions[" + JSON.stringify(dimension) + "]";
-            const indexStrip = strip && binding.type === "index";
+            const indexStrip = bandAxis && binding.type === "index";
             const domainInert = binding.type !== "quantitative" && !indexStrip;
             encoding[axis] = inheritSpecOrigin(binding, {
                 ...options,
@@ -109,11 +115,7 @@ export default class RasterMark extends Mark {
                 );
             const direct = scale === null;
             const { x, y } = this.unitView.getEncoding();
-            // Encoding validation requires a grid dimension on x.
-            const column =
-                /** @type {import("../spec/channel.js").RasterDimensionDef} */ (
-                    x
-                ).dimension;
+            const column = x && "dimension" in x ? x.dimension : undefined;
             const locus = this.isTriangle;
             const row = locus
                 ? "row"
@@ -126,7 +128,12 @@ export default class RasterMark extends Mark {
                 direct,
                 column,
                 row,
-                strip: row === undefined,
+                bandAxis:
+                    column === undefined
+                        ? /** @type {const} */ ("x")
+                        : row === undefined
+                          ? /** @type {const} */ ("y")
+                          : undefined,
                 domainKey: "raster:" + JSON.stringify([column, row, field]),
                 readTile: (/** @type {object} */ datum) =>
                     readRasterTile(datum, column, row, field, options),
@@ -193,14 +200,14 @@ export default class RasterMark extends Mark {
                     this.unitView
                 );
             }
-            const { strip } = this.getColorCellBinding();
+            const { bandAxis } = this.getColorCellBinding();
             return {
                 conditions,
                 memberships,
                 params: new Set(conditions.flatMap(({ params }) => params)),
-                readRow: strip
-                    ? this.encoders.y?.branches[0].accessor
-                    : undefined,
+                bandAxis,
+                readBand:
+                    bandAxis && this.encoders[bandAxis].branches[0].accessor,
             };
         });
     }
@@ -211,8 +218,8 @@ export default class RasterMark extends Mark {
     }
 
     validateRenderingScales() {
-        const { strip, type, direct } = this.getColorCellBinding();
-        this.#validateGridScales(strip);
+        const { bandAxis, type, direct } = this.getColorCellBinding();
+        this.#validateGridScales(bandAxis);
         this.getOpacityPlan();
         if (direct) return undefined;
 
@@ -232,24 +239,24 @@ export default class RasterMark extends Mark {
         return resolution;
     }
 
-    /** @param {boolean} strip */
-    #validateGridScales(strip) {
-        const x = this.encoders.x.scale;
-        const y = this.encoders.y?.scale;
+    /** @param {"x" | "y" | undefined} bandAxis */
+    #validateGridScales(bandAxis) {
         const triangle = this.isTriangle;
-        if (triangle && x?.type !== "locus") {
+        if (triangle && this.encoders.x.scale?.type !== "locus") {
             throw new ViewError(
                 "Triangle rasters need a locus scale on x.",
                 this.unitView
             );
         }
-        if (strip && y?.type !== "band") {
+        if (bandAxis && this.encoders[bandAxis].scale?.type !== "band") {
             throw new ViewError(
-                "Raster strips need a band scale on y.",
+                `Raster strips need a band scale on ${bandAxis}.`,
                 this.unitView
             );
         }
-        for (const scale of strip || triangle ? [x] : [x, y]) {
+        for (const axis of /** @type {const} */ (["x", "y"])) {
+            if (axis === bandAxis || (triangle && axis === "y")) continue;
+            const scale = this.encoders[axis].scale;
             if (
                 !scale ||
                 !["linear", "index", "locus"].includes(scale.type) ||
@@ -293,9 +300,7 @@ export default class RasterMark extends Mark {
                 horizontal,
                 triangle ? undefined : xConstraint
             );
-            const [top, bottom] = vertical
-                ? getVisibleCellRange(vertical, yConstraint)
-                : [0, 1];
+            const [top, bottom] = getVisibleCellRange(vertical, yConstraint);
             for (let row = top; row < bottom; row++) {
                 let [left, right] = columns;
                 if (triangle) {

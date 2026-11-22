@@ -138,7 +138,7 @@ export default class WebGLRasterMark {
                 if (this.#tiles.has(datum)) continue;
                 const { horizontal, vertical, values } = readTile(datum);
                 const width = horizontal.count;
-                const height = vertical?.count ?? 1;
+                const height = vertical.count;
                 if (width > size || height > size) {
                     throw new Error(
                         `Raster tile ${width} × ${height} exceeds WebGL texture size ${size}.`
@@ -321,7 +321,7 @@ export default class WebGLRasterMark {
         const tile = this.#tiles.get(datum);
         const { texture, horizontal, vertical } = tile;
         const width = horizontal.count;
-        const height = vertical?.count ?? 1;
+        const height = vertical.count;
         const { x1, y1, x2, y2 } = triangle?.sourceBounds ?? this.#bounds;
         this.#setAxis(0, x0, dx, width, x1, x2);
         this.#setAxis(1, y0, dy, height, y1, y2);

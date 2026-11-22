@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import Genome from "../genome/genome.js";
-import createTooltipContext from "./tooltipContext.js";
+import createTooltipContext, { createRasterTooltip } from "./tooltipContext.js";
 
 const genome = new Genome({
     name: "test",
@@ -58,6 +58,24 @@ function makeMark({ encoders, encoding = {}, parent }) {
 }
 
 describe("Tooltip context rows", () => {
+    test("Reports the hovered row of a vertical raster strip", () => {
+        const mark = makeMark({ encoders: { y: makeLocusEncoder("row") } });
+        mark.getColorCellBinding = () => ({ row: "row" });
+        const tile = {
+            sample: "S1",
+            dimensions: { row: { origin: 10, step: 2, count: 3 } },
+            fields: { base: "AGT" },
+        };
+
+        const { datum, context } = createRasterTooltip(tile, mark, 1);
+
+        expect(datum).toEqual({ sample: "S1", base: "G" });
+        expect(context.rasterCell).toEqual({ column: 0, row: 1 });
+        expect(context.genomicRows).toEqual([
+            { key: "Row", value: "chr1:13-14" },
+        ]);
+    });
+
     test("Creates context with datum row flattening utility", () => {
         const datum = {
             sample: "S1",
