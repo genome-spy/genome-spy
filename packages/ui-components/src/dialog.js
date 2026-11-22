@@ -49,6 +49,7 @@ const DEFAULT_ACTION_INPUT_TYPES = new Set([
 export default class BaseDialog extends LitElement {
     static properties = {
         dialogTitle: {},
+        dialogDescribedBy: { type: String, attribute: "dialog-described-by" },
         modal: { type: Boolean },
     };
 
@@ -212,6 +213,9 @@ export default class BaseDialog extends LitElement {
 
         /** @type {string | import("lit").TemplateResult} Title text or Lit markup. */
         this.dialogTitle = null;
+
+        /** @type {string | null} Space-separated IDs of description elements in the dialog's render root. */
+        this.dialogDescribedBy = null;
 
         /** Open in the browser's modal top layer. Defaults to true. */
         this.modal = true;
@@ -559,6 +563,7 @@ export default class BaseDialog extends LitElement {
                 part="dialog"
                 aria-labelledby=${this.dialogTitle ? "dialog-title" : nothing}
                 aria-label="GenomeSpy"
+                aria-describedby=${this.dialogDescribedBy || nothing}
                 @cancel=${this.#onDialogCancel}
                 @close=${this.#onDialogClose}
             >

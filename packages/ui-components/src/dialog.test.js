@@ -15,6 +15,23 @@ afterEach(() => {
     document.body.replaceChildren();
 });
 
+test("a dialog can reference an accessible description", async () => {
+    const { element } = showDialogWithElement("gs-test-dialog", makeNonOpening);
+    await element.updateComplete;
+    const dialog = element.shadowRoot.querySelector("dialog");
+    expect(dialog.hasAttribute("aria-describedby")).toBe(false);
+
+    element.dialogDescribedBy = "help-summary help-instructions";
+    await element.updateComplete;
+    expect(dialog.getAttribute("aria-describedby")).toBe(
+        "help-summary help-instructions"
+    );
+
+    element.dialogDescribedBy = null;
+    await element.updateComplete;
+    expect(dialog.hasAttribute("aria-describedby")).toBe(false);
+});
+
 test("a nested dialog only settles and removes its own instance", async () => {
     const mount = document.createElement("section");
     document.body.append(mount);

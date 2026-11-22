@@ -86,7 +86,9 @@ await showMessageDialog("The dataset is ready.", {
 Subclass `BaseDialog` from `/dialog`, register the subclass, and call
 `showDialog(tagName, configure, { mount })` to open it and await its result. For
 persistent dialogs, set `openOnConnect` to false and call `openDialog()` after
-the element's first render.
+the element's first render. Set `dialogDescribedBy` to the ID of a short
+description rendered in the dialog's shadow root so assistive technology can
+announce it.
 
 The `faStyles` export from `@genome-spy/ui-components/styles` provides baseline
 sizing and alignment for inline Font Awesome SVGs in a Lit shadow root.

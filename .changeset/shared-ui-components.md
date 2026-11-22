@@ -26,6 +26,7 @@ surface, row spacing, and interaction colors.
 Import `@genome-spy/ui-components/form.css` and add `gs-form` to theme native
 fields and buttons alongside the shared components.
 
-Dialog helpers resolve a cancellation on ordinary closure. Selection and
-threshold controls accept accessible labels, multi-select reports search
-failures, and data previews expose one keyboard-scrollable table.
+Dialog helpers resolve a cancellation on ordinary closure, and `BaseDialog`
+supports accessible descriptions for custom dialogs. Selection and threshold
+controls accept accessible labels, multi-select reports search failures, and
+data previews expose one keyboard-scrollable table.
