@@ -1044,7 +1044,7 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
         expect(result.initializedDomain).toEqual([1, 1]);
         expect(result.baseline).toEqual([255, 255, 255, 255, 255]);
         expect(result.selected).toEqual([0, 255, 255, 0, 0]);
-        if (renderer === "webgpu") {
+        if (renderer !== "canvas") {
             // Both thresholds round to 8 when uploaded as Float32.
             expect(result.upperBetweenFloats).toEqual(result.selected);
             expect(result.lowerBetweenFloats).toEqual(result.unbounded);

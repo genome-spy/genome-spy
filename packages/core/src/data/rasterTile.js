@@ -155,26 +155,18 @@ export function findRasterEdge({ origin, step, count }, bound, strict = false) {
 /**
  * @param {RasterDimension} dimension
  * @param {readonly number[]} bounds
- * @param {"start" | "end" | "intersects" | "encloses" | "endpoints"} mode
+ * @param {"start" | "end" | "intersects"} mode
  * @returns {[number, number]} Half-open range of matching cell indices.
  */
 export function getRasterCellRange(dimension, [lo, hi], mode) {
     if (!(lo < hi)) return [0, 0];
     const first = findRasterEdge(dimension, lo, mode === "intersects");
-    const last = findRasterEdge(dimension, hi, mode === "encloses");
+    const last = findRasterEdge(dimension, hi);
     const start = Math.min(
         dimension.count,
-        Math.max(
-            0,
-            first -
-                Number(
-                    mode === "end" ||
-                        mode === "intersects" ||
-                        (mode === "endpoints" && first < last)
-                )
-        )
+        Math.max(0, first - Number(mode !== "start"))
     );
-    const end = last - Number(mode === "end" || mode === "encloses");
+    const end = last - Number(mode === "end");
     return [start, Math.min(dimension.count, Math.max(start, end))];
 }
 

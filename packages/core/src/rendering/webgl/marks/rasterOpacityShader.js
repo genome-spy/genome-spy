@@ -78,11 +78,7 @@ export function createRasterOpacityShader(
      * @param {Membership["type"]} type
      * @param {Projection} projection
      */
-    function bindProjection(
-        param,
-        type,
-        { component, input, secondaryInput, hitTest }
-    ) {
+    function bindProjection(param, type, { component, input, secondaryInput }) {
         const axis = input[0] === "x" ? "x" : "y";
         const readAnchor = anchors[axis];
         if (type === "categories") {
@@ -139,15 +135,12 @@ export function createRasterOpacityShader(
                 : undefined;
         };
         if (input === "color") {
-            const uniform = bind(
-                "vec2",
-                () => readBounds()?.map(ceilFloat32) ?? [0, 0]
-            );
+            const uniform = bind("vec2", () => readBounds() ?? [0, 0]);
             return `(${uniform}.x <= value && value < ${uniform}.y)`;
         }
 
         const mode = secondaryInput
-            ? (hitTest ?? "intersects")
+            ? "intersects"
             : input.endsWith("2")
               ? "end"
               : "start";
@@ -227,15 +220,4 @@ ${shader}
             for (const dispose of deleteCategoryTextures) dispose();
         },
     };
-}
-
-const floatBits = new DataView(new ArrayBuffer(4));
-
-/** Round up to preserve both inequalities of a half-open float interval. */
-function ceilFloat32(/** @type {number} */ value) {
-    const rounded = Math.fround(value);
-    if (!(rounded < value)) return rounded;
-    floatBits.setFloat32(0, rounded);
-    floatBits.setUint32(0, floatBits.getUint32(0) + (rounded >= 0 ? 1 : -1));
-    return floatBits.getFloat32(0);
 }
