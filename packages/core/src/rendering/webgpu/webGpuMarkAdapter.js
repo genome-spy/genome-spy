@@ -660,24 +660,7 @@ function createRasterConfig(mark, data, coords, placement) {
                   x2: createPositionChannel(mark, "x2", data, coords, xEndBand),
               }),
     };
-    if (rowEdges) {
-        const { scale, inputComponents } = channels.x;
-        const rowMapping = {
-            scale,
-            inputComponents,
-            type: /** @type {const} */ ("u32"),
-        };
-        channels.y = { ...rowMapping, data: rowEdges.start };
-        channels.y2 = { ...rowMapping, data: rowEdges.end };
-        SCALE_DEPENDENT_VALUES.set(
-            channels.y,
-            getWebGpuChannelResolution(channels.x)
-        );
-        SCALE_DEPENDENT_VALUES.set(
-            channels.y2,
-            getWebGpuChannelResolution(channels.x2)
-        );
-    } else {
+    if (!rowEdges) {
         const yBand = icon || strip ? undefined : yScale.props.reverse ? 0 : 1;
         channels.y = createPositionChannel(mark, "y", data, coords, yBand);
         if (!icon)
@@ -701,12 +684,16 @@ function createRasterConfig(mark, data, coords, placement) {
             return [name, descriptor];
         })
     );
+    if (rowEdges) {
+        position.y = position.x;
+        position.y2 = position.x2;
+    }
     const tiles = /** @type {RasterData["tiles"]} */ ({
         ...cached.packed.tiles,
         x0: channels.x.data,
-        y0: channels.y.data,
+        y0: rowEdges ? rowEdges.start : channels.y.data,
         x1: channels.x2?.data,
-        y1: channels.y2?.data,
+        y1: rowEdges ? rowEdges.end : channels.y2?.data,
         size: channels.size?.data,
         placementIndices:
             placement && "data" in placement ? placement.data : undefined,
@@ -762,11 +749,8 @@ function packRasterTiles(mark, data, intern, cellInputs) {
     const color =
         direct || intern ? new Uint32Array(length) : new Float32Array(length);
     const encodeCell = intern ?? readNumericRasterCell;
-    const categoryFields = Object.entries(cellInputs).map(([name, values]) => ({
-        name,
-        values,
-        cells: new Uint32Array(length),
-    }));
+    /** @type {RasterData["cells"]} */
+    const cells = { color };
     let offset = 0;
     for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
         columns[index] = horizontal.count;
@@ -782,14 +766,14 @@ function packRasterTiles(mark, data, intern, cellInputs) {
                 color[offset + cell] = encodeCell(values[cell]);
             }
         }
-        for (const category of categoryFields) {
-            category.cells.fill(
-                category.values[index],
-                offset,
-                offset + values.length
-            );
-        }
         offset += values.length;
+    }
+    for (const [name, values] of Object.entries(cellInputs)) {
+        const field = new Uint32Array(length);
+        cells[name] = field;
+        for (const [index, start] of offsets.entries()) {
+            field.fill(values[index], start, offsets[index + 1] ?? length);
+        }
     }
     return {
         rowEdges: mark.isTriangle && {
@@ -803,12 +787,7 @@ function packRasterTiles(mark, data, intern, cellInputs) {
                 )
             ),
         },
-        cells: {
-            color,
-            ...Object.fromEntries(
-                categoryFields.map(({ name, cells }) => [name, cells])
-            ),
-        },
+        cells,
         tiles: { columns, rows, offsets },
     };
 }

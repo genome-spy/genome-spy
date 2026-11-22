@@ -112,13 +112,11 @@ export class SeriesBufferManager {
      */
     inferCount(channels) {
         let inferred = null;
-        let hasSeries = false;
 
         for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
-            hasSeries = true;
             const data = channels?.[name] ?? channel.data;
             if (!data) {
                 throw new Error(`Missing data for channel "${name}"`);
@@ -150,10 +148,7 @@ export class SeriesBufferManager {
             }
         }
 
-        if (!hasSeries) {
-            return null;
-        }
-        return inferred ?? 0;
+        return inferred;
     }
 
     /**
@@ -202,7 +197,6 @@ export class SeriesBufferManager {
         const groupArrays = new Map();
         /** @type {Record<string, TypedArray>} */
         const arrays = {};
-        const resolved = { ...this.#channels };
 
         for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
@@ -224,11 +218,11 @@ export class SeriesBufferManager {
             }
             groupArrays.set(group, sourceArray);
             arrays[name] = sourceArray;
-            resolved[name] = { ...channel, data: sourceArray };
         }
 
         const words = packSeriesArrays({
-            channels: resolved,
+            channels: this.#channels,
+            arrays,
             layout,
             count,
         });
@@ -261,13 +255,11 @@ export class SeriesBufferManager {
      * @returns {string[]}
      */
     #getAliasMembers(group) {
-        const members = [];
-        for (const [name, alias] of this.#seriesBufferAliases.entries()) {
-            if (alias === group) {
-                members.push(name);
-            }
-        }
-        return members.length > 0 ? members : [group];
+        return this.#seriesBufferAliases
+            .entries()
+            .filter(([, alias]) => alias === group)
+            .map(([name]) => name)
+            .toArray();
     }
 
     /**

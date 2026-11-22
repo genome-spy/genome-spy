@@ -117,7 +117,7 @@ export function readNumericRasterCell(value) {
 /**
  * Restrict a grid dimension to the cells contributing to a viewport domain.
  * @param {RasterDimension} dimension
- * @param {import("./viewportDomain.js").ViewportConstraint} [constraint]
+ * @param {Pick<import("./viewportDomain.js").ViewportConstraint, "domain" | "mode">} [constraint]
  * @returns {[number, number]} Half-open range of cell indices.
  */
 export function getVisibleCellRange({ origin, step, count }, constraint) {

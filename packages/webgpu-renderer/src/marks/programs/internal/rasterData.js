@@ -39,19 +39,17 @@ function numericType(array) {
  */
 export function compileRasterData(config) {
     const { data, position } = config;
+    const entries = Object.entries(data.cells);
+    /** @type {Map<RasterCellArray, string>} */
+    const reads = new Map();
     const fields = new Map(
-        Object.entries(data.cells).map(([name, array], offset) => {
+        entries.map(([name, array], offset) => {
             const type = numericType(array);
             const data =
                 type === "u32" ? new Uint32Array(0) : new Float32Array(0);
-            return [name, { name: "cellField" + offset, type, data, offset }];
-        })
-    );
-    /** @type {Map<RasterCellArray, string>} */
-    const reads = new Map(
-        Array.from(fields.values(), ({ data, type, offset }) => {
-            const word = `rasterCells[i * ${fields.size}u + ${offset}u]`;
-            return [data, type === "f32" ? `bitcast<f32>(${word})` : word];
+            const word = `rasterCells[i * ${entries.length}u + ${offset}u]`;
+            reads.set(data, type === "f32" ? `bitcast<f32>(${word})` : word);
+            return [name, { name: "cellField" + offset, type, data }];
         })
     );
     const icon = data.tiles.x1 === undefined && data.tiles.y1 === undefined;

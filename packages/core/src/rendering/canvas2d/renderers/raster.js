@@ -68,7 +68,6 @@ export function renderRasterCanvas(mark, options) {
     const triangle = getRasterTriangle(mark, options.coords, visibleBounds);
     const sourceBounds = triangle?.sourceBounds ?? visibleBounds;
     const placement = triangle ? { ...options, triangle } : options;
-    const transform = context.getTransform();
     context.save();
     try {
         context.imageSmoothingEnabled = false;
@@ -78,7 +77,10 @@ export function renderRasterCanvas(mark, options) {
             context.beginPath();
             context.rect(x1, y1, x2 - x1, y2 - y1);
             context.clip();
+            const half = triangle.direction * 0.5;
+            context.transform(0.5, half, 0.5, -half, 0, triangle.baseline);
         }
+        const transform = context.getTransform();
         return visitRasterTiles(mark, placement, (datum, x0, y0, dx, dy) => {
             const alpha =
                 options.viewOpacity *
@@ -117,10 +119,6 @@ export function renderRasterCanvas(mark, options) {
             const signX = Math.sign(dx);
             const signY = Math.sign(dy);
             context.setTransform(transform);
-            if (triangle) {
-                const half = triangle.direction * 0.5;
-                context.transform(0.5, half, 0.5, -half, 0, triangle.baseline);
-            }
             context.globalAlpha = Math.min(1, alpha);
             context.scale(signX, signY);
             for (const row of y) {

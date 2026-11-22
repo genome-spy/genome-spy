@@ -7,7 +7,7 @@ import { createBroadcastingTestViewContext } from "../../../view/testUtils.js";
 import HiGlassSource from "./hiGlassSource.js";
 import {
     decodeTile,
-    getTriangleTileWindow,
+    getTileWindow,
     mirrorDiagonal,
     transposeTile,
 } from "./hiGlassTiles.js";
@@ -24,13 +24,18 @@ test("triangle windows include an offscreen endpoint and key the projected tile 
         bins_per_dimension: 4,
         chromsizes: [["chr1", 32]],
     };
-    const short = getTriangleTileWindow(metadata, [8, 16], 16, 1);
-    const tall = getTriangleTileWindow(metadata, [8, 16], 16, 12);
+    const short = getTileWindow(metadata, [[8, 16]], [16], 1);
+    const tall = getTileWindow(metadata, [[8, 16]], [16], 12);
+    /** @param {typeof tall} window @param {number} x @param {number} y */
+    const includesTile = (window, x, y) =>
+        window.rows.some(
+            ([row, start, end]) => row === y && start <= x && x < end
+        );
     expect(tall.level).toBe(short.level);
-    expect(tall.positions).toContainEqual([1, 3]);
-    expect(short.positions).not.toContainEqual([1, 3]);
+    expect(includesTile(tall, 1, 3)).toBe(true);
+    expect(includesTile(short, 1, 3)).toBe(false);
     expect(tall.key).not.toBe(short.key);
-    expect(tall.positions).not.toContainEqual([3, 1]);
+    expect(includesTile(tall, 3, 1)).toBe(false);
 });
 
 test("decodes float16 cells and mirrors the stored triangle", () => {
@@ -83,12 +88,17 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
         });
 
         const coarse = Promise.withResolvers();
+        const replacement = Promise.withResolvers();
         const fine = Promise.withResolvers();
         const fetch = vi.fn(
             /** @param {URL} url @param {RequestInit} _options */
             (url, _options) => {
                 const id = url.searchParams.get("d");
-                if (id === "test.0.0.0") return coarse.promise;
+                if (id === "test.0.0.0") {
+                    return fetch.mock.calls.length === 2
+                        ? coarse.promise
+                        : replacement.promise;
+                }
                 if (id === "test.2.0.0") return fine.promise;
                 expect(id).toBe("test");
                 return Promise.resolve(
@@ -136,6 +146,18 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
             );
             await visibleData;
             expect(source.isDataReadyForDomain({})).toBe(true);
+            const [fineTile] = collector.getData();
+            expect(fineTile.dimensions.column.step).toBe(1);
+            expect(Array.from(fineTile.fields.value)).toEqual([1, 2, 2, 3]);
+
+            // A stale response can arrive after a newer request publishes the same window.
+            domain = [0, 8];
+            source.ensureViewportData();
+            await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+            replacement.resolve(
+                Response.json({ "test.0.0.0": { dense, dtype: "float32" } })
+            );
+            await engine.awaitVisibleLazyData(AbortSignal.timeout(2000));
             const revision = collector.dataRevision;
             coarse.resolve(
                 Response.json({ "test.0.0.0": { dense, dtype: "float32" } })
@@ -143,9 +165,7 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
             await new Promise((resolve) => setTimeout(resolve, 0));
 
             expect(collector.dataRevision).toBe(revision);
-            const [tile] = collector.getData();
-            expect(tile.dimensions.column.step).toBe(1);
-            expect(Array.from(tile.fields.value)).toEqual([1, 2, 2, 3]);
+            expect(source.isDataReadyForDomain({})).toBe(true);
         } finally {
             source.dispose();
         }

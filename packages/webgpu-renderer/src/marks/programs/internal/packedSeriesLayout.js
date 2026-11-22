@@ -101,11 +101,12 @@ export function buildPackedSeriesLayout(
  *
  * @param {object} params
  * @param {Record<string, ChannelConfigResolved>} params.channels
+ * @param {Record<string, TypedArray>} [params.arrays]
  * @param {PackedSeriesLayout} params.layout
  * @param {number} params.count
  * @returns {Uint32Array}
  */
-export function packSeriesArrays({ channels, layout, count }) {
+export function packSeriesArrays({ channels, arrays, layout, count }) {
     const words = new Uint32Array(count * layout.stride);
 
     const packedEntries = new Set();
@@ -122,7 +123,7 @@ export function packSeriesArrays({ channels, layout, count }) {
         const inputComponents =
             channel.inputComponents ?? channel.components ?? entry.components;
         const required = count * inputComponents;
-        let source = channel.data;
+        let source = arrays?.[entry.name] ?? channel.data;
         if (!source) {
             throw new Error(`Missing data for "${entry.name}".`);
         }

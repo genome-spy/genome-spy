@@ -18,8 +18,9 @@ import {
  * @param {HiGlassMetadata} metadata
  * @param {number[][]} domains
  * @param {number[]} lengths
+ * @param {number} [triangleHeight] Track height when only x determines the resolution.
  */
-export function getTileWindow(metadata, domains, lengths) {
+export function getTileWindow(metadata, domains, lengths, triangleHeight) {
     const bins = metadata.bins_per_dimension;
     const coarseStep = metadata.max_width / bins;
     // Use the coarser axis to keep the request bounded for asymmetric views.
@@ -36,59 +37,36 @@ export function getTileWindow(metadata, domains, lengths) {
         )
     );
     const width = metadata.max_width / 2 ** level;
-    const ranges = domains.map(([a, b], i) => {
-        const lo = Math.max(Math.min(a, b), metadata.min_pos[i]);
-        const hi = Math.min(Math.max(a, b), metadata.max_pos[i]);
-        return hi > lo
-            ? [Math.floor(lo / width), Math.ceil(hi / width)]
-            : [0, 0];
-    });
-    return { level, width, ranges, key: [level, ...ranges.flat()].join(".") };
-}
-
-/**
- * @param {HiGlassMetadata} metadata
- * @param {number[]} domain
- * @param {number} viewWidth
- * @param {number} height
- */
-export function getTriangleTileWindow(metadata, domain, viewWidth, height) {
-    const { level, width } = getTileWindow(metadata, [domain], [viewWidth]);
-    const viewport = getTriangleViewport(domain, viewWidth, height);
-    const { lo, hi, depth } = viewport;
-    const positions = [];
-    const start = Math.max(lo, metadata.min_pos[1]);
-    const end = Math.min(hi + depth, metadata.max_pos[1]);
+    const triangle =
+        triangleHeight === undefined
+            ? undefined
+            : getTriangleViewport(domains[0], lengths[0], triangleHeight);
+    const [a, b] = triangle
+        ? [triangle.lo, triangle.hi + triangle.depth]
+        : domains[1];
+    const start = Math.max(Math.min(a, b), metadata.min_pos[1]);
+    const end = Math.min(Math.max(a, b), metadata.max_pos[1]);
+    const columns = [Math.min(...domains[0]), Math.max(...domains[0])];
+    /** @type {[number, number, number][]} */
+    const rows = [];
     for (
         let y = Math.floor(start / width);
-        y * width < end && end > start;
+        start < end && y * width < end;
         y++
     ) {
-        const [min, max] = getTriangleColumnDomain(
-            viewport,
-            Math.max(start, y * width),
-            Math.min(end, (y + 1) * width)
-        );
+        const [min, max] = triangle
+            ? getTriangleColumnDomain(
+                  triangle,
+                  Math.max(start, y * width),
+                  Math.min(end, (y + 1) * width)
+              )
+            : columns;
         const left = Math.max(min, metadata.min_pos[0]);
         const right = Math.min(max, metadata.max_pos[0]);
-        if (left >= right) continue;
-        for (let x = Math.floor(left / width); x * width < right; x++) {
-            positions.push([x, y]);
-        }
+        if (left < right)
+            rows.push([y, Math.floor(left / width), Math.ceil(right / width)]);
     }
-    return {
-        level,
-        width,
-        positions,
-        key: [level, ...positions.flat()].join("."),
-    };
-}
-
-/** @param {number[][]} ranges */
-export function* getTilePositions([[x0, x1], [y0, y1]]) {
-    for (let y = y0; y < y1; y++) {
-        for (let x = x0; x < x1; x++) yield [x, y];
-    }
+    return { level, width, rows, key: [level, ...rows.flat()].join(".") };
 }
 
 /**

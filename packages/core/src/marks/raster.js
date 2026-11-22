@@ -362,8 +362,8 @@ export default class RasterMark extends Mark {
                     );
                     if (columnDomain[0] >= columnDomain[1]) continue;
                     [left, right] = getVisibleCellRange(horizontal, {
-                        ...xConstraint,
                         domain: columnDomain,
+                        mode: xConstraint.mode,
                     });
                 }
                 const start = row * horizontal.count;

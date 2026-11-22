@@ -565,6 +565,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
      * @param {import("../immediate/bounds.js").RenderBounds} visibleBounds
      */
     #visitRasterMark(mark, options, visibleBounds) {
+        if (this.#countingInstances && this.#embedRasterMarks) return;
         visitMarkOccurrences(
             mark,
             options,
@@ -601,15 +602,10 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
                     }
                 );
                 if (!count) return;
-                if (
-                    this.#countingInstances ||
-                    this.#maxVectorInstances == null
-                ) {
-                    this.#instanceCounts.set(
-                        mark,
-                        this.getVisibleInstanceCount(mark) + count
-                    );
-                }
+                this.#instanceCounts.set(
+                    mark,
+                    this.getVisibleInstanceCount(mark) + count
+                );
                 if (!this.#countingInstances) {
                     if (!this.#embedRasterMarks) {
                         throw new Error(

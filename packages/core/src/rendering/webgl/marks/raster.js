@@ -12,7 +12,10 @@ import {
     visitMarkOccurrences,
 } from "../../immediate/markData.js";
 import { encodeNumber } from "../../immediate/markEncoding.js";
-import { visitRasterTiles } from "../../immediate/marks/raster.js";
+import {
+    getRasterTriangle,
+    visitRasterTiles,
+} from "../../immediate/marks/raster.js";
 import { RASTER_COORDINATE_OFFSET } from "../../renderingConstants.js";
 import { readScaleDomainUniform } from "../gl/glslScaleGenerator.js";
 import { createProgram } from "../gl/webGLHelper.js";
@@ -57,8 +60,6 @@ export default class WebGLRasterMark {
         uRect: [0, 0, 0, 0],
         uAnchor: [0, 0, 0, 0],
         uCellsPerPixel: [0, 0],
-        uTriangle: [0, 0],
-        uTriangleClip: [0, 0, 0, 0],
         uCells: /** @type {WebGLTexture | null} */ (null),
         uOpacity: 1,
     };
@@ -272,9 +273,18 @@ export default class WebGLRasterMark {
      * @param {object[]} data
      */
     #drawOccurrence = (coords, data) => {
+        const triangle = getRasterTriangle(this.mark, coords, this.#bounds);
+        if (triangle) {
+            const { x1, y1, x2, y2 } = triangle.clip;
+            const dpr = this.#dpr;
+            setUniforms(this.#programInfo, {
+                uTriangle: [triangle.baseline * dpr, triangle.direction],
+                uTriangleClip: [x1 * dpr, y1 * dpr, x2 * dpr, y2 * dpr],
+            });
+        }
         visitRasterTiles(
             this.mark,
-            { coords, data, visibleBounds: this.#bounds },
+            { coords, data, visibleBounds: this.#bounds, triangle },
             this.#drawTile
         );
     };
@@ -297,16 +307,6 @@ export default class WebGLRasterMark {
         this.#setAxis(1, y0, dy, height, y1, y2);
         const { uRect } = this.#tileUniforms;
         if (uRect[0] >= uRect[2] || uRect[1] >= uRect[3]) return;
-        if (triangle) {
-            const { uTriangle, uTriangleClip } = this.#tileUniforms;
-            const { clip, baseline, direction } = triangle;
-            uTriangle[0] = baseline * this.#dpr;
-            uTriangle[1] = direction;
-            uTriangleClip[0] = clip.x1 * this.#dpr;
-            uTriangleClip[1] = clip.y1 * this.#dpr;
-            uTriangleClip[2] = clip.x2 * this.#dpr;
-            uTriangleClip[3] = clip.y2 * this.#dpr;
-        }
         this.#tileUniforms.uCells = texture;
         this.#tileUniforms.uOpacity = Math.min(1, alpha);
         setUniforms(this.#programInfo, this.#tileUniforms);
