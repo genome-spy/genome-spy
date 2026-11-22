@@ -26,48 +26,121 @@
     }
   },
 
-  "mark": {
-    "type": "raster",
-    "projection": "triangle"
-  },
-  "encoding": {
-    "x": {
-      "dimension": "column",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          {
-            "chrom": "chr1",
-            "pos": 49152000
-          },
-          {
-            "chrom": "chr1",
-            "pos": 57343999
-          }
-        ],
-        "zoom": true,
-        "name": "matrixX"
-      }
-    },
-    "color": {
-      "field": "value",
-      "type": "quantitative",
-      "title": "Contact value",
-      "scale": {
-        "type": "log",
-        "domain": {
-          "source": "viewport"
-        },
-        "scheme": "higlassFall",
-        "clamp": true
-      }
-    },
-    "opacity": {
-      "condition": {
-        "param": "contactRange",
-        "value": 1
+  "layer": [
+    {
+      "mark": {
+        "type": "raster",
+        "projection": "triangle"
       },
-      "value": 0
+      "encoding": {
+        "x": {
+          "dimension": "column",
+          "type": "locus",
+          "scale": {
+            "domain": [
+              {
+                "chrom": "chr1",
+                "pos": 49152000
+              },
+              {
+                "chrom": "chr1",
+                "pos": 57343999
+              }
+            ],
+            "zoom": true,
+            "name": "matrixX"
+          }
+        },
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Contact value",
+          "scale": {
+            "type": "log",
+            "domain": {
+              "source": "viewport"
+            },
+            "scheme": "higlassFall",
+            "clamp": true
+          }
+        },
+        "opacity": {
+          "condition": {
+            "param": "contactRange",
+            "value": 1
+          },
+          "value": 0
+        }
+      }
+    },
+
+    {
+      "params": [
+        { "name": "labelFontSize", "value": 11 },
+        { "name": "labelLineHeight", "expr": "1.2 * labelFontSize" },
+        { "name": "labelPadding", "value": 3 },
+        { "name": "labelInset", "value": 4 }
+      ],
+      "transform": [
+        {
+          "type": "formula",
+          "as": "binSize",
+          "expr": "datum.dimensions.column.step"
+        },
+        { "type": "aggregate", "groupby": ["binSize"] },
+        {
+          "type": "formula",
+          "as": "resolutionLabel",
+          "expr": "'Current resolution: ' + format(datum.binSize, ',') + ' bp'"
+        },
+        {
+          "type": "measureText",
+          "field": "resolutionLabel",
+          "fontSize": { "expr": "labelFontSize" },
+          "as": "labelWidth"
+        }
+      ],
+      "encoding": {
+        "x": { "value": 1 },
+        "y": { "value": 0 }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rect",
+            "fill": "white",
+            "fillOpacity": 0.7,
+            "x2": 1,
+            "y2": 0,
+            "x2Offset": { "expr": "-labelInset" },
+            "yOffset": {
+              "expr": "-labelInset - 2 * labelPadding - labelLineHeight"
+            },
+            "y2Offset": { "expr": "-labelInset" }
+          },
+          "encoding": {
+            "xOffset": {
+              "expr": "-labelInset - 2 * labelPadding - datum.labelWidth",
+              "scale": null
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "right",
+            "baseline": "middle",
+            "size": { "expr": "labelFontSize" },
+            "xOffset": { "expr": "-labelInset - labelPadding" },
+            "yOffset": {
+              "expr": "-labelInset - labelPadding - labelLineHeight / 2"
+            }
+          },
+          "encoding": {
+            "text": { "field": "resolutionLabel" }
+          }
+        }
+      ]
     }
-  }
+  ]
 }
