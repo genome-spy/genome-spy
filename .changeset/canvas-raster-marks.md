@@ -27,8 +27,8 @@ Use a gradient legend brush to control the opacity of individual raster cells.
 The HiGlass example makes contact values outside the brushed range transparent.
 
 Use positional interval brushes and combined selection predicates to control
-raster cell opacity. Positional brushes can draw their shadow inside the
-selection.
+raster cell opacity. The Hi-C comparison lens reveals a second contact map
+inside the brushed region.
 
 SVG exports embed raster marks as transparent images while keeping surrounding
 vector layers editable.

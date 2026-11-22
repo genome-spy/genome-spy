@@ -32,8 +32,8 @@ and remains the unit of dataflow, caching, and upload.
    its resolved projections. Brush updates use selection uniforms and leave tile
    and cell buffers intact.
 3. Show two public, registered Schwarzer et al. contact maps with shared locus
-   and log color scales. Put ΔNipbl inside a draggable brush and wild type
-   outside. Use an inset brush edge so the contact values stay visible.
+   and log color scales. Put wild type inside a draggable brush and ΔNipbl
+   outside. Use a transparent brush with an outline.
 
 ## Verification
 

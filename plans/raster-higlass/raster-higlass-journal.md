@@ -142,3 +142,22 @@ missing and constant color extents and late arrivals.
   comparison. Its shared viewport color domain settles after initial tile
   readiness. Compare the lens pixels after the scale has settled.
   [HiGlass comparison](https://link.springer.com/article/10.1186/s13059-018-1486-1#Fig4)
+
+### Reconsidering conditional opacity
+
+The lens now uses the ordinary brush outline. The inset shadow was removed
+from the example and brush grammar.
+
+The main simplification would be to use Core's existing cell-opacity evaluator
+for all renderers. WebGPU could update a separate retained opacity buffer
+while keeping tile values and geometry resident. This would remove Core's use
+of derived positional predicate inputs and the associated packed-coordinate
+shader path. The standalone renderer can still evaluate conditions on
+explicitly supplied cell fields.
+
+A dense float mask costs 256 KiB per 256 × 256 tile on each changed selection.
+Measure brush dragging on both the comparison lens and the gradient legend
+before choosing that representation. Positional brushes can also use the
+constant-opacity spans the CPU evaluator already finds. Clipping a layer to
+the brush in screen coordinates would change how partially intersected cells
+are selected.
