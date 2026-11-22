@@ -34,3 +34,25 @@ export function setRasterImage(run, crop, pixelRatio, href) {
     );
     image.setAttribute("href", href);
 }
+
+/**
+ * @param {import("../svgViewRenderingContext.js").SvgRasterRun} run
+ * @param {HTMLCanvasElement} source
+ * @param {CanvasRenderingContext2D} cropContext
+ * @param {number} pixelRatio
+ */
+export function setRasterImageFromCanvas(run, source, cropContext, pixelRatio) {
+    const { canvas } = cropContext;
+    const crop = getPhysicalCrop(
+        run.bounds,
+        pixelRatio,
+        source.width,
+        source.height
+    );
+    const { x, y, width, height } = crop;
+    // Resizing resets the crop context and clears the previous image.
+    canvas.width = width;
+    canvas.height = height;
+    cropContext.drawImage(source, x, y, width, height, 0, 0, width, height);
+    setRasterImage(run, crop, pixelRatio, canvas.toDataURL("image/png"));
+}

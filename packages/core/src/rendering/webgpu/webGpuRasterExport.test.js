@@ -97,12 +97,12 @@ describe("WebGPU raster export", () => {
 
     test("renders selected SVG runs transparently and preserves placeholders", async () => {
         const cropContext = {
-            resetTransform: vi.fn(),
-            clearRect: vi.fn(),
             drawImage: vi.fn(),
         };
-        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-            /** @type {any} */ (cropContext)
+        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+            function () {
+                return /** @type {any} */ ({ canvas: this, ...cropContext });
+            }
         );
         vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(
             "data:image/png;base64,webgpu-run"

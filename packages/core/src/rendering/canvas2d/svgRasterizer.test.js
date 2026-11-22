@@ -187,8 +187,6 @@ function installCanvasMocks() {
 function createContext(canvas) {
     return {
         canvas,
-        resetTransform: vi.fn(),
-        clearRect: vi.fn(),
         drawImage: vi.fn(),
     };
 }
