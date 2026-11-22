@@ -1,6 +1,6 @@
 # Raster cell tooltips
 
-One datum remains one tile. Enable raster and icon tooltips explicitly with
+One datum remains one tile. Enable raster tooltips explicitly with
 `mark.tooltip: { "handler": "default" }` or a custom handler. Picking assigns
 one ID per tile and tests the cell at the picking pixel center for coverage. The
 hover retains the tile datum and carries a tile-local cell address. Build one
@@ -29,7 +29,7 @@ GenomeSpy's existing picking infrastructure.
    rendering path.
 
 Verify a HiGlass-shaped triangle at close locus zoom and an overlapping RGBA
-icon with a transparent cell. Check hover updates within one tile, a second
+raster with a transparent cell. Check hover updates within one tile, a second
 visible mark beneath a masked cell, and rendering across all three backends. Run
 the minimal bundle check to verify the renderer boundary. Update the HiGlass
 triangle example and the branch's raster changeset.

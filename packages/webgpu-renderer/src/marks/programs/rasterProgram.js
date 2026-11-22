@@ -18,15 +18,13 @@ const channels = {
     x2: { type: "f32", components: 1, default: 1 },
     y: { type: "f32", components: 1, default: 0 },
     y2: { type: "f32", components: 1, default: 1 },
-    size: { type: "f32", components: 1, default: 1 },
     fill: { type: "f32", components: 4, default: [0, 0, 0, 1] },
     opacity: { type: "f32", components: 1, default: 1 },
 };
 
 /**
- * Generate source-space anchor projection only when both edges use the same
- * unpadded index mapping. Other axis configurations keep their affine
- * interpolation between the independently projected edges.
+ * Generate source-space anchor projection for an unpadded index axis.
+ * Other mappings interpolate between the projected edges.
  *
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
  * @param {"x" | "y"} axis
@@ -34,25 +32,12 @@ const channels = {
  */
 function indexAxisShader(irs, axis, screenAxis = axis) {
     const first = irs.find(({ name }) => name === axis);
-    const last = irs.find(({ name }) => name === axis + "2");
-    if (
-        [first, last].some(
-            (ir) =>
-                ir.scaleType !== "index" || hasGroupingGaps(ir.channel.scale)
-        )
-    ) {
+    if (first.scaleType !== "index" || hasGroupingGaps(first.channel.scale)) {
         return "";
     }
-    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
-    const domain = (ir) => domainVec3(ir.name, ir.sharedScaleName);
-    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
-    const range = (ir) => rangeVec2(ir.name, ir.sharedScaleName);
-    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
-    const bandParams = (ir) => bandParameters(ir.name, ir.sharedScaleName);
-    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
-    const band = (ir) => `params.${SCALE_BAND_PREFIX}${ir.name}`;
-    /** @param {import("../shaders/channelIR.js").ChannelIR} ir */
-    const key = ({ name, inputComponents }) => {
+    const { sharedScaleName, inputComponents } = first;
+    /** @param {string} name */
+    const key = (name) => {
         const read = `read_${name}(i)`;
         return inputComponents === 2 ? read : `rasterIndexKey(${read})`;
     };
@@ -60,16 +45,14 @@ function indexAxisShader(irs, axis, screenAxis = axis) {
         screenAxis === "x" ? "vec2<f32>(p, 0.0)" : "vec2<f32>(0.0, p)";
     return /* wgsl */ `
 fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
-    let domain = ${domain(first)};
-    let range = ${range(first)};
-    if (domain.z < 1.0 || any(domain != ${domain(last)}) || any(range != ${range(last)}) ||
-        any(vec3<f32>(${bandParams(first)}).xy != vec2<f32>(0.0)) ||
-        any(vec3<f32>(${bandParams(last)}).xy != vec2<f32>(0.0))) {
+    let domain = ${domainVec3(axis, sharedScaleName)};
+    let range = ${rangeVec2(axis, sharedScaleName)};
+    if (domain.z < 1.0 || any(vec3<f32>(${bandParameters(axis, sharedScaleName)}).xy != vec2<f32>(0.0))) {
         return fallback;
     }
 
-    let p = projectRasterAnchor(${key(first)}, ${key(last)}, count, anchor,
-        vec2<f32>(${band(first)}, ${band(last)}), domain, range);
+    let p = projectRasterAnchor(${key(axis)}, ${key(axis + "2")}, count, anchor,
+        vec2<f32>(params.${SCALE_BAND_PREFIX}${axis}, params.${SCALE_BAND_PREFIX}${axis}2), domain, range);
     return rasterTargetPixel(applyPlacementPixel(${position}, i)).${screenAxis};
 }
 `;
@@ -77,14 +60,13 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
 
 /**
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
- * @param {boolean} icon
  * @param {boolean} triangle
  * @param {boolean} picking
  * @param {ReadonlySet<"x" | "y">} coordinates
  */
-function rasterShader(irs, icon, triangle, picking, coordinates) {
-    const x = icon ? "" : indexAxisShader(irs, "x");
-    const y = icon ? "" : indexAxisShader(irs, "y", triangle ? "x" : "y");
+function rasterShader(irs, triangle, picking, coordinates) {
+    const x = indexAxisShader(irs, "x");
+    const y = indexAxisShader(irs, "y", triangle ? "x" : "y");
     const coordinateFields = [];
     const copyCoordinates = [];
     const coordinatePrograms = [];
@@ -94,7 +76,7 @@ function rasterShader(irs, icon, triangle, picking, coordinates) {
         const start = irs.find((ir) => ir.name === axis);
         const packed = start.inputComponents === 2;
         const type = packed ? "vec2<u32>" : "f32";
-        const boundsType = icon ? type : packed ? "vec4<u32>" : "vec2<f32>";
+        const boundsType = packed ? "vec4<u32>" : "vec2<f32>";
         const first = packed
             ? start.rawValueExpr
             : `f32(${start.rawValueExpr})`;
@@ -103,21 +85,16 @@ function rasterShader(irs, icon, triangle, picking, coordinates) {
             `@location(${location}) @interpolate(flat) ${field}: ${boundsType},`
         );
         useCoordinates.push(`raster_${field} = in.${field};`);
-        let value = `raster_${field}`;
-        if (icon) {
-            copyCoordinates.push(`out.${field} = ${first};`);
-            if (packed) value = `vec2<u32>(${value}.x, 2u * ${value}.y)`;
-        } else {
-            const last = irs.find((ir) => ir.name === axis + "2").rawValueExpr;
-            copyCoordinates.push(
-                `out.${field} = ${boundsType}(${first}, ${packed ? last : `f32(${last})`});`
-            );
-            const cell = `rasterCell.${axis} + edge`;
-            const count = `rasterShape.${axis}`;
-            value = packed
-                ? `rasterGridKey(${value}.xy, ${value}.zw, ${count}, ${cell})`
-                : `mix(${value}.x, ${value}.y, f32(${cell}) / f32(${count}))`;
-        }
+        const last = irs.find((ir) => ir.name === axis + "2").rawValueExpr;
+        copyCoordinates.push(
+            `out.${field} = ${boundsType}(${first}, ${packed ? last : `f32(${last})`});`
+        );
+        const bounds = `raster_${field}`;
+        const cell = `rasterCell.${axis} + edge`;
+        const count = `rasterShape.${axis}`;
+        const value = packed
+            ? `rasterGridKey(${bounds}.xy, ${bounds}.zw, ${count}, ${cell})`
+            : `mix(${bounds}.x, ${bounds}.y, f32(${cell}) / f32(${count}))`;
         coordinatePrograms.push(/* wgsl */ `
 var<private> raster_${field}: ${boundsType};
 fn rasterCoordinate_${axis}(edge: u32) -> ${type} {
@@ -147,20 +124,8 @@ fn rasterCoordinate_${axis}(edge: u32) -> ${type} {
     let sourceMin = out.triangleClip.x + vec2<f32>(lo, -hi);
     let sourceMax = out.triangleClip.z + vec2<f32>(hi, -lo);
 `
-        : icon
-          ? /* wgsl */ `
-    let area = getScaled_size(i);
-    if (!(area > 0.0 && area <= 0x1.fffffep+127)) {
-        out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
-        return out;
-    }
-    // Apply panel placement to the anchor only. The extent is in CSS pixels.
-    let halfSize = vec2<f32>(out.grid.xy) * (0.5 * sqrt(area) * globals.dpr);
-    let start = first - halfSize;
-    let end = first + halfSize;
-`
-          : /* wgsl */ `
-    let start = first;
+        : /* wgsl */ `
+    let start = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));
     let end = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x2(i), getScaled_y2(i)), i));
 `;
     return /* wgsl */ `
@@ -286,7 +251,6 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     ${copyCoordinates.join("\n    ")}
     out.pickId = ${picking ? "read_tilePickingId(i) + 1u" : "0u"};
     let targetSize = globals.renderTargetSize * globals.dpr;
-    ${triangle ? "" : "let first = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));"}
     ${bounds}
     let clipStart = clamp(start, ${triangle ? "sourceMin, sourceMax" : "vec2<f32>(0.0), targetSize"});
     let clipEnd = clamp(end, ${triangle ? "sourceMin, sourceMax" : "vec2<f32>(0.0), targetSize"});
@@ -401,7 +365,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 `;
 }
 
-/** @extends {BaseProgram<import("../raster.js").RasterData>} */
+/** @extends {BaseProgram<import("../raster.js").RasterSeries>} */
 export default class RasterProgram extends BaseProgram {
     /**
      * @param {import("../../renderer.js").Renderer} renderer
@@ -410,9 +374,16 @@ export default class RasterProgram extends BaseProgram {
      */
     constructor(renderer, config, context) {
         const schema = compileRasterData(config);
+        const { placementIndex } = config;
         const prepared = prepareRasterData(
             renderer.device,
-            config.data,
+            {
+                ...config.data,
+                placementIndex:
+                    placementIndex && "data" in placementIndex
+                        ? placementIndex.data
+                        : undefined,
+            },
             schema
         );
         const lowered = lowerRasterConfig(config, schema, prepared);
@@ -423,6 +394,28 @@ export default class RasterProgram extends BaseProgram {
 
     get channelSpecs() {
         return channels;
+    }
+
+    getSlotHandles() {
+        const slots = super.getSlotHandles();
+        const { scales } = slots;
+        // Both endpoint accessors are updated through the leading scale slot.
+        for (const axis of ["x", "y"]) {
+            const end = scales[axis + "2"]?.default;
+            if (!end) continue;
+            const start = scales[axis];
+            for (const [name, update] of Object.entries(start.default)) {
+                start[name] = start.default[name] = (
+                    /** @type {unknown[]} */ ...args
+                ) =>
+                    slots.batchUpdates(() => {
+                        Reflect.apply(update, undefined, args);
+                        Reflect.apply(end[name], undefined, args);
+                    });
+            }
+            delete scales[axis + "2"];
+        }
+        return slots;
     }
 
     /**
@@ -439,7 +432,6 @@ export default class RasterProgram extends BaseProgram {
         );
         return rasterShader(
             irs,
-            !!this._markConfig.icon,
             !!this._markConfig.triangle,
             !!this._markConfig.picking,
             coordinates
@@ -468,7 +460,7 @@ export default class RasterProgram extends BaseProgram {
     }
 
     /**
-     * @param {import("../raster.js").RasterData} data
+     * @param {import("../raster.js").RasterSeries} data
      * @param {number} [expectedCount]
      */
     replaceSeries(data, expectedCount) {

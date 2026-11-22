@@ -6,10 +6,6 @@ import {
     getVisibleCellRange,
     readRasterTile,
 } from "../data/rasterTile.js";
-import {
-    matchesViewport,
-    normalizeViewportConstraint,
-} from "../data/viewportDomain.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import {
@@ -21,26 +17,15 @@ import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
 
-/** @extends {Mark<import("../spec/mark.js").RasterProps | import("../spec/mark.js").IconProps>} */
+/** @extends {Mark<import("../spec/mark.js").RasterProps>} */
 export default class RasterMark extends Mark {
     /** @returns {import("../spec/channel.js").Channel[]} */
     getSupportedChannels() {
-        return this.isIcon
-            ? ["x", "y", "color", "opacity", "size", "tooltip"]
-            : ["x", "y", "x2", "y2", "color", "opacity", "tooltip"];
-    }
-
-    get isIcon() {
-        return this.getType() === "icon";
+        return ["x", "y", "x2", "y2", "color", "opacity", "tooltip"];
     }
 
     get isTriangle() {
-        return (
-            this.getType() === "raster" &&
-            /** @type {import("../spec/mark.js").RasterProps} */ (
-                this.properties
-            ).projection === "triangle"
-        );
+        return this.properties.projection === "triangle";
     }
 
     isPickingParticipant() {
@@ -49,31 +34,7 @@ export default class RasterMark extends Mark {
 
     /** @param {import("../spec/channel.js").Encoding} encoding */
     fixEncoding(encoding) {
-        if (this.isIcon) {
-            if (
-                [encoding.x, encoding.y].some(
-                    (def) => def && "dimension" in def
-                )
-            ) {
-                throw new Error(
-                    "Raster icons require point positions on x and y."
-                );
-            }
-            if (
-                [encoding.x, encoding.y, encoding.size].some(
-                    (def) => def && "condition" in def
-                )
-            ) {
-                throw new Error(
-                    "Raster icon positions and size require unconditional encodings."
-                );
-            }
-            encoding.x ??= { value: 0.5 };
-            encoding.y ??= { value: 0.5 };
-            encoding.size ??= { value: 1 };
-        } else {
-            this.#fixGridPosition(encoding);
-        }
+        this.#fixGridPosition(encoding);
         if (
             !encoding.color ||
             !("field" in encoding.color) ||
@@ -147,33 +108,26 @@ export default class RasterMark extends Mark {
                     this.encoding.color
                 );
             const direct = scale === null;
-            const icon = this.isIcon;
             const { x, y } = this.unitView.getEncoding();
-            const { columnDimension = "column", rowDimension = "row" } =
-                /** @type {import("../spec/mark.js").IconProps} */ (
-                    this.properties
-                );
-            // Grid placement binds a dimension on x and permits a band on y.
+            // Encoding validation requires a grid dimension on x.
             const column =
-                x && "dimension" in x ? x.dimension : columnDimension;
-            const row =
-                y && "dimension" in y
-                    ? y.dimension
-                    : icon || this.isTriangle
-                      ? rowDimension
-                      : undefined;
-            const options = {
-                direct,
-                grid: this.isTriangle ? /** @type {const} */ ("locus") : !icon,
-            };
+                /** @type {import("../spec/channel.js").RasterDimensionDef} */ (
+                    x
+                ).dimension;
+            const locus = this.isTriangle;
+            const row = locus
+                ? "row"
+                : y && "dimension" in y
+                  ? y.dimension
+                  : undefined;
+            const options = { direct, locus };
             return {
                 type,
                 direct,
                 column,
                 row,
                 strip: row === undefined,
-                domainKey:
-                    "raster:" + JSON.stringify([column, row, field, icon]),
+                domainKey: "raster:" + JSON.stringify([column, row, field]),
                 readTile: (/** @type {object} */ datum) =>
                     readRasterTile(datum, column, row, field, options),
             };
@@ -239,19 +193,14 @@ export default class RasterMark extends Mark {
                     this.unitView
                 );
             }
-            const { x, y } = this.encoders;
             const { strip } = this.getColorCellBinding();
             return {
                 conditions,
                 memberships,
                 params: new Set(conditions.flatMap(({ params }) => params)),
-                anchors: {
-                    x: this.isIcon ? x.branches[0].accessor : undefined,
-                    y:
-                        this.isIcon || strip
-                            ? y?.branches[0].accessor
-                            : undefined,
-                },
+                readRow: strip
+                    ? this.encoders.y?.branches[0].accessor
+                    : undefined,
             };
         });
     }
@@ -263,7 +212,7 @@ export default class RasterMark extends Mark {
 
     validateRenderingScales() {
         const { strip, type, direct } = this.getColorCellBinding();
-        if (!this.isIcon) this.#validateGridScales(strip);
+        this.#validateGridScales(strip);
         this.getOpacityPlan();
         if (direct) return undefined;
 
@@ -327,11 +276,8 @@ export default class RasterMark extends Mark {
             return domain;
         const colorResolution = this.unitView.getScaleResolution("color");
         const logarithmic = colorResolution?.getResolvedScaleType() === "log";
-        const icon = this.isIcon;
-        const anchors = icon && constraints.map(normalizeViewportConstraint);
-        const grid = icon ? [] : constraints;
-        const xConstraint = grid.find(({ channel }) => channel === "x");
-        const yConstraint = grid.find(({ channel }) => channel === "y");
+        const xConstraint = constraints.find(({ channel }) => channel === "x");
+        const yConstraint = constraints.find(({ channel }) => channel === "y");
         const coords = this.unitView.layoutCoords;
         const triangle =
             this.isTriangle && xConstraint && coords?.width > 0
@@ -342,13 +288,6 @@ export default class RasterMark extends Mark {
                   )
                 : undefined;
         for (const datum of collector.getData()) {
-            if (
-                anchors &&
-                !anchors.every((constraint) =>
-                    matchesViewport(datum, constraint)
-                )
-            )
-                continue;
             const { horizontal, vertical, values } = readTile(datum);
             const columns = getVisibleCellRange(
                 horizontal,

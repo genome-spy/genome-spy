@@ -609,6 +609,10 @@ const mark = renderer.createMark(pointMark, {
 renderer.render({ draws: [{ mark, placement: { set: placements } }] });
 ```
 
+Raster marks use the same options, with one instance per tile. In per-instance
+mode, pass the current tile indices as `placementIndex` in
+`mark.series.replace({ tiles, cells, placementIndex })`.
+
 The rectangle payload is 16 bytes per placement before capacity alignment. A
 per-instance index adds four bytes per logical instance. A zero-area rectangle
 suppresses that placement in both normal and picking passes. Set
@@ -617,11 +621,11 @@ the selected rectangle.
 
 ### Visibility predicates
 
-Every built-in mark accepts an immutable `visibleWhen` predicate. It can test
-selections or compare scalar channels, non-visual `inputs`, and retained
-`scalarSlots`. Tests can be combined with non-empty `all` and `any` nodes or
-negated with `not`. The same predicate runs in normal and picking vertex
-pipelines.
+Every built-in mark accepts an immutable `visibleWhen` selection predicate for
+rendering and picking. Raster predicates apply to individual cells.
+Ordinary marks also support comparisons of scalar channels, non-visual
+`inputs`, and retained `scalarSlots`. Combine tests with non-empty `all` and
+`any` nodes or negate them with `not`.
 
 ```js
 const mark = renderer.createMark(pointMark, {

@@ -3,7 +3,7 @@ import { fragmentInput } from "../../../types.js";
 
 /**
  * @typedef {import("../../raster.js").RasterConfig} RasterConfig
- * @typedef {import("../../raster.js").RasterData} RasterData
+ * @typedef {import("../../raster.js").RasterSeries} RasterSeries
  * @typedef {import("../../raster.js").RasterCellArray} RasterCellArray
  */
 
@@ -14,12 +14,6 @@ const edges = [
     ["y", "y0", "y"],
     ["y2", "y1", "y"],
 ];
-
-const anchors = /** @type {const} */ ([
-    ["x", "x0", "x"],
-    ["y", "y0", "y"],
-    ["size", "size", "size"],
-]);
 
 /**
  * @param {RasterCellArray} array
@@ -54,65 +48,37 @@ export function compileRasterData(config) {
             ];
         })
     );
-    const icon = data.tiles.x1 === undefined && data.tiles.y1 === undefined;
-    if (
-        (data.tiles.x1 === undefined) !== (data.tiles.y1 === undefined) ||
-        (icon && config.projection === "triangle") ||
-        (icon
-            ? position?.x2 || position?.y2
-            : position?.size || data.tiles.size)
-    ) {
-        throw new Error(
-            "Raster placement requires either two endpoints per axis or an anchor and optional size."
-        );
+    if (position && ("x2" in position || "y2" in position)) {
+        throw new Error("Raster endpoints share one position scale per axis.");
     }
-    const positions = (icon ? anchors : edges).map(([channel, edge, axis]) => {
-        /** @type {import("../../raster.js").RasterAnchor | undefined} */
-        const descriptor = position?.[channel] ?? position?.[axis];
-        const array = data.tiles[edge];
-        const value = descriptor && "value" in descriptor;
-        if (
-            (value && (array || !icon)) ||
-            (!array && !value && channel !== "size")
-        ) {
-            throw new Error(
-                `Raster position "${channel}" requires a single input.`
-            );
-        }
-        const type = array === undefined ? undefined : numericType(array);
+    const positions = edges.map(([channel, edge, axis]) => {
+        const descriptor = position?.[axis];
+        const type = numericType(data.tiles[edge]);
         const components = descriptor?.inputComponents ?? 1;
         return { channel, edge, descriptor, type, components };
     });
-    const placementIndices = data.tiles.placementIndices !== undefined;
-    if (placementIndices && config.placement) {
-        throw new Error(
-            "Raster placement must come from either the draw or the tiles."
-        );
-    }
+    const perTilePlacement =
+        !!config.placementIndex && "data" in config.placementIndex;
     const picking = data.tiles.pickingIds !== undefined;
-    return { fields, positions, placementIndices, icon, picking };
+    return { fields, positions, perTilePlacement, picking };
 }
 
 /** @typedef {ReturnType<typeof compileRasterData>} RasterSchema */
 
 /**
  * @param {GPUDevice} device
- * @param {RasterData} data
+ * @param {RasterSeries} data
  * @param {RasterSchema} schema
  */
-export function prepareRasterData(device, { tiles, cells }, schema) {
-    const { columns, rows, offsets, placementIndices, pickingIds } = tiles;
+export function prepareRasterData(
+    device,
+    { tiles, cells, placementIndex },
+    schema
+) {
+    const { columns, rows, offsets, pickingIds } = tiles;
     const count = columns.length;
     if (
-        (schema.icon && (tiles.x1 !== undefined || tiles.y1 !== undefined)) ||
-        (!schema.icon && tiles.size !== undefined)
-    ) {
-        throw new Error(
-            "Raster data replacement must keep the original placement mode."
-        );
-    }
-    if (
-        schema.placementIndices !== (placementIndices !== undefined) ||
+        schema.perTilePlacement !== (placementIndex !== undefined) ||
         schema.picking !== (pickingIds !== undefined)
     ) {
         throw new Error(
@@ -122,8 +88,7 @@ export function prepareRasterData(device, { tiles, cells }, schema) {
 
     /** @type {Record<string, RasterCellArray>} */
     const series = { columns, rows, cellOffset: offsets };
-    if (placementIndices !== undefined)
-        series.__placementIndex = placementIndices;
+    if (placementIndex !== undefined) series.__placementIndex = placementIndex;
     if (pickingIds !== undefined) series.tilePickingId = pickingIds;
     if (
         Object.values(series).some(
@@ -136,16 +101,16 @@ export function prepareRasterData(device, { tiles, cells }, schema) {
     }
     for (const { channel, edge, type, components } of schema.positions) {
         const array = tiles[edge];
-        const inputType = array === undefined ? undefined : numericType(array);
         if (
-            inputType !== type ||
-            (array && array.length !== count * components)
+            !array ||
+            numericType(array) !== type ||
+            array.length !== count * components
         ) {
             throw new Error(
                 `Raster position "${edge}" must keep its input type and match the tile count.`
             );
         }
-        if (array) series[channel] = array;
+        series[channel] = array;
     }
 
     if (Object.keys(cells).length !== schema.fields.size) {
@@ -242,7 +207,7 @@ export function lowerRasterConfig(config, schema, prepared) {
         };
     }
 
-    const { channels, visibleWhen, order, scalarSlots } = config;
+    const { channels, visibleWhen, order } = config;
     /** @type {Record<string, import("../../../index.d.ts").ScalarInputConfig | import("../../../types.js").FragmentInput>} */
     const inputs = Object.fromEntries(
         Array.from(schema.fields.values(), ({ name, ...input }) => [
@@ -262,31 +227,25 @@ export function lowerRasterConfig(config, schema, prepared) {
     const fill = channels?.fill;
     return {
         count: prepared.count,
-        icon: schema.icon,
         picking: schema.picking,
         triangle: config.projection === "triangle",
         initialCells: prepared.cells,
-        scalarSlots,
         inputs,
-        cellPredicates: {
-            fields: schema.fields,
-            channels: new Set(["fill", "opacity"]),
-            point: schema.icon,
-        },
+        cellPredicates: { fields: schema.fields },
         visibleWhen,
         order,
-        placementIndex: config.placement
-            ? { source: "draw" }
-            : schema.placementIndices
-              ? { data: prepared.series.__placementIndex, type: "u32" }
-              : undefined,
+        placementIndex: config.placementIndex,
         channels: {
             ...Object.fromEntries(
                 schema.positions.map(({ channel, descriptor, type }) => [
                     channel,
                     {
                         ...descriptor,
-                        ...(type && { type, data: prepared.series[channel] }),
+                        band: channel.endsWith("2")
+                            ? (descriptor?.bandEnd ?? descriptor?.band)
+                            : descriptor?.band,
+                        type,
+                        data: prepared.series[channel],
                     },
                 ])
             ),

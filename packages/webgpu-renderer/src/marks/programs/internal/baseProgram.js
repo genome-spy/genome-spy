@@ -309,17 +309,18 @@ export default class BaseProgram {
             visualChannelNames
         );
         this.#scalarSlots = normalizeScalarSlots(config.scalarSlots);
-        const visibleWhen = normalizeVisibilityPredicate(
-            /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
-                config.visibleWhen
-            )
-        );
-        /** @internal */
-        this._order = normalizeOrder(config.order);
         const cellPredicates =
             /** @type {import("../../shaders/channelIR.js").CellPredicateInputs | undefined} */ (
                 config.cellPredicates
             );
+        const visibleWhen = normalizeVisibilityPredicate(
+            /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
+                config.visibleWhen
+            ),
+            !cellPredicates
+        );
+        /** @internal */
+        this._order = normalizeOrder(config.order);
         this._channels = { ...this._channels, ...normalizedInputs };
         for (const [name, channel] of Object.entries(normalizedInputs)) {
             normalizedChannels.analysisByChannel.set(

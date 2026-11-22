@@ -1,7 +1,7 @@
 /**
  * @typedef {object} RasterDimension
- * @prop {number} [origin] First cell edge in data coordinates for grid placement.
- * @prop {number} [step] Positive spacing between cell edges for grid placement.
+ * @prop {number} origin First cell edge in data coordinates.
+ * @prop {number} step Positive spacing between cell edges.
  * @prop {number} count Number of cells on the dimension.
  */
 
@@ -14,9 +14,9 @@
 /**
  * @param {import("./flowNode.js").Datum} datum
  * @param {string} name
- * @param {boolean | "locus"} [grid] Validate grid coordinates and locus endpoints.
+ * @param {boolean} [locus] Require nonnegative whole-base endpoints.
  */
-export function readRasterDimension(datum, name, grid = false) {
+export function readRasterDimension(datum, name, locus = false) {
     const dimension = /** @type {RasterTile} */ (datum).dimensions?.[name];
     if (
         !dimension ||
@@ -28,16 +28,15 @@ export function readRasterDimension(datum, name, grid = false) {
         );
     }
     if (
-        grid &&
-        (!Number.isFinite(dimension.origin) ||
-            !Number.isFinite(dimension.step) ||
-            dimension.step <= 0)
+        !Number.isFinite(dimension.origin) ||
+        !Number.isFinite(dimension.step) ||
+        dimension.step <= 0
     ) {
         throw new Error(
             `Raster dimension "${name}" needs a finite origin and a positive step.`
         );
     }
-    if (grid === "locus") {
+    if (locus) {
         const { origin, step, count } = dimension;
         const end = origin + step * count;
         // Locus GPU buffers store endpoints as an unsigned 32-bit chunk and a 12-bit remainder.
@@ -60,14 +59,14 @@ export function readRasterDimension(datum, name, grid = false) {
  * @param {string} x
  * @param {string | undefined} y Vertical grid dimension for a two-dimensional tile.
  * @param {string} field
- * @param {{direct: boolean, grid: boolean | "locus"}} options
+ * @param {{direct: boolean, locus: boolean}} options
  */
 export function readRasterTile(datum, x, y, field, options) {
-    const { direct, grid } = options;
+    const { direct, locus } = options;
     const tile = /** @type {RasterTile} */ (datum);
-    const horizontal = readRasterDimension(datum, x, grid);
+    const horizontal = readRasterDimension(datum, x, locus);
     const vertical =
-        y === undefined ? undefined : readRasterDimension(datum, y, grid);
+        y === undefined ? undefined : readRasterDimension(datum, y, locus);
     const values = tile.fields?.[field];
     const supported =
         Array.isArray(values) ||

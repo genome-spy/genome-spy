@@ -432,7 +432,9 @@ export default class WebGpuSurface {
             if (configChanged) {
                 const series = collectSeries(config);
                 const seriesChanged = config.data
-                    ? series !== retained.series
+                    ? config.data !== retained.config.data ||
+                      config.placementIndex?.data !==
+                          retained.config.placementIndex?.data
                     : config.count !== retained.count ||
                       Object.entries(series).some(
                           ([name, data]) => data !== retained.series[name]
@@ -1033,7 +1035,12 @@ function uint32ArraysEqual(previous, next) {
  * @returns {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>}
  */
 function collectSeries(config) {
-    if (config.data) return config.data;
+    if (config.data) {
+        const placementIndex = config.placementIndex?.data;
+        return placementIndex
+            ? { ...config.data, placementIndex }
+            : config.data;
+    }
     /** @type {Record<string, import("@genome-spy/webgpu-renderer").SeriesData>} */
     const series = {};
     for (const [name, channel] of Object.entries(config.channels)) {

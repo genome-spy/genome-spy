@@ -47,7 +47,7 @@ height fitting, picking, and additional filtering are outside this change.
    mark's ordinary clip default. Preserve local anchors for locus precision.
    Standalone raster geometry can opt into the same projection with both
    endpoint channels in common x-pixel coordinates. Keep the existing
-   axis-aligned paths for regular rasters and icons. Verify the baseline,
+   axis-aligned paths for regular rasters. Verify the baseline,
    reversed x, a diagonal cell straddling the baseline, and a seam close to
    base-pair zoom.
 2. **Wire viewport loading and the example.** `data.lazy.projection: "triangle"`

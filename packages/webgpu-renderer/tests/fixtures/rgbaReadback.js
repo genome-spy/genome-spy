@@ -21,10 +21,11 @@ export async function createReadbackRenderer(size) {
         /**
          * @param {import("../../src/index.js").MarkHandle<any, any>} mark
          * @param {Array<[number, number]>} points
+         * @param {import("../../src/index.js").DrawPlacement} [placement]
          */
-        async renderPixels(mark, points) {
+        async renderPixels(mark, points, placement) {
             renderer.render({
-                draws: [{ mark }],
+                draws: [{ mark, placement }],
                 clearColor: { r: 0, g: 0, b: 0, a: 0 },
             });
             const buffer = device.createBuffer({

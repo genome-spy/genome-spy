@@ -16,15 +16,11 @@ with `debounce`.
 Display decoded RGB and RGBA images as raster tiles using `color.scale: null`
 and one packed RGBA8 value per cell.
 
-Use the `icon` mark to anchor raster tiles to data positions and keep their
-screen dimensions while panning or zooming. Encode `size` to vary the area per
-source cell while preserving each icon's aspect ratio.
-
 Use the raster mark's triangle projection to display a HiGlass contact map above
 a single genomic axis. Track height controls the visible contact distance.
 
-Enable raster and icon cell tooltips with a tooltip handler. Hi-C tooltips show
-the hovered contact value and its two genomic bins.
+Raster cell tooltips show the hovered value, including the two genomic bins for
+a Hi-C contact.
 
 Use a gradient legend brush to control the opacity of individual raster cells.
 The HiGlass example makes contact values outside the brushed range transparent.

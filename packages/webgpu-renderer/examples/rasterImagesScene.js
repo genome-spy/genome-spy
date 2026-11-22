@@ -69,53 +69,7 @@ export default async function runRasterImagesScene(canvas) {
             const top = (height - sceneHeight * fit) / 2;
             mark.batchUpdates(() => {
                 mark.scales.x.setRange([left, width - left]);
-                mark.scales.x2.setRange([left, width - left]);
                 mark.scales.y.setRange([top, height - top]);
-                mark.scales.y2.setRange([top, height - top]);
-            });
-        },
-        () => ({ draws: [{ mark }] })
-    );
-
-    return () => {
-        cleanupResize();
-        renderer.destroy();
-    };
-}
-
-/** @param {HTMLCanvasElement} canvas */
-export async function runRasterIconsScene(canvas) {
-    const { size, pixels } = await loadBowtie();
-    const renderer = await createExampleRenderer(canvas);
-    const dimensions = new Uint32Array(3).fill(size);
-    const mark = renderer.createMark(rasterMark, {
-        data: {
-            tiles: {
-                x0: new Float32Array([0, 0.5, 1]),
-                size: new Float32Array([0.25, 1, 2.25]),
-                columns: dimensions,
-                rows: dimensions,
-                offsets: new Uint32Array(dimensions.length),
-            },
-            cells: { pixels },
-        },
-        position: {
-            x: { scale: linearScale({ domain: [0, 1] }) },
-            y: { value: 0.5, dynamic: true },
-        },
-        channels: { fill: { input: "pixels", scale: rgba8Unorm } },
-    });
-    const cleanupResize = setupResize(
-        canvas,
-        renderer,
-        ({ width, height }) => {
-            const span = Math.min(240, Math.max(0, width - 112));
-            mark.batchUpdates(() => {
-                mark.scales.x.setRange([
-                    (width - span) / 2,
-                    (width + span) / 2,
-                ]);
-                mark.values.y.set(height / 2);
             });
         },
         () => ({ draws: [{ mark }] })

@@ -48,7 +48,7 @@ const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
  * @typedef {import("../../../index.d.ts").IntervalSelectionProjection} IntervalProjection
  * @typedef {import("../../shaders/channelIR.js").CellPredicateInputs} CellPredicateInputs
  * @typedef {(name: string, position?: boolean) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} GetAnalysis
- * @typedef {IntervalProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints", positionEdge?: "start" | "end" }} IntervalProjectionDef
+ * @typedef {IntervalProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
  * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
  */
 
@@ -79,11 +79,8 @@ function resolveProjection(
         throw new Error("Cell positions require a raster mark.");
     }
     const input = raster ? projection.position : projection.input;
-    const positionEdge = raster
-        ? (projection.edge ?? (cellPredicates.point ? "start" : undefined))
-        : undefined;
     const secondary = raster
-        ? positionEdge
+        ? projection.edge
             ? undefined
             : input + "2"
         : projection.secondaryInput;
@@ -130,7 +127,6 @@ function resolveProjection(
     }
     if (
         projection.hitTest !== undefined &&
-        !(raster && cellPredicates.point && !projection.edge) &&
         (!secondary ||
             !["intersects", "encloses", "endpoints"].includes(
                 projection.hitTest
@@ -142,7 +138,6 @@ function resolveProjection(
     }
     return {
         ...projection,
-        ...(raster && { positionEdge }),
         hitTest: projection.hitTest ?? "intersects",
         scalarType: raster && !packed ? "f32" : analysis.scalarType,
         inputComponents: packed ? 2 : 1,

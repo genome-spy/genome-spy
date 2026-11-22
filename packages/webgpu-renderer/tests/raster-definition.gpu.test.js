@@ -1,55 +1,58 @@
 import { expect, test } from "@playwright/test";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
-test("raster position follows a moving icon independently of its cell fields", async ({
+test("raster uses draw and instance placement and can replace tile indices", async ({
     page,
 }) => {
     await ensureWebGPU(page);
-    const pixels = await page.evaluate(async () => {
+    const result = await page.evaluate(async () => {
         const { createReadbackRenderer } =
             await import("/tests/fixtures/rgbaReadback.js");
         const { rasterMark } = await import("/src/marks/raster.js");
         const { renderer, renderPixels, finish } =
             await createReadbackRenderer(64);
-        const mark = renderer.createMark(rasterMark, {
-            data: {
-                tiles: {
-                    columns: new Uint32Array([1]),
-                    rows: new Uint32Array([1]),
-                    offsets: new Uint32Array([0]),
-                },
-                cells: { x: new Float32Array([1]) },
-            },
-            position: {
-                x: { value: 16, dynamic: true },
-                y: { value: 32 },
-                size: { value: 64 },
-            },
-            visibleWhen: {
-                selection: "brush",
-                type: "interval",
-                projections: [
-                    { component: "anchor", position: "x" },
-                    { component: "value", input: "x" },
-                ],
-                empty: false,
-            },
-            channels: { fill: { value: [1, 0, 0, 1] } },
+        const set = renderer.createPlacementSet({
+            rectangles: new Float32Array([0, 0, 0.5, 1, 0.5, 0, 0.5, 1]),
         });
-        mark.selections.brush.set({ anchor: [40, 56], value: [0, 2] });
-        const before = await renderPixels(mark, [[16, 32]]);
-        mark.values.x.set(48);
-        const after = await renderPixels(mark, [[48, 32]]);
-        mark.selections.brush.set({ anchor: [40, 56], value: [2, 3] });
-        const excluded = await renderPixels(mark, [[48, 32]]);
-        await finish();
-        return [before, after, excluded];
+        const start = new Float32Array([0]);
+        const end = new Float32Array([64]);
+        const data = {
+            tiles: {
+                columns: new Uint32Array([1]),
+                rows: new Uint32Array([1]),
+                offsets: new Uint32Array([0]),
+                x0: start,
+                y0: start,
+                x1: end,
+                y1: end,
+            },
+            cells: {},
+        };
+        const draw = renderer.createMark(rasterMark, {
+            data,
+            placementIndex: { source: "draw" },
+        });
+        const indexed = renderer.createMark(rasterMark, {
+            data,
+            placementIndex: { data: new Uint32Array([0]), type: "u32" },
+        });
+        const points = [
+            [16, 32],
+            [48, 32],
+        ];
+        const fromDraw = await renderPixels(draw, points, { set, index: 0 });
+        const fromTile = await renderPixels(indexed, points, { set });
+        indexed.series.replace({
+            ...data,
+            placementIndex: new Uint32Array([1]),
+        });
+        const replaced = await renderPixels(indexed, points, { set });
+        return { fromDraw, fromTile, replaced, error: await finish() };
     });
-    expect(pixels).toEqual([
-        [[0, 0, 0, 0]],
-        [[255, 0, 0, 255]],
-        [[0, 0, 0, 0]],
-    ]);
+    expect(result.error).toBeUndefined();
+    expect(result.fromTile).toEqual(result.fromDraw);
+    expect(result.fromTile.map((pixel) => pixel[3])).toEqual([255, 0]);
+    expect(result.replaced.map((pixel) => pixel[3])).toEqual([0, 255]);
 });
 
 test("raster conditions and order operate on cells across tile replacement", async ({
@@ -192,12 +195,6 @@ test("raster conditions and order operate on cells across tile replacement", asy
                     quality: new Float32Array([1]),
                 },
             },
-            scalarSlots: { visibleQuality: { value: 0.5, type: "f32" } },
-            visibleWhen: {
-                compare: ">",
-                left: { input: "quality" },
-                right: { slot: "visibleQuality" },
-            },
             channels: {
                 fill: {
                     input: "color",
@@ -230,8 +227,6 @@ test("raster conditions and order operate on cells across tile replacement", asy
         const missing = await read(withMissing);
         withMissing.selections.signalRange.set({ signal: [1, 2] });
         const conditionOverridesMissing = await read(withMissing);
-        withMissing.scalarSlots.visibleQuality.set(1);
-        const hidden = await read(withMissing);
         const validation = await finish();
         return {
             idle,
@@ -242,7 +237,6 @@ test("raster conditions and order operate on cells across tile replacement", asy
             emptied,
             missing,
             conditionOverridesMissing,
-            hidden,
             invalid,
             validation,
         };
@@ -271,7 +265,6 @@ test("raster conditions and order operate on cells across tile replacement", asy
     expect(result.conditionOverridesMissing.pixels[0]).toEqual([
         0, 255, 0, 255,
     ]);
-    expect(result.hidden.pixels[0]).toEqual([0, 0, 0, 0]);
 });
 
 test("raster footprints filter encoded colors through zoom and selection", async ({

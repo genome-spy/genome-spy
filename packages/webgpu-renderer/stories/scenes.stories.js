@@ -20,9 +20,7 @@ import runTextScene from "../examples/textScene.js";
 import runRangedTextScene from "../examples/rangedTextScene.js";
 import runSelectionPredicateScene from "../examples/selectionPredicateScene.js";
 import runRasterScene from "../examples/rasterScene.js";
-import runRasterImagesScene, {
-    runRasterIconsScene,
-} from "../examples/rasterImagesScene.js";
+import runRasterImagesScene from "../examples/rasterImagesScene.js";
 import runConditionalOrderScene from "../examples/conditionalOrderScene.js";
 import runGroupScene from "../examples/groupScene.js";
 import {
@@ -421,17 +419,6 @@ export const RasterImages = withSource("runRasterImagesScene", null, {
         },
     },
     render: (args) => renderScene(runRasterImagesScene, args),
-});
-
-export const RasterIcons = withSource("runRasterIconsScene", null, {
-    parameters: {
-        docs: {
-            description: {
-                story: "Three anchored bowties share one bitmap and render at 32, 64, and 96 CSS pixels.",
-            },
-        },
-    },
-    render: (args) => renderScene(runRasterIconsScene, args),
 });
 
 export const IndexedPlacements = withSource("runIndexedPlacementScene", null, {

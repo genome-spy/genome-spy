@@ -4,15 +4,7 @@ import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
 export type MarkType =
-    | "rect"
-    | "raster"
-    | "icon"
-    | "point"
-    | "rule"
-    | "tick"
-    | "text"
-    | "link"
-    | "arrow";
+    "rect" | "raster" | "point" | "rule" | "tick" | "text" | "link" | "arrow";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -140,7 +132,7 @@ export interface MarkPropsBase {
      * [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
      *
-     * For raster and icon marks, specify a handler to enable cell tooltips.
+     * For raster marks, specify a handler to enable cell tooltips.
      * The handler receives the hovered cell's raw fields and tile attributes.
      */
     tooltip?: Tooltip;
@@ -957,33 +949,9 @@ export interface RasterProps extends MarkPropsBase {
     projection?: "triangle";
 }
 
-/**
- * Center an image tile at x and y. The position follows the scales while
- * the width and height are set by the tile dimensions and size in CSS pixels.
- * Uses the raster tile format, including `color.scale: null` for packed RGBA8.
- */
-export interface IconProps extends MarkPropsBase {
-    type: "icon";
-
-    /** Horizontal tile dimension. Defaults to `"column"`. */
-    columnDimension?: string;
-
-    /** Vertical tile dimension. Defaults to `"row"`. */
-    rowDimension?: string;
-
-    /**
-     * Area of a source cell in square CSS pixels. Each cell
-     * side is the square root of the resolved size. Zero hides the icon.
-     *
-     * __Default value:__ `1`.
-     */
-    size?: number | ExprRef;
-}
-
 export type MarkProps =
     | RectProps
     | RasterProps
-    | IconProps
     | ArrowProps
     | TextProps
     | RuleProps

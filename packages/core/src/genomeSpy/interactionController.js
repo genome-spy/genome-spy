@@ -1206,21 +1206,17 @@ export default class InteractionController {
                         .getCollector()
                         ?.findDatumByUniqueId(uniqueId);
                     if (datum) {
-                        const rasterCell =
-                            mark instanceof RasterMark
-                                ? this.#resolveRasterCell?.(
-                                      mark,
-                                      datum,
-                                      x,
-                                      y,
-                                      cellFacetId
-                                  )
-                                : undefined;
-                        if (
-                            mark instanceof RasterMark &&
-                            rasterCell === undefined
-                        )
-                            continue;
+                        const grid = mark instanceof RasterMark;
+                        const rasterCell = grid
+                            ? this.#resolveRasterCell?.(
+                                  mark,
+                                  datum,
+                                  x,
+                                  y,
+                                  cellFacetId
+                              )
+                            : undefined;
+                        if (grid && rasterCell === undefined) continue;
                         hit = {
                             mark,
                             datum,

@@ -153,12 +153,16 @@ function validatePredicate(predicate, allowComparison) {
 
 /**
  * @param {VisibilityPredicate | undefined} predicate
+ * @param {boolean} [allowComparison]
  * @returns {VisibilityPredicate | undefined}
  */
-export function normalizeVisibilityPredicate(predicate) {
+export function normalizeVisibilityPredicate(
+    predicate,
+    allowComparison = true
+) {
     return predicate === undefined
         ? undefined
-        : validatePredicate(predicate, true);
+        : validatePredicate(predicate, allowComparison);
 }
 
 /**
@@ -236,7 +240,6 @@ export function scalarSlotUniformName(name) {
  * @property {ChannelIR[]} channelIRs
  * @property {ReadonlySet<string>} channelNames
  * @property {ReadonlySet<string>} inputNames
- * @property {import("./channelIR.js").CellPredicateInputs} [cellPredicates]
  * @property {Record<string, ScalarSlotConfig>} scalarSlots
  * @property {Array<import("../programs/internal/selectionResources.js").SelectionDef>} selectionDefs
  * @property {string} [functionName]
@@ -251,7 +254,6 @@ export function buildVisibilityPredicate({
     channelIRs,
     channelNames,
     inputNames,
-    cellPredicates,
     scalarSlots,
     selectionDefs,
     functionName = "isInstanceVisible",
@@ -294,27 +296,20 @@ export function buildVisibilityPredicate({
                 type: slot.type,
             };
         }
-        if (key === "channel" || key === "input") {
-            const input = key === "input";
-            const binding =
-                input && cellPredicates
-                    ? cellPredicates.fields.get(name)?.name
-                    : name;
-            const names = input
-                ? inputNames
-                : (cellPredicates?.channels ?? channelNames);
-            if (names.has(binding)) {
-                const channelIR = channelIRByName.get(binding);
-                if (!channelIR || channelIR.inputComponents !== 1) {
-                    throw new Error(
-                        `Visibility predicate input "${name}" must be scalar.`
-                    );
-                }
-                return {
-                    expression: channelIR.rawValueExpr,
-                    type: channelIR.scalarType,
-                };
+        if (
+            (key === "channel" && channelNames.has(name)) ||
+            (key === "input" && inputNames.has(name))
+        ) {
+            const channelIR = channelIRByName.get(name);
+            if (!channelIR || channelIR.inputComponents !== 1) {
+                throw new Error(
+                    `Visibility predicate input "${name}" must be scalar.`
+                );
             }
+            return {
+                expression: channelIR.rawValueExpr,
+                type: channelIR.scalarType,
+            };
         }
         throw new Error(
             `Visibility predicate references unknown ${key} "${name}".`

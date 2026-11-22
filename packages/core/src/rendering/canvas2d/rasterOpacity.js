@@ -31,11 +31,10 @@ export function getCanvasOpacitySpans(mark) {
  */
 function createOpacitySpans(
     mark,
-    { conditions, memberships, params, anchors }
+    { conditions, memberships, params, readRow }
 ) {
     const { type, direct } = mark.getColorCellBinding();
     const numericColor = type === "quantitative" && !direct;
-    const { x: readX, y: readY } = anchors;
     /** @type {unknown[]} */
     let previous = [];
     /** @type {PaintOpacitySpans} */
@@ -82,21 +81,21 @@ function createOpacitySpans(
         }
         paintSpans = (datum, { horizontal: x, vertical: y, values }, paint) => {
             const cell = {
-                x: readX ? readX(datum) : 0,
+                x: 0,
                 x2: 0,
-                y: readY ? readY(datum) : 0,
+                y: readRow ? readRow(datum) : 0,
                 y2: 0,
                 color: /** @type {string | number | null} */ (null),
             };
             const height = y?.count ?? 1;
             const rows = gridCuts(
                 height,
-                readY ? undefined : y,
+                readRow ? undefined : y,
                 varyingColor ? undefined : thresholds.y
             );
             const columns = gridCuts(
                 x.count,
-                readX ? undefined : x,
+                x,
                 varyingColor ? undefined : thresholds.x
             );
             const alpha = () => {
@@ -104,8 +103,8 @@ function createOpacitySpans(
                     if (predicates[branch](cell)) return opacity[branch];
                 }
             };
-            const projectX = !readX && thresholds.x.length > 0;
-            const projectY = !readY && y && thresholds.y.length > 0;
+            const projectX = thresholds.x.length > 0;
+            const projectY = !readRow && y && thresholds.y.length > 0;
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i - 1];
                 const start = row * x.count;

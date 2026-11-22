@@ -371,7 +371,7 @@ function scanRows(data, start, end, domain, targetAccessor, constraints) {
  * @param {ViewportConstraint} constraint
  * @returns {ViewportConstraint}
  */
-export function normalizeViewportConstraint(constraint) {
+function normalizeViewportConstraint(constraint) {
     const start = Math.min(constraint.domain[0], constraint.domain[1]);
     const end = Math.max(constraint.domain[0], constraint.domain[1]);
     return { ...constraint, domain: [start, end] };

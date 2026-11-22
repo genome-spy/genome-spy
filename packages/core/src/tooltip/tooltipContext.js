@@ -138,36 +138,34 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
         mark.isTriangle ? "x" : axis;
     /** @type {TooltipRow[]} */
     const genomicRows = [];
-    if (!mark.isIcon) {
-        for (const [axis, dimension, cell] of /** @type {const} */ ([
-            ["x", horizontal, column],
-            ["y", vertical, row],
-        ])) {
-            if (!dimension || !getGenome(mark, genomeAxis(axis))) continue;
-            const mode = getConfiguredMode(params, axis);
-            if (mode === "disabled") continue;
-            const start = dimension.origin + cell * dimension.step;
-            const end = start + dimension.step;
-            const label = axis === "x" ? "Column" : "Row";
-            const format = (/** @type {number} */ position) =>
-                formatGenomicLocus(mark, genomeAxis(axis), position);
-            if (mode === "endpoints") {
-                genomicRows.push(
-                    { key: label + " start", value: format(start) },
-                    { key: label + " end", value: format(end) }
-                );
-            } else {
-                genomicRows.push({
-                    key: label,
-                    value:
-                        mode === "locus"
-                            ? format(start)
-                            : formatGenomicInterval(mark, genomeAxis(axis), [
-                                  start,
-                                  end,
-                              ]),
-                });
-            }
+    for (const [axis, dimension, cell] of /** @type {const} */ ([
+        ["x", horizontal, column],
+        ["y", vertical, row],
+    ])) {
+        if (!dimension || !getGenome(mark, genomeAxis(axis))) continue;
+        const mode = getConfiguredMode(params, axis);
+        if (mode === "disabled") continue;
+        const start = dimension.origin + cell * dimension.step;
+        const end = start + dimension.step;
+        const label = axis === "x" ? "Column" : "Row";
+        const format = (/** @type {number} */ position) =>
+            formatGenomicLocus(mark, genomeAxis(axis), position);
+        if (mode === "endpoints") {
+            genomicRows.push(
+                { key: label + " start", value: format(start) },
+                { key: label + " end", value: format(end) }
+            );
+        } else {
+            genomicRows.push({
+                key: label,
+                value:
+                    mode === "locus"
+                        ? format(start)
+                        : formatGenomicInterval(mark, genomeAxis(axis), [
+                              start,
+                              end,
+                          ]),
+            });
         }
     }
 

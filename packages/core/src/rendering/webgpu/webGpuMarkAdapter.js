@@ -595,10 +595,10 @@ const rasterDataCache = new WeakMap();
  * @param {RasterMark} mark
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
- * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} placement
+ * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} placementIndex
  * @returns {RasterConfig}
  */
-function createRasterConfig(mark, data, coords, placement) {
+function createRasterConfig(mark, data, coords, placementIndex) {
     const { strip, type } = mark.getColorCellBinding();
     const color = mark.validateRenderingScales()?.getScale();
     const palette = type !== "quantitative" ? color : undefined;
@@ -645,39 +645,28 @@ function createRasterConfig(mark, data, coords, placement) {
         rasterDataCache.set(mark, cached);
     }
 
-    const icon = mark.isIcon;
     const { rowEdges, xEnd } = cached.packed;
     // Grid endpoints are genomic boundaries. Index band 0 is on the lower
     // pixel side, which is the trailing side on a reversed range.
     const xScale = mark.encoders.x.scale;
     const yScale = mark.encoders.y?.scale;
-    const xBand = icon ? undefined : xScale.props.reverse ? 1 : 0;
-    /** @type {Partial<Record<"x" | "x2" | "y" | "y2" | "size", import("@genome-spy/webgpu-renderer").ChannelConfigInput>>} */
+    const xBand = xScale.props.reverse ? 1 : 0;
+    const yBand = strip || rowEdges ? undefined : yScale.props.reverse ? 0 : 1;
     const channels = {
         x: createPositionChannel(mark, "x", data, coords, xBand),
-        ...(icon && { size: createNumericChannel(mark, "size", data) }),
-        ...(!icon &&
-            !xEnd && {
-                x2: createPositionChannel(mark, "x2", data, coords, xBand),
-            }),
+        ...(rowEdges
+            ? {}
+            : { y: createPositionChannel(mark, "y", data, coords, yBand) }),
     };
-    if (!rowEdges) {
-        const yBand = icon || strip ? undefined : yScale.props.reverse ? 0 : 1;
-        channels.y = createPositionChannel(mark, "y", data, coords, yBand);
-        if (!icon)
-            channels.y2 = createPositionChannel(
-                mark,
-                "y2",
-                data,
-                coords,
-                yBand
-            );
-    }
     const position = Object.fromEntries(
         Object.entries(channels).map(([name, channel]) => {
-            if ("value" in channel) return [name, channel];
             const { scale, inputComponents } = channel;
-            const descriptor = { scale, inputComponents };
+            // A strip covers the symmetric interval within its band.
+            const bandEnd =
+                strip && name === "y" && "band" in scale
+                    ? 1 - scale.band
+                    : undefined;
+            const descriptor = { scale, inputComponents, bandEnd };
             SCALE_DEPENDENT_VALUES.set(
                 descriptor,
                 getWebGpuChannelResolution(channel)
@@ -685,20 +674,17 @@ function createRasterConfig(mark, data, coords, placement) {
             return [name, descriptor];
         })
     );
-    if (xEnd) position.x2 = position.x;
-    if (rowEdges) {
-        position.y = position.x;
-        position.y2 = position.x2;
-    }
+    if (rowEdges) position.y = position.x;
     const tiles = /** @type {RasterData["tiles"]} */ ({
         ...cached.packed.tiles,
         x0: channels.x.data,
         y0: rowEdges ? rowEdges.start : channels.y.data,
-        x1: xEnd ?? channels.x2?.data,
-        y1: rowEdges ? rowEdges.end : channels.y2?.data,
-        size: channels.size?.data,
-        placementIndices:
-            placement && "data" in placement ? placement.data : undefined,
+        x1: xEnd ?? createPositionChannel(mark, "x2", data, coords, xBand).data,
+        y1: rowEdges
+            ? rowEdges.end
+            : strip
+              ? channels.y.data
+              : createPositionChannel(mark, "y2", data, coords, yBand).data,
     });
     if (
         !cached.snapshot ||
@@ -712,7 +698,7 @@ function createRasterConfig(mark, data, coords, placement) {
     return {
         data: cached.snapshot,
         ...(rowEdges && { projection: /** @type {const} */ ("triangle") }),
-        placement: placement && "source" in placement ? "draw" : undefined,
+        placementIndex,
         position,
         channels: {
             fill: {
@@ -781,7 +767,7 @@ function packRasterTiles(mark, data, intern, cellInputs) {
         // Core keeps the last covered index for domain inference. The tile
         // snapshot uses a grid edge for both rendering and brush membership.
         xEnd:
-            strip && !mark.isIcon && mark.encoders.x.scale.type === "index"
+            strip && mark.encoders.x.scale.type === "index"
                 ? packHighPrecisionU32Array(
                       tiles.map(({ horizontal: { origin, step, count } }) =>
                           readIndexValue(mark, "x2", origin + step * count)

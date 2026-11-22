@@ -17,7 +17,7 @@ test.each([
     expect(() =>
         readRasterTile(datum, "column", "row", "value", {
             direct: false,
-            grid: "locus",
+            locus: true,
         })
     ).toThrow(/dimension "row" needs nonnegative whole-base endpoints/);
 });

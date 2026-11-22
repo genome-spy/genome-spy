@@ -36,7 +36,7 @@ type FieldIntervalProjection = Readonly<{
     hitTest?: "intersects" | "encloses" | "endpoints";
 }>;
 
-/** Test a raster cell's unscaled grid bounds. Icons use their anchor. */
+/** Test a raster cell's unscaled grid bounds. */
 type RasterIntervalProjection = Readonly<{
     component: string;
     position: "x" | "y";

@@ -40,10 +40,6 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterImage(playwright, baseURL, renderer));
-    test(`${renderer} icons keep their encoded screen size through zoom`, ({
-        playwright,
-        baseURL,
-    }) => checkRasterIcons(playwright, baseURL, renderer));
     test(`${renderer} triangle uses one locus axis and keeps tile seams aligned`, ({
         playwright,
         baseURL,
@@ -308,10 +304,18 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                 data: {
                                     values: [
                                         {
-                                            sample: "icon",
+                                            sample: "overlay",
                                             dimensions: {
-                                                column: { count: 3 },
-                                                row: { count: 1 },
+                                                column: {
+                                                    origin: start,
+                                                    step: 1,
+                                                    count: 3,
+                                                },
+                                                row: {
+                                                    origin: 7.5,
+                                                    step: 5,
+                                                    count: 1,
+                                                },
                                             },
                                             fields: {
                                                 pixel: [
@@ -322,11 +326,20 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                         },
                                     ],
                                 },
-                                mark: { type: "icon", tooltip },
+                                mark: { type: "raster", tooltip },
                                 encoding: {
-                                    x: { value: 0.2 },
-                                    y: { value: 0.1 },
-                                    size: { value: 25 },
+                                    x: {
+                                        dimension: "column",
+                                        type: "locus",
+                                        axis: null,
+                                        scale: { domain: [start, start + 9] },
+                                    },
+                                    y: {
+                                        dimension: "row",
+                                        type: "quantitative",
+                                        axis: null,
+                                        scale: { domain: [0, 100] },
+                                    },
                                     color: { field: "pixel", scale: null },
                                 },
                             },
@@ -363,25 +376,29 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                     page.evaluate(async () => {
                         const result = await globalThis.rasterTooltipApi.views
                             .root()
-                            .marks.pick({ x: 15, y: 90 });
+                            .marks.pick({ x: 5, y: 90 });
                         return result.status === "hit" && result.hit.datum;
                     })
                 )
                 .toMatchObject({
-                    sample: "icon",
+                    sample: "overlay",
                     dimensions: { column: { count: 3 } },
                 });
+            await canvas.hover({ position: { x: 5, y: 90 } });
+            await expect.poll(hovered).toEqual({
+                datum: { sample: "overlay", pixel: 0xff0000ff, quality: 10 },
+                rasterCell: { column: 0, row: 0 },
+                genomicRows: [
+                    { key: "Column", value: expect.stringMatching(/^chr/) },
+                ],
+            });
             await canvas.hover({ position: { x: 15, y: 90 } });
             await expect.poll(hovered).toEqual({
-                datum: { sample: "icon", pixel: 0xff0000ff, quality: 10 },
-                rasterCell: { column: 0, row: 0 },
-                genomicRows: [],
-            });
-            await canvas.hover({ position: { x: 20, y: 90 } });
-            await expect.poll(hovered).toEqual({
-                datum: { sample: "icon", pixel: 0xff00ff00, quality: 20 },
+                datum: { sample: "overlay", pixel: 0xff00ff00, quality: 20 },
                 rasterCell: { column: 1, row: 0 },
-                genomicRows: [],
+                genomicRows: [
+                    { key: "Column", value: expect.stringMatching(/^chr/) },
+                ],
             });
             await canvas.hover({ position: { x: 25, y: 90 } });
             await expect.poll(hovered).toMatchObject({
@@ -507,144 +524,6 @@ async function checkTriangleRaster(playwright, baseURL, renderer) {
                 }
             }
         }
-    });
-}
-
-/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
-async function checkRasterIcons(playwright, baseURL, renderer) {
-    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
-        const { layers, rasterized, ...samples } = await page.evaluate(
-            async ({ src, renderer, register }) => {
-                const { embed } = await import(src + "minimal.js");
-                await import(src + register);
-                await import(src + "rendering/registerSvg.js");
-                const api = await embed(
-                    globalThis.document.querySelector("#plot"),
-                    {
-                        width: 100,
-                        height: 80,
-                        padding: 0,
-                        view: { stroke: null },
-                        data: {
-                            values: [
-                                {
-                                    at: 3,
-                                    area: 1,
-                                    dimensions: {
-                                        u: { count: 2 },
-                                        row: { count: 1 },
-                                    },
-                                    fields: {
-                                        pixels: [0xff0000ff, 0xffff0000],
-                                    },
-                                },
-                                {
-                                    at: 7,
-                                    area: 2,
-                                    dimensions: {
-                                        u: { count: 1 },
-                                        row: { count: 2 },
-                                    },
-                                    fields: {
-                                        pixels: [0xff00ff00, 0xff00ffff],
-                                    },
-                                },
-                            ],
-                        },
-                        mark: "icon",
-                        config: { icon: { columnDimension: "u" } },
-                        encoding: {
-                            x: {
-                                field: "at",
-                                type: "quantitative",
-                                axis: null,
-                                scale: { domain: [0, 10], zoom: true },
-                            },
-                            y: { value: 0.5 },
-                            size: {
-                                field: "area",
-                                type: "quantitative",
-                                legend: null,
-                                scale: {
-                                    domain: [1, 2],
-                                    range: [100, 400],
-                                    zero: false,
-                                },
-                            },
-                            color: { field: "pixels", scale: null },
-                        },
-                    },
-                    {
-                        renderer,
-                        onError: (error) => {
-                            throw error;
-                        },
-                    }
-                );
-                // Read inside and outside each image along both source dimensions.
-                const points = (a, b) => [
-                    [a - 8, 40],
-                    [a + 8, 40],
-                    [a - 12, 40],
-                    [a, 47],
-                    [b, 22],
-                    [b, 58],
-                    [b, 62],
-                    [b + 12, 30],
-                ];
-                try {
-                    const before = await globalThis.readRasterPixels(
-                        api,
-                        points(30, 70),
-                        null
-                    );
-                    const view = api.debug
-                        .getViewRoot()
-                        .getDescendants()
-                        .find((view) => view.mark?.getType() === "icon");
-                    await view.getScaleResolution("x").zoomTo([1, 9]);
-                    const after = await globalThis.readRasterPixels(
-                        api,
-                        points(25, 75),
-                        null
-                    );
-                    const { layers } = await api.imageExport.analyzeSvg();
-                    const { pixels: svg, rasterized } =
-                        await globalThis.readSvgRasterPixels(
-                            api,
-                            points(25, 75)
-                        );
-                    return { layers, rasterized, before, after, svg };
-                } finally {
-                    api.finalize();
-                }
-            },
-            setup
-        );
-        const transparent = [0, 0, 0, 0];
-        const expected = [
-            [255, 0, 0, 255],
-            [0, 0, 255, 255],
-            transparent,
-            transparent,
-            [0, 255, 0, 255],
-            [255, 255, 0, 255],
-            transparent,
-            transparent,
-        ];
-        for (const [stage, pixels] of Object.entries(samples)) {
-            expect(pixels, stage).toEqual(expected);
-        }
-        expect(layers).toMatchObject([
-            { markType: "icon", instanceCount: 2, requiresRasterization: true },
-        ]);
-        expect(rasterized).toEqual([
-            {
-                targets: [{ markType: "icon", instanceCount: 2 }],
-                reason: "raster-mark",
-                pixelRatio: 1,
-            },
-        ]);
     });
 }
 

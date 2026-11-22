@@ -215,7 +215,6 @@ export function buildMarkShader({
         channelIRs,
         channelNames,
         inputNames,
-        cellPredicates,
         scalarSlots,
         selectionDefs,
     };
@@ -320,8 +319,8 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         const raster = "position" in projection;
                         const [value, secondary] = raster
                             ? [
-                                  `rasterCoordinate_${projection.position}(${projection.positionEdge === "end" ? 1 : 0}u)`,
-                                  !projection.positionEdge &&
+                                  `rasterCoordinate_${projection.position}(${projection.edge === "end" ? 1 : 0}u)`,
+                                  !projection.edge &&
                                       `rasterCoordinate_${projection.position}(1u)`,
                               ]
                             : [

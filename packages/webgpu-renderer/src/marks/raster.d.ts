@@ -23,27 +23,17 @@ export type RasterData = {
         offsets: Uint32Array;
         /** One picking ID per tile. Omit to leave the raster out of picking. */
         pickingIds?: Uint32Array;
-        /** Tile indices into the placement table supplied at draw time. */
-        placementIndices?: Uint32Array;
-    } & (
-        | {
-              x0: RasterCellArray;
-              y0: RasterCellArray;
-              x1: RasterCellArray;
-              y1: RasterCellArray;
-              size?: never;
-          }
-        | {
-              /** Anchor coordinates when both trailing edges are omitted. */
-              x0?: RasterCellArray;
-              y0?: RasterCellArray;
-              x1?: never;
-              y1?: never;
-              /** One source-cell area per tile, in square logical pixels after scaling. */
-              size?: RasterCellArray;
-          }
-    );
+        x0: RasterCellArray;
+        y0: RasterCellArray;
+        x1: RasterCellArray;
+        y1: RasterCellArray;
+    };
     cells: Record<string, RasterCellArray>;
+};
+
+export type RasterSeries = RasterData & {
+    /** One index per tile when replacing data on a mark with per-instance placement. */
+    placementIndex?: Uint32Array;
 };
 
 export type RasterPosition = Pick<
@@ -54,13 +44,8 @@ export type RasterPosition = Pick<
     scale?: ChannelConfigWithScaleInput["scale"];
     /** Use two words per edge for a packed high-precision index. */
     inputComponents?: 1 | 2;
-};
-
-/** Constant or series mapping for anchored tile geometry. Series live in RasterData. */
-export type RasterAnchor = RasterPosition & {
-    value?: NumericValue;
-    type?: "f32" | "u32";
-    dynamic?: boolean;
+    /** Band offset for the trailing endpoint. Defaults to the leading offset. */
+    bandEnd?: number;
 };
 
 /** The input names a raw cell field. A value is already in range space. */
@@ -75,29 +60,21 @@ export type RasterCellChannel = RasterCellValue & {
     )[];
 };
 
-export type RasterConfig = Pick<
-    MarkConfig,
-    "scalarSlots" | "visibleWhen" | "order"
-> & {
+export type RasterConfig = Pick<MarkConfig, "order" | "placementIndex"> & {
     data: RasterData;
+    visibleWhen?: SelectionPredicate;
     /**
      * Rotate bounded tiles onto a diagonal baseline. Both axes must supply
      * endpoints projected in the horizontal view's logical pixels.
      */
     projection?: "triangle";
     /**
-     * A tile with endpoints divides each axis uniformly between them.
-     * An omitted end descriptor takes the initial mapping from its axis.
-     * A tile with an anchor is centered in logical pixels at the projected x
-     * and y. Its cell width and height are the square root of the resolved
-     * size, which defaults to 1.
+     * A tile divides each axis uniformly between its endpoints.
+     * Both endpoints use the same scale on each axis.
      */
     position?: {
-        x?: RasterAnchor;
-        x2?: RasterPosition;
-        y?: RasterAnchor;
-        y2?: RasterPosition;
-        size?: RasterAnchor;
+        x?: RasterPosition;
+        y?: RasterPosition;
     };
     /**
      * Conditions, visibility and order use cell inputs. Interval projections
@@ -105,7 +82,6 @@ export type RasterConfig = Pick<
      * Membership by a picked single ID is unavailable for raster cells.
      */
     channels?: { fill?: RasterCellChannel; opacity?: RasterCellChannel };
-    placement?: "draw";
 };
 
-export const rasterMark: MarkDefinition<RasterConfig, RasterData>;
+export const rasterMark: MarkDefinition<RasterConfig, RasterSeries>;

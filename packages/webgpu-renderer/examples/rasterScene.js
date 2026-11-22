@@ -94,9 +94,7 @@ export default async function runRasterScene(canvas) {
         ({ width, height }) => {
             mark.batchUpdates(() => {
                 mark.scales.x.setRange([0, width]);
-                mark.scales.x2.setRange([0, width]);
                 mark.scales.y.setRange([0, height]);
-                mark.scales.y2.setRange([0, height]);
             });
         },
         frame

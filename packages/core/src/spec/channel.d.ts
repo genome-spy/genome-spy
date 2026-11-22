@@ -775,7 +775,6 @@ export interface Encoding {
     /**
      * Size of the mark.
      * - For `"point"` – the symbol size, or pixel area of the mark.
-     * - For raster icons – the area of a source cell in square CSS pixels.
      * - For `"text"` – the text's font size.
      * - For `"arrow"` – the stem thickness in pixels.
      */

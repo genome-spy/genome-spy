@@ -11,23 +11,16 @@ export const rasterMark = Object.freeze({
                 name,
                 data.constructor.name,
             ]),
-            /** @type {const} */ (["x0", "x1", "y0", "y1", "size"]).map(
+            /** @type {const} */ (["x0", "x1", "y0", "y1"]).map(
                 (key) => config.data.tiles[key]?.constructor.name
             ),
-            /** @type {const} */ (["x", "x2", "y", "y2", "size"]).map(
-                (name) => {
-                    const descriptor =
-                        /** @type {import("./raster.d.ts").RasterAnchor | undefined} */ (
-                            config.position?.[name]
-                        );
-                    return [
-                        descriptor?.inputComponents,
-                        descriptor?.type,
-                        descriptor?.dynamic,
-                    ];
-                }
-            ),
-            config.placement ?? !!config.data.tiles.placementIndices,
+            /** @type {const} */ (["x", "y"]).map((name) => {
+                const { inputComponents, bandEnd } =
+                    config.position?.[name] ?? {};
+                return [inputComponents, bandEnd];
+            }),
+            config.placementIndex &&
+                ("source" in config.placementIndex ? "draw" : "series"),
         ]);
     },
     createProgram(renderer, config, context) {

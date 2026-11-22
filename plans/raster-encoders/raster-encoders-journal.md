@@ -146,3 +146,32 @@ and passed the other six focused GPU tests. The Core gradient test now covers
 the resulting boundary behavior. Packed locus brushes still compare their
 high-precision grid edges. Removing the duplicate rounding path saved 37 net
 production lines, for 95 across the simplification.
+
+## Bounded raster axes
+
+Each bounded raster axis uses one scale. Both endpoints keep their data
+coordinates, and a band can specify a separate offset for its trailing edge. Use
+the normal position scale implementations and expose one update slot per axis.
+Core supplies endpoints and band offsets through the standalone contract. Verify
+scale updates in the standalone images, close locus zoom, and sequence strips
+that use categorical bands.
+
+Cell visibility accepts selection predicates. The raster-specific scalar
+comparisons had no example consumer. Keep the ordinary mark comparison
+implementation for point semantic zoom. Tile placement still supports grouping
+multiple tiles into one instanced draw.
+
+A Chromium probe rendered 50,000 instances of a shared 4 × 4 RGBA tile in a 512
+× 512 target. Both placement modes used one draw in a single view. Across 100
+view rectangles, draw-time placement used 100 draws and per-tile placement used
+one. Queue completion took about 1.1 ms in both 100-rectangle cases. This
+measures resident data and excludes upload costs for distinct images.
+
+Raster creation now uses the same `placementIndex` option as other marks. Core
+supplies the shared draw-level option for repeated views. Standalone callers can
+batch tiles with different view rectangles in one draw and replace the tile
+indices with the geometry and cell data.
+
+Raster tiles use grid bounds in all renderers. The renderer still computes a
+nearby cell boundary for close locus zoom. An overlapping RGBA grid verifies
+that transparent pixels expose the underlying Hi-C cell in picking.
