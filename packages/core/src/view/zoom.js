@@ -109,7 +109,7 @@ export function interactionToZoom(
         // - Other marks: snap to the center if only primary positional channels exist.
         // This allows rapid zooming without constantly adjusting cursor position.
 
-        if (hover) {
+        if (hover && hover.rasterCell === undefined) {
             const linkEndpoint = getLinkEndpointSnapPoint(
                 event.point,
                 coords,

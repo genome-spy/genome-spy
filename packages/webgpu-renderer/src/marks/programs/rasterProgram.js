@@ -79,9 +79,10 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
  * @param {boolean} icon
  * @param {boolean} triangle
+ * @param {boolean} picking
  * @param {ReadonlySet<"x" | "y">} coordinates
  */
-function rasterShader(irs, icon, triangle, coordinates) {
+function rasterShader(irs, icon, triangle, picking, coordinates) {
     const x = icon ? "" : indexAxisShader(irs, "x");
     const y = icon ? "" : indexAxisShader(irs, "y", triangle ? "x" : "y");
     const coordinateFields = [];
@@ -283,7 +284,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     }
     out.grid = vec3<u32>(read_columns(i), read_rows(i), read_cellOffset(i));
     ${copyCoordinates.join("\n    ")}
-    out.pickId = 0u;
+    out.pickId = ${picking ? "read_tilePickingId(i) + 1u" : "0u"};
     let targetSize = globals.renderTargetSize * globals.dpr;
     ${triangle ? "" : "let first = rasterTargetPixel(applyPlacementPixel(vec2<f32>(getScaled_x(i), getScaled_y(i)), i));"}
     ${bounds}
@@ -349,6 +350,12 @@ fn rasterCellColor(in: VSOut, cell: vec2<u32>) -> vec4<f32> {
     return premultiplyAlpha(vec4<f32>(color.rgb, color.a * clamp(getScaled_opacity(i), 0.0, 1.0)));
 }
 
+fn rasterCenterColor(in: VSOut, center: vec2<f32>) -> vec4<f32> {
+    let column = rasterCellIndex(in.anchor.x, in.grid.x - 1u, center.x);
+    let row = rasterCellIndex(in.anchor.y, in.grid.y - 1u, center.y);
+    return rasterCellColor(in, vec2<u32>(column, row));
+}
+
 fn rasterRowColor(in: VSOut, x: AxisSamples, row: u32) -> vec4<f32> {
     let first = rasterCellColor(in, vec2<u32>(x.first, row));
     if (x.secondWeight == 0.0) { return first; }
@@ -372,12 +379,11 @@ ${
     let separation = (in.pos.y - in.triangle.x) * in.triangle.y;
     let source = in.pos.x + vec2<f32>(separation, -separation);
     let center = (source - in.anchorPixel) * in.cellsPerPixel;
-    let column = rasterCellIndex(in.anchor.x, in.grid.x - 1u, center.x);
-    let row = rasterCellIndex(in.anchor.y, in.grid.y - 1u, center.y);
-    return rasterCellColor(in, vec2<u32>(column, row));
+    return rasterCenterColor(in, center);
 `
         : /* wgsl */ `
     let center = (in.pos.xy - in.anchorPixel) * in.cellsPerPixel;
+    if (pickingEnabled) { return rasterCenterColor(in, center); }
     let width = abs(in.cellsPerPixel);
     let x = rasterAxisSamples(center.x, width.x, in.anchor.x, in.grid.x);
     let y = rasterAxisSamples(center.y, width.y, in.anchor.y, in.grid.y);
@@ -435,6 +441,7 @@ export default class RasterProgram extends BaseProgram {
             irs,
             !!this._markConfig.icon,
             !!this._markConfig.triangle,
+            !!this._markConfig.picking,
             coordinates
         );
     }

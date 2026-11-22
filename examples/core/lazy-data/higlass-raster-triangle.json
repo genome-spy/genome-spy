@@ -1,7 +1,7 @@
 {
   "description": [
     "Hi-C triangle track",
-    "Pan or zoom along the genomic axis. Height above the axis shows contact separation. Drag on the logarithmic color legend to filter contact values.",
+    "Pan or zoom along the genomic axis. Hover over a cell to see the contact value and genomic bins. Height above the axis shows contact separation. Drag on the logarithmic color legend to filter contact values.",
     "Data source: Rao et al. (2014), GM12878 MboI all replicates on hg19, served by HiGlass."
   ],
   "assembly": "hg19",
@@ -30,7 +30,8 @@
     {
       "mark": {
         "type": "raster",
-        "projection": "triangle"
+        "projection": "triangle",
+        "tooltip": { "handler": "default" }
       },
       "encoding": {
         "x": {

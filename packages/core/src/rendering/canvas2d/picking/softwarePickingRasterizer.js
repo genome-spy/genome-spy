@@ -111,10 +111,11 @@ export default class SoftwarePickingRasterizer {
      * @param {number} y
      * @param {number} width
      * @param {number} height
+     * @param {(x: number, y: number) => boolean} [contains]
      */
-    fillRect(id, x, y, width, height) {
+    fillRect(id, x, y, width, height, contains) {
         this.#rectangles++;
-        this.#fillRect(id, x, y, width, height);
+        this.#fillRect(id, x, y, width, height, contains);
     }
 
     /**
@@ -123,8 +124,9 @@ export default class SoftwarePickingRasterizer {
      * @param {number} y
      * @param {number} width
      * @param {number} height
+     * @param {(x: number, y: number) => boolean} [contains]
      */
-    #fillRect(id, x, y, width, height) {
+    #fillRect(id, x, y, width, height, contains) {
         const x2 = x + width;
         const y2 = y + height;
         if (
@@ -145,7 +147,7 @@ export default class SoftwarePickingRasterizer {
         }
 
         for (let row = top; row < bottom; row++) {
-            this.#fillSpan(id, row, left, right);
+            this.#fillSpan(id, row, left, right, contains);
         }
     }
 
@@ -418,11 +420,20 @@ export default class SoftwarePickingRasterizer {
      * @param {number} row
      * @param {number} left Inclusive.
      * @param {number} right Exclusive.
+     * @param {(x: number, y: number) => boolean} [contains]
      */
-    #fillSpan(id, row, left, right) {
+    #fillSpan(id, row, left, right, contains) {
         this.#spans++;
         const offset = row * this.buffer.width;
-        this.buffer.ids.fill(id >>> 0, offset + left, offset + right);
+        const ids = this.buffer.ids;
+        if (contains) {
+            for (let column = left; column < right; column++) {
+                if (contains(column + 0.5, row + 0.5))
+                    ids[offset + column] = id;
+            }
+        } else {
+            ids.fill(id >>> 0, offset + left, offset + right);
+        }
     }
 
     /**

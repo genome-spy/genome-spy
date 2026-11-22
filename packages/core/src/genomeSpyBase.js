@@ -75,6 +75,9 @@ export default class GenomeSpy {
     #destructionCallbacks = [];
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
     #renderCoordinator;
+
+    /** @type {import("./view/layout/layoutResult.js").default | undefined} */
+    #interactiveLayout;
     /** @type {LoadingIndicatorManager} */
     #loadingIndicatorManager;
     /** @type {LoadingStatusRegistry} */
@@ -401,6 +404,7 @@ export default class GenomeSpy {
     }
 
     #disposeInitializedResources() {
+        this.#interactiveLayout = undefined;
         if (this.viewRoot && this.#disposedViewRoot !== this.viewRoot) {
             this.viewRoot.disposeSubtree();
             this.#disposedViewRoot = this.viewRoot;
@@ -578,8 +582,10 @@ export default class GenomeSpy {
                 viewRoot: this.viewRoot,
                 getBackground: this.#getCanvasBackground,
                 broadcast: this.broadcast.bind(this),
-                onLayoutComputed: () =>
-                    this.#loadingIndicatorManager.updateLayout(),
+                onLayoutComputed: (layout) => {
+                    this.#interactiveLayout = layout;
+                    this.#loadingIndicatorManager.updateLayout();
+                },
             });
 
         // Allow early layout requests from view subscriptions created during initialization.
@@ -624,6 +630,19 @@ export default class GenomeSpy {
                 ? this.renderPickingFramebuffer.bind(this)
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
+            resolveRasterCell: (mark, datum, x, y, facetId) => {
+                const layout = this.#interactiveLayout;
+                if (layout) {
+                    return this.#renderingBackend.resolveRasterCell?.(
+                        layout,
+                        mark,
+                        datum,
+                        x,
+                        y,
+                        facetId
+                    );
+                }
+            },
             reportError: this.#reportRuntimeError.bind(this),
             canPick: () => Boolean(this.viewRoot?.hasRendered()),
         });

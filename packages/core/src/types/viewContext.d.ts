@@ -23,6 +23,8 @@ export interface Hover {
     mark: Mark;
     datum: Datum;
     facetId?: import("../spec/channel.js").Scalar[];
+    /** Row-major address within a picked raster tile. */
+    rasterCell?: number;
 }
 
 export type DataLoadingStatus = "loading" | "complete" | "error";

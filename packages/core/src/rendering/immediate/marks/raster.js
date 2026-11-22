@@ -1,6 +1,97 @@
 import { readRasterDimension } from "../../../data/rasterTile.js";
 import { intersectsBounds } from "../bounds.js";
 import { encodeNumber, prepareRangeProjection } from "../markEncoding.js";
+import { getMarkData, SampleFacetCoordsResolver } from "../markData.js";
+import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
+
+/**
+ * @param {number} x0
+ * @param {number} y0
+ * @param {number} dx
+ * @param {number} dy
+ * @param {number} columns
+ * @param {number} rows
+ * @param {ReturnType<typeof getRasterTriangle>} [triangle]
+ */
+export function createRasterCellLookup(
+    x0,
+    y0,
+    dx,
+    dy,
+    columns,
+    rows,
+    triangle
+) {
+    /** @param {number} x @param {number} y */
+    return (x, y) => {
+        if (triangle) {
+            const separation = (y - triangle.baseline) * triangle.direction;
+            y = x - separation;
+            x += separation;
+        }
+        const u = (x - x0) / dx;
+        const v = (y - y0) / dy;
+        return u >= 0 && u < 1 && v >= 0 && v < 1
+            ? Math.floor(v * rows) * columns + Math.floor(u * columns)
+            : -1;
+    };
+}
+
+const UNBOUNDED = { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity };
+
+/**
+ * Resolves the cell against the drawing occurrence, including sample placement.
+ * The picking pass has already checked clips and visibility.
+ * @param {import("../../../view/layout/layoutResult.js").default} layout
+ * @param {import("../../../marks/raster.js").default} mark
+ * @param {object} datum
+ * @param {{x: number, y: number}} point
+ * @param {import("../../../spec/channel.js").Scalar[]} [facetId]
+ * @returns {number | undefined}
+ */
+export function resolveRasterCell(layout, mark, datum, point, facetId) {
+    const { column, row } = mark.getColorCellBinding();
+    const columns = readRasterDimension(datum, column).count;
+    const rows = row === undefined ? 1 : readRasterDimension(datum, row).count;
+    const occurrences = layout.getMarkOccurrences(mark);
+    /** @type {SampleFacetCoordsResolver | undefined} */
+    let sampleCoords;
+    for (let i = occurrences.length - 1; i >= 0; i--) {
+        const { coords, options } = occurrences[i];
+        if (
+            facetId &&
+            (!options.facetId || !shallowArrayEquals(facetId, options.facetId))
+        )
+            continue;
+        const occurrence = options.sampleFacetRenderingOptions
+            ? (sampleCoords ??= new SampleFacetCoordsResolver()).resolveFacet(
+                  coords,
+                  options.sampleFacetRenderingOptions
+              )
+            : coords;
+        let index = -1;
+        visitRasterTiles(
+            mark,
+            { coords: occurrence, data: [datum], visibleBounds: UNBOUNDED },
+            (_datum, x0, y0, dx, dy, triangle) => {
+                index = createRasterCellLookup(
+                    x0,
+                    y0,
+                    dx,
+                    dy,
+                    columns,
+                    rows,
+                    triangle
+                )(point.x, point.y);
+            }
+        );
+        if (
+            index >= 0 &&
+            (!options.facetId || getMarkData(mark, options).includes(datum))
+        )
+            return index;
+    }
+}
 
 /**
  * Restrict the projection to the track and bound that clip in source pixels.

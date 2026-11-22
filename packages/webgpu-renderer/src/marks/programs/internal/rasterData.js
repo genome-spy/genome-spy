@@ -87,7 +87,8 @@ export function compileRasterData(config) {
             "Raster placement must come from either the draw or the tiles."
         );
     }
-    return { fields, reads, positions, placementIndices, icon };
+    const picking = data.tiles.pickingIds !== undefined;
+    return { fields, reads, positions, placementIndices, icon, picking };
 }
 
 /** @typedef {ReturnType<typeof compileRasterData>} RasterSchema */
@@ -98,7 +99,7 @@ export function compileRasterData(config) {
  * @param {RasterSchema} schema
  */
 export function prepareRasterData(device, { tiles, cells }, schema) {
-    const { columns, rows, offsets, placementIndices } = tiles;
+    const { columns, rows, offsets, placementIndices, pickingIds } = tiles;
     const count = columns.length;
     if (
         (schema.icon && (tiles.x1 !== undefined || tiles.y1 !== undefined)) ||
@@ -129,6 +130,17 @@ export function prepareRasterData(device, { tiles, cells }, schema) {
     /** @type {Record<string, RasterCellArray>} */
     const series = { columns, rows, cellOffset: offsets };
     if (placementIndices) series.__placementIndex = placementIndices;
+    if (
+        schema.picking !== (pickingIds !== undefined) ||
+        (pickingIds !== undefined &&
+            (!(pickingIds instanceof Uint32Array) ||
+                pickingIds.length !== count))
+    ) {
+        throw new Error(
+            "Raster picking IDs must keep their presence and match the tile count."
+        );
+    }
+    if (pickingIds) series.tilePickingId = pickingIds;
     for (const { channel, edge, type, components } of schema.positions) {
         const array = tiles[edge];
         const inputType = array === undefined ? undefined : numericType(array);
@@ -335,10 +347,17 @@ export function lowerRasterConfig(config, schema, prepared) {
     for (const name of ["columns", "rows", "cellOffset"]) {
         inputs[name] = { data: prepared.series[name], type: "u32" };
     }
+    if (schema.picking) {
+        inputs.tilePickingId = {
+            data: prepared.series.tilePickingId,
+            type: "u32",
+        };
+    }
     const fill = channels?.fill;
     return {
         count: prepared.count,
         icon: schema.icon,
+        picking: schema.picking,
         triangle: config.projection === "triangle",
         reads: schema.reads,
         initialCells: prepared.cells,

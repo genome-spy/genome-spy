@@ -6,6 +6,7 @@ export const rasterMark = Object.freeze({
     getProgramKey(config) {
         return JSON.stringify([
             config.projection,
+            !!config.data.tiles.pickingIds,
             Object.entries(config.data.cells).map(([name, data]) => [
                 name,
                 data.constructor.name,

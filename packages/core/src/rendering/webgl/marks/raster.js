@@ -11,6 +11,7 @@ import {
     SampleFacetCoordsResolver,
     visitMarkOccurrences,
 } from "../../immediate/markData.js";
+import { encodeNumber } from "../../immediate/markEncoding.js";
 import {
     getRasterTriangle,
     visitRasterTiles,
@@ -50,6 +51,7 @@ export default class WebGLRasterMark {
 
     #dpr = 1;
     #pixelOffset = 0;
+    #picking = false;
 
     /** @type {ReadCellOpacity | undefined} */
     #cellOpacity;
@@ -66,6 +68,7 @@ export default class WebGLRasterMark {
         uCells: /** @type {WebGLTexture | null} */ (null),
         uCellOpacity: /** @type {WebGLTexture | null} */ (null),
         uOpacity: 1,
+        uPickColor: [0, 0, 0, 0],
     };
 
     /**
@@ -201,7 +204,10 @@ export default class WebGLRasterMark {
             () => {
                 gl.useProgram(this.#programInfo.program);
                 gl.bindVertexArray(null);
-                gl.enable(gl.BLEND);
+                this.#picking = !!options.picking;
+                if (this.#picking) gl.disable(gl.BLEND);
+                else gl.enable(gl.BLEND);
+                setUniforms(this.#programInfo, { uPicking: this.#picking });
                 const viewOpacity =
                     options.applyViewOpacity === false
                         ? 1
@@ -307,6 +313,12 @@ export default class WebGLRasterMark {
      */
     #drawTile = (datum, x0, y0, dx, dy, triangle) => {
         if (!(this.#tileUniforms.uOpacity > 0)) return;
+        if (this.#picking) {
+            const id = encodeNumber(this.mark.encoders.uniqueId, datum);
+            const color = this.#tileUniforms.uPickColor;
+            for (let i = 0; i < 4; i++)
+                color[i] = ((id >>> (8 * i)) & 255) / 255;
+        }
 
         const tile = this.#tiles.get(datum);
         const { texture, width, height } = tile;

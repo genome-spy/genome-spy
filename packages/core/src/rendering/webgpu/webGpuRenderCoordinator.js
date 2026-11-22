@@ -22,7 +22,7 @@ export default class WebGpuRenderCoordinator {
      * @param {import("./webGpuSurface.js").default} options.surface
      * @param {() => string | undefined} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
-     * @param {() => void} options.onLayoutComputed
+     * @param {(layout: import("../../view/layout/layoutResult.js").default) => void} options.onLayoutComputed
      */
     constructor(options) {
         this.viewRoot = options.viewRoot;
@@ -45,7 +45,7 @@ export default class WebGpuRenderCoordinator {
             if (!this.surface.invalidateSize()) {
                 this.#framePlan = this.#compileFramePlan(layoutResult);
                 this.#dirtyPickingBuffer = true;
-                this.onLayoutComputed();
+                this.onLayoutComputed(layoutResult);
                 this.broadcast("layoutComputed");
                 return;
             }

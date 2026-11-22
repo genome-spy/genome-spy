@@ -3,7 +3,10 @@ import { VISIT_STOP } from "../view/view.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming, stopPanInertia } from "../view/zoom.js";
-import createTooltipContext from "../tooltip/tooltipContext.js";
+import createTooltipContext, {
+    createRasterTooltip,
+} from "../tooltip/tooltipContext.js";
+import RasterMark from "../marks/raster.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -18,6 +21,7 @@ import {
 /** @typedef {import("../types/interactionApi.d.ts").InternalMarkHit} InternalMarkHit */
 /** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
 /** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
+/** @typedef {(mark: RasterMark, datum: object, x: number, y: number, facetId?: import("../spec/channel.js").Scalar[]) => number | undefined} ResolveRasterCell */
 
 const TAP_DISTANCE = 4;
 const markEventTypes = ["click", "dblclick", "contextmenu"];
@@ -39,6 +43,8 @@ export default class InteractionController {
     #renderPickingFramebuffer;
     /** @type {((x: number, y: number) => number | null | Promise<number | null>) | undefined} */
     #readPickingId;
+    /** @type {ResolveRasterCell | undefined} */
+    #resolveRasterCell;
     /** @type {InteractionDispatcher} */
     #interactionDispatcher;
     /** @type {CursorManager} */
@@ -93,6 +99,7 @@ export default class InteractionController {
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
+     * @param {ResolveRasterCell} [options.resolveRasterCell]
      * @param {(error: unknown) => void} [options.reportError]
      * @param {() => boolean} [options.canPick]
      * @param {"default" | "cooperative"} [options.wheelBehavior]
@@ -106,6 +113,7 @@ export default class InteractionController {
         tooltipHandlers,
         renderPickingFramebuffer,
         readPickingId,
+        resolveRasterCell,
         reportError,
         canPick,
         wheelBehavior = "default",
@@ -119,6 +127,7 @@ export default class InteractionController {
         this.#tooltipHandlers = tooltipHandlers;
         this.#renderPickingFramebuffer = renderPickingFramebuffer ?? (() => {});
         this.#readPickingId = readPickingId;
+        this.#resolveRasterCell = resolveRasterCell;
         this.#reportError = reportError ?? this.#reportError;
         this.#canPick = canPick ?? this.#canPick;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
@@ -1110,6 +1119,24 @@ export default class InteractionController {
                             );
                         }
 
+                        if (
+                            hover.rasterCell !== undefined &&
+                            mark instanceof RasterMark
+                        ) {
+                            const cell = createRasterTooltip(
+                                datum,
+                                mark,
+                                hover.rasterCell,
+                                tooltipProps?.params,
+                                hover.facetId
+                            );
+                            return handler(
+                                cell.datum,
+                                mark,
+                                tooltipProps?.params,
+                                cell.context
+                            );
+                        }
                         const context = createTooltipContext(
                             datum,
                             mark,
@@ -1150,6 +1177,7 @@ export default class InteractionController {
                 view.mark.isPickingParticipant() &&
                 (!scopeView || view.getLayoutAncestors().includes(scopeView))
             ) {
+                const mark = view.mark;
                 for (const [facetId, coords] of view.facetCoords) {
                     // Only facet operators establish cell identity by bounds.
                     const cellFacetId =
@@ -1178,10 +1206,26 @@ export default class InteractionController {
                         .getCollector()
                         ?.findDatumByUniqueId(uniqueId);
                     if (datum) {
+                        const rasterCell =
+                            mark instanceof RasterMark
+                                ? this.#resolveRasterCell?.(
+                                      mark,
+                                      datum,
+                                      x,
+                                      y,
+                                      cellFacetId
+                                  )
+                                : undefined;
+                        if (
+                            mark instanceof RasterMark &&
+                            rasterCell === undefined
+                        )
+                            continue;
                         hit = {
-                            mark: view.mark,
+                            mark,
                             datum,
                             uniqueId,
+                            ...(rasterCell === undefined ? {} : { rasterCell }),
                             ...(cellFacetId === undefined
                                 ? {}
                                 : { facetId: cellFacetId }),
@@ -1251,6 +1295,7 @@ export default class InteractionController {
                 previousHover.mark === hover.mark &&
                 previousHover.uniqueId === hover.uniqueId &&
                 previousHover.datum === hover.datum &&
+                previousHover.rasterCell === hover.rasterCell &&
                 (previousHover.facetId === hover.facetId ||
                     (previousHover.facetId &&
                         hover.facetId &&

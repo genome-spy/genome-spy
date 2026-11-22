@@ -22,8 +22,8 @@ export default class RasterMark extends Mark {
     /** @returns {import("../spec/channel.js").Channel[]} */
     getSupportedChannels() {
         return this.isIcon
-            ? ["x", "y", "color", "opacity", "size"]
-            : ["x", "y", "x2", "y2", "color", "opacity"];
+            ? ["x", "y", "color", "opacity", "size", "tooltip"]
+            : ["x", "y", "x2", "y2", "color", "opacity", "tooltip"];
     }
 
     get isIcon() {
@@ -40,7 +40,7 @@ export default class RasterMark extends Mark {
     }
 
     isPickingParticipant() {
-        return false;
+        return this.properties.tooltip != null && super.isPickingParticipant();
     }
 
     /** @param {import("../spec/channel.js").Encoding} encoding */

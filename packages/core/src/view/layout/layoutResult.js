@@ -31,9 +31,36 @@ export default class LayoutResult {
     /** @type {LayoutCommand[]} */
     #commands;
 
+    /** @type {WeakMap<Mark, {coords: import("./rectangle.js").default, options: RenderingOptions}[]>} */
+    #occurrences = new WeakMap();
+
     /** @param {LayoutCommand[]} commands */
     constructor(commands) {
         this.#commands = commands;
+    }
+
+    /** @param {Mark} mark */
+    getMarkOccurrences(mark) {
+        let occurrences = this.#occurrences.get(mark);
+        if (!occurrences) {
+            occurrences = [];
+            const coords = [];
+            for (const command of this.#commands) {
+                if (command.type === "pushView") coords.push(command.coords);
+                else if (command.type === "popView") coords.pop();
+                else if (
+                    command.type === "renderMark" &&
+                    command.mark === mark
+                ) {
+                    occurrences.push({
+                        coords: coords.at(-1),
+                        options: command.options,
+                    });
+                }
+            }
+            this.#occurrences.set(mark, occurrences);
+        }
+        return occurrences;
     }
 
     /**

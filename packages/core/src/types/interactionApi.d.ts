@@ -1,11 +1,8 @@
-import { Datum } from "../data/flowNode.js";
+import { Hover } from "./viewContext.js";
 
 /** A mark and datum resolved from an internal picking identifier. */
-export interface InternalMarkHit {
-    mark: import("../marks/mark.js").default;
-    datum: Datum;
+export interface InternalMarkHit extends Hover {
     uniqueId: number;
-    facetId?: import("../spec/channel.js").Scalar[];
 }
 
 /** Native canvas input passed through the internal interaction boundary. */

@@ -23,6 +23,9 @@ source cell while preserving each icon's aspect ratio.
 Use the raster mark's triangle projection to display a HiGlass contact map above
 a single genomic axis. Track height controls the visible contact distance.
 
+Enable raster and icon cell tooltips with a tooltip handler. Hi-C tooltips show
+the hovered contact value and its two genomic bins.
+
 Use a gradient legend brush to control the opacity of individual raster cells.
 The HiGlass example makes contact values outside the brushed range transparent.
 

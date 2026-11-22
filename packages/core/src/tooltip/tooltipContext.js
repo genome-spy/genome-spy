@@ -2,12 +2,14 @@
  * @typedef {import("./tooltipHandler.js").TooltipContext} TooltipContext
  * @typedef {import("./tooltipHandler.js").TooltipGenomicDisplayMode} TooltipGenomicDisplayMode
  * @typedef {import("./tooltipHandler.js").TooltipRow} TooltipRow
+ * @typedef {import("./tooltipHandler.js").TooltipHandlerParams} TooltipHandlerParams
  */
 
 import { asArray } from "../utils/arrayUtils.js";
 import { getEncoderDataAccessor } from "../encoder/encoder.js";
 import { getConfiguredTooltipRows } from "./configuredTooltipRows.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 /** @type {Record<"x" | "y", "x2" | "y2">} */
 const SECONDARY_AXIS = {
@@ -99,6 +101,89 @@ export default function createTooltipContext(datum, mark, params, facetId) {
             formatGenomicLocus(mark, axis, continuousPos),
         formatGenomicInterval: (axis, interval) =>
             formatGenomicInterval(mark, axis, interval),
+    };
+}
+
+/**
+ * @param {object} tile
+ * @param {import("../marks/raster.js").default} mark
+ * @param {number} index
+ * @param {TooltipHandlerParams} [params]
+ * @param {import("../spec/channel.js").Scalar[]} [facetId]
+ * @returns {{datum: Record<string, any>, context: TooltipContext}}
+ */
+export function createRasterTooltip(tile, mark, index, params, facetId) {
+    const { column: columnDimension, row: rowDimension } =
+        mark.getColorCellBinding();
+    const { fields, dimensions, ...attributes } =
+        /** @type {import("../data/rasterTile.js").RasterTile & Record<string, any>} */ (
+            tile
+        );
+    delete attributes[UNIQUE_ID_KEY];
+    const horizontal = dimensions[columnDimension];
+    const vertical =
+        rowDimension === undefined ? undefined : dimensions[rowDimension];
+    const datum = {
+        ...attributes,
+        ...Object.fromEntries(
+            Object.entries(fields).map(([name, values]) => [
+                name,
+                values[index],
+            ])
+        ),
+    };
+    const column = index % horizontal.count;
+    const row = Math.floor(index / horizontal.count);
+    const genomeAxis = (/** @type {"x" | "y"} */ axis) =>
+        mark.isTriangle ? "x" : axis;
+    /** @type {TooltipRow[]} */
+    const genomicRows = [];
+    if (!mark.isIcon) {
+        for (const [axis, dimension, cell] of /** @type {const} */ ([
+            ["x", horizontal, column],
+            ["y", vertical, row],
+        ])) {
+            if (!dimension || !getGenome(mark, genomeAxis(axis))) continue;
+            const mode = getConfiguredMode(params, axis);
+            if (mode === "disabled") continue;
+            const start = dimension.origin + cell * dimension.step;
+            const end = start + dimension.step;
+            const label = axis === "x" ? "Column" : "Row";
+            const format = (/** @type {number} */ position) =>
+                formatGenomicLocus(mark, genomeAxis(axis), position);
+            if (mode === "endpoints") {
+                genomicRows.push(
+                    { key: label + " start", value: format(start) },
+                    { key: label + " end", value: format(end) }
+                );
+            } else {
+                genomicRows.push({
+                    key: label,
+                    value:
+                        mode === "locus"
+                            ? format(start)
+                            : formatGenomicInterval(mark, genomeAxis(axis), [
+                                  start,
+                                  end,
+                              ]),
+                });
+            }
+        }
+    }
+
+    return {
+        datum,
+        context: {
+            facetId: facetId?.slice(),
+            rasterCell: { column, row },
+            tooltipRows: getConfiguredTooltipRows(datum, mark),
+            genomicRows,
+            flattenDatumRows: () => flattenDatumRows(datum),
+            formatGenomicLocus: (axis, position) =>
+                formatGenomicLocus(mark, genomeAxis(axis), position),
+            formatGenomicInterval: (axis, interval) =>
+                formatGenomicInterval(mark, genomeAxis(axis), interval),
+        },
     };
 }
 

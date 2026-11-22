@@ -18,7 +18,7 @@ export default class Canvas2DRenderCoordinator {
      * @param {import("../../fonts/textMetrics.js").TextMetricsProvider} [options.textMetrics]
      * @param {() => string | undefined} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
-     * @param {() => void} options.onLayoutComputed
+     * @param {(layout: import("../../view/layout/layoutResult.js").default) => void} options.onLayoutComputed
      */
     constructor(options) {
         this.viewRoot = options.viewRoot;
@@ -54,7 +54,7 @@ export default class Canvas2DRenderCoordinator {
             if (!this.surface.invalidateSize()) {
                 this.layoutResult = layoutResult;
                 this.dirtyPickingBuffer = true;
-                this.onLayoutComputed();
+                this.onLayoutComputed(layoutResult);
                 this.broadcast("layoutComputed");
                 return;
             }

@@ -48,6 +48,10 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkTriangleRaster(playwright, baseURL, renderer));
+    test(`${renderer} tooltip follows cells and transparent pixels let hits through`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterTooltips(playwright, baseURL, renderer));
     if (renderer !== "webgpu") {
         test(`${renderer} recolors clipped raster tiles when the viewport log domain changes`, ({
             playwright,
@@ -103,10 +107,14 @@ async function checkRasterLens(playwright, baseURL, renderer) {
                             color: { field: "color", scale: null },
                         },
                         layer: [false, true].map((upper) => ({
-                            mark: "raster",
+                            mark: {
+                                type: "raster",
+                                tooltip: { handler: "default" },
+                            },
                             data: {
                                 values: [
                                     {
+                                        sample: upper ? "perturbed" : "control",
                                         dimensions: { column, row },
                                         fields: {
                                             color: Array.from(
@@ -182,6 +190,15 @@ async function checkRasterLens(playwright, baseURL, renderer) {
                             null
                         );
                     const before = await read();
+                    const pick = async () => {
+                        const result = await api.views
+                            .root()
+                            .marks.pick({ x: 34, y: 34 });
+                        return (
+                            result.status === "hit" && result.hit.datum.sample
+                        );
+                    };
+                    const beforePick = await pick();
                     // Intersect a fractional x edge and lie wholly inside the first y bin.
                     runtime.setValue("brush", {
                         type: "interval",
@@ -191,6 +208,7 @@ async function checkRasterLens(playwright, baseURL, renderer) {
                         },
                     });
                     const active = await read();
+                    const activePick = await pick();
                     runtime.setValue("brush", {
                         type: "interval",
                         intervals: { x: null, y: null },
@@ -199,6 +217,8 @@ async function checkRasterLens(playwright, baseURL, renderer) {
                         before,
                         active,
                         cleared: await read(),
+                        beforePick,
+                        activePick,
                     };
                 } finally {
                     api.finalize();
@@ -211,7 +231,163 @@ async function checkRasterLens(playwright, baseURL, renderer) {
         expect(samples.before).toEqual([red, red, red, red]);
         expect(samples.active).toEqual([green, green, red, red]);
         expect(samples.cleared).toEqual(samples.before);
+        expect([samples.beforePick, samples.activePick]).toEqual([
+            "control",
+            "perturbed",
+        ]);
     });
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkRasterTooltips(playwright, baseURL, renderer) {
+    await withRasterPage(
+        playwright,
+        baseURL,
+        renderer,
+        async (page, setup) => {
+            await page.evaluate(async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                const start = 2_000_000_001;
+                const dimension = { origin: start, step: 1, count: 4 };
+                const tooltip = { handler: "capture" };
+                globalThis.rasterTooltip = null;
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        assembly: "hg19",
+                        width: 100,
+                        height: 100,
+                        padding: 0,
+                        view: { stroke: null },
+                        layer: [
+                            {
+                                data: {
+                                    values: [
+                                        {
+                                            dimensions: {
+                                                column: dimension,
+                                                row: dimension,
+                                            },
+                                            fields: {
+                                                contact: Array.from(
+                                                    { length: 16 },
+                                                    (_, index) => 1 + index
+                                                ),
+                                            },
+                                        },
+                                    ],
+                                },
+                                mark: {
+                                    type: "raster",
+                                    projection: "triangle",
+                                    tooltip,
+                                },
+                                encoding: {
+                                    x: {
+                                        dimension: "column",
+                                        type: "locus",
+                                        axis: null,
+                                        scale: { domain: [start, start + 9] },
+                                    },
+                                    color: {
+                                        field: "contact",
+                                        type: "quantitative",
+                                        legend: null,
+                                    },
+                                },
+                            },
+                            {
+                                data: {
+                                    values: [
+                                        {
+                                            sample: "icon",
+                                            dimensions: {
+                                                column: { count: 3 },
+                                                row: { count: 1 },
+                                            },
+                                            fields: {
+                                                pixel: [
+                                                    0xff0000ff, 0xff00ff00, 0,
+                                                ],
+                                                quality: [10, 20, 30],
+                                            },
+                                        },
+                                    ],
+                                },
+                                mark: { type: "icon", tooltip },
+                                encoding: {
+                                    x: { value: 0.2 },
+                                    y: { value: 0.1 },
+                                    size: { value: 25 },
+                                    color: { field: "pixel", scale: null },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        renderer,
+                        onError: (error) => {
+                            throw error;
+                        },
+                        tooltipHandlers: {
+                            capture: async (
+                                datum,
+                                _mark,
+                                _params,
+                                { rasterCell, genomicRows }
+                            ) => {
+                                globalThis.rasterTooltip = {
+                                    datum,
+                                    rasterCell,
+                                    genomicRows,
+                                };
+                                return "Cell";
+                            },
+                        },
+                    }
+                );
+                globalThis.rasterTooltipApi = api;
+            }, setup);
+            const hovered = () => page.evaluate(() => globalThis.rasterTooltip);
+            const canvas = page.locator("#plot canvas");
+            await expect
+                .poll(() =>
+                    page.evaluate(async () => {
+                        const result = await globalThis.rasterTooltipApi.views
+                            .root()
+                            .marks.pick({ x: 15, y: 90 });
+                        return result.status === "hit" && result.hit.datum;
+                    })
+                )
+                .toMatchObject({
+                    sample: "icon",
+                    dimensions: { column: { count: 3 } },
+                });
+            await canvas.hover({ position: { x: 15, y: 90 } });
+            await expect.poll(hovered).toEqual({
+                datum: { sample: "icon", pixel: 0xff0000ff, quality: 10 },
+                rasterCell: { column: 0, row: 0 },
+                genomicRows: [],
+            });
+            await canvas.hover({ position: { x: 20, y: 90 } });
+            await expect.poll(hovered).toEqual({
+                datum: { sample: "icon", pixel: 0xff00ff00, quality: 20 },
+                rasterCell: { column: 1, row: 0 },
+                genomicRows: [],
+            });
+            await canvas.hover({ position: { x: 25, y: 90 } });
+            await expect.poll(hovered).toMatchObject({
+                datum: { contact: 14 },
+                rasterCell: { column: 1, row: 3 },
+                genomicRows: [
+                    { key: "Column", value: expect.stringMatching(/^chr/) },
+                    { key: "Row", value: expect.stringMatching(/^chr/) },
+                ],
+            });
+        },
+        2
+    );
 }
 
 /** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
@@ -1389,11 +1565,18 @@ async function checkRasterStrips(playwright, baseURL, renderer) {
  * @param {string} baseURL
  * @param {RasterRenderer} renderer
  * @param {(page: import("playwright/test").Page, setup: {src: string, renderer: string, register: string}) => Promise<void>} check
+ * @param {number} [deviceScaleFactor]
  */
-async function withRasterPage(playwright, baseURL, renderer, check) {
+async function withRasterPage(
+    playwright,
+    baseURL,
+    renderer,
+    check,
+    deviceScaleFactor = 1
+) {
     const browser = await launchRasterBrowser(playwright, renderer);
     try {
-        const page = await browser.newPage({ deviceScaleFactor: 1 });
+        const page = await browser.newPage({ deviceScaleFactor });
         const errors = [];
         page.on("pageerror", (error) => errors.push(error.message));
         page.on("console", (message) => {

@@ -21,6 +21,8 @@ export type RasterData = {
         columns: Uint32Array;
         rows: Uint32Array;
         offsets: Uint32Array;
+        /** One picking ID per tile. Omit to leave the raster out of picking. */
+        pickingIds?: Uint32Array;
         /** Tile indices into the placement table supplied at draw time. */
         placementIndices?: Uint32Array;
     } & (

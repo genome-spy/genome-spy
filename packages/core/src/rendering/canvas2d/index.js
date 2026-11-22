@@ -3,6 +3,8 @@ import Canvas2DSurface from "./canvas2DSurface.js";
 import { exportCanvas, exportRaster } from "./rasterExport.js";
 import { createCanvas2DSvgRasterizer } from "./svgRasterizer.js";
 import { createNativeTextMetricsProvider } from "../nativeTextMetrics.js";
+import { resolveRasterCell } from "../immediate/marks/raster.js";
+import { pickingPixelCenter } from "../renderingConstants.js";
 
 /**
  * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -40,5 +42,13 @@ export function createCanvas2DRenderingBackend(options) {
         rasterizeSvgRuns: (rasterOptions) =>
             createCanvas2DSvgRasterizer()(rasterOptions),
         readPickingId: (x, y) => surface.readPickingId(x, y),
+        resolveRasterCell: (layout, mark, datum, x, y, facetId) =>
+            resolveRasterCell(
+                layout,
+                mark,
+                datum,
+                pickingPixelCenter(x, y),
+                facetId
+            ),
     };
 }

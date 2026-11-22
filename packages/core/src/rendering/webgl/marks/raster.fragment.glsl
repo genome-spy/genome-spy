@@ -4,6 +4,8 @@ uniform vec2 uCellsPerPixel;
 uniform float uOpacity;
 uniform vec2 uTriangle;
 uniform vec4 uTriangleClip;
+uniform bool uPicking;
+uniform vec4 uPickColor;
 
 out vec4 fragColor;
 
@@ -31,11 +33,15 @@ void main() {
     if (uTriangle.y != 0.0) {
         if (any(lessThan(pixel, uTriangleClip.xy)) || any(greaterThanEqual(pixel, uTriangleClip.zw))) discard;
         float separation = (pixel.y - uTriangle.x) * uTriangle.y;
-        vec2 source = pixel.x + vec2(separation, -separation);
-        fragColor = sampleCell(cellAt((source - uAnchor.xy) * uCellsPerPixel, lastCell)) * uOpacity;
-        return;
+        pixel = pixel.x + vec2(separation, -separation);
     }
     vec2 center = (pixel - uAnchor.xy) * uCellsPerPixel;
+    if (uPicking || uTriangle.y != 0.0) {
+        vec4 color = sampleCell(cellAt(center, lastCell)) * uOpacity;
+        if (uPicking && !(color.a > 0.0)) discard;
+        fragColor = uPicking ? uPickColor : color;
+        return;
+    }
     vec2 width = abs(uCellsPerPixel);
 
     // Split each pixel footprint at the nearest grid line and sample each

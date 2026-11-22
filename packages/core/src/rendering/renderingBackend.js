@@ -47,8 +47,9 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {import("../fonts/textMetrics.js").TextMetricsProvider} textMetrics
  * @property {undefined} [glHelper] Legacy field retained for the unchanged WebGPU adapter.
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
- * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string | undefined, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: () => void}) => RenderingCoordinator} createRenderCoordinator
+ * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string | undefined, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: (layout: import("../view/layout/layoutResult.js").default) => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
+ * @property {(layout: import("../view/layout/layoutResult.js").default, mark: import("../marks/raster.js").default, datum: object, x: number, y: number, facetId?: import("../spec/channel.js").Scalar[]) => number | undefined} [resolveRasterCell]
  * @property {(options: RasterExportOptions & {devicePixelRatio?: number}) => string} exportCanvas
  * @property {(options: RasterExportOptions) => Promise<Blob>} [exportRaster]
  * @property {(options: SvgRunRasterizationOptions) => void | Promise<void>} [rasterizeSvgRuns]

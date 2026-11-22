@@ -139,6 +139,9 @@ export interface MarkPropsBase {
      * opt-out. If string, specifies the
      * [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
+     *
+     * For raster and icon marks, specify a handler to enable cell tooltips.
+     * The handler receives the hovered cell's raw fields and tile attributes.
      */
     tooltip?: Tooltip;
 }

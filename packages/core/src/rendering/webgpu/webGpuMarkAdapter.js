@@ -800,7 +800,20 @@ function packRasterTiles(mark, data, intern, cellInputs) {
             ),
         },
         cells,
-        tiles: { columns, rows, offsets },
+        tiles: {
+            columns,
+            rows,
+            offsets,
+            pickingIds: mark.isPickingParticipant()
+                ? toUint32Array(data, (datum) =>
+                      readUnsignedInteger(
+                          mark,
+                          "uniqueId",
+                          mark.encoders.uniqueId(datum)
+                      )
+                  )
+                : undefined,
+        },
     };
 }
 

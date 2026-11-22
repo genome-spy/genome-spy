@@ -562,7 +562,15 @@ export function readPickingPixel(gl, framebufferInfo, x, y) {
 
     const pixel = new Uint8Array(4);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.readPixels(x, height - y - 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    gl.readPixels(
+        Math.floor(x),
+        height - Math.floor(y) - 1,
+        1,
+        1,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixel
+    );
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     return pixel;
