@@ -471,7 +471,7 @@ export function compileSelectionPredicateTree(tree, getSelection) {
     }
     if ("selectionActive" in tree) {
         const { param } = tree.selectionActive;
-        return () => isActive(getSelection(param));
+        return () => isSelectionPredicateActive(getSelection(param));
     }
     const { param, type, empty } = tree;
     if (type === "categories") {
@@ -519,7 +519,7 @@ export function compileSelectionPredicateTree(tree, getSelection) {
             /** @type {import("../types/selectionTypes.js").IntervalSelection} */ (
                 getSelection(param)
             );
-        if (!isActive(selection)) {
+        if (!isSelectionPredicateActive(selection)) {
             return empty;
         }
         for (const input of inputs) {
@@ -556,7 +556,7 @@ export function compileSelectionPredicateTree(tree, getSelection) {
 }
 
 /** @param {import("../types/selectionTypes.js").Selection} selection */
-function isActive(selection) {
+export function isSelectionPredicateActive(selection) {
     if (selection.type === "interval") {
         return Object.values(selection.intervals).every(
             (interval) => !!interval

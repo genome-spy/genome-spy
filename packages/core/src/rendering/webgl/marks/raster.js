@@ -20,10 +20,10 @@ import { RASTER_COORDINATE_OFFSET } from "../../renderingConstants.js";
 import { readScaleDomainUniform } from "../gl/glslScaleGenerator.js";
 import { createProgram } from "../gl/webGLHelper.js";
 import VERTEX_SHADER from "./raster.vertex.glsl";
-import { rasterFragmentShader } from "./rasterShader.js";
+import { rasterFragmentShader, rasterValueType } from "./rasterShader.js";
+import { createRasterOpacityShader } from "./rasterOpacityShader.js";
 
-/** @typedef {import("../../../marks/rasterOpacity.js").ReadCellOpacity} ReadCellOpacity */
-/** @typedef {{texture: WebGLTexture, width: number, height: number, opacity?: WebGLTexture, opacityRevision?: number}} TileTexture */
+/** @typedef {import("./rasterOpacityShader.js").TileGeometry & {texture: WebGLTexture}} TileTexture */
 /** @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions */
 
 /** @typedef {import("../types.js").WebGLMark} WebGLMark */
@@ -53,12 +53,8 @@ export default class WebGLRasterMark {
     #pixelOffset = 0;
     #picking = false;
 
-    /** @type {ReadCellOpacity | undefined} */
-    #cellOpacity;
-
-    #opacityRevision = 0;
-
-    #uploadTextureUnit = 0;
+    /** @type {ReturnType<typeof createRasterOpacityShader>} */
+    #opacity;
 
     #target = [0, 0];
     #tileUniforms = {
@@ -66,7 +62,6 @@ export default class WebGLRasterMark {
         uAnchor: [0, 0, 0, 0],
         uCellsPerPixel: [0, 0],
         uCells: /** @type {WebGLTexture | null} */ (null),
-        uCellOpacity: /** @type {WebGLTexture | null} */ (null),
         uOpacity: 1,
         uPickColor: [0, 0, 0, 0],
     };
@@ -89,17 +84,19 @@ export default class WebGLRasterMark {
         this.#color = this.mark.validateRenderingScales();
         this.mark.initializeRenderingRevisions([]);
         const gl = this.gl;
-        // Mask uploads during a draw must leave the active scale samplers bound.
-        this.#uploadTextureUnit =
-            gl.TEXTURE0 +
-            gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) -
-            1;
+        const scale = this.#color?.getScale();
+        this.#opacity = createRasterOpacityShader(
+            this.mark,
+            this.glHelper,
+            rasterValueType(this.mark, scale),
+            () => this.#getPaletteIndexer()
+        );
         this.#programStatus = createProgram(
             gl,
             this.glHelper.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER),
             this.glHelper.compileShader(
                 gl.FRAGMENT_SHADER,
-                rasterFragmentShader(this.mark, this.#color?.getScale())
+                rasterFragmentShader(this.mark, scale, this.#opacity?.source)
             )
         );
     }
@@ -121,17 +118,20 @@ export default class WebGLRasterMark {
         );
     }
 
+    #getPaletteIndexer() {
+        const { type } = this.mark.getColorCellBinding();
+        if (type === "quantitative") return;
+        return /** @type {{domainIndexer: import("./rasterOpacityShader.js").PaletteIndexer}} */ (
+            this.#color?.getScale().props
+        )?.domainIndexer;
+    }
+
     /** @param {import("../../../data/collector.js").default} collector */
     updateGraphicsData(collector) {
         this.deleteGraphicsData();
         const gl = this.gl;
-        const { readTile, type } = this.mark.getColorCellBinding();
-        const palette = type !== "quantitative" && this.#color?.getScale();
-        const indexer =
-            palette &&
-            /** @type {{domainIndexer: (value: string | number | null) => number}} */ (
-                palette.props
-            ).domainIndexer;
+        const { readTile } = this.mark.getColorCellBinding();
+        const indexer = this.#getPaletteIndexer();
         const size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
         try {
             for (const datum of collector.getData()) {
@@ -167,7 +167,7 @@ export default class WebGLRasterMark {
                     wrap: gl.CLAMP_TO_EDGE,
                     auto: false,
                 });
-                this.#tiles.set(datum, { texture, width, height });
+                this.#tiles.set(datum, { texture, horizontal, vertical });
             }
         } catch (error) {
             this.deleteGraphicsData();
@@ -176,15 +176,15 @@ export default class WebGLRasterMark {
     }
 
     deleteGraphicsData() {
-        for (const { texture, opacity } of this.#tiles.values()) {
+        for (const { texture } of this.#tiles.values()) {
             this.gl.deleteTexture(texture);
-            if (opacity) this.gl.deleteTexture(opacity);
         }
         this.#tiles.clear();
     }
 
     dispose() {
         this.deleteGraphicsData();
+        this.#opacity?.dispose();
         if (this.#programStatus)
             this.gl.deleteProgram(this.#programStatus.program);
     }
@@ -216,22 +216,20 @@ export default class WebGLRasterMark {
                     1,
                     viewOpacity * this.mark.getUniformOpacity()
                 );
-                const cellOpacity = this.mark.getCellOpacityReader()?.();
-                if (cellOpacity !== this.#cellOpacity) {
-                    this.#cellOpacity = cellOpacity;
-                    this.#opacityRevision++;
+                const opacityUniforms = this.#opacity?.prepare();
+                if (this.#color) {
+                    const mapping = this.#color.getMappingRef().get();
+                    setUniforms(this.#programInfo, {
+                        uDomain_color: readScaleDomainUniform(mapping),
+                        uRangeTexture_color: this.glHelper.rangeTextures.get(
+                            mapping.scale
+                        ),
+                        uDomainTexture_color:
+                            this.resources.getCategoricalTexture(this.#color),
+                    });
                 }
-                if (!this.#color) return;
-                const mapping = this.#color.getMappingRef().get();
-                setUniforms(this.#programInfo, {
-                    uDomain_color: readScaleDomainUniform(mapping),
-                    uRangeTexture_color: this.glHelper.rangeTextures.get(
-                        mapping.scale
-                    ),
-                    uDomainTexture_color: this.resources.getCategoricalTexture(
-                        this.#color
-                    ),
-                });
+                if (opacityUniforms)
+                    setUniforms(this.#programInfo, opacityUniforms);
             },
         ];
     }
@@ -321,42 +319,17 @@ export default class WebGLRasterMark {
         }
 
         const tile = this.#tiles.get(datum);
-        const { texture, width, height } = tile;
+        const { texture, horizontal, vertical } = tile;
+        const width = horizontal.count;
+        const height = vertical?.count ?? 1;
         const { x1, y1, x2, y2 } = triangle?.sourceBounds ?? this.#bounds;
         this.#setAxis(0, x0, dx, width, x1, x2);
         this.#setAxis(1, y0, dy, height, y1, y2);
         const { uRect } = this.#tileUniforms;
         if (uRect[0] >= uRect[2] || uRect[1] >= uRect[3]) return;
         const gl = this.gl;
-        if (
-            this.#cellOpacity &&
-            tile.opacityRevision !== this.#opacityRevision
-        ) {
-            gl.activeTexture(this.#uploadTextureUnit);
-            tile.opacity ??= createTexture(gl, {
-                width,
-                height,
-                internalFormat: gl.R32F,
-                minMag: gl.NEAREST,
-                wrap: gl.CLAMP_TO_EDGE,
-                auto: false,
-            });
-            gl.bindTexture(gl.TEXTURE_2D, tile.opacity);
-            gl.texSubImage2D(
-                gl.TEXTURE_2D,
-                0,
-                0,
-                0,
-                width,
-                height,
-                gl.RED,
-                gl.FLOAT,
-                this.#cellOpacity(datum)
-            );
-            tile.opacityRevision = this.#opacityRevision;
-        }
+        this.#opacity?.setTileUniforms(this.#tileUniforms, datum, tile);
         this.#tileUniforms.uCells = texture;
-        this.#tileUniforms.uCellOpacity = tile.opacity ?? null;
         setUniforms(this.#programInfo, this.#tileUniforms);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };

@@ -676,20 +676,22 @@ ${ifElseGlsl(conditions, statements)}
  *
  * @param {import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate
  * @param {(leaf: Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>) => string} [emitLeaf]
+ * @param {(param: string) => string} [emitActive]
  * @returns {string}
  */
-export function emitSelectionPredicateGlsl(predicate, emitLeaf) {
+export function emitSelectionPredicateGlsl(predicate, emitLeaf, emitActive) {
     if ("all" in predicate) {
-        return `(${predicate.all.map((child) => emitSelectionPredicateGlsl(child, emitLeaf)).join(" && ")})`;
+        return `(${predicate.all.map((child) => emitSelectionPredicateGlsl(child, emitLeaf, emitActive)).join(" && ")})`;
     }
     if ("any" in predicate) {
-        return `(${predicate.any.map((child) => emitSelectionPredicateGlsl(child, emitLeaf)).join(" || ")})`;
+        return `(${predicate.any.map((child) => emitSelectionPredicateGlsl(child, emitLeaf, emitActive)).join(" || ")})`;
     }
     if ("not" in predicate) {
-        return `(!${emitSelectionPredicateGlsl(predicate.not, emitLeaf)})`;
+        return `(!${emitSelectionPredicateGlsl(predicate.not, emitLeaf, emitActive)})`;
     }
     if ("selectionActive" in predicate) {
-        return `(!${SELECTION_EMPTY_PREFIX}${predicate.selectionActive.param}())`;
+        const { param } = predicate.selectionActive;
+        return emitActive?.(param) ?? `(!${SELECTION_EMPTY_PREFIX}${param}())`;
     }
     return (
         emitLeaf?.(predicate) ??

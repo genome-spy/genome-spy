@@ -22,9 +22,8 @@ and remains the unit of dataflow, caching, and upload.
 ## Implementation
 
 1. Lower resolved opacity predicates to cell projections. Use Core's interval
-   evaluator for CPU paths. Reuse it in Canvas bitmaps and picking and use a
-   cached per-tile alpha map for WebGL. Cache by current predicate/value state
-   so ordinary redraws can reuse the map. Keep color mapping on the GPU.
+   evaluator in Canvas bitmaps and software picking. Cache masks by predicate
+   and tile state so ordinary redraws can reuse the result.
 2. In the standalone WebGPU raster, use position projections for cell bounds
    and input projections for named data fields. Resolve both through the same
    selection slots and comparison functions. The Core adapter translates its
@@ -54,6 +53,42 @@ approach shares the normal interval code and removes synthetic inputs and
 raster-specific configuration. It retains the per-sample geometry comparison.
 
 Tentative commit: `refactor(webgpu): address raster cell positions in interval predicates`.
+
+## WebGL mask replacement
+
+Generate raster opacity from the existing GLSL Boolean emitter and ordered
+branches. Read raw values from the cell texture, and bind each positional
+projection to a half-open range of grid indices. Compute that range from the
+exact data-space edges during the existing visible-tile draw, so zoom and
+screen reversal do not affect membership. Icons and strip band coordinates
+test their tile anchor. Keep a selection's activity separate from whether its
+range intersects a particular tile. Round float color thresholds upward to
+match the host's half-open point test.
+
+Categorical color projections reuse WebGL's integer set texture and palette
+codes. Categorical anchors can be evaluated per tile. Read current parameters
+during render preparation. Preserve branch precedence, unset parameters, and
+the empty policy, including in Boolean compositions. Use the same shader
+opacity for visible rendering, picking, and hybrid SVG. Delete WebGL's dense
+mask texture, revision, and upload code.
+
+Verify the live lens, the gradient legend (including between-float bounds),
+categorical opacity, and positional endpoint projections. Record the net
+production code after deleting the old path.
+
+Tentative commit: `refactor(core): evaluate raster opacity in WebGL`.
+
+## Canvas drawing and picking
+
+Keep opacity branch validation and metadata on `RasterMark`. Resolve the
+branches as spans inside the Canvas backend and apply them while writing each
+tile's pixels. Cache the painted result by tile data, scale mapping, and opacity
+state. Keep the final alpha bytes for pickable marks so software picking uses
+the same transparency as drawing, including RGBA data and rounding. GPU
+backends continue to evaluate opacity in their own shaders.
+
+Check Canvas picking for both grid cells gated by a brush and direct RGBA
+pixels. Verify that loading the WebGL backend does not load the Canvas evaluator.
 
 ## Verification
 

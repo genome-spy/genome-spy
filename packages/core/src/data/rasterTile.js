@@ -134,6 +134,51 @@ export function getVisibleCellRange({ origin, step, count }, constraint) {
 }
 
 /**
+ * Find the first cell edge at or above a bound. Strict search skips equal
+ * edges. Compare the original edges to preserve exact fractional boundaries.
+ * @param {RasterDimension} dimension
+ * @param {number} bound
+ * @param {boolean} [strict]
+ */
+export function findRasterEdge({ origin, step, count }, bound, strict = false) {
+    let lo = 0;
+    let hi = count + 1;
+    while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const edge = origin + mid * step;
+        if (edge < bound || (strict && edge === bound)) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+/**
+ * @param {RasterDimension} dimension
+ * @param {readonly number[]} bounds
+ * @param {"start" | "end" | "intersects" | "encloses" | "endpoints"} mode
+ * @returns {[number, number]} Half-open range of matching cell indices.
+ */
+export function getRasterCellRange(dimension, [lo, hi], mode) {
+    if (!(lo < hi)) return [0, 0];
+    const first = findRasterEdge(dimension, lo, mode === "intersects");
+    const last = findRasterEdge(dimension, hi, mode === "encloses");
+    const start = Math.min(
+        dimension.count,
+        Math.max(
+            0,
+            first -
+                Number(
+                    mode === "end" ||
+                        mode === "intersects" ||
+                        (mode === "endpoints" && first < last)
+                )
+        )
+    );
+    const end = last - Number(mode === "end" || mode === "encloses");
+    return [start, Math.min(dimension.count, Math.max(start, end))];
+}
+
+/**
  * @param {number[]} domain Visible midpoints in data coordinates.
  * @param {number} width Logical track width.
  * @param {number} height Logical track height.

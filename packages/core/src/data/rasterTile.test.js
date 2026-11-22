@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { readRasterTile } from "./rasterTile.js";
+import { getRasterCellRange, readRasterTile } from "./rasterTile.js";
 
 test.each([
     { origin: -1, step: 1 },
@@ -20,4 +20,18 @@ test.each([
             grid: "locus",
         })
     ).toThrow(/dimension "row" needs nonnegative whole-base endpoints/);
+});
+
+// Division alone rounds the right edge in this grid past index two.
+test("brush ranges honor exact fractional cell edges", () => {
+    const grid = { origin: 0.1, step: 0.1, count: 4 };
+    const bounds = [0.1 + 0.1, 0.1 + 2 * 0.1];
+    expect(getRasterCellRange(grid, bounds, "intersects")).toEqual([1, 2]);
+    expect(getRasterCellRange(grid, bounds, "encloses")).toEqual([1, 2]);
+    expect(getRasterCellRange(grid, bounds, "endpoints")).toEqual([0, 2]);
+    expect(getRasterCellRange(grid, bounds, "start")).toEqual([1, 2]);
+    expect(getRasterCellRange(grid, bounds, "end")).toEqual([0, 1]);
+    expect(
+        getRasterCellRange(grid, [bounds[0], bounds[0]], "intersects")
+    ).toEqual([0, 0]);
 });

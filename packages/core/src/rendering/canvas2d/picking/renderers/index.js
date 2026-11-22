@@ -38,7 +38,7 @@ import {
     getRasterTileBounds,
     visitRasterTiles,
 } from "../../../immediate/marks/raster.js";
-import { makeCellColorMapper } from "../../renderers/raster.js";
+import { prepareCanvasRasterTiles } from "../../renderers/raster.js";
 
 const MIN_RULE_PICKING_WIDTH = 1;
 
@@ -100,11 +100,7 @@ export function isSoftwarePickingMarkSupported(mark) {
 function renderRaster(mark, options) {
     const resolution = mark.validateRenderingScales();
     if (!(mark.getUniformOpacity() > 0)) return 0;
-    const { readTile, type } = mark.getColorCellBinding();
-    const cellOpacity = mark.getCellOpacityReader()?.();
-    const colorize =
-        resolution &&
-        makeCellColorMapper(resolution.getScale(), type !== "quantitative");
+    const getTile = prepareCanvasRasterTiles(mark, resolution);
     return visitRasterTiles(
         mark,
         options,
@@ -118,20 +114,16 @@ function renderRaster(mark, options) {
             const top = Math.max(bounds.y1, clip.y1);
             const bottom = Math.min(bounds.y2, clip.y2);
             if (left >= right || top >= bottom) return;
-            const tile = readTile(datum);
-            const { horizontal, vertical, values } = tile;
-            const mask = cellOpacity?.(datum, tile);
+            const { width, height, alpha } = getTile(datum);
             const indexAt = createRasterCellLookup(
                 x0,
                 y0,
                 dx,
                 dy,
-                horizontal.count,
-                vertical?.count ?? 1,
+                width,
+                height,
                 triangle
             );
-            // Reuse the visibility test when several picking pixels cover one cell.
-            const tested = new Uint8Array(values.length);
             options.rasterizer.fillRect(
                 id,
                 left,
@@ -142,18 +134,7 @@ function renderRaster(mark, options) {
                     if (x < left || x >= right || y < top || y >= bottom)
                         return false;
                     const index = indexAt(x, y);
-                    if (index < 0) return false;
-                    if (!tested[index]) {
-                        const rgba =
-                            values instanceof Uint32Array
-                                ? values[index]
-                                : colorize(values[index]);
-                        tested[index] =
-                            Math.round((rgba >>> 24) * (mask?.[index] ?? 1)) > 0
-                                ? 1
-                                : 2;
-                    }
-                    return tested[index] === 1;
+                    return index >= 0 && alpha[index] > 0;
                 }
             );
         }

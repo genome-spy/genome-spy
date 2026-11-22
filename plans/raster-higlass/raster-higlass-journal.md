@@ -217,3 +217,57 @@ texture and palette mapping. Canvas still needs its own evaluator for bitmaps
 and software picking. A WebGL replacement should be measured after removing
 the mask path, since retaining a second path would preserve most of the
 current code and lifecycle.
+
+### WebGL shader integration
+
+WebGL now tests opacity at sample time with the existing cell texture,
+per-draw index ranges for positional projections, float bounds for gradient
+projections, and an integer membership texture for categorical colors. Tile
+positions remain in data space, and the same cell shader serves screen
+rendering, picking, and WebGL's hybrid SVG path. Canvas shares the exact
+edge search for its CPU sampling groups.
+
+The live comparison lens drew, moved, and cleared on all three renderers.
+WebGL issued zero opacity texture uploads during that interaction. All
+4,000 synthetic comparisons of the previous and current Canvas evaluators
+matched. Focused browser regressions cover a partially initialized XY brush
+and changes to a categorical color selection.
+
+The integration adds 212 net runtime lines from the pre-implementation
+snapshot, with the pending tooltip edits held constant. Most of the growth
+is the GLSL predicate bindings. The change removes per-cell CPU mask
+generation and alpha-texture uploads on WebGL, while Canvas still uses the
+CPU evaluator.
+
+### Canvas drawing and picking
+
+`RasterMark` now owns opacity validation and the branch metadata shared by
+Canvas and WebGL. The Canvas evaluator sends spans directly to the tile
+painter, which drops the intermediate float buffer. Picking reads the
+painted alpha bytes and uses the same scale snapshot and branch state as
+drawing. This also removes the separate color lookup and visibility cache
+from the picking pass. An interactive 256 × 256 tile keeps 64 KiB of alpha.
+Previously, each tile with conditional opacity kept a 256 KiB mask and
+picking used a temporary visibility array.
+
+Reading the painted bitmap back during each pick would also share alpha,
+but would add synchronous canvas readback or require retaining the full
+RGBA buffer. The byte cache also supports picking before the first paint.
+On that path, the tile's image data stays in the cache until drawing.
+
+The change adds five net runtime lines relative to the WebGL shader
+implementation. The Canvas evaluator is loaded only with Canvas in the
+code-split build. The initial ESM load saves 656 gzip bytes and the cumulative
+WebGL load saves 749. The UMD size is effectively unchanged.
+
+The bundle check also caught an eager import of the shared raster geometry
+from tooltip picking. The active backend now resolves the picked cell using
+its own sample coordinates. The minimal bundle check passes.
+
+Replaying 300 brush updates on the public HiGlass lens per variant, with
+eight 256 × 256 tiles and a 740 × 540 Canvas viewport, reduced median render
+time from 42.8 to 41.2 ms and p95 from 47.7 to 45.1 ms. Both builds had a
+50.1 ms p95 frame interval. The Canvas lens still rebuilds colored pixels
+on a brush update. Keeping a second, unconditioned RGBA tile cache could
+avoid repeating that work at the cost of another four bytes per cell and
+more cache state.

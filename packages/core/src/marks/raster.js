@@ -10,12 +10,16 @@ import {
     matchesViewport,
     normalizeViewportConstraint,
 } from "../data/viewportDomain.js";
+import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
+import {
+    getSelectionPredicateTreeParams,
+    selectionPredicateLeaves,
+} from "../selection/selectionPredicateTree.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
-import { createRasterCellOpacity } from "./rasterOpacity.js";
 
 /** @extends {Mark<import("../spec/mark.js").RasterProps | import("../spec/mark.js").IconProps>} */
 export default class RasterMark extends Mark {
@@ -196,10 +200,60 @@ export default class RasterMark extends Mark {
         return encoding;
     }
 
-    getCellOpacityReader() {
-        return getCachedOrCall(this, "cellOpacityBinding", () =>
-            createRasterCellOpacity(this)
-        );
+    getOpacityPlan() {
+        return getCachedOrCall(this, "opacityPlan", () => {
+            const branches = this.encoders.opacity?.branches ?? [];
+            if (
+                branches.some(
+                    ({ accessor }) => !isValueDef(accessor.channelDef)
+                )
+            ) {
+                throw new ViewError(
+                    "Raster opacity requires value encodings.",
+                    this.unitView
+                );
+            }
+            if (branches.length < 2) return null;
+
+            const conditions = branches.map(
+                ({ accessor, predicate: { selection: tree } }) => ({
+                    tree,
+                    params: tree ? getSelectionPredicateTreeParams(tree) : [],
+                    opacity: accessor.asNumberAccessor(),
+                })
+            );
+            const memberships = conditions
+                .values()
+                .flatMap(({ tree }) =>
+                    tree ? selectionPredicateLeaves(tree) : []
+                )
+                .filter((leaf) => "type" in leaf)
+                .toArray();
+            if (
+                memberships.some(
+                    ({ type }) => type === "single" || type === "multi"
+                )
+            ) {
+                throw new ViewError(
+                    "Point selection membership requires individual raster cell identities.",
+                    this.unitView
+                );
+            }
+            const { x, y } = this.encoders;
+            const { strip } = this.getColorCellBinding();
+            return {
+                conditions,
+                memberships,
+                params: new Set(conditions.flatMap(({ params }) => params)),
+                anchors: {
+                    x: this.isIcon ? x.branches[0].accessor : undefined,
+                    y:
+                        this.isIcon || strip
+                            ? y?.branches[0].accessor
+                            : undefined,
+                },
+            };
+        });
     }
 
     getUniformOpacity() {
@@ -210,7 +264,7 @@ export default class RasterMark extends Mark {
     validateRenderingScales() {
         const { strip, type, direct } = this.getColorCellBinding();
         if (!this.isIcon) this.#validateGridScales(strip);
-        this.getCellOpacityReader();
+        this.getOpacityPlan();
         if (direct) return undefined;
 
         const resolution = this.unitView.getScaleResolution("color");

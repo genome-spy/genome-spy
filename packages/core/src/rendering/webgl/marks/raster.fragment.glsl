@@ -13,14 +13,6 @@ ivec2 cellAt(vec2 offset, ivec2 lastCell) {
     return clamp(ivec2(uAnchor.zw) + ivec2(floor(offset)), ivec2(0), lastCell);
 }
 
-vec4 sampleCell(ivec2 cell) {
-    vec4 color = cellColor(cell);
-#ifdef RASTER_CELL_OPACITY
-    color.a *= texelFetch(uCellOpacity, cell, 0).r;
-#endif
-    return vec4(color.rgb * color.a, color.a);
-}
-
 vec4 sampleRow(ivec2 firstCell, int secondColumn, float weight) {
     vec4 first = sampleCell(firstCell);
     if (firstCell.x == secondColumn) return first;
