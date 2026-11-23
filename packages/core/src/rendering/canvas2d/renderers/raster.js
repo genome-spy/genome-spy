@@ -209,6 +209,8 @@ function paintTile(datum, tile, colorize, opacitySpans, pickable) {
     const width = horizontal.count;
     const height = vertical.count;
     const pixels = new ImageData(width, height);
+    // Cache the painted alpha bytes so picking uses the same rounded opacity
+    // as drawing and can read it before the bitmap exists.
     const alpha = pickable ? new Uint8Array(values.length) : undefined;
     const direct = values instanceof Uint32Array;
     const bytes = new DataView(

@@ -128,6 +128,8 @@ export default class WebGLRasterMark {
 
     /** @param {import("../../../data/collector.js").default} collector */
     updateGraphicsData(collector) {
+        // Publication can reuse a datum or array with edited cells.
+        // Rebuild textures even when the payload identity is the same.
         this.deleteGraphicsData();
         const gl = this.gl;
         const { readTile } = this.mark.getColorCellBinding();

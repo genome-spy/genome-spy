@@ -306,6 +306,8 @@ fn rasterAxisSamples(center: f32, width: f32, anchor: u32, count: u32) -> AxisSa
     return AxisSamples(first, second, select(weight, 0.0, first == second));
 }
 
+// Filter after color mapping and premultiplication so categorical values
+// and translucent cells blend as colors.
 fn rasterCellColor(in: VSOut, cell: vec2<u32>) -> vec4<f32> {
     ${coordinates.size ? "rasterCell = cell;" : ""}
     let i = in.grid.z + cell.x + cell.y * in.grid.x;

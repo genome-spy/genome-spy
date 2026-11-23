@@ -6,6 +6,8 @@
  */
 
 /**
+ * Store one datum per tile so collection and geometry scale with tiles.
+ * Encodings and cell predicates index the dense fields directly.
  * @typedef {object} RasterTile
  * @prop {Record<string, RasterDimension>} dimensions
  * @prop {Record<string, Float32Array | Uint32Array | string | (number | string | null)[]>} fields Cell values in row-major order.

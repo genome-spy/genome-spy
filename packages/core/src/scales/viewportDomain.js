@@ -89,6 +89,8 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
         throw new Error("Cannot mix viewport domain modes on a shared scale.");
     }
 
+    // Exact triangle visibility depends on the arranged track height. Using
+    // loaded cells for the color domain keeps scale inference independent of layout.
     if (
         modes.size &&
         members

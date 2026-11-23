@@ -233,6 +233,8 @@ export default class HiGlassSource extends DataSource {
         }
 
         const { positions, missing } = this.#planTiles(window);
+        // Debounce misses to avoid requests for short-lived windows during zoom.
+        // Cached windows stay responsive during the same gesture.
         if (deferFetch && missing.size) {
             void this.#scheduleFetch();
             return;

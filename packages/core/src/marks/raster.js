@@ -129,6 +129,7 @@ export default class RasterMark extends Mark {
                         : row === undefined
                           ? /** @type {const} */ ("y")
                           : undefined,
+                // Keep tile domains distinct from scalar fields on the same collector.
                 domainKey: "raster:" + JSON.stringify([column, row, field]),
                 readTile: (/** @type {object} */ datum) =>
                     readRasterTile(datum, column, row, field, options),

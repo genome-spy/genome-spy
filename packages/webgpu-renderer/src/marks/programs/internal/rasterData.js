@@ -155,6 +155,7 @@ export function prepareRasterData(
     );
     if (words.length <= 1)
         return { count, series, cells: words[0] ?? new Uint32Array(0) };
+    // Interleave fields to use one storage binding regardless of field count.
     const packed = new Uint32Array(length * words.length);
     for (const [offset, field] of words.entries()) {
         for (let i = 0; i < length; i++) {

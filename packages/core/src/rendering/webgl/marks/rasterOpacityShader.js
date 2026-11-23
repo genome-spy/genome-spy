@@ -22,7 +22,8 @@ import SELECTION_HASH from "../gl/includes/selectionHash.glsl";
 
 /**
  * WebGL raster cells use the usual conditional branches with their own
- * projection bindings. Brush changes update uniforms and category sets.
+ * projection bindings. Bind spatial intervals as cell index ranges in the
+ * existing per-tile draw so brush changes keep the cell textures resident.
  * @param {import("../../../marks/raster.js").default} mark
  * @param {import("../gl/webGLHelper.js").default} glHelper
  * @param {"float" | "uint"} valueType
