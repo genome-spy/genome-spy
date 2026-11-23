@@ -185,6 +185,7 @@ export default class HiGlassSource extends DataSource {
         const [x, y] = this.scales;
         const xDomain = request?.x ?? x.getDomain();
         if (!y) {
+            // TODO: Read the arranged plot size through a view method.
             const coords = this.view.layoutCoords;
             if (!(coords?.width > 0 && coords.height > 0)) return;
             return getTileWindow(
