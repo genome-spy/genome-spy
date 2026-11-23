@@ -2,16 +2,13 @@
 
 ![Marks](../../img/block-mark.svg){align="right" style="width: 30%"}
 
-In GenomeSpy, visualizations are built from marks, which are geometric shapes,
-such as points, ticks, arrows, rectangles, and lines, that represent data
-records, or rows in a tabular dataset. These marks are mapped to the data using the
-`encoding` property,
-which specifies which visual channels, such as `x`, `color`, and `size`, should
-be used to encode the data fields. By adjusting the encodings, you can present
-the same data in a wide range of visual forms, such as scatterplots, bar charts,
-and heatmaps.
+In GenomeSpy, visualizations are built from marks such as points, ticks, arrows,
+rectangles, and lines. Most marks draw one instance per data record. The
+[raster mark](raster.md) draws a regular grid of cells from each tile record.
 
-The [raster mark](raster.md) draws a grid of cells from each tile record.
+The `encoding` property maps data fields to visual channels such as `x`,
+`color`, and `size`. By changing the encodings, you can present the same data as
+a scatterplot, a bar chart, or a heatmap.
 
 ```json title="Example: Specifying the mark type"
 {
