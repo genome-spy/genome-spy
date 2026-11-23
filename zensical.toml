@@ -58,6 +58,7 @@ nav = [
             "grammar/mark/arrow.md",
             "grammar/mark/link.md",
             "grammar/mark/point.md",
+            "grammar/mark/raster.md",
             "grammar/mark/rect.md",
             "grammar/mark/rule.md",
             "grammar/mark/tick.md",

@@ -11,6 +11,8 @@ be used to encode the data fields. By adjusting the encodings, you can present
 the same data in a wide range of visual forms, such as scatterplots, bar charts,
 and heatmaps.
 
+The [raster mark](raster.md) draws a grid of cells from each tile record.
+
 ```json title="Example: Specifying the mark type"
 {
   "mark": "rect"

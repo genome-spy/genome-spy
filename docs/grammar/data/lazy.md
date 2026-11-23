@@ -9,10 +9,9 @@ infeasible to load in their entirety.
 !!! note "How it works"
 
     Most lazy data sources observe the scale domains of the view where the data
-    source is specified. When the domain changes as a result of an user interaction,
-    the data source invokes a request to fetch a new subset of the data. Lazy
-    sources need the visual `channel` to be specified, which is used to determine the
-    scale to observe. For genomic data sources, the channel defaults to `"x"`.
+    source is specified. When the domain changes as a result of a user interaction,
+    the data source requests a new subset. For single-axis genomic sources,
+    `channel` selects the scale to observe and defaults to `"x"`.
 
 Lazy data sources are specified using the `lazy` property of the `data` object.
 Unlike in eager data, the `type` of the data source must be specified explicitly:
@@ -146,6 +145,47 @@ the App's sample filters:
 
 The data source uses the
 [`@genome-spy/figwig`](https://www.npmjs.com/package/@genome-spy/figwig) library.
+
+## HiGlass
+
+The `"higlass"` source loads a Hi-C contact matrix from a HiGlass tile server.
+It selects tiles and bin sizes as you pan and zoom. Use a square-bin matrix
+tileset and the matching genome assembly, including chromosome names, order,
+and lengths.
+
+Each data record is a [raster tile](../mark/raster.md#tile-format) with
+`column` and `row` dimensions and contact values in `fields.value`. The
+dimension's `step` is the bin size in base pairs.
+
+### Parameters {#higlass-parameters}
+
+SCHEMA HiGlassData
+
+### Examples
+
+#### Rectangular contact map
+
+Bind `column` to `x` and `row` to `y` using two locus scales. The example's
+logarithmic color scale adapts to cells in the current viewport.
+
+EXAMPLE examples/docs/grammar/data/lazy/higlass-contact-map.json height=400 spechidden
+
+!!! disclaimer ""
+
+    Both HiGlass examples use the GM12878 MboI contact map (all replicates) on
+    hg19 from [Rao et al. (2014)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5635824/),
+    served by [HiGlass](https://higlass.io).
+
+#### Triangle track
+
+Set `projection: "triangle"` on both the source and the raster mark. The
+source selects tiles for the triangle, and the mark projects them onto one
+horizontal locus axis. Track height limits the visible contact distance.
+The logarithmic color domain follows the loaded tiles and stays stable
+while you pan within the same tile set. Cells in clipped parts of a tile can
+affect the visible contrast.
+
+EXAMPLE examples/docs/grammar/data/lazy/higlass-triangle-track.json height=210 spechidden
 
 ## BigBed
 

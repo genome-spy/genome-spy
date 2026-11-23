@@ -1,0 +1,42 @@
+{
+  "description": "Sequence alignment as raster strips",
+
+  "data": {
+    "values": [
+      {
+        "sequence": "Sequence 1",
+        "dimensions": { "column": { "origin": 0, "step": 1, "count": 12 } },
+        "fields": { "base": "ACTGACTGACTG" }
+      },
+      {
+        "sequence": "Sequence 2",
+        "dimensions": { "column": { "origin": 0, "step": 1, "count": 12 } },
+        "fields": { "base": "ACTG-CTGACTG" }
+      }
+    ]
+  },
+
+  "mark": "raster",
+  "encoding": {
+    "x": {
+      "dimension": "column",
+      "type": "index",
+      "title": "Alignment position"
+    },
+    "y": {
+      "field": "sequence",
+      "type": "nominal",
+      "scale": { "type": "band", "domain": ["Sequence 1", "Sequence 2"] },
+      "title": null
+    },
+    "color": {
+      "field": "base",
+      "type": "nominal",
+      "scale": {
+        "type": "ordinal",
+        "domain": ["A", "C", "G", "T", "-"],
+        "range": ["#59a14f", "#4e79a7", "#f28e2b", "#e15759", "#d3d3d3"]
+      }
+    }
+  }
+}

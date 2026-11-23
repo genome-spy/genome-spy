@@ -53,11 +53,6 @@ operators. A single `"test": { "param": "brush" }` is equivalent to the direct
 A two-axis brush is empty until both intervals are active. Declare a one-axis
 brush to select on one axis.
 
-Raster opacity conditions with value branches are evaluated for each cell. A
-positional interval tests the cell's data-space bounds, and a gradient interval
-tests its raw color value. Layer two aligned rasters with opposite opacity
-conditions to reveal a comparison dataset inside a brush.
-
 For a simple union, use `param.or` inside `test`:
 
 ```json
@@ -152,6 +147,14 @@ EXAMPLE examples/docs/grammar/conditional-encoding/endpoint-brushes.json height=
 
 For endpoint brushes, hover, and several conditional channels, see the
 [PISA Squid Plot](../examples/genomic-data/bpreveal-pisa-squid.md).
+
+## Raster Cells
+
+Opacity conditions with value branches are evaluated for each
+[raster](mark/raster.md) cell. A positional interval tests overlap with the
+cell's data-space bounds, and a gradient interval tests its raw color value.
+Layer two aligned rasters with opposite opacity conditions to reveal a
+comparison dataset inside a brush.
 
 ## Multiple Conditions
 

@@ -405,6 +405,10 @@ SCHEMA HConcatSpec
 
 SCHEMA HandledTooltip
 
+## HiGlassData
+
+See the [HiGlassData documentation](data/lazy.md#higlass-parameters).
+
 ## IdentifierParams
 
 SCHEMA IdentifierParams
@@ -732,6 +736,14 @@ See the [PublishParams documentation](transform/publish.md#parameters).
 ## RangeConfig
 
 See the [RangeConfig documentation](config.md#scale-defaults).
+
+## RasterDimensionDef
+
+SCHEMA RasterDimensionDef
+
+## RasterProps
+
+See the [RasterProps documentation](mark/raster.md#properties).
 
 ## RecordSelectionParameter
 
