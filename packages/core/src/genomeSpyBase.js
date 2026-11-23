@@ -18,6 +18,7 @@ import {
     refreshVisibility,
 } from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
+import RasterMark from "./marks/raster.js";
 
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
@@ -584,7 +585,7 @@ export default class GenomeSpy {
                 onLayoutComputed: (layout) => {
                     this.#rasterOccurrences = layout.getMarkOccurrences(
                         (mark) =>
-                            mark.getType() === "raster" &&
+                            mark instanceof RasterMark &&
                             mark.isPickingParticipant()
                     );
                     this.#loadingIndicatorManager.updateLayout();
@@ -633,18 +634,19 @@ export default class GenomeSpy {
                 ? this.renderPickingFramebuffer.bind(this)
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
-            resolveRasterCell: (mark, datum, x, y, facetId) => {
+            resolveCellIndex: (mark, datum, x, y, facetId) => {
+                if (!(mark instanceof RasterMark)) return;
                 const occurrences = this.#rasterOccurrences?.get(mark);
-                if (occurrences) {
-                    return this.#renderingBackend.resolveRasterCell?.(
-                        occurrences,
-                        mark,
-                        datum,
-                        x,
-                        y,
-                        facetId
-                    );
-                }
+                return occurrences
+                    ? (this.#renderingBackend.resolveRasterCell?.(
+                          occurrences,
+                          mark,
+                          datum,
+                          x,
+                          y,
+                          facetId
+                      ) ?? null)
+                    : null;
             },
             reportError: this.#reportRuntimeError.bind(this),
             canPick: () => Boolean(this.viewRoot?.hasRendered()),

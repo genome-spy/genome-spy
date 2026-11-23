@@ -10,6 +10,7 @@ import { getEncoderDataAccessor } from "../encoder/encoder.js";
 import { getConfiguredTooltipRows } from "./configuredTooltipRows.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import RasterMark from "../marks/raster.js";
 
 /** @type {Record<"x" | "y", "x2" | "y2">} */
 const SECONDARY_AXIS = {
@@ -102,6 +103,22 @@ export default function createTooltipContext(datum, mark, params, facetId) {
         formatGenomicInterval: (axis, interval) =>
             formatGenomicInterval(mark, axis, interval),
     };
+}
+
+/**
+ * @param {import("../types/viewContext.js").Hover} hover
+ * @param {TooltipHandlerParams} [params]
+ */
+export function createPickedTooltip(
+    { datum, mark, facetId, cellIndex },
+    params
+) {
+    return cellIndex !== undefined && mark instanceof RasterMark
+        ? createRasterTooltip(datum, mark, cellIndex, params, facetId)
+        : {
+              datum,
+              context: createTooltipContext(datum, mark, params, facetId),
+          };
 }
 
 /**

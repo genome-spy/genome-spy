@@ -106,10 +106,11 @@ export function interactionToZoom(
 
         // Snapping to the hovered item:
         // - Link marks: snap to the nearest endpoint when cursor is near one.
+        // - Grid cells: zoom at the pointer to avoid snapping to the tile.
         // - Other marks: snap to the center if only primary positional channels exist.
         // This allows rapid zooming without constantly adjusting cursor position.
 
-        if (hover && hover.rasterCell === undefined) {
+        if (hover && hover.cellIndex === undefined) {
             const linkEndpoint = getLinkEndpointSnapPoint(
                 event.point,
                 coords,
