@@ -103,7 +103,7 @@ class UploadMetadataDialog extends BaseDialog {
         if (metadataConfig.invalidInheritLeafNodes.length > 0) {
             showMessageDialog(
                 "Some leaf attributes are set to inherit a type, but no ancestor defines one. Select a concrete type for those leaves or define a type higher in the hierarchy.",
-                { title: "Warning", type: "warning" }
+                { title: "Warning", type: "warning", mount: this.parentElement }
             );
             return false;
         }
@@ -146,7 +146,7 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     /**
-     * @param {import("../../components/generic/uploadDropZone.js").FilesChosenEvent} e
+     * @param {import("@genome-spy/ui-components/filePicker").FilesChosenEvent} e
      */
     async #onFilesChosen(e) {
         const file = e.detail.files[0];
@@ -159,7 +159,7 @@ class UploadMetadataDialog extends BaseDialog {
             <gs-upload-drop-zone
                 accept=".csv,.tsv,.json"
                 @gs-files-chosen=${(
-                    /** @type {import("../../components/generic/uploadDropZone.js").FilesChosenEvent} */ e
+                    /** @type {import("@genome-spy/ui-components/filePicker").FilesChosenEvent} */ e
                 ) => this.#onFilesChosen(e)}
             ></gs-upload-drop-zone>`;
     }
@@ -290,8 +290,9 @@ const INTRO_TEXT = html`<p>
 
 /**
  * @param {import("../sampleView.js").default} sampleView
+ * @param {HTMLElement} [mount]
  */
-export function showUploadMetadataDialog(sampleView) {
+export function showUploadMetadataDialog(sampleView, mount) {
     if (sampleView.disposed) {
         return Promise.resolve(false);
     }
@@ -318,7 +319,8 @@ export function showUploadMetadataDialog(sampleView) {
                 );
                 return true;
             });
-        }
+        },
+        { mount }
     );
 }
 

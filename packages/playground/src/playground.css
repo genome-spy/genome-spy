@@ -34,21 +34,54 @@ body {
     background: var(--playground-surface);
 }
 
-split-panel {
-    --border-color: var(--playground-divider);
-    --handle-hover-color: rgb(84 143 204 / 15%);
+gs-split-panel {
+    --gs-split-panel-divider: var(--playground-divider);
+    --gs-split-panel-handle-hover: rgb(84 143 204 / 15%);
 }
 
 #playground-layout {
+    --gs-font-family: var(--playground-font-family);
+    --gs-font-size: var(--playground-font-size);
+    --gs-theme-primary: var(--playground-accent);
+    --gs-focus-color: var(--playground-accent);
+    --gs-control-border: var(--playground-border);
+    --gs-control-radius: var(--playground-radius);
+    --gs-dialog-background: var(--playground-surface);
+    --gs-dialog-text: var(--playground-text);
+    --gs-dialog-backdrop: var(--playground-backdrop);
+    --gs-dialog-radius: var(--playground-radius);
     display: flex;
     height: 100dvh;
     flex-direction: column;
 
-    > split-panel {
+    > gs-split-panel {
         flex: 1;
         min-height: 0;
         isolation: isolate;
     }
+}
+
+#playground-layout .gs-context-menu {
+    --gs-menu-background: var(--playground-surface);
+    --gs-menu-border: 1px solid var(--playground-border);
+    --gs-menu-radius: var(--playground-radius);
+    --gs-menu-shadow: var(--playground-shadow);
+    --gs-menu-padding: 0.3rem 0;
+    --gs-menu-font-size: 0.85rem;
+    --gs-menu-item-padding-block: 0.4rem;
+    --gs-menu-item-padding-inline: 0.6rem;
+    --gs-menu-item-inset: 0.3rem;
+    --gs-menu-item-radius: var(--playground-radius);
+    --gs-control-text: var(--playground-text);
+    --gs-muted-text: var(--playground-muted);
+    --gs-disabled-text: color-mix(
+        in srgb,
+        var(--playground-text) 55%,
+        var(--playground-surface)
+    );
+    --gs-hover-background: var(--playground-selected);
+    --gs-selected-background: var(--playground-selected);
+    --gs-divider-color: var(--playground-border);
 }
 
 #genome-spy-container,

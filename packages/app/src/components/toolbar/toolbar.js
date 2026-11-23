@@ -24,8 +24,7 @@ import {
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
-import "../dialogs/saveImageDialog.js";
-import "../dialogs/saveSvgDialog.js";
+import "@genome-spy/ui-components/define/imageExportDialog";
 import { showMessageDialog } from "../generic/messageDialog.js";
 
 export default class Toolbar extends LitElement {
@@ -203,6 +202,16 @@ export default class Toolbar extends LitElement {
     }
 
     #makeEllipsisItems() {
+        const genomeSpy = this.app.genomeSpy;
+        const source = {
+            getLogicalCanvasSize: () => genomeSpy.getLogicalCanvasSize(),
+            imageExport: {
+                raster: genomeSpy.exportRaster.bind(genomeSpy),
+                svg: genomeSpy.exportSvg.bind(genomeSpy),
+                analyzeSvg: genomeSpy.analyzeSvgExport.bind(genomeSpy),
+            },
+        };
+
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
         items.push({
@@ -211,8 +220,10 @@ export default class Toolbar extends LitElement {
             callback: () =>
                 showDialog(
                     "gs-save-image-dialog",
-                    (/** @type {any} */ saveImageDialog) => {
-                        saveImageDialog.genomeSpy = this.app.genomeSpy;
+                    (
+                        /** @type {import("@genome-spy/ui-components/imageExportDialog").PngExportDialog} */ dialog
+                    ) => {
+                        dialog.source = source;
                     }
                 ),
         });
@@ -223,8 +234,11 @@ export default class Toolbar extends LitElement {
             callback: () =>
                 showDialog(
                     "gs-save-svg-dialog",
-                    (/** @type {any} */ saveSvgDialog) => {
-                        saveSvgDialog.genomeSpy = this.app.genomeSpy;
+                    (
+                        /** @type {import("@genome-spy/ui-components/imageExportDialog").SvgExportDialog} */ dialog
+                    ) => {
+                        dialog.source = source;
+                        dialog.resizeTarget = genomeSpy.container;
                     }
                 ),
         });

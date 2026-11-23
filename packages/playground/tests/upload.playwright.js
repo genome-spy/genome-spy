@@ -47,7 +47,9 @@ test("uses an uploaded file in a visualization", async ({ page }) => {
         .locator("gs-playground-workspace")
         .getByRole("button", { name: /^Add data files/ });
     await expect(filesToggle).toHaveAttribute("aria-expanded", "true");
-    await page.locator("#fileInput").setInputFiles(fixturePath);
+    await page
+        .locator("gs-file-picker input[type=file]")
+        .setInputFiles(fixturePath);
 
     const uploadedFileTab = page.getByRole("tab", {
         name: "uploaded-points.csv",
@@ -240,7 +242,7 @@ test("reports invalid uploads and keeps the valid files in the batch", async ({
     await expect(
         pane.getByText("uploaded-points.csv", { exact: true })
     ).toBeVisible();
-    await pane.locator("#fileInput").setInputFiles([
+    await pane.locator("gs-file-picker input[type=file]").setInputFiles([
         {
             name: "empty.json",
             mimeType: "application/json",

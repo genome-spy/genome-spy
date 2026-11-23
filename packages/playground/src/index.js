@@ -5,7 +5,8 @@ import {
     faArrowUpRightFromSquare,
     faBug,
     faColumns,
-    faDownload,
+    faFileCode,
+    faFileImage,
     faQuestionCircle,
     faIndent,
 } from "@fortawesome/free-solid-svg-icons";
@@ -20,11 +21,11 @@ import inferSpecBaseUrl, {
 import defaultSpec from "./defaultspec.json?raw";
 
 import packageJson from "../package.json";
-import "./splitPanel.js";
+import "@genome-spy/ui-components/define/imageExportDialog";
+import "@genome-spy/ui-components/define/splitPanel";
 import "./editor/codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
-import "./imageExportDialog.js";
 import "./playground.css";
 import "./toolbar.js";
 import "./workspace.js";
@@ -55,8 +56,11 @@ let revealMissingFilesOnNextUpdate = false;
 /** @type {import("lit/directives/ref.js").Ref<import("./filePane.js").default>} */
 const filePaneRef = createRef();
 
-/** @type {import("lit/directives/ref.js").Ref<import("./imageExportDialog.js").default>} */
-const imageExportDialogRef = createRef();
+/** @type {import("lit/directives/ref.js").Ref<import("@genome-spy/ui-components/imageExportDialog").PngExportDialog>} */
+const pngExportDialogRef = createRef();
+
+/** @type {import("lit/directives/ref.js").Ref<import("@genome-spy/ui-components/imageExportDialog").SvgExportDialog>} */
+const svgExportDialogRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./editor/codeEditor.js").default>} */
 const editorRef = createRef();
@@ -653,30 +657,42 @@ async function updateVisualization(force) {
 }
 
 const toolbarTemplate = () => {
-    /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+    /** @type {import("@genome-spy/ui-components/contextMenu").MenuItem[]} */
     const actions = [
-        { label: "Toggle layout", icon: faColumns, onClick: toggleLayout },
+        { label: "Toggle layout", icon: faColumns, callback: toggleLayout },
         {
             label: "Format code",
             icon: faIndent,
-            onClick: () => void formatWithPrettier(),
-        },
-        {
-            label: "Export image",
-            icon: faDownload,
-            onClick: () => void imageExportDialogRef.value.show(),
-            disabled: !embedResult,
+            callback: () => void formatWithPrettier(),
         },
         {
             label: "Inspector",
+            type: "checkbox",
             icon: faBug,
-            onClick: toggleInspector,
+            callback: toggleInspector,
             checked: sidePane === "inspector",
         },
         {
             label: "Docs",
+            type: "link",
             icon: faQuestionCircle,
             href: "https://genomespy.app/docs/",
+            target: "_blank",
+        },
+    ];
+    /** @type {import("@genome-spy/ui-components/contextMenu").MenuItem[]} */
+    const exportActions = [
+        {
+            label: "Save PNG",
+            icon: faFileImage,
+            callback: () => void pngExportDialogRef.value.show(),
+            disabled: !embedResult,
+        },
+        {
+            label: "Save SVG",
+            icon: faFileCode,
+            callback: () => void svgExportDialogRef.value.show(),
+            disabled: !embedResult,
         },
     ];
     const releaseUrl =
@@ -685,6 +701,7 @@ const toolbarTemplate = () => {
 
     return html`<gs-playground-toolbar
         .actions=${actions}
+        .exportActions=${exportActions}
         .renderer=${renderer}
         .visTitle=${visTitle}
         .version=${packageJson.version}
@@ -786,12 +803,21 @@ const layoutTemplate = () => html`
                 /** @type {CustomEvent<{ entry: ExampleCatalogEntry }>} */ event
             ) => openCatalogEntry(event.detail.entry)}
         ></gs-example-picker>
-        <gs-playground-image-export-dialog
-            ${ref(imageExportDialogRef)}
-            .api=${embedResult}
-        ></gs-playground-image-export-dialog>
+        <gs-save-image-dialog
+            ${ref(pngExportDialogRef)}
+            .openOnConnect=${false}
+            .source=${embedResult}
+            .roundDimensions=${false}
+            background-mode="visualization"
+        ></gs-save-image-dialog>
+        <gs-save-svg-dialog
+            ${ref(svgExportDialogRef)}
+            .openOnConnect=${false}
+            .source=${embedResult}
+            .resizeTarget=${genomeSpyContainerRef.value}
+        ></gs-save-svg-dialog>
         ${toolbarTemplate()}
-        <split-panel
+        <gs-split-panel
             .orientation=${layout}
             .reverse=${layout != "vertical"}
             id="main-panel"
@@ -810,7 +836,7 @@ const layoutTemplate = () => html`
                     ?hidden=${sidePane !== "inspector"}
                 ></section>
             </section>
-        </split-panel>
+        </gs-split-panel>
     </section>
 `;
 

@@ -1,7 +1,12 @@
 import { css, html } from "lit";
+import "@genome-spy/ui-components/define/tabs";
 import BaseDialog, { showDialog } from "../generic/baseDialog.js";
 import { compressToUrlHash } from "../../utils/urlHash.js";
-import { handleTabClick } from "../../utils/ui/tabs.js";
+
+const shareTabs = [
+    { value: "url", label: "URL" },
+    { value: "json", label: "JSON" },
+];
 
 /**
  * Dialog for sharing a bookmark as URL or JSON
@@ -76,39 +81,38 @@ export default class ShareBookmarkDialog extends BaseDialog {
         };
 
         return html`
-            <div class="gs-tabs" style="width: 600px">
-                <ul class="tabs" @click=${handleTabClick}>
-                    <li class="active-tab"><button>URL</button></li>
-                    <li><button>JSON</button></li>
-                </ul>
-                <div class="panes">
-                    <div class="gs-form-group active-tab">
-                        <label for="bookmark-url">Here's a link for you:</label>
-                        <div class="copy-url">
-                            <input
-                                id="bookmark-url"
-                                type="text"
-                                .value=${url}
-                            />
-                            <button @click=${copyToClipboard}>Copy</button>
-                        </div>
-                        <small>
-                            The bookmark URL contains all the bookmarked data,
-                            including the possible notes, which will be shown
-                            when the link is opened.
-                        </small>
+            <gs-tabs
+                label="Bookmark format"
+                .tabs=${shareTabs}
+                style="width: 600px; max-width: 100%"
+            >
+                <div slot="url" class="gs-form-group">
+                    <label for="bookmark-url">Here's a link for you:</label>
+                    <div class="copy-url">
+                        <input id="bookmark-url" type="text" .value=${url} />
+                        <button type="button" @click=${copyToClipboard}>
+                            Copy
+                        </button>
                     </div>
-                    <div class="gs-form-group">
-                        <textarea id="bookmark-json" style="height: 250px">
-${json}</textarea
-                        >
-                        <small>
-                            The JSON-formatted bookmark is currently available
-                            for development purposes.
-                        </small>
-                    </div>
+                    <small>
+                        The bookmark URL contains all the bookmarked data,
+                        including the possible notes, which will be shown when
+                        the link is opened.
+                    </small>
                 </div>
-            </div>
+                <div slot="json" class="gs-form-group">
+                    <textarea
+                        id="bookmark-json"
+                        aria-label="Bookmark JSON"
+                        style="height: 250px"
+                    >
+${json}</textarea>
+                    <small>
+                        The JSON-formatted bookmark is currently available for
+                        development purposes.
+                    </small>
+                </div>
+            </gs-tabs>
         `;
     }
 }

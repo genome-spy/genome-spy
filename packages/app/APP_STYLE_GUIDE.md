@@ -87,7 +87,7 @@ Code pointer: `src/components/generic/baseDialog.js`.
 
 Code pointers: `.gs-alert` in `src/components/generic/componentStyles.js`,
 examples in `src/components/dialogs/enterBookmarkDialog.js` and
-`src/components/dialogs/saveImageDialog.js`.
+`../ui-components/src/pngExportDialog.js`.
 
 ## Forms
 

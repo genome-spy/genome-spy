@@ -40,6 +40,10 @@ GenomeSpy is a fully client-side visualization system with three main layers:
 - `packages/playground`: interactive specification editor
 - `docs`: user-facing documentation site sources
 
+App and Playground consume shared, themeable controls from the standalone
+[`@genome-spy/ui-components` package](https://github.com/genome-spy/ui-components).
+Each host owns its application-specific UI and theme.
+
 ## Product and interaction context
 
 GenomeSpy is a grammar-based toolkit for authoring tailored, interactive genomic

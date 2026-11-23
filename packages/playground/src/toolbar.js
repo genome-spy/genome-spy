@@ -1,17 +1,23 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html, css, nothing } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faDesktop,
+    faDownload,
     faFolderOpen,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { icon as genomeSpyIcon } from "@genome-spy/core";
 import { faStyles, playgroundComponentStyles } from "./componentStyles.js";
-import { toolbarAction, toolbarMenu } from "./toolbarMenu.js";
-import { rendererMenu, rendererMenuItems } from "./rendererMenu.js";
+import { createMenuController } from "@genome-spy/ui-components/contextMenu";
+import "@genome-spy/ui-components/contextMenu.css";
+import { getRendererLabel, rendererMenuItems } from "./rendererMenu.js";
+
+/** @typedef {import("@genome-spy/ui-components/contextMenu").MenuItem} MenuItem */
 
 class PlaygroundToolbar extends LitElement {
     static properties = {
         actions: { attribute: false },
+        exportActions: { attribute: false },
         renderer: { type: String },
         visTitle: { type: String },
         version: { type: String },
@@ -20,8 +26,10 @@ class PlaygroundToolbar extends LitElement {
 
     constructor() {
         super();
-        /** @type {import("./toolbarMenu.js").ToolbarAction[]} */
+        /** @type {MenuItem[]} */
         this.actions = [];
+        /** @type {MenuItem[]} */
+        this.exportActions = [];
         /** @type {import("./rendererMenu.js").Renderer} */
         this.renderer = "webgl";
         this.visTitle = "";
@@ -181,7 +189,7 @@ class PlaygroundToolbar extends LitElement {
                     height: 100%;
                     margin-left: 0;
 
-                    &:has(:popover-open) > .tool-button {
+                    > .tool-button[aria-expanded="true"] {
                         background-color: hsl(
                             from var(--playground-accent) h s calc(l - 8)
                         );
@@ -190,88 +198,6 @@ class PlaygroundToolbar extends LitElement {
 
                 .more-selector {
                     display: none;
-                }
-
-                .toolbar-menu {
-                    box-sizing: border-box;
-                    position: fixed;
-                    padding: 0.3rem;
-                    border: 1px solid var(--playground-border);
-                    border-radius: var(--playground-radius);
-                    background: var(--playground-surface);
-                    color: var(--playground-text);
-                    box-shadow: var(--playground-shadow);
-                    max-width: calc(100vw - 8px);
-                    max-height: calc(100dvh - 54px);
-                    overflow: auto;
-
-                    @supports (position-area: block-end span-inline-end) {
-                        inset: auto;
-                        margin: 0;
-                        position-area: block-end span-inline-end;
-                        position-try-fallbacks: flip-inline;
-                    }
-
-                    button,
-                    a {
-                        display: flex;
-                        align-items: center;
-                        width: 100%;
-                        gap: 0.5rem;
-                        padding: 0.5rem 0.6rem;
-                        border: none;
-                        border-radius: var(--playground-radius);
-                        background: transparent;
-                        color: inherit;
-                        font-size: 0.85rem;
-                        text-align: left;
-                        cursor: pointer;
-                        box-sizing: border-box;
-
-                        &:disabled {
-                            opacity: 0.55;
-                            cursor: default;
-                        }
-
-                        &:hover,
-                        &:focus-visible {
-                            background: var(--playground-selected);
-                            outline: 2px solid var(--playground-accent);
-                            outline-offset: -2px;
-                        }
-                    }
-
-                    button,
-                    a,
-                    span {
-                        text-shadow: none;
-                    }
-
-                    svg {
-                        width: 1em;
-                    }
-
-                    [role="menuitemcheckbox"][aria-checked="true"]::after {
-                        content: "✓";
-                        margin-left: auto;
-                    }
-
-                    .renderer-group {
-                        border-block: 1px solid var(--playground-border);
-                        margin-block: 0.3rem;
-                        padding-block: 0.3rem;
-                    }
-
-                    .menu-heading {
-                        padding: 0.3rem 0.6rem;
-                        color: var(--playground-muted);
-                        font-size: 0.75rem;
-                    }
-
-                    .renderer-check {
-                        width: 1em;
-                        color: var(--playground-accent-text);
-                    }
                 }
 
                 @media (max-width: 900px) {
@@ -287,26 +213,150 @@ class PlaygroundToolbar extends LitElement {
         `,
     ];
 
+    /** @type {ReturnType<typeof createMenuController>} */
+    #menu;
+
     connectedCallback() {
         super.connectedCallback();
-        window.addEventListener("resize", this.#closeHiddenMenus);
+        this.#menu = createMenuController({
+            mount: this.parentElement,
+            lightDismiss: true,
+        });
+        window.addEventListener("resize", this.#closeHiddenMenu);
     }
 
     disconnectedCallback() {
-        window.removeEventListener("resize", this.#closeHiddenMenus);
+        this.#menu.dismissDropdownMenu();
+        window.removeEventListener("resize", this.#closeHiddenMenu);
         super.disconnectedCallback();
     }
 
-    #closeHiddenMenus = () => {
-        for (const menu of this.renderRoot.querySelectorAll(
-            ".toolbar-menu:popover-open"
-        )) {
-            // A hidden invoker means the responsive toolbar switched modes.
-            if (menu.previousElementSibling.getClientRects().length === 0) {
-                /** @type {HTMLElement} */ (menu).hidePopover();
-            }
+    updated() {
+        const opener = this.#openTrigger;
+        if (opener?.disabled) {
+            this.#menu.dismissDropdownMenu();
+        } else if (opener) {
+            this.#showMenu(opener);
+        }
+    }
+
+    get #openTrigger() {
+        return /** @type {HTMLButtonElement | null} */ (
+            this.renderRoot.querySelector(
+                'button[data-menu][aria-expanded="true"]'
+            )
+        );
+    }
+
+    #closeHiddenMenu = () => {
+        const opener = this.#openTrigger;
+        // A hidden trigger means the responsive toolbar switched modes.
+        if (opener && !opener.getClientRects().length) {
+            this.#menu.dismissDropdownMenu();
         }
     };
+
+    /**
+     * @param {HTMLButtonElement} opener
+     * @param {import("@genome-spy/ui-components/contextMenu").MenuOptions["initialFocus"]} [initialFocus]
+     */
+    #showMenu(opener, initialFocus = "first") {
+        const name = opener.dataset.menu;
+        let items = this.exportActions;
+        if (name === "renderer") {
+            items = rendererMenuItems(this.renderer, (renderer) =>
+                this.#selectRenderer(renderer)
+            );
+            initialFocus = "checked";
+        } else if (name === "more") {
+            items = [
+                ...this.actions.slice(0, 2),
+                ...this.exportActions,
+                ...this.actions.slice(2),
+                {
+                    type: "group",
+                    label: "Renderer",
+                    items: rendererMenuItems(this.renderer, (renderer) =>
+                        this.#selectRenderer(renderer)
+                    ),
+                },
+                {
+                    label: "Release v" + this.version,
+                    type: "link",
+                    href: this.releaseUrl,
+                    target: "_blank",
+                },
+            ];
+        }
+
+        this.#menu.dropdownMenu(
+            {
+                label: opener.getAttribute("aria-label"),
+                items,
+                mode: "command",
+                initialFocus,
+            },
+            opener,
+            name === "more" ? "bottom-end" : "bottom-start"
+        );
+    }
+
+    /**
+     * @param {"export" | "renderer" | "more"} name
+     * @param {string} label
+     * @param {import("@fortawesome/free-solid-svg-icons").IconDefinition} iconDef
+     * @param {boolean} [disabled]
+     */
+    #menuButton(name, label, iconDef, disabled = false) {
+        const compact = name === "more";
+        const accessibleLabel =
+            name === "renderer"
+                ? "Renderer: " + getRendererLabel(this.renderer)
+                : label;
+        return html`
+            <div
+                class="toolbar-menu-selector ${compact ? "more-selector" : "hide-mobile"}"
+            >
+                <button
+                    type="button"
+                    class="tool-button"
+                    data-menu=${name}
+                    aria-label=${accessibleLabel}
+                    title=${accessibleLabel}
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    ?disabled=${disabled}
+                    @click=${(/** @type {MouseEvent} */ event) => {
+                        const opener = /** @type {HTMLButtonElement} */ (
+                            event.currentTarget
+                        );
+                        if (this.#menu.isDropdownOpenFor(opener)) {
+                            this.#menu.dismissDropdownMenu();
+                        } else {
+                            this.#showMenu(opener);
+                        }
+                    }}
+                    @keydown=${(/** @type {KeyboardEvent} */ event) => {
+                        if (
+                            event.key === "ArrowDown" ||
+                            event.key === "ArrowUp"
+                        ) {
+                            event.preventDefault();
+                            this.#showMenu(
+                                /** @type {HTMLButtonElement} */ (
+                                    event.currentTarget
+                                ),
+                                event.key === "ArrowUp" ? "last" : "first"
+                            );
+                        }
+                    }}
+                >
+                    ${icon(iconDef).node[0]}
+                    <span>${compact ? label : label + " ▾"}</span>
+                </button>
+            </div>
+        `;
+    }
 
     /** @param {import("./rendererMenu.js").Renderer} renderer */
     #selectRenderer(renderer) {
@@ -340,9 +390,15 @@ class PlaygroundToolbar extends LitElement {
                     />
                 </a>
                 <h1 class="title">GenomeSpy Playground</h1>
-                ${this.actions.slice(0, 3).map((action) => toolbarAction(action, false))}
-                ${rendererMenu(this.renderer, (renderer) => this.#selectRenderer(renderer))}
-                ${this.actions.slice(3).map((action) => toolbarAction(action, false))}
+                ${this.actions.slice(0, 2).map(toolbarAction)}
+                ${this.#menuButton(
+                    "export",
+                    "Export",
+                    faDownload,
+                    this.exportActions.every((action) => action.disabled)
+                )}
+                ${this.#menuButton("renderer", "Renderer", faDesktop)}
+                ${this.actions.slice(2).map(toolbarAction)}
                 <span class="vis-title">
                     <span class="hide-mobile">${this.visTitle}</span>
                 </span>
@@ -359,35 +415,36 @@ class PlaygroundToolbar extends LitElement {
                     ${icon(faFolderOpen).node[0]}
                     <span>Examples</span>
                 </button>
-                ${toolbarMenu({
-                    id: "more-menu",
-                    label: "More",
-                    className: "more-selector",
-                    buttonContent: html`${icon(faEllipsisVertical).node[0]}<span
-                            >More</span
-                        >`,
-                    items: html`
-                        ${this.actions.map((action) => toolbarAction(action, true))}
-                        <div
-                            role="group"
-                            aria-label="Renderer"
-                            class="renderer-group"
-                        >
-                            <div class="menu-heading">Renderer</div>
-                            ${rendererMenuItems(this.renderer, (renderer) => this.#selectRenderer(renderer))}
-                        </div>
-                        ${toolbarAction(
-                            {
-                                label: "Release v" + this.version,
-                                href: this.releaseUrl,
-                            },
-                            true
-                        )}
-                    `,
-                })}
+                ${this.#menuButton("more", "More", faEllipsisVertical)}
             </div>
         `;
     }
+}
+
+/** @param {MenuItem} action */
+function toolbarAction(action) {
+    const content = html`${action.icon ? icon(action.icon).node[0] : nothing}
+        <span>${action.label}</span>`;
+
+    if (action.type === "link") {
+        return html`<a
+            class="tool-button hide-mobile"
+            href=${action.href}
+            target=${action.target ?? nothing}
+            >${content}</a
+        >`;
+    }
+
+    const checked = action.type === "checkbox" ? action.checked : undefined;
+    return html`<button
+        type="button"
+        class="tool-button hide-mobile${checked ? " selected" : ""}"
+        aria-pressed=${checked ?? nothing}
+        ?disabled=${action.disabled}
+        @click=${action.callback}
+    >
+        ${content}
+    </button>`;
 }
 
 customElements.define("gs-playground-toolbar", PlaygroundToolbar);

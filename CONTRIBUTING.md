@@ -381,6 +381,10 @@ pkg.pr.new's
 [retention policy](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/);
 switch consumer projects back to npm releases after testing.
 
+Playground currently pins a preview of the independently released
+`@genome-spy/ui-components` package. Update its manifest and the workspace
+lockfile to a published npm version before a stable GenomeSpy release.
+
 ### Rehearse without publishing
 
 Use a disposable checkout or worktree to rehearse versioning.

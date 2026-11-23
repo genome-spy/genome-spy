@@ -47,6 +47,11 @@ if (forbiddenFiles.length || forbiddenSources.length) {
 
 verifyCanvasPackaging();
 
+const style = fs.readFileSync(path.join(distDir, "style.css"), "utf8");
+if (!style.includes("--gs-menu-layer-z-index")) {
+    throw new Error("Production App CSS is missing the shared menu styles.");
+}
+
 console.log("Production App bundle verification passed.");
 
 function verifyCanvasPackaging() {

@@ -12,8 +12,8 @@ Unless otherwise noted, paths in this document are relative to
 
 ## Boundaries
 
-- GenomeSpy App owns the shell, state, UI primitives, and `AgentApi` host
-  interface.
+- GenomeSpy App owns the shell, state, and `AgentApi` host interface. Shared
+  UI primitives live in `@genome-spy/ui-components`.
 - `src/agent/` owns chat UI, context assembly, tool execution, the agent loop,
   validation, and generated browser-agent contracts.
 - `server/` owns provider-facing prompt assembly, response normalization,

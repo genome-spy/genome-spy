@@ -1,7 +1,6 @@
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
-import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 
 class RetainGroupsByRankDialog extends BaseDialog {
     static properties = {
@@ -40,11 +39,14 @@ class RetainGroupsByRankDialog extends BaseDialog {
                 <label>Rank order:</label>
                 <select
                     .value=${this.order}
-                    @change=${createInputListener((input) => {
+                    @change=${(/** @type {Event} */ event) => {
+                        const input = /** @type {HTMLSelectElement} */ (
+                            event.currentTarget
+                        );
                         this.order = /** @type {"descending" | "ascending"} */ (
                             input.value
                         );
-                    })}
+                    }}
                 >
                     <option value="descending">Largest groups</option>
                     <option value="ascending">Smallest groups</option>
@@ -57,9 +59,11 @@ class RetainGroupsByRankDialog extends BaseDialog {
                     type="number"
                     min="1"
                     .valueAsNumber=${this.limit}
-                    @change=${createInputListener((input) => {
-                        this.limit = input.valueAsNumber;
-                    })}
+                    @change=${(/** @type {Event} */ event) => {
+                        this.limit = /** @type {HTMLInputElement} */ (
+                            event.currentTarget
+                        ).valueAsNumber;
+                    }}
                 />
             </div>
         `;

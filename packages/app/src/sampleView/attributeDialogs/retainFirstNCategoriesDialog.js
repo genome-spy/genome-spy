@@ -2,7 +2,6 @@ import { html } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faFilter, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
-import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 
 /**
  * Dialog to retain first N categories of an attribute.
@@ -49,9 +48,11 @@ export class RetainFirstNCategoriesDialog extends BaseDialog {
                     type="number"
                     min="1"
                     .valueAsNumber=${this.n}
-                    @change=${createInputListener((input) => {
-                        this.n = input.valueAsNumber;
-                    })}
+                    @change=${(/** @type {Event} */ event) => {
+                        this.n = /** @type {HTMLInputElement} */ (
+                            event.currentTarget
+                        ).valueAsNumber;
+                    }}
                 />
             </div>
         `;
