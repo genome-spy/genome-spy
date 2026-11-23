@@ -5,6 +5,21 @@ rendering dense arrays without creating a dataflow row or geometric instance for
 every cell. The PoC will display a public GM12878 Hi-C matrix and establish
 which parts of GenomeSpy's encoding pipeline can serve dense data.
 
+## Pull request status
+
+Both initial milestones are complete. The branch also supports WebGL2, Canvas2D,
+hybrid SVG export, sequence strips, packed RGBA tiles, raster cell tooltips, and
+conditional opacity. The [raster reference](../../docs/grammar/mark/raster.md)
+and [HiGlass source reference](../../docs/grammar/data/lazy.md#higlass) describe
+the delivered contracts. The [journal](raster-higlass-journal.md) records the
+design tradeoffs and measurements.
+
+Raster grid geometry uses named dimensions with an origin, spacing, and cell
+count. Screen-sized placement, independently authored bounds, field-driven
+opacity, and stable cell identities for point selections remain future designs.
+Triangle tile selection uses the arranged track height. Triangle color domains
+follow loaded tiles, so they can include contacts outside the visible track.
+
 ## Scope
 
 - Render a regular 2D grid as one quad per tile using WebGPU. Bind grid

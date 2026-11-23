@@ -8,6 +8,18 @@ EXAMPLE examples/docs/grammar/mark/raster/raster-mark.json height=190
 
 ## Tile format
 
+The example above uses this datum as its sole `data.values` entry.
+
+```json
+{
+  "dimensions": {
+    "column": { "origin": 10, "step": 2, "count": 3 },
+    "row": { "origin": 0, "step": 1, "count": 2 }
+  },
+  "fields": { "value": [1, 2, 3, 4, 5, 6] }
+}
+```
+
 The record's `dimensions` object describes each grid axis by name.
 
 | Property | Meaning                                                  |
