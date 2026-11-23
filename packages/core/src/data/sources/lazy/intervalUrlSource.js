@@ -35,6 +35,10 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
  * @abstract
  */
 export default class IntervalUrlSource extends SingleAxisLazySource {
+    get isRemoteLazy() {
+        return true;
+    }
+
     #abortController = new AbortController();
 
     /** @type {Map<string, Promise<H>>} */

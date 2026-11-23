@@ -11,7 +11,6 @@ import {
     mirrorDiagonal,
     transposeTile,
 } from "./hiGlassTiles.js";
-import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 /** @typedef {import("./hiGlassTiles.js").HiGlassMetadata} HiGlassMetadata */
 /** @typedef {import("./singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest */
@@ -82,6 +81,10 @@ export default class HiGlassSource extends DataSource {
 
     get label() {
         return "hiGlassSource";
+    }
+
+    get isRemoteLazy() {
+        return true;
     }
 
     activate() {
@@ -349,13 +352,3 @@ export default class HiGlassSource extends DataSource {
         return response.json();
     }
 }
-
-/**
- * @param {import("../../../spec/data.js").LazyDataParams} params
- * @returns {params is import("../../../spec/data.js").HiGlassData}
- */
-function isHiGlassSource(params) {
-    return params?.type === "higlass";
-}
-
-registerBuiltInLazyDataSource(isHiGlassSource, HiGlassSource);

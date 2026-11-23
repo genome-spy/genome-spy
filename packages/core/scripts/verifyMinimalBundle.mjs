@@ -32,6 +32,10 @@ const optionalRenderingDirectories = [
     "src/rendering/immediate/",
     "src/rendering/svg/",
 ];
+const hiGlassSources = [
+    "src/data/sources/lazy/hiGlassSource.js",
+    "src/data/sources/lazy/hiGlassTiles.js",
+];
 const webGlRenderingDirectory = "src/rendering/webgl/";
 const webGpuRenderingDirectory = "src/rendering/webgpu/";
 const rendererRegistrationSources = [
@@ -69,6 +73,13 @@ try {
     }
 
     const minimalBundleSources = readAllOutputSources(minimalOutput);
+    if (
+        minimalBundleSources.some((source) =>
+            hiGlassSources.some((file) => source.endsWith(file))
+        )
+    ) {
+        throw new Error("Minimal bundle must exclude the HiGlass loader.");
+    }
     const figwigSource = minimalBundleSources.find(isFigwigDependency);
     if (figwigSource) {
         throw new Error(
@@ -176,6 +187,16 @@ try {
     }
 
     const productionBundleSources = readAllOutputSources(productionOutput);
+    for (const file of hiGlassSources) {
+        if (
+            productionSources.some((source) => source.endsWith(file)) ||
+            !productionBundleSources.some((source) => source.endsWith(file))
+        ) {
+            throw new Error(
+                `Production must load ${file} through a dynamic import.`
+            );
+        }
+    }
     for (const sources of [
         readAllOutputSources(minimalOutput),
         productionBundleSources,

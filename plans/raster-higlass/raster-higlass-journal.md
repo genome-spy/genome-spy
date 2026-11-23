@@ -271,3 +271,16 @@ time from 42.8 to 41.2 ms and p95 from 47.7 to 45.1 ms. Both builds had a
 on a brush update. Keeping a second, unconditioned RGBA tile cache could
 avoid repeating that work at the cost of another four bytes per cell and
 more cache state.
+
+## Loading the HiGlass module
+
+The standard Core entry registers a dynamic importer for `higlass`. View
+construction resolves the importer for a matching declaration before the
+synchronous dataflow creates its source. The visible-data wait reads the
+source's remote-lazy flag, which removes the engine's dependency on the concrete
+loader.
+
+The bundle check requires HiGlass to be outside the ESM entry's static
+dependency graph and absent from the minimal build. Chromium requested the
+separate module only for the HiGlass spec. The single-file UMD build includes
+the module bytes and also loaded the fixture tiles on demand.

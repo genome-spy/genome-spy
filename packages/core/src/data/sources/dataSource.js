@@ -41,6 +41,10 @@ export default class DataSource extends FlowNode {
         return this.identifier;
     }
 
+    get isRemoteLazy() {
+        return false;
+    }
+
     /**
      * Sets the loading status of the data source. The status is shown in the UI.
      *

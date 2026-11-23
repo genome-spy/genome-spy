@@ -1,4 +1,5 @@
 import { iterateDataDependencies } from "./data/dataReadiness.js";
+import DataSource from "./data/sources/dataSource.js";
 import {
     createContainerUi,
     createMessageBox,
@@ -43,8 +44,6 @@ import {
     validateSelectorConstraints,
 } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
-import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
-import HiGlassSource from "./data/sources/lazy/hiGlassSource.js";
 import { initializeViewGuides } from "./view/gridView/guideViewSync.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import {
@@ -1057,9 +1056,7 @@ function hasRemoteLazyDataSource(view) {
     return (
         !!collector &&
         iterateDataDependencies(collector).some(
-            (node) =>
-                node instanceof IntervalUrlSource ||
-                node instanceof HiGlassSource
+            (node) => node instanceof DataSource && node.isRemoteLazy
         )
     );
 }

@@ -1,10 +1,15 @@
 import "./registerCoreLazySources.js";
 import "./indexedFastaSource.js";
 import "./bigWigSource.js";
-import "./hiGlassSource.js";
 import "./figWigSource.js";
 import "./bigBedSource.js";
 import "./bamSource.js";
 import "./tabixTsvSource.js";
 import "./gff3Source.js";
 import "./vcfSource.js";
+import { registerBuiltInLazyDataSourceLoader } from "./lazyDataSourceRegistry.js";
+
+registerBuiltInLazyDataSourceLoader(
+    "higlass",
+    () => import("./hiGlassSource.js")
+);

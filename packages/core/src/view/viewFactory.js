@@ -21,6 +21,7 @@ import {
 } from "./viewSelectors.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
+import { prepareLazyDataSource } from "../data/sources/lazy/lazyDataSourceRegistry.js";
 import {
     isConcatSpec,
     isFacetSpec,
@@ -314,6 +315,12 @@ export class ViewFactory {
         );
 
         try {
+            const data = view.spec.data;
+            if (data && "lazy" in data) {
+                const preparation = prepareLazyDataSource(data.lazy);
+                if (preparation) await preparation;
+            }
+
             // Reserve local dataset names before constructing descendants.
             for (const { transform } of getOutputDeclarations(
                 view.spec.transform ?? []
