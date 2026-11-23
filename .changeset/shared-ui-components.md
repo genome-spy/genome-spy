@@ -14,6 +14,6 @@ announce the selected renderer.
 
 App and Playground use controls from the standalone `@genome-spy/ui-components`
 package. App gains keyboard-accessible tabs, accessible labels for selection and
-threshold controls, and a keyboard-scrollable data preview. Applications can
-theme the shared controls and native form fields with scoped CSS custom
-properties.
+threshold controls, and a keyboard-scrollable data preview. Escape clears the
+MultiSelect search while preserving selected values. Applications can theme the
+shared controls and native form fields with scoped CSS custom properties.
