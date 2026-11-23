@@ -75,8 +75,8 @@ export default class GenomeSpy {
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
     #renderCoordinator;
 
-    /** @type {import("./view/layout/layoutResult.js").default | undefined} */
-    #interactiveLayout;
+    /** @type {ReturnType<import("./view/layout/layoutResult.js").default["getMarkOccurrences"]>} */
+    #rasterOccurrences;
     /** @type {LoadingIndicatorManager} */
     #loadingIndicatorManager;
     /** @type {LoadingStatusRegistry} */
@@ -403,7 +403,7 @@ export default class GenomeSpy {
     }
 
     #disposeInitializedResources() {
-        this.#interactiveLayout = undefined;
+        this.#rasterOccurrences = undefined;
         if (this.viewRoot && this.#disposedViewRoot !== this.viewRoot) {
             this.viewRoot.disposeSubtree();
             this.#disposedViewRoot = this.viewRoot;
@@ -582,7 +582,11 @@ export default class GenomeSpy {
                 getBackground: this.#getCanvasBackground,
                 broadcast: this.broadcast.bind(this),
                 onLayoutComputed: (layout) => {
-                    this.#interactiveLayout = layout;
+                    this.#rasterOccurrences = layout.getMarkOccurrences(
+                        (mark) =>
+                            mark.getType() === "raster" &&
+                            mark.isPickingParticipant()
+                    );
                     this.#loadingIndicatorManager.updateLayout();
                 },
             });
@@ -630,10 +634,10 @@ export default class GenomeSpy {
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
             resolveRasterCell: (mark, datum, x, y, facetId) => {
-                const layout = this.#interactiveLayout;
-                if (layout) {
+                const occurrences = this.#rasterOccurrences?.get(mark);
+                if (occurrences) {
                     return this.#renderingBackend.resolveRasterCell?.(
-                        layout,
+                        occurrences,
                         mark,
                         datum,
                         x,

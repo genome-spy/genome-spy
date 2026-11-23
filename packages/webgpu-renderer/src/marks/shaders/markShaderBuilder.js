@@ -316,20 +316,22 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         const componentIndex = components.indexOf(
                             projection.component
                         );
-                        const raster = "position" in projection;
-                        const [value, secondary] = raster
-                            ? [
-                                  `rasterCoordinate_${projection.position}(0u)`,
-                                  `rasterCoordinate_${projection.position}(1u)`,
-                              ]
-                            : [
-                                  getSelectionInput(projection.input)
+                        const {
+                            value,
+                            secondary,
+                            readPackedBound = (/** @type {string} */ field) =>
+                                field,
+                        } = "position" in projection
+                            ? cellPredicates.position(projection.position)
+                            : {
+                                  value: getSelectionInput(projection.input)
                                       ?.rawValueExpr,
-                                  projection.secondaryInput &&
+                                  secondary:
+                                      projection.secondaryInput &&
                                       getSelectionInput(
                                           projection.secondaryInput
                                       )?.rawValueExpr,
-                              ];
+                              };
                         if (componentIndex < 0 || !value) {
                             throw new Error(
                                 `Selection "${def.name}" has an unresolved projection input or component.`
@@ -352,11 +354,6 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                             packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
                         const lo = packed ? "lo" : "min(bound.x, bound.y)";
                         const hi = packed ? "hi" : "max(bound.x, bound.y)";
-                        /** @param {string} field */
-                        const readPackedBound = (field) =>
-                            raster
-                                ? `vec2<u32>(${field}.x, 2u * ${field}.y)`
-                                : field;
                         const boundsSetup = packed
                             ? `    let bound0 = ${readPackedBound(`params.${bounds}.xy`)};
     let bound1 = ${readPackedBound(`params.${bounds}.zw`)};

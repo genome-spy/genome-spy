@@ -42,9 +42,9 @@ export function createCanvas2DRenderingBackend(options) {
         rasterizeSvgRuns: (rasterOptions) =>
             createCanvas2DSvgRasterizer()(rasterOptions),
         readPickingId: (x, y) => surface.readPickingId(x, y),
-        resolveRasterCell: (layout, mark, datum, x, y, facetId) =>
+        resolveRasterCell: (occurrences, mark, datum, x, y, facetId) =>
             resolveRasterCell(
-                layout,
+                occurrences,
                 mark,
                 datum,
                 pickingPixelCenter(x, y),

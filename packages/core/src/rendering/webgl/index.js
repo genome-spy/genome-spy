@@ -57,7 +57,7 @@ export function createWebGLRenderingBackend(options) {
                 webGLHelper: glHelper,
                 markAdapter: rendererResources,
             }),
-        resolveRasterCell: (layout, mark, datum, x, y, facetId) => {
+        resolveRasterCell: (occurrences, mark, datum, x, y, facetId) => {
             const point = pickingPixelCenter(
                 x,
                 y,
@@ -66,7 +66,7 @@ export function createWebGLRenderingBackend(options) {
             point.x -= RASTER_COORDINATE_OFFSET;
             // Adding the same offset to both matrix axes moves the midpoint only.
             if (!mark.isTriangle) point.y -= RASTER_COORDINATE_OFFSET;
-            return resolveRasterCell(layout, mark, datum, point, facetId);
+            return resolveRasterCell(occurrences, mark, datum, point, facetId);
         },
         readPickingId: (x, y) => {
             const dpr = glHelper.getDevicePixelRatio();

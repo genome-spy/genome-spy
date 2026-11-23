@@ -42,18 +42,17 @@ const UNBOUNDED = { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity };
 /**
  * Resolves the cell against the drawing occurrence, including sample placement.
  * The picking pass has already checked clips and visibility.
- * @param {import("../../../view/layout/layoutResult.js").default} layout
+ * @param {import("../../../view/layout/layoutResult.js").MarkOccurrence[]} occurrences
  * @param {import("../../../marks/raster.js").default} mark
  * @param {object} datum
  * @param {{x: number, y: number}} point
  * @param {import("../../../spec/channel.js").Scalar[]} [facetId]
  * @returns {number | undefined}
  */
-export function resolveRasterCell(layout, mark, datum, point, facetId) {
+export function resolveRasterCell(occurrences, mark, datum, point, facetId) {
     const { column, row } = mark.getColorCellBinding();
     const columns = readRasterDimension(datum, column).count;
     const rows = readRasterDimension(datum, row).count;
-    const occurrences = layout.getMarkOccurrences(mark);
     /** @type {SampleFacetCoordsResolver | undefined} */
     let sampleCoords;
     for (let i = occurrences.length - 1; i >= 0; i--) {

@@ -51,7 +51,9 @@ import { getFragmentInput } from "../../types.js";
  * @prop {ReadonlySet<string>} inputNames
  * @prop {CellPredicateInputs} [cellPredicates]
  *
- * @typedef {{ fields: ReadonlyMap<string, { name: string }> }} CellPredicateInputs
+ * @typedef {object} CellPredicateInputs
+ * @prop {ReadonlyMap<string, { name: string }>} fields
+ * @prop {(axis: "x" | "y") => { value: string, secondary: string, readPackedBound: (field: string) => string }} position
  */
 
 /**

@@ -311,32 +311,34 @@ export default class HiGlassSource extends DataSource {
         const { bins_per_dimension: bins, mirror_tiles: mirrorTiles } =
             this.#metadata;
         const step = width / bins;
-        const result = positions.map(({ x, y, id, mirrored }) => {
-            let values = this.#cache.get(id);
-            if (values) {
-                this.#cache.delete(id);
-            } else {
-                if (!(id in response))
-                    throw new Error("HiGlass omitted tile " + id);
-                values = decodeTile(response[id], bins);
-                if (x === y && mirrorTiles !== false)
-                    mirrorDiagonal(values, bins);
-            }
-            this.#cache.set(id, values);
-            return {
-                dimensions: {
-                    column: { origin: x * width, step, count: bins },
-                    row: { origin: y * width, step, count: bins },
-                },
-                fields: {
-                    value: mirrored ? transposeTile(values, bins) : values,
-                },
-            };
-        });
-        const tileBytes = bins ** 2 * Float32Array.BYTES_PER_ELEMENT;
-        while (this.#cache.size * tileBytes > this.#cacheBudgetBytes)
-            this.#cache.delete(this.#cache.keys().next().value);
-        return result;
+        try {
+            return positions.map(({ x, y, id, mirrored }) => {
+                let values = this.#cache.get(id);
+                if (values) {
+                    this.#cache.delete(id);
+                } else {
+                    if (!(id in response))
+                        throw new Error("HiGlass omitted tile " + id);
+                    values = decodeTile(response[id], bins);
+                    if (x === y && mirrorTiles !== false)
+                        mirrorDiagonal(values, bins);
+                }
+                this.#cache.set(id, values);
+                return {
+                    dimensions: {
+                        column: { origin: x * width, step, count: bins },
+                        row: { origin: y * width, step, count: bins },
+                    },
+                    fields: {
+                        value: mirrored ? transposeTile(values, bins) : values,
+                    },
+                };
+            });
+        } finally {
+            const tileBytes = bins ** 2 * Float32Array.BYTES_PER_ELEMENT;
+            while (this.#cache.size * tileBytes > this.#cacheBudgetBytes)
+                this.#cache.delete(this.#cache.keys().next().value);
+        }
     }
 
     /** @param {string} path @param {Iterable<string>} ids @param {AbortSignal} signal */

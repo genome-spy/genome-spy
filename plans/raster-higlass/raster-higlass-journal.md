@@ -293,3 +293,15 @@ cells can still affect contrast. Exact viewport scaling would still need a
 layout invalidation subscription if Raster owned it. Inferring the domain from
 loaded tiles removes the subscription and the per-row color-domain clipping.
 The HiGlass tile planner still uses track height to select tiles.
+
+## Picking and predicate boundaries
+
+Keep the existing picking IDs and renderer-specific pixel sampling. At layout
+completion, retain only the placements of rasters that participate in picking.
+Repeated and faceted placements still need their original rendering options.
+The filter scans the completed layout once. Render-only frames skip it.
+The raster program supplies its cell-edge and packed-bound WGSL expressions.
+The shared shader builder still applies the same interval comparisons.
+HiGlass applies its cache budget after decoding, including partial failures.
+Verify raster tooltips, ordinary and raster interval predicates, and a retry
+after an incomplete tile response.

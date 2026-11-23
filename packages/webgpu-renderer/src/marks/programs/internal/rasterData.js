@@ -231,7 +231,15 @@ export function lowerRasterConfig(config, schema, prepared) {
         triangle: config.projection === "triangle",
         initialCells: prepared.cells,
         inputs,
-        cellPredicates: { fields: schema.fields },
+        cellPredicates: {
+            fields: schema.fields,
+            position: (/** @type {"x" | "y"} */ axis) => ({
+                value: `rasterCoordinate_${axis}(0u)`,
+                secondary: `rasterCoordinate_${axis}(1u)`,
+                readPackedBound: (/** @type {string} */ field) =>
+                    `vec2<u32>(${field}.x, 2u * ${field}.y)`,
+            }),
+        },
         visibleWhen,
         order,
         placementIndex: config.placementIndex,

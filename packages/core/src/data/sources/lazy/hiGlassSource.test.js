@@ -228,6 +228,8 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
 
 test("debounces domain changes within one tile window and honors the cache budget", async () => {
     let domain = [0, 8];
+    let axisLength = 2;
+    let omitLastTile = false;
     const view = Object.assign(Object.create(UnitView.prototype), {
         context: createBroadcastingTestViewContext(),
         getBaseUrl: () => "",
@@ -237,17 +239,20 @@ test("debounces domain changes within one tile window and honors the cache budge
         getScaleResolution: () => ({
             type: "locus",
             getDomain: () => domain,
-            getAxisLength: () => 2,
+            getAxisLength: () => axisLength,
             getAssembly: () => ({ contigs: [{ name: "chr1", size: 8 }] }),
         }),
     });
     const dense = new Uint8Array(16).toBase64();
     const fetch = vi.fn(async (/** @type {URL} */ url) => {
-        const id = url.searchParams.get("d");
+        const ids = url.searchParams.getAll("d");
+        if (omitLastTile) ids.pop();
         return Response.json(
-            id === "test"
+            ids[0] === "test"
                 ? { test: smallTileset }
-                : { [id]: { dense, dtype: "float32" } }
+                : Object.fromEntries(
+                      ids.map((id) => [id, { dense, dtype: "float32" }])
+                  )
         );
     });
     vi.stubGlobal("fetch", fetch);
@@ -283,6 +288,22 @@ test("debounces domain changes within one tile window and honors the cache budge
         expect(source.isViewportReady()).toBe(false);
         await vi.advanceTimersByTimeAsync(100);
         expect(fetch.mock.calls[3][0].searchParams.get("d")).toBe("test.0.0.0");
+        expect(source.isViewportReady()).toBe(true);
+
+        // At the next resolution, the response omits the last of three tiles.
+        axisLength = 4;
+        omitLastTile = true;
+        source.ensureViewportData();
+        await vi.advanceTimersByTimeAsync(100);
+        expect(source.isViewportReady()).toBe(false);
+
+        omitLastTile = false;
+        source.ensureViewportData();
+        await vi.advanceTimersByTimeAsync(100);
+        expect(fetch.mock.lastCall[0].searchParams.getAll("d")).toEqual([
+            "test.1.0.0",
+            "test.1.1.1",
+        ]);
         expect(source.isViewportReady()).toBe(true);
     } finally {
         source.dispose();

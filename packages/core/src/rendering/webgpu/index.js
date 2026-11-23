@@ -62,7 +62,7 @@ export async function createWebGpuRenderingBackend(options) {
                 ...coordinatorOptions,
                 surface,
             }),
-        resolveRasterCell: (layout, mark, datum, x, y, facetId) => {
+        resolveRasterCell: (occurrences, mark, datum, x, y, facetId) => {
             const point = pickingPixelCenter(
                 x,
                 y,
@@ -70,7 +70,7 @@ export async function createWebGpuRenderingBackend(options) {
             );
             point.x -= RASTER_COORDINATE_OFFSET;
             point.y -= RASTER_COORDINATE_OFFSET;
-            return resolveRasterCell(layout, mark, datum, point, facetId);
+            return resolveRasterCell(occurrences, mark, datum, point, facetId);
         },
         readPickingId: (x, y) => surface.pick(x, y),
         exportCanvas: () => {
