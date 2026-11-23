@@ -6,29 +6,9 @@
 
 <!-- category: feature -->
 
-Render raster marks in WebGL2 and Canvas2D, including zoomable HiGlass contact
-maps and horizontal or vertical sequence strips. Raster cell boundaries stay
-stable when zooming to individual bases. Raster dimension axes display titles
-when specified. HiGlass shows cached tiles on the next frame. Configure the
-decoded tile cache with `cacheSizeMiB` and tune requests for missing tiles with
-`debounce`.
+Add a `raster` mark for dense heatmaps, sequence alignments, and decoded images.
 
-Display decoded RGB and RGBA images as raster tiles using `color.scale: null`
-and one packed RGBA8 value per cell.
-
-Use the raster mark's triangle projection to display a HiGlass contact map above
-a single genomic axis. Track height controls the visible contact distance. The
-triangle example adapts its color scale to the loaded tiles.
-
-Raster cell tooltips show the hovered value, including the two genomic bins for
-a Hi-C contact.
-
-Use a gradient legend brush to control the opacity of individual raster cells.
-The HiGlass example makes contact values outside the brushed range transparent.
-
-Use positional interval brushes and combined selection predicates to control
-raster cell opacity. Brushes match cells they overlap, as in the Hi-C comparison
-lens. Raster strip bands use categorical selections.
-
-SVG exports embed raster marks as transparent images while keeping surrounding
-vector layers editable.
+The HiGlass data source loads contact maps at multiple resolutions in
+rectangular views and single-axis triangle tracks. Raster cells support tooltips
+and brush-controlled opacity. SVG export embeds raster layers as images and
+keeps surrounding vector layers editable.
