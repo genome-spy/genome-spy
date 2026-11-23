@@ -21,6 +21,7 @@ const forbiddenSources = [
     "src/data/sources/lazy/indexedFastaSource.js",
     "src/data/sources/lazy/bigWigSource.js",
     "src/data/sources/lazy/figWigSource.js",
+    "src/data/sources/lazy/hiGlassSource.js",
     "src/data/sources/lazy/bigBedSource.js",
     "src/data/sources/lazy/bamSource.js",
     "src/data/sources/lazy/gff3Source.js",
@@ -33,7 +34,7 @@ const optionalRenderingDirectories = [
     "src/rendering/svg/",
 ];
 const hiGlassSources = [
-    "src/data/sources/lazy/hiGlassSource.js",
+    "src/data/sources/lazy/hiGlassTileSource.js",
     "src/data/sources/lazy/hiGlassTiles.js",
 ];
 const webGlRenderingDirectory = "src/rendering/webgl/";
@@ -134,22 +135,25 @@ try {
         directory: "src/rendering/canvas2d/",
     });
 
-    const figwigEntry = path.resolve("scripts/fixtures/minimalFigwig.js");
-    const figwigOutput = await buildEntry(
-        figwigEntry,
-        "genomeSpyEmbedMinimalFigwig",
-        path.join(tempDir, "minimal-figwig")
+    const lazySourcesEntry = path.resolve(
+        "scripts/fixtures/minimalLazySources.js"
     );
-    const figwigStaticSources = readStaticEntrySources(
-        figwigOutput,
-        figwigEntry
+    const lazySourcesOutput = await buildEntry(
+        lazySourcesEntry,
+        "genomeSpyEmbedMinimalLazySources",
+        path.join(tempDir, "minimal-lazy-sources")
     );
+    const lazyStaticSources = readStaticEntrySources(
+        lazySourcesOutput,
+        lazySourcesEntry
+    );
+    const lazyBundleSources = readAllOutputSources(lazySourcesOutput);
     if (
-        !figwigStaticSources.some((source) =>
+        !lazyStaticSources.some((source) =>
             source.endsWith("src/data/sources/lazy/figWigSource.js")
         ) ||
-        figwigStaticSources.some(isFigwigReaderDependency) ||
-        !readAllOutputSources(figwigOutput).some(isFigwigReaderDependency)
+        lazyStaticSources.some(isFigwigReaderDependency) ||
+        !lazyBundleSources.some(isFigwigReaderDependency)
     ) {
         throw new Error(
             "Minimal plus Figwig must register the source and load its reader asynchronously."
@@ -187,13 +191,30 @@ try {
     }
 
     const productionBundleSources = readAllOutputSources(productionOutput);
-    for (const file of hiGlassSources) {
+    for (const { entry, staticSources, bundleSources } of [
+        {
+            entry: "Production",
+            staticSources: productionSources,
+            bundleSources: productionBundleSources,
+        },
+        {
+            entry: "Minimal with explicit sources",
+            staticSources: lazyStaticSources,
+            bundleSources: lazyBundleSources,
+        },
+    ]) {
         if (
-            productionSources.some((source) => source.endsWith(file)) ||
-            !productionBundleSources.some((source) => source.endsWith(file))
+            !staticSources.some((source) =>
+                source.endsWith("src/data/sources/lazy/hiGlassSource.js")
+            ) ||
+            hiGlassSources.some(
+                (file) =>
+                    staticSources.some((source) => source.endsWith(file)) ||
+                    !bundleSources.some((source) => source.endsWith(file))
+            )
         ) {
             throw new Error(
-                `Production must load ${file} through a dynamic import.`
+                `${entry} must register HiGlass and load its implementation asynchronously.`
             );
         }
     }

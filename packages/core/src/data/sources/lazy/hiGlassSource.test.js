@@ -4,7 +4,7 @@ import GenomeSpy from "../../../genomeSpyBase.js";
 import UnitView from "../../../view/unitView.js";
 import Rectangle from "../../../view/layout/rectangle.js";
 import { createBroadcastingTestViewContext } from "../../../view/testUtils.js";
-import HiGlassSource from "./hiGlassSource.js";
+import HiGlassTileSource from "./hiGlassTileSource.js";
 import {
     decodeTile,
     getTileWindow,
@@ -81,7 +81,7 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
             /** @param {(view: UnitView) => void} visitor */
             visit: (visitor) => visitor(view),
         });
-        const source = new HiGlassSource(
+        const source = new HiGlassTileSource(
             {
                 type: "higlass",
                 url: "https://tiles.example/",
@@ -257,7 +257,7 @@ test("debounces domain changes within one tile window and honors the cache budge
     });
     vi.stubGlobal("fetch", fetch);
     vi.useFakeTimers();
-    const source = new HiGlassSource(
+    const source = new HiGlassTileSource(
         {
             type: "higlass",
             url: "https://tiles.example/",

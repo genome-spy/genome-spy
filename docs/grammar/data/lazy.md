@@ -153,6 +153,9 @@ It selects tiles and bin sizes as you pan and zoom. Use a square-bin matrix
 tileset and the matching genome assembly, including chromosome names, order,
 and lengths.
 
+With the [minimal entry point](../../api/embedding.md#minimal), import
+`@genome-spy/core/data/sources/lazy/hiGlassSource.js` to enable this source.
+
 Each data record is a [raster tile](../mark/raster.md#tile-format) with
 `column` and `row` dimensions and contact values in `fields.value`. The
 dimension's `step` is the bin size in base pairs.

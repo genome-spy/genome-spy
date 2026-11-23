@@ -7,9 +7,4 @@ import "./bamSource.js";
 import "./tabixTsvSource.js";
 import "./gff3Source.js";
 import "./vcfSource.js";
-import { registerBuiltInLazyDataSourceLoader } from "./lazyDataSourceRegistry.js";
-
-registerBuiltInLazyDataSourceLoader(
-    "higlass",
-    () => import("./hiGlassSource.js")
-);
+import "./hiGlassSource.js";
