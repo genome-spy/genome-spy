@@ -89,6 +89,22 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
         throw new Error("Cannot mix viewport domain modes on a shared scale.");
     }
 
+    if (
+        modes.size &&
+        members
+            .values()
+            .some(
+                ({ view, channel }) =>
+                    channel === "color" &&
+                    view.mark instanceof RasterMark &&
+                    view.mark.isTriangle
+            )
+    ) {
+        throw new Error(
+            "Triangle rasters cannot use a viewport-derived color domain. Omit the domain to scale colors from loaded data."
+        );
+    }
+
     return modes.values().next().value;
 }
 

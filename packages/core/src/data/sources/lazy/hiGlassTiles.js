@@ -1,8 +1,3 @@
-import {
-    getTriangleColumnDomain,
-    getTriangleViewport,
-} from "../../rasterTile.js";
-
 /**
  * @typedef {object} HiGlassMetadata
  * @prop {number[]} min_pos
@@ -37,16 +32,15 @@ export function getTileWindow(metadata, domains, lengths, triangleHeight) {
         )
     );
     const width = metadata.max_width / 2 ** level;
-    const triangle =
+    const lo = Math.min(...domains[0]);
+    const hi = Math.max(...domains[0]);
+    const depth =
         triangleHeight === undefined
             ? undefined
-            : getTriangleViewport(domains[0], lengths[0], triangleHeight);
-    const [a, b] = triangle
-        ? [triangle.lo, triangle.hi + triangle.depth]
-        : domains[1];
+            : ((hi - lo) * triangleHeight) / lengths[0];
+    const [a, b] = depth === undefined ? domains[1] : [lo, hi + depth];
     const start = Math.max(Math.min(a, b), metadata.min_pos[1]);
     const end = Math.min(Math.max(a, b), metadata.max_pos[1]);
-    const columns = [Math.min(...domains[0]), Math.max(...domains[0])];
     /** @type {[number, number, number][]} */
     const rows = [];
     for (
@@ -54,13 +48,15 @@ export function getTileWindow(metadata, domains, lengths, triangleHeight) {
         start < end && y * width < end;
         y++
     ) {
-        const [min, max] = triangle
-            ? getTriangleColumnDomain(
-                  triangle,
-                  Math.max(start, y * width),
-                  Math.min(end, (y + 1) * width)
-              )
-            : columns;
+        let min = lo;
+        let max = hi;
+        if (depth !== undefined) {
+            // Bound the columns by the projected midpoint and contact distance.
+            const rowStart = Math.max(start, y * width);
+            const rowEnd = Math.min(end, (y + 1) * width);
+            min = Math.max(2 * lo - rowEnd, rowStart - 2 * depth, lo - depth);
+            max = Math.min(2 * hi - rowStart, rowEnd, hi);
+        }
         const left = Math.max(min, metadata.min_pos[0]);
         const right = Math.min(max, metadata.max_pos[0]);
         if (left < right)

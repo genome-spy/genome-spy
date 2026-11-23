@@ -17,7 +17,8 @@ Display decoded RGB and RGBA images as raster tiles using `color.scale: null`
 and one packed RGBA8 value per cell.
 
 Use the raster mark's triangle projection to display a HiGlass contact map above
-a single genomic axis. Track height controls the visible contact distance.
+a single genomic axis. Track height controls the visible contact distance. The
+triangle example adapts its color scale to the loaded tiles.
 
 Raster cell tooltips show the hovered value, including the two genomic bins for
 a Hi-C contact.

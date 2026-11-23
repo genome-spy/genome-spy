@@ -284,3 +284,12 @@ The bundle check requires HiGlass to be outside the ESM entry's static
 dependency graph and absent from the minimal build. Chromium requested the
 separate module only for the HiGlass spec. The single-file UMD build includes
 the module bytes and also loaded the fixture tiles on demand.
+
+## Triangle color domains
+
+The triangle example infers its logarithmic color domain from published tiles.
+Navigation within a tile set keeps its colors stable. Strong contacts in clipped
+cells can still affect contrast. Exact viewport scaling would still need a
+layout invalidation subscription if Raster owned it. Inferring the domain from
+loaded tiles removes the subscription and the per-row color-domain clipping.
+The HiGlass tile planner still uses track height to select tiles.

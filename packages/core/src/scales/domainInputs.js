@@ -24,7 +24,6 @@ import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
 import { isDataReady } from "../data/dataReadiness.js";
 import deepEqual from "../utils/deepEqual.js";
 import { DOMAIN_UPDATE_PRIORITY } from "./domainRuntime.js";
-import RasterMark from "../marks/raster.js";
 
 /**
  * Compile replaceable domain inputs for a shared scale. Membership, declaration
@@ -385,30 +384,6 @@ export default function createDomainInputs({
                 resolution.getDomainRef().subscribe(viewportChanged)
             );
         }
-        if (viewport)
-            for (const { view, channel } of dataMembers) {
-                if (
-                    channel !== "color" ||
-                    !(view.mark instanceof RasterMark && view.mark.isTriangle)
-                )
-                    continue;
-                let aspect = 0;
-                const onLayout = () => {
-                    const coords = view.layoutCoords;
-                    if (!(coords?.width > 0 && coords.height > 0)) return;
-                    const next = coords.height / coords.width;
-                    if (aspect === next) return;
-                    aspect = next;
-                    viewportChanged();
-                };
-                view.context.addBroadcastListener("layoutComputed", onLayout);
-                disposers.push(() =>
-                    view.context.removeBroadcastListener(
-                        "layoutComputed",
-                        onLayout
-                    )
-                );
-            }
         disposers.push(() => scheduler.clear());
 
         disposers.push(

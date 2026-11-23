@@ -162,39 +162,3 @@ export function getRasterCellRange(dimension, [lo, hi]) {
     const end = findRasterEdge(dimension, hi);
     return [start, Math.min(dimension.count, Math.max(start, end))];
 }
-
-/**
- * @param {number[]} domain Visible midpoints in data coordinates.
- * @param {number} width Logical track width.
- * @param {number} height Logical track height.
- */
-export function getTriangleViewport(domain, width, height) {
-    const lo = Math.min(...domain);
-    const hi = Math.max(...domain);
-    return { lo, hi, depth: ((hi - lo) * height) / width };
-}
-
-/**
- * Column-coordinate interval covered by the triangle within a row slab.
- * @param {ReturnType<typeof getTriangleViewport>} viewport
- * @param {number} rowStart
- * @param {number} rowEnd
- * @param {boolean} [contain]
- * @returns {[number, number]}
- */
-export function getTriangleColumnDomain(
-    { lo, hi, depth },
-    rowStart,
-    rowEnd,
-    contain = false
-) {
-    return contain
-        ? [
-              Math.max(2 * lo - rowStart, rowEnd - 2 * depth),
-              Math.min(2 * hi - rowEnd, rowStart),
-          ]
-        : [
-              Math.max(2 * lo - rowEnd, rowStart - 2 * depth, lo - depth),
-              Math.min(2 * hi - rowStart, rowEnd, hi),
-          ];
-}

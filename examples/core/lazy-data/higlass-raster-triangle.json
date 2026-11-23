@@ -58,9 +58,6 @@
           "title": "Contact value",
           "scale": {
             "type": "log",
-            "domain": {
-              "source": "viewport"
-            },
             "scheme": "higlassFall",
             "clamp": true
           }

@@ -11,6 +11,7 @@ import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { create } from "../view/testUtils.js";
+import { createTopLevelDatasetApi } from "../view/viewMutationApi.js";
 import {
     getRequiredScaleResolution,
     getScaleDomain,
@@ -1096,6 +1097,58 @@ describe("Scale resolution domain handling", () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    test("triangle colors adapt to replacement tiles", async () => {
+        const dimension = { origin: 0, step: 1, count: 2 };
+        const tile = (value) => ({
+            dimensions: { column: dimension, row: dimension },
+            fields: { value },
+        });
+        const view = await initView({
+            datasets: { tiles: [tile([0, 2, 4, 8])] },
+            data: { name: "tiles" },
+            mark: { type: "raster", projection: "triangle" },
+            encoding: {
+                x: { dimension: "column", type: "locus" },
+                color: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { type: "log" },
+                },
+            },
+        });
+        try {
+            expect(getScaleDomain(view, "color")).toEqual([2, 8]);
+            createTopLevelDatasetApi({ viewRoot: view }).set("tiles", [
+                tile([0, 3, 6, 12]),
+            ]);
+            expect(getScaleDomain(view, "color")).toEqual([3, 12]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("triangle rasters reject an inherited viewport color domain", async () => {
+        await expect(
+            initView(
+                {
+                    scales: { color: { domain: { source: "viewport" } } },
+                    layer: [
+                        {
+                            mark: { type: "raster", projection: "triangle" },
+                            encoding: {
+                                x: { dimension: "column", type: "locus" },
+                                color: { field: "value", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            )
+        ).rejects.toThrow(
+            "Triangle rasters cannot use a viewport-derived color domain"
+        );
     });
 
     test("visible y domains use the current x viewport", async () => {

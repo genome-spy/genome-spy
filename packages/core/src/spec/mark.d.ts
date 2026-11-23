@@ -947,6 +947,8 @@ export interface RasterProps extends MarkPropsBase {
      * horizontal position is the midpoint of the two loci, and height above
      * the baseline is half their separation at the current x scale. Tile
      * endpoints on both dimensions must be nonnegative whole-base positions.
+     * Omit the color domain to infer it from loaded cells. Viewport-derived
+     * color domains are unsupported for this projection.
      */
     projection?: "triangle";
 }

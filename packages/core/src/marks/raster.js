@@ -1,11 +1,6 @@
 import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
-import {
-    getTriangleColumnDomain,
-    getTriangleViewport,
-    getVisibleCellRange,
-    readRasterTile,
-} from "../data/rasterTile.js";
+import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import {
@@ -298,38 +293,11 @@ export default class RasterMark extends Mark {
         const logarithmic = colorResolution?.getResolvedScaleType() === "log";
         const xConstraint = constraints.find(({ channel }) => channel === "x");
         const yConstraint = constraints.find(({ channel }) => channel === "y");
-        const coords = this.unitView.layoutCoords;
-        const triangle =
-            this.isTriangle && xConstraint && coords?.width > 0
-                ? getTriangleViewport(
-                      xConstraint.domain,
-                      coords.width,
-                      coords.height
-                  )
-                : undefined;
         for (const datum of collector.getData()) {
             const { horizontal, vertical, values } = readTile(datum);
-            const columns = getVisibleCellRange(
-                horizontal,
-                triangle ? undefined : xConstraint
-            );
+            const [left, right] = getVisibleCellRange(horizontal, xConstraint);
             const [top, bottom] = getVisibleCellRange(vertical, yConstraint);
             for (let row = top; row < bottom; row++) {
-                let [left, right] = columns;
-                if (triangle) {
-                    const rowStart = vertical.origin + row * vertical.step;
-                    const columnDomain = getTriangleColumnDomain(
-                        triangle,
-                        rowStart,
-                        rowStart + vertical.step,
-                        xConstraint.mode === "contain"
-                    );
-                    if (columnDomain[0] >= columnDomain[1]) continue;
-                    [left, right] = getVisibleCellRange(horizontal, {
-                        domain: columnDomain,
-                        mode: xConstraint.mode,
-                    });
-                }
                 const start = row * horizontal.count;
                 for (let column = left; column < right; column++) {
                     const value = values[start + column];
