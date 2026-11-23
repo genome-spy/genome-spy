@@ -81,7 +81,7 @@ getScale(Band, scaleBand, ["discrete"]);
 getScale(Point, scalePoint, ["discrete"]);
 
 vegaScheme(
-    "higlassFall",
+    "higlassfall",
     interpolateColors(["#ffffff", "#f5a623", "#d0021b", "#000000"])
 );
 

@@ -79,7 +79,7 @@ Currently, the following scales are **not** supported: `"time"`, `"utc"`,
 
 ## Color schemes
 
-Set `"scheme": "higlassFall"` on a color scale to use the HiGlass heatmap
+Set `"scheme": "higlassfall"` on a color scale to use the HiGlass heatmap
 palette. It maps low values to white, then transitions through orange and red to
 black.
 [HiGlass heatmap palette](https://docs.higlass.io/track_types.html#heatmap)

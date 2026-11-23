@@ -58,7 +58,7 @@
           "title": "Contact value",
           "scale": {
             "type": "log",
-            "scheme": "higlassFall",
+            "scheme": "higlassfall",
             "clamp": true
           }
         },

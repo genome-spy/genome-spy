@@ -42,7 +42,7 @@
       "scale": {
         "type": "log",
         "domain": { "source": "viewport" },
-        "scheme": "higlassFall",
+        "scheme": "higlassfall",
         "clamp": true
       }
     }

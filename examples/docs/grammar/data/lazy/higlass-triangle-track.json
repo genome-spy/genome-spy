@@ -32,7 +32,7 @@
       "field": "value",
       "type": "quantitative",
       "title": "Contact value",
-      "scale": { "type": "log", "scheme": "higlassFall", "clamp": true }
+      "scale": { "type": "log", "scheme": "higlassfall", "clamp": true }
     }
   }
 }

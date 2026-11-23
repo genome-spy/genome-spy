@@ -212,7 +212,7 @@ test("maps the domain to the HiGlass Fall palette", () => {
     const color = scale({
         type: "linear",
         domain: [0, 3],
-        scheme: "higlassFall",
+        scheme: "higlassfall",
     });
     expect([0, 1, 2, 3].map(color)).toEqual([
         "rgb(255, 255, 255)",

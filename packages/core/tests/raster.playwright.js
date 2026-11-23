@@ -802,7 +802,7 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
                                 scale: {
                                     type: "log",
                                     domain: [1, { expr: "upper" }],
-                                    scheme: "higlassFall",
+                                    scheme: "higlassfall",
                                     clamp: true,
                                 },
                                 legend: {
