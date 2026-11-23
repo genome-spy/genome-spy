@@ -290,6 +290,9 @@ export default class HiGlassTileSource extends DataSource {
         for (const [y, start, end] of rows) {
             for (let x = start; x < end; x++) {
                 const mirrored = mirror && x > y;
+                // Omitting the transform suffix uses the server's default normalization.
+                // For Cooler tiles, HiGlass applies balancing weights when available
+                // and otherwise returns raw counts.
                 const id = [
                     this.params.tileset,
                     level,
