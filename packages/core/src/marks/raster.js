@@ -24,7 +24,20 @@ export default class RasterMark extends Mark {
     }
 
     isPickingParticipant() {
-        return this.properties.tooltip != null && super.isPickingParticipant();
+        const { tooltip } = this.properties;
+        return (
+            tooltip !== null &&
+            (tooltip !== undefined || !this.#usesDirectColor()) &&
+            super.isPickingParticipant()
+        );
+    }
+
+    #usesDirectColor() {
+        // Reading the normalized mark encoding would recurse through picking.
+        return getCachedOrCall(this, "directColor", () => {
+            const color = this.unitView.getEncoding().color;
+            return !!color && "scale" in color && color.scale === null;
+        });
     }
 
     /** @param {import("../spec/channel.js").Encoding} encoding */
@@ -104,11 +117,11 @@ export default class RasterMark extends Mark {
 
     getColorCellBinding() {
         return getCachedOrCall(this, "colorCellBinding", () => {
-            const { field, type, scale } =
+            const { field, type } =
                 /** @type {import("../spec/channel.js").ScaleFieldDef<import("../spec/channel.js").Type>} */ (
                     this.encoding.color
                 );
-            const direct = scale === null;
+            const direct = this.#usesDirectColor();
             const { x, y } = this.unitView.getEncoding();
             const column = x && "dimension" in x ? x.dimension : undefined;
             const locus = this.isTriangle;

@@ -53,7 +53,9 @@ fields can use `Float32Array`, and packed images can use `Uint32Array`.
 
 The `opacity` channel accepts values and
 [cell-level selection conditions](../conditional-encoding.md#raster-cells).
-Specify a tooltip handler to show cell values and tile attributes on hover.
+Scaled rasters show cell values and tile attributes on hover. Packed RGBA8
+images skip picking by default. Set `mark.tooltip` to `{ "handler": "default" }`
+to enable image tooltips, or set it to `null` to disable picking.
 
 ## Properties
 

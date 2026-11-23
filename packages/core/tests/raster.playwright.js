@@ -256,7 +256,6 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                 await import(src + register);
                 const start = 2_000_000_001;
                 const dimension = { origin: start, step: 1, count: 4 };
-                const tooltip = { handler: "capture" };
                 globalThis.rasterTooltip = null;
                 const api = await embed(
                     globalThis.document.querySelector("#plot"),
@@ -287,7 +286,6 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                 mark: {
                                     type: "raster",
                                     projection: "triangle",
-                                    tooltip,
                                 },
                                 encoding: {
                                     x: {
@@ -329,7 +327,10 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                         },
                                     ],
                                 },
-                                mark: { type: "raster", tooltip },
+                                mark: {
+                                    type: "raster",
+                                    tooltip: { handler: "default" },
+                                },
                                 encoding: {
                                     x: {
                                         dimension: "column",
@@ -354,7 +355,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                             throw error;
                         },
                         tooltipHandlers: {
-                            capture: async (
+                            default: async (
                                 datum,
                                 _mark,
                                 _params,
@@ -598,13 +599,18 @@ async function checkRasterImage(playwright, baseURL, renderer) {
                     );
                     const { pixels: svg } =
                         await globalThis.readSvgRasterPixels(api, points);
-                    return { raster, svg };
+                    const { status } = await api.views
+                        .root()
+                        .marks.pick({ x: 20, y: 20 });
+                    return { status, raster, svg };
                 } finally {
                     api.finalize();
                 }
             },
             setup
         );
+        const { status, ...images } = result;
+        expect(status).toBe("empty");
         const tile = [
             [255, 0, 0, 128],
             [0, 255, 0, 64],
@@ -612,7 +618,7 @@ async function checkRasterImage(playwright, baseURL, renderer) {
             [0, 0, 0, 0],
         ];
         const expected = [...tile, ...tile];
-        for (const [format, samples] of Object.entries(result)) {
+        for (const [format, samples] of Object.entries(images)) {
             expect(
                 samples.map((pixel) => pixel.slice(0, 3)),
                 format

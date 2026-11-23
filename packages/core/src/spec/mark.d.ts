@@ -132,8 +132,10 @@ export interface MarkPropsBase {
      * [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
      *
-     * For raster marks, specify a handler to enable cell tooltips.
-     * The handler receives the hovered cell's raw fields and tile attributes.
+     * Raster marks with scaled colors show cell tooltips by default. Packed
+     * RGBA images (`color.scale: null`) need an explicit handler for tooltips.
+     * For raster marks, `null` always disables picking. The handler receives
+     * the hovered cell's raw fields and tile attributes.
      */
     tooltip?: Tooltip;
 }
