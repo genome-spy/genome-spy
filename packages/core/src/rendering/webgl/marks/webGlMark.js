@@ -1441,15 +1441,6 @@ export default class WebGLMark {
      * @returns {function():void}
      */
     createRenderCallback(draw, options) {
-        if (!this.bufferInfo) {
-            // This happens if the layout is computed before the data flow has propagated.
-            // However, it's not a big deal, because this will be called again at the end
-            // of the initialization process.
-
-            // Return no operation
-            return () => undefined;
-        }
-
         const self = this;
         const orderPass = options.orderPass;
 

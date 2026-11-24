@@ -34,7 +34,7 @@ describe("BufferedViewRenderingContext", () => {
         expect(markPredicate).toHaveBeenCalledWith(mark);
     });
 
-    test("forwards placement while reusing value-equal viewports", () => {
+    test("retains placements until data arrives and reuses value-equal viewports", () => {
         const coords = Rectangle.create(0, 0, 20, 10);
         const gl = /** @type {WebGL2RenderingContext} */ (
             /** @type {unknown} */ ({
@@ -88,20 +88,23 @@ describe("BufferedViewRenderingContext", () => {
             /** @type {unknown} */ ({ onBeforeRender })
         );
         const graphics = {
-            isReady: () => true,
             prepareRender,
             setViewport,
             render,
         };
         const entry = { graphics, state: "ready" };
+        let dataAvailable = false;
+        let drawable = false;
         const markAdapter = {
             beginDrawPass: vi.fn(),
             prepareMarks: vi.fn(),
             hasStructuralChanges: vi.fn(() => false),
             getMarkEntry: () => entry,
             isEntryActive: () => true,
-            isEntryDrawable: () => true,
-            synchronize: vi.fn(),
+            isEntryDrawable: () => drawable,
+            synchronize: vi.fn(() => {
+                drawable = dataAvailable;
+            }),
         };
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
@@ -132,6 +135,12 @@ describe("BufferedViewRenderingContext", () => {
         context.renderMark(mark, { placement });
         context.pushView(view, coords);
         context.renderMark(mark, { placement });
+        context.render();
+
+        expect(draws).toBe(0);
+        expect(setViewport).not.toHaveBeenCalled();
+
+        dataAvailable = true;
         context.render();
 
         expect(draws).toBe(2);

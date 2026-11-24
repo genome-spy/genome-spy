@@ -252,15 +252,13 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         // And reversing again to restore the original order
         for (const [mark, requests] of [...requestByMark.entries()].reverse()) {
             const entry = this.#markAdapter.getMarkEntry(mark);
-            if (!entry) {
-                continue;
-            }
-            const graphics = entry.graphics;
-            if (!this.#markAdapter.isEntryDrawable(entry)) {
+            // A prepared mark may receive its first vertex buffers after layout.
+            if (!entry || !this.#markAdapter.isEntryActive(entry)) {
                 continue;
             }
             this.#entries.add(entry);
 
+            const graphics = entry.graphics;
             const order = mark.getOrder?.();
             const drawableRequests = requests
                 .map((request) => ({

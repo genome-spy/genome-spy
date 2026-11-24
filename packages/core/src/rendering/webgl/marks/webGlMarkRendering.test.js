@@ -21,11 +21,11 @@ test.each([false, true])(
             }),
             /** @type {any} */ ({})
         );
-        mark.bufferInfo = /** @type {any} */ ({});
         const draw = vi.fn();
         const render = ["A", "B"].map((category) =>
             mark.createRenderCallback(draw, { facetId: [category] })
         );
+        mark.bufferInfo = /** @type {any} */ ({});
         const dataKey = faceted ? ["B"] : undefined;
         const ranges = new Map([
             [dataKey, { offset: 4, count: 6, xIndex: undefined }],
