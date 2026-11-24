@@ -1,0 +1,85 @@
+{
+  "description": "Chromatin-state frequencies across samples",
+
+  "data": {
+    "values": [
+      { "start": 0, "end": 3, "sample": "A", "state": "Active" },
+      { "start": 0, "end": 4, "sample": "B", "state": "Repressed" },
+      { "start": 0, "end": 3, "sample": "C", "state": "Active" },
+      { "start": 3, "end": 8, "sample": "A", "state": "Quiescent" },
+      { "start": 3, "end": 6, "sample": "C", "state": "Repressed" },
+      { "start": 4, "end": 8, "sample": "B", "state": "Active" },
+      { "start": 6, "end": 12, "sample": "C", "state": "Active" },
+      { "start": 8, "end": 12, "sample": "A", "state": "Active" },
+      { "start": 10, "end": 12, "sample": "B", "state": "Quiescent" }
+    ]
+  },
+
+  "resolve": { "scale": { "x": "shared", "color": "shared" } },
+  "encoding": {
+    "x": { "field": "start", "type": "quantitative", "axis": { "title": "Position" } },
+    "x2": { "field": "end" },
+    "color": {
+      "field": "state",
+      "type": "nominal",
+      "scale": {
+        "domain": ["Active", "Quiescent", "Repressed"],
+        "range": ["#168478", "#d5dbe0", "#654485"]
+      },
+      "legend": { "title": "State", "orient": "right" }
+    }
+  },
+
+  "vconcat": [
+    {
+      "height": 54,
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "start", "type": "quantitative", "axis": null },
+        "y": {
+          "field": "sample",
+          "type": "nominal",
+          "scale": { "type": "band", "domain": ["A", "B", "C"], "paddingInner": 0.12 },
+          "axis": { "title": "Sample" }
+        },
+        "tooltip": [{ "field": "sample" }, { "field": "state" }]
+      }
+    },
+
+    {
+      "height": 90,
+      "transform": [
+        {
+          "type": "categoricalCoverage",
+          "start": "start",
+          "end": "end",
+          "category": "state",
+          "as": ["state", "count", "total"]
+        },
+        { "type": "formula", "expr": "datum.count / datum.total", "as": "frequency" },
+        {
+          "type": "stack",
+          "field": "frequency",
+          "groupby": ["start", "end"],
+          "sort": { "field": "state" }
+        }
+      ],
+      "mark": "rect",
+      "encoding": {
+        "y": {
+          "field": "y0",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] },
+          "axis": { "title": "Frequency", "format": ".0%", "tickCount": 4 }
+        },
+        "y2": { "field": "y1" },
+        "tooltip": [
+          { "field": "state", "title": "State" },
+          { "field": "count", "title": "Samples in state" },
+          { "field": "total", "title": "Called samples" },
+          { "field": "frequency", "title": "Frequency", "format": ".0%" }
+        ]
+      }
+    }
+  ]
+}

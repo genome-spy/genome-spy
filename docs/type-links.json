@@ -11,6 +11,7 @@
   "BigBedData": "/grammar/data/lazy/#parameters_2",
   "BigWigData": "/grammar/data/lazy/#parameters_1",
   "BranchParams": "/grammar/transform/branch/#parameters",
+  "CategoricalCoverageParams": "/grammar/transform/categorical-coverage/#parameters",
   "CollectParams": "/grammar/transform/collect/#parameters",
   "ColumnIdentifierField": "/sample-collections/metadata-sources/#zarr-identifier-helpers",
   "CoordinateLookupParams": "/grammar/transform/coordinate-lookup/#parameters",

@@ -125,6 +125,10 @@ SCHEMA BrushConfig
 
 SCHEMA BuiltInThemeName
 
+## CategoricalCoverageParams
+
+See the [CategoricalCoverageParams documentation](transform/categorical-coverage.md#parameters).
+
 ## CategorySelectionChannel
 
 SCHEMA CategorySelectionChannel

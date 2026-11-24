@@ -4,6 +4,7 @@ import {
     initializeVisibleViewData,
 } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
+import { UNIQUE_ID_KEY } from "@genome-spy/core/data/transforms/identifier.js";
 import MergeSampleFacets from "./mergeFacets.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import { sampleSlice } from "./state/sampleSlice.js";
@@ -347,5 +348,128 @@ describe("MergeSampleFacets visibility", () => {
             x2: 4,
             coverage: 1,
         });
+    });
+
+    it("recomputes categorical frequencies for the samples in each group", async () => {
+        const { store, view, summaryView } = await createMergeFacetsScenario(
+            {
+                samples: {
+                    identity: {
+                        data: {
+                            values: [
+                                { sample: "A" },
+                                { sample: "B" },
+                                { sample: "C" },
+                            ],
+                        },
+                        idField: "sample",
+                    },
+                },
+                spec: {
+                    name: "segments",
+                    data: {
+                        // Sample A's intervals arrive out of start order.
+                        values: [
+                            { sample: "A", start: 2, end: 3, state: "active" },
+                            { sample: "B", start: 0, end: 2, state: "quiet" },
+                            { sample: "A", start: 0, end: 2, state: "active" },
+                            { sample: "C", start: 0, end: 2, state: "quiet" },
+                            { sample: "B", start: 2, end: 3, state: null },
+                        ],
+                    },
+                    mark: "rect",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "start",
+                            type: "quantitative",
+                            scale: { zoom: true },
+                        },
+                        x2: { field: "end" },
+                        tooltip: [{ field: "state" }],
+                    },
+                    aggregateSamples: [
+                        {
+                            name: "summary",
+                            mark: "rect",
+                            transform: [
+                                {
+                                    type: "categoricalCoverage",
+                                    start: "start",
+                                    end: "end",
+                                    category: "state",
+                                },
+                                {
+                                    type: "formula",
+                                    expr: "datum.count / datum.total",
+                                    as: "frequency",
+                                },
+                            ],
+                            encoding: {
+                                y: { field: "frequency", type: "quantitative" },
+                                tooltip: [{ field: "category" }],
+                            },
+                        },
+                    ],
+                },
+            },
+            true
+        );
+
+        const summary = summaryView.getCollector();
+        const segments = view.findDescendantByName("segments").getCollector();
+        const firstSpan = () =>
+            summary.facetBatches
+                .get([0])
+                ?.find((row) => row.start === 0 && row.category === "active");
+
+        store.dispatch(
+            sampleSlice.actions.groupByNominal({
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "tissue" },
+                [AUGMENTED_KEY]: {
+                    values: { A: "Heart", B: "Heart", C: "Lung" },
+                },
+            })
+        );
+        await vi.waitFor(() => {
+            expect(firstSpan()).toMatchObject({
+                end: 2,
+                count: 1,
+                total: 2,
+                frequency: 0.5,
+            });
+            expect(
+                summary.facetBatches.get([0]).find((row) => row.start === 2)
+            ).toMatchObject({ end: 3, total: 1, frequency: 1 });
+            expect(summary.facetBatches.get([1])[0]).toMatchObject({
+                category: "quiet",
+                total: 1,
+            });
+        });
+
+        store.dispatch(
+            sampleSlice.actions.filterByNominal({
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "filter" },
+                values: ["keep"],
+                remove: false,
+                [AUGMENTED_KEY]: {
+                    values: { A: "keep", B: "drop", C: "keep" },
+                },
+            })
+        );
+        await vi.waitFor(() => {
+            expect(firstSpan()).toMatchObject({
+                end: 3,
+                count: 1,
+                total: 1,
+                frequency: 1,
+            });
+        });
+
+        const span = firstSpan();
+        const id = span[UNIQUE_ID_KEY];
+        expect(id).toBeGreaterThan(0);
+        expect(summary.findDatumByUniqueId(id)).toBe(span);
+        expect(segments.findDatumByUniqueId(id)).toBeUndefined();
     });
 });

@@ -794,11 +794,9 @@ export interface PileupParams extends TransformParamsBase {
     preferredOrder?: string[] | number[] | boolean[];
 }
 
-export interface CoverageParams extends TransformParamsBase {
-    type: "coverage";
-
+interface CoverageCoordinateParams extends TransformParamsBase {
     /**
-     * An optional chromosome field that is passed through. TODO: groupby
+     * The optional chromosome field for grouping intervals by chromosome.
      */
     chrom?: Field;
 
@@ -811,17 +809,6 @@ export interface CoverageParams extends TransformParamsBase {
      * The field representing the end coordinate of the segment (exclusive).
      */
     end: Field;
-
-    /**
-     * A field representing an optional weight for the segment. Can be used with
-     * copy ratios, for example.
-     */
-    weight?: Field;
-
-    /**
-     * The output field for the computed coverage.
-     */
-    as?: string;
 
     /**
      * The output field for the chromosome.
@@ -843,6 +830,44 @@ export interface CoverageParams extends TransformParamsBase {
      * **Default:** Same as `end`
      */
     asEnd?: string;
+}
+
+/**
+ * Count overlapping intervals by category. Sort called intervals by start
+ * within each facet or chromosome. If `chrom` is specified, supply each
+ * chromosome in a single block within the facet.
+ *
+ * Emits one row per present category in each span. The total counts all
+ * called intervals in the span.
+ */
+export interface CategoricalCoverageParams extends CoverageCoordinateParams {
+    type: "categoricalCoverage";
+
+    /** The input field containing a string, boolean, or finite numeric category. Use null for uncalled intervals. */
+    category: Field;
+
+    /**
+     * Output names for the category, count, and total, in that order.
+     * All output names must be distinct and nonempty. `__uniqueId` is reserved.
+     *
+     * __Default value:__ `["category", "count", "total"]`
+     */
+    as?: [string, string, string];
+}
+
+export interface CoverageParams extends CoverageCoordinateParams {
+    type: "coverage";
+
+    /**
+     * A field representing an optional weight for the segment. Can be used with
+     * copy ratios, for example.
+     */
+    weight?: Field;
+
+    /**
+     * The output field for the computed coverage.
+     */
+    as?: string;
 }
 
 /** A local output name, or a push to the nearest ancestor's bare parameter. */
@@ -1379,6 +1404,7 @@ export type TransformParams =
     | BranchParams
     | PublishParams
     | CoverageParams
+    | CategoricalCoverageParams
     | CoordinateLookupParams
     | CrossParams
     | Displace1DParams

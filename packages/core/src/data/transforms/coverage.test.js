@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
+import Collector from "../collector.js";
 import CoverageTransform from "./coverage.js";
 import { processData } from "../flowTestUtils.js";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
+import UnitView from "../../view/unitView.js";
+import { UNIQUE_ID_KEY } from "./identifier.js";
 
 /**
  * @typedef {import("../../spec/transform.js").CoverageParams} CoverageParams
@@ -11,9 +15,7 @@ import { processData } from "../flowTestUtils.js";
  * @param {any[]} data
  */
 function transform(params, data) {
-    const t = new CoverageTransform(params);
-    t.initialize();
-    return processData(t, data);
+    return processData(new CoverageTransform(params), data);
 }
 
 /**
@@ -206,6 +208,19 @@ describe("Coverage transform", () => {
             ]
         ));
 
+    test("Floating-point residue does not create coverage in a gap", () =>
+        testWeightedCoverage(
+            [
+                [0, 1, 0.1],
+                [0, 1, 0.2],
+                [2, 3, 0.5],
+            ],
+            [
+                [0, 1, 0.1 + 0.2],
+                [2, 3, 0.5],
+            ]
+        ));
+
     test("Adjacent segments with different weights produce separated segments", () =>
         testWeightedCoverage(
             [
@@ -235,4 +250,81 @@ describe("Coverage transform", () => {
                 [11, 12, 2],
             ]
         ));
+});
+
+test("uses output aliases and combines files only within a facet", () => {
+    const coverage = new CoverageTransform({
+        type: "coverage",
+        chrom: "chrom",
+        start: "start",
+        end: "end",
+        weight: "weight",
+        asChrom: "contig",
+        asStart: "from",
+        asEnd: "to",
+        as: "depth",
+    });
+    const collector = new Collector();
+    coverage.addChild(collector);
+
+    const first = { chrom: "chr1", start: 0, end: 3, weight: 2 };
+    const second = { chrom: "chr1", start: 1, end: 2, weight: 3 };
+    const nextFile = () => coverage.beginBatch({ type: "file" });
+    nextFile();
+    coverage.handle(first);
+    nextFile();
+    coverage.handle(second);
+    coverage.beginBatch({ type: "facet", facetId: ["A"] });
+    nextFile();
+    coverage.handle(first);
+    nextFile();
+    coverage.handle(second);
+    coverage.complete();
+
+    expect(collector.facetBatches.get(undefined)).toEqual([
+        { contig: "chr1", from: 0, to: 3, depth: 2 },
+        { contig: "chr1", from: 1, to: 2, depth: 3 },
+    ]);
+    expect(collector.facetBatches.get(["A"])).toEqual([
+        { contig: "chr1", from: 0, to: 1, depth: 2 },
+        { contig: "chr1", from: 1, to: 2, depth: 5 },
+        { contig: "chr1", from: 2, to: 3, depth: 2 },
+    ]);
+});
+
+test("generated coverage spans have independent picking identities", async () => {
+    const { view } = await createHeadlessEngine({
+        data: {
+            values: [
+                { start: 0, end: 3 },
+                { start: 1, end: 2 },
+            ],
+        },
+        transform: [{ type: "identifier" }],
+        encoding: {
+            x: { field: "start", type: "quantitative" },
+            x2: { field: "end" },
+            tooltip: [{ field: "start" }],
+        },
+        layer: [
+            { name: "reads", mark: "rect" },
+            {
+                name: "depth",
+                mark: "rect",
+                transform: [{ type: "coverage", start: "start", end: "end" }],
+            },
+        ],
+    });
+
+    const [reads, depth] = view
+        .getDescendants()
+        .filter((child) => child instanceof UnitView)
+        .map((child) => child.getCollector());
+    expect(depth.getItemCount()).toBe(3);
+    for (const span of depth.getData()) {
+        const id = span[UNIQUE_ID_KEY];
+        expect(id).toBeGreaterThan(0);
+        expect(depth.findDatumByUniqueId(id)).toBe(span);
+        expect(reads.findDatumByUniqueId(id)).toBeUndefined();
+    }
 });
