@@ -156,17 +156,28 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
     const genomeAxis = (/** @type {"x" | "y"} */ axis) =>
         mark.isTriangle ? "x" : axis;
     /** @type {TooltipRow[]} */
+    const indexRows = [];
+    /** @type {TooltipRow[]} */
     const genomicRows = [];
     for (const [axis, dimension, cell] of /** @type {const} */ ([
         ["x", horizontal, column],
         ["y", vertical, row],
     ])) {
-        if (!dimension || !getGenome(mark, genomeAxis(axis))) continue;
+        if (!dimension) continue;
+        const start = dimension.origin + cell * dimension.step;
+        const label = axis === "x" ? "Column" : "Row";
+
+        if (mark.encoders[axis]?.scale?.type === "index") {
+            const channel = mark.encoding[axis];
+            const title = channel && "title" in channel ? channel.title : null;
+            indexRows.push({ key: title || label, value: start });
+            continue;
+        }
+
+        if (!getGenome(mark, genomeAxis(axis))) continue;
         const mode = getConfiguredMode(params, axis);
         if (mode === "disabled") continue;
-        const start = dimension.origin + cell * dimension.step;
         const end = start + dimension.step;
-        const label = axis === "x" ? "Column" : "Row";
         const format = (/** @type {number} */ position) =>
             formatGenomicLocus(mark, genomeAxis(axis), position);
         if (mode === "endpoints") {
@@ -195,7 +206,7 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
             rasterCell: { column, row },
             tooltipRows: getConfiguredTooltipRows(datum, mark),
             genomicRows,
-            flattenDatumRows: () => flattenDatumRows(datum),
+            flattenDatumRows: () => [...indexRows, ...flattenDatumRows(datum)],
             formatGenomicLocus: (axis, position) =>
                 formatGenomicLocus(mark, genomeAxis(axis), position),
             formatGenomicInterval: (axis, interval) =>

@@ -58,6 +58,27 @@ function makeMark({ encoders, encoding = {}, parent }) {
 }
 
 describe("Tooltip context rows", () => {
+    test("Reports the index position of the hovered raster cell", () => {
+        const mark = makeMark({
+            encoders: { x: { scale: { type: "index" } } },
+            encoding: {
+                x: { dimension: "column", type: "index", title: "pos" },
+            },
+        });
+        mark.getColorCellBinding = () => ({ column: "column" });
+        const tile = {
+            dimensions: { column: { origin: 10, step: 2, count: 3 } },
+            fields: { base: "AGT" },
+        };
+
+        const { context } = createRasterTooltip(tile, mark, 1);
+
+        expect(context.flattenDatumRows()).toEqual([
+            { key: "pos", value: 12 },
+            { key: "base", value: "G" },
+        ]);
+    });
+
     test("Reports the hovered row of a vertical raster strip", () => {
         const mark = makeMark({ encoders: { y: makeLocusEncoder("row") } });
         mark.getColorCellBinding = () => ({ row: "row" });
