@@ -10,35 +10,39 @@ const sampleData = [
     { group: "b", choice: "y", value: 3 },
 ];
 
-test("stack isolates facets while sorting rows from multiple physical files", () => {
-    const stack = new StackTransform({
-        type: "stack",
-        field: "value",
-        groupby: [],
-        sort: { field: "value" },
-    });
-    const clone = new CloneTransform();
-    const output = new Collector();
-    stack.addChild(clone);
-    clone.addChild(output);
+test.each(/** @type {const} */ (["zero", "diverging"]))(
+    "%s stacks isolate facets and sort rows across file boundaries",
+    (offset) => {
+        const stack = new StackTransform({
+            type: "stack",
+            field: "value",
+            groupby: [],
+            sort: { field: "value" },
+            offset,
+        });
+        const clone = new CloneTransform();
+        const output = new Collector();
+        stack.addChild(clone);
+        clone.addChild(output);
 
-    stack.beginBatch({ type: "facet", facetId: ["A"] });
-    stack.beginBatch({ type: "file", url: "first" });
-    stack.handle({ value: 3 });
-    stack.beginBatch({ type: "file", url: "second" });
-    stack.handle({ value: 1, extra: 9 });
-    stack.beginBatch({ type: "facet", facetId: ["B"] });
-    stack.handle({ value: 10 });
-    stack.complete();
+        stack.beginBatch({ type: "facet", facetId: ["A"] });
+        stack.beginBatch({ type: "file", url: "first" });
+        stack.handle({ value: 3 });
+        stack.beginBatch({ type: "file", url: "second" });
+        stack.handle({ value: 1, extra: 9 });
+        stack.beginBatch({ type: "facet", facetId: ["B"] });
+        stack.handle({ value: 10 });
+        stack.complete();
 
-    expect(output.facetBatches.get(["A"])).toEqual([
-        { value: 1, extra: 9, y0: 0, y1: 1 },
-        { value: 3, y0: 1, y1: 4 },
-    ]);
-    expect(output.facetBatches.get(["B"])).toEqual([
-        { value: 10, y0: 0, y1: 10 },
-    ]);
-});
+        expect(output.facetBatches.get(["A"])).toEqual([
+            { value: 1, extra: 9, y0: 0, y1: 1 },
+            { value: 3, y0: 1, y1: 4 },
+        ]);
+        expect(output.facetBatches.get(["B"])).toEqual([
+            { value: 10, y0: 0, y1: 10 },
+        ]);
+    }
+);
 
 /** @type {import("../../spec/transform.js").StackParams} */
 const baseParams = {
@@ -142,6 +146,56 @@ describe("Stack transform", () => {
             { group: "a", choice: "q", value: 1, z0: -0.5, z1: 0.5 },
             { group: "b", choice: "x", value: 1, z0: -2, z1: -1 },
             { group: "b", choice: "y", value: 3, z0: -1, z1: 2 },
+        ]);
+    });
+
+    test("diverging offset stacks each sign separately and anchors zero at the baseline", () => {
+        const rows = transform(
+            { ...baseParams, offset: "diverging", sort: undefined },
+            [
+                { group: "a", value: 2 },
+                { group: "a", value: -4 },
+                { group: "a", value: 0 },
+                { group: "a", value: -1 },
+                { group: "a", value: 3 },
+                { group: "b", value: -2 },
+            ]
+        );
+
+        expect(rows.map(({ value, z0, z1 }) => [value, z0, z1])).toEqual([
+            [2, 0, 2],
+            [-4, -4, 0],
+            [0, 0, 0],
+            [-1, -5, -4],
+            [3, 2, 5],
+            [-2, -2, 0],
+        ]);
+    });
+
+    test("diverging stacks keep invalid values missing", () => {
+        const rows = transform(
+            { ...baseParams, offset: "diverging", sort: undefined },
+            [
+                { group: "a", value: Infinity },
+                { group: "a", value: NaN },
+                { group: "a", value: null },
+                { group: "a", value: 2n },
+                { group: "a", value: "3" },
+                { group: "a", value: 2 },
+                { group: "a", value: -Infinity },
+                { group: "a", value: -3 },
+            ]
+        );
+
+        expect(rows.map(({ z0, z1 }) => [z0, z1])).toEqual([
+            [NaN, NaN],
+            [NaN, NaN],
+            [NaN, NaN],
+            [NaN, NaN],
+            [NaN, NaN],
+            [0, 2],
+            [NaN, NaN],
+            [-3, 0],
         ]);
     });
 

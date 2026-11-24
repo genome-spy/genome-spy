@@ -1,0 +1,60 @@
+{
+  "description": "Signed contributions by group",
+
+  "data": {
+    "values": [
+      { "group": "Control", "component": "A", "value": 2 },
+      { "group": "Control", "component": "B", "value": 1 },
+      { "group": "Control", "component": "C", "value": -1 },
+      { "group": "Control", "component": "D", "value": -2 },
+      { "group": "Treatment A", "component": "A", "value": 4 },
+      { "group": "Treatment A", "component": "B", "value": -1 },
+      { "group": "Treatment A", "component": "C", "value": 2 },
+      { "group": "Treatment A", "component": "D", "value": -1 },
+      { "group": "Treatment B", "component": "A", "value": -2 },
+      { "group": "Treatment B", "component": "B", "value": 3 },
+      { "group": "Treatment B", "component": "C", "value": 0 },
+      { "group": "Treatment B", "component": "D", "value": -2 }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "stack",
+      "field": "value",
+      "groupby": ["group"],
+      "sort": { "field": "component" },
+      "offset": "diverging"
+    }
+  ],
+
+  "mark": "rect",
+  "encoding": {
+    "x": {
+      "field": "group",
+      "type": "nominal",
+      "band": 0.7,
+      "scale": {
+        "type": "band",
+        "domain": ["Control", "Treatment A", "Treatment B"]
+      },
+      "axis": { "title": null }
+    },
+    "y": {
+      "field": "y0",
+      "type": "quantitative",
+      "axis": { "title": "Contribution" }
+    },
+    "y2": { "field": "y1" },
+    "color": {
+      "field": "component",
+      "type": "nominal",
+      "scale": { "domain": ["A", "B", "C", "D"] },
+      "legend": { "title": "Component" }
+    },
+    "tooltip": [
+      { "field": "component", "title": "Component" },
+      { "field": "value", "title": "Contribution", "format": "+.0f" }
+    ]
+  }
+}
