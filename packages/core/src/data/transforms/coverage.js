@@ -3,22 +3,31 @@ import FlatQueue from "flatqueue";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
-/**
- * Computes coverage for sorted segments
- *
- * TODO: Binned coverage, e.g., don't emit a new segment for every
- * coverage change, but only every n bases or so. The most straightforward
- * way to implement it is a separate transform that bins the coverage
- * segments and calculates weighted averages.
- */
+/** @typedef {import("../flowNode.js").Datum} Datum */
+
+/** Computes scalar coverage for start-sorted segments. */
 export default class CoverageTransform extends Transform {
+    /** @type {FlatQueue<number>} */
+    #ends = new FlatQueue();
+
+    /** @type {Datum | undefined} */
+    #segment;
+
+    /** @type {number | undefined} */
+    #position;
+
+    /** @type {string | undefined} */
+    #chrom;
+
+    #coverage = 0;
+
     get behavior() {
         return BEHAVIOR_CLONES;
     }
 
-    /**
-     * @typedef {import("../flowNode.js").Datum} Datum
-     */
+    get createsNewIdentity() {
+        return true;
+    }
 
     /**
      * @param {import("../../spec/transform.js").CoverageParams} params
@@ -26,19 +35,6 @@ export default class CoverageTransform extends Transform {
      */
     constructor(params, paramRuntimeProvider) {
         super(params, paramRuntimeProvider);
-        this.params = params;
-
-        this.startAccessor = this.createFieldAccessor(params, "start");
-        this.endAccessor = this.createFieldAccessor(params, "end");
-
-        /** @type {function(any):string} */
-        this.chromAccessor = params.chrom
-            ? this.createFieldAccessor(params, "chrom")
-            : (d) => undefined;
-        /** @type {function(any):number} */
-        this.weightAccessor = params.weight
-            ? this.createFieldAccessor(params, "weight")
-            : (d) => 1;
 
         this.as = {
             coverage: params.as ?? "coverage",
@@ -46,171 +42,118 @@ export default class CoverageTransform extends Transform {
             end: params.asEnd ?? params.end,
             chrom: params.asChrom ?? params.chrom,
         };
+        this.startAccessor = this.createFieldAccessor(params, "start");
+        this.endAccessor = this.createFieldAccessor(params, "end");
 
+        /** @type {(datum: Datum) => string | undefined} */
+        this.chromAccessor =
+            this.as.chrom && params.chrom
+                ? this.createFieldAccessor(params, "chrom")
+                : () => undefined;
+        this.weightAccessor = params.weight
+            ? this.createFieldAccessor(params, "weight")
+            : () => 1;
+
+        // Give generated rows a fixed shape even with custom output names.
+        const fields = Object.entries(this.as)
+            .filter(([, name]) => name)
+            .map(([value, name]) => `${JSON.stringify(name)}: ${value}`);
         this.createSegment =
-            /** @type {(start: Number, end: Number, coverage: Number, chrom?: string) => Datum} */ (
+            /** @type {(start: number, end: number, coverage: number, chrom: string | undefined) => Datum} */ (
                 new Function(
                     "start",
                     "end",
                     "coverage",
                     "chrom",
-                    "return {" +
-                        Object.entries(this.as)
-                            .filter(([param, prop]) => prop)
-                            .map(
-                                ([param, prop]) =>
-                                    `${JSON.stringify(prop)}: ${param}`
-                            )
-                            .join(", ") +
-                        "};"
+                    `return {${fields.join(", ")}};`
                 )
             );
-
-        /**
-         * End pos as priority, weight as value
-         *
-         * @type {FlatQueue<number>}
-         */
-        this.ends = new FlatQueue();
     }
 
     reset() {
         super.reset();
-        this.initialize();
+        this.#ends.clear();
+        this.#segment = undefined;
+        this.#position = undefined;
+        this.#chrom = undefined;
+        this.#coverage = 0;
     }
 
-    initialize() {
-        const asCoverage = this.as.coverage;
-        const asEnd = this.as.end;
-        const asChrom = this.as.chrom;
+    /** @param {Datum} datum */
+    handle(datum) {
+        const start = this.startAccessor(datum);
+        const end = this.endAccessor(datum);
+        const chrom = this.chromAccessor(datum);
+        const weight = this.weightAccessor(datum);
+        if (chrom !== this.#chrom) {
+            this.#flush();
+            this.#chrom = chrom;
+        }
 
-        const startAccessor = this.startAccessor;
-        const endAccessor = this.endAccessor;
-        const chromAccessor = this.chromAccessor;
-        const weightAccessor = this.weightAccessor;
+        this.#drainEnds(start);
+        this.#spanUntil(start);
+        this.#coverage += weight;
+        this.#ends.push(weight, end);
+    }
 
-        /** @type {Datum} used for merging adjacent segment */
-        let bufferedSegment;
+    /** @param {import("../../types/flowBatch.js").FlowBatch} batch */
+    beginBatch(batch) {
+        if (batch.type === "file" && this.inFacet) return;
+        this.#flush();
+        super.beginBatch(batch);
+    }
 
-        /** @type {string} */
-        let prevChrom;
+    complete() {
+        this.#flush();
+        super.complete();
+    }
 
-        /** @type {string} */
-        let chrom;
+    /**
+     * Keep ends tied with the next start queued to preserve weight arithmetic
+     * order. With no start, drain the remaining ends.
+     * @param {number} [start]
+     */
+    #drainEnds(start) {
+        let end;
+        while (
+            (end = this.#ends.peekValue()) !== undefined &&
+            (start === undefined || end < start)
+        ) {
+            this.#spanUntil(end);
+            const weight = this.#ends.pop();
+            // An empty queue is zero coverage even after roundoff.
+            this.#coverage = this.#ends.length ? this.#coverage - weight : 0;
+        }
+    }
 
-        // TODO: Whattabout cumulative error when float weights are used?
-        // Howabout https://github.com/d3/d3-array#fsum ?
-        let coverage = 0;
+    /** @param {number} end */
+    #spanUntil(end) {
+        const start = this.#position;
+        this.#position = end;
+        if (start === undefined || start === end) return;
 
-        /** @type {number} */
-        let prevEdge = NaN;
-
-        /** End pos as priority, weight as value */
-        const ends = this.ends;
-        ends.clear();
-
-        /**
-         * @param {Datum} segment
-         */
-        const propagate = (segment) => {
-            this._propagate(segment);
-            bufferedSegment = null;
-        };
-
-        /**
-         * @param {number} start
-         * @param {number} end
-         * @param {number} coverage
-         */
-        const pushSegment = (start, end, coverage) => {
-            if (start == end) {
+        const as = this.as;
+        if (this.#segment) {
+            const previous = this.#segment[as.coverage];
+            if (previous === this.#coverage) {
+                this.#segment[as.end] = end;
                 return;
             }
+            if (previous !== 0) this._propagate(this.#segment);
+        }
 
-            let extended = false;
-            if (bufferedSegment) {
-                if (bufferedSegment[asCoverage] === coverage) {
-                    // Extend it
-                    bufferedSegment[asEnd] = end;
-                    extended = true;
-                } else if (bufferedSegment[asCoverage] != 0) {
-                    propagate(bufferedSegment);
-                }
-            }
+        this.#segment = this.createSegment(
+            start,
+            end,
+            this.#coverage,
+            this.#chrom
+        );
+    }
 
-            if (!extended) {
-                bufferedSegment = this.createSegment(
-                    start,
-                    end,
-                    coverage,
-                    chrom
-                );
-            }
-        };
-
-        const flushQueue = () => {
-            let edge;
-            while ((edge = ends.peekValue()) !== undefined) {
-                pushSegment(prevEdge, edge, coverage);
-                prevEdge = edge;
-                coverage -= ends.pop();
-            }
-            prevEdge = NaN;
-
-            if (bufferedSegment) {
-                propagate(bufferedSegment);
-            }
-        };
-
-        /**
-         * @param {Datum} datum
-         */
-        this.handle = (datum) => {
-            const start = startAccessor(datum);
-
-            let edge;
-            while ((edge = ends.peekValue()) !== undefined && edge < start) {
-                pushSegment(prevEdge, edge, coverage);
-                prevEdge = edge;
-                coverage -= ends.pop();
-            }
-
-            if (asChrom) {
-                let newChrom = chromAccessor(datum);
-                if (newChrom !== prevChrom) {
-                    flushQueue();
-                    chrom = newChrom;
-                    prevChrom = chrom;
-                }
-            }
-
-            if (!isNaN(prevEdge)) {
-                pushSegment(prevEdge, start, coverage);
-            }
-            prevEdge = start;
-
-            const weight = weightAccessor(datum);
-            coverage += weight;
-
-            ends.push(weight, endAccessor(datum));
-        };
-
-        this.complete = () => {
-            flushQueue();
-            super.complete();
-        };
-
-        /**
-         * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
-         */
-        this.beginBatch = (flowBatch) => {
-            if (flowBatch.type == "file" && this.inFacet) {
-                return;
-            }
-            flushQueue();
-            coverage = 0;
-            prevChrom = null;
-            super.beginBatch(flowBatch);
-        };
+    #flush() {
+        this.#drainEnds();
+        if (this.#segment) this._propagate(this.#segment);
+        this.#position = undefined;
+        this.#segment = undefined;
     }
 }
