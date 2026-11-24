@@ -25,6 +25,9 @@ export default class CategoricalCoverageTransform extends Transform {
     /** @type {Set<string>} */
     #chromosomes = new Set();
 
+    /** @type {import("../outputGrouping.js").OutputGrouping} */
+    #outputGrouping;
+
     #position = -Infinity;
     #spanStart = 0;
     #total = 0;
@@ -35,6 +38,10 @@ export default class CategoricalCoverageTransform extends Transform {
 
     get createsNewIdentity() {
         return true;
+    }
+
+    get outputGrouping() {
+        return this.#outputGrouping;
     }
 
     /**
@@ -77,6 +84,11 @@ export default class CategoricalCoverageTransform extends Transform {
                 `categoricalCoverage output field names must be distinct and nonempty, excluding ${UNIQUE_ID_KEY}.`
             );
         }
+
+        const spanKey = output.chrom
+            ? [output.chrom, output.start, output.end]
+            : [output.start, output.end];
+        this.#outputGrouping = { keys: [spanKey], fileFree: true };
 
         // Compile the output names once so each span row has a fixed shape.
         const fields = Object.entries(output).map(

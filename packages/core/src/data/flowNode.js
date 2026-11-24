@@ -87,6 +87,15 @@ export default class FlowNode {
     }
 
     /**
+     * Grouping guarantees exposed by this node's primary output.
+     *
+     * @returns {import("./outputGrouping.js").OutputGrouping | undefined}
+     */
+    get outputGrouping() {
+        return undefined;
+    }
+
+    /**
      * Scale channels whose current domain affects this node's output.
      * Downstream views must not feed these channels back into shared-domain
      * resolution or domain-dependent flows can invalidate themselves.

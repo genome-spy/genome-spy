@@ -1,9 +1,14 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import { preserveGrouping } from "../outputGrouping.js";
 import Transform from "./transform.js";
 
 export default class FormulaTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
+    }
+
+    get outputGrouping() {
+        return preserveGrouping(this.parent?.outputGrouping, [this.as]);
     }
 
     /**

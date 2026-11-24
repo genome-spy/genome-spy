@@ -3,6 +3,7 @@ import createCloner from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import DerivedCollector from "../derivedCollector.js";
 import { isDataReady } from "../dataReadiness.js";
+import { preserveGrouping } from "../outputGrouping.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
@@ -36,6 +37,21 @@ export default class LookupTransform extends Transform {
 
     get behavior() {
         return BEHAVIOR_CLONES;
+    }
+
+    get outputGrouping() {
+        const params = this.params;
+        if (
+            params.type === "lookup" &&
+            params.values &&
+            !isSelfLookup(params)
+        ) {
+            return preserveGrouping(
+                this.parent?.outputGrouping,
+                params.as ?? params.values
+            );
+        }
+        return undefined;
     }
 
     /**

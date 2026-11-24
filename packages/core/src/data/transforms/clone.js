@@ -10,6 +10,10 @@ export default class CloneTransform extends Transform {
         return BEHAVIOR_CLONES;
     }
 
+    get outputGrouping() {
+        return this.parent?.outputGrouping;
+    }
+
     /** @type {ReturnType<typeof createCachedCloner>} */
     #clone = createCachedCloner();
 

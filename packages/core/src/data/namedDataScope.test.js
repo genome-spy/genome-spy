@@ -3,7 +3,8 @@ import { describe, expect, onTestFinished, test, vi } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { initializeVisibleViewData } from "../genomeSpy/viewDataInit.js";
 import { createViewMutationApi } from "../view/viewMutationApi.js";
-import { isDataReady } from "./dataReadiness.js";
+import Collector from "./collector.js";
+import { isDataReady, iterateDataDependencies } from "./dataReadiness.js";
 import NamedSource from "./sources/namedSource.js";
 
 /**
@@ -234,6 +235,169 @@ describe("named dataset scopes", () => {
 });
 
 describe("derived named datasets", () => {
+    test("replays contiguous coverage groups after a derived lookup changes", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const summarySpec = {
+            name: "summary",
+            transform: [
+                {
+                    type: "lookup",
+                    from: { name: "background" },
+                    key: "state",
+                    fields: "category",
+                    values: ["q"],
+                },
+                {
+                    type: "formula",
+                    expr: "datum.count / datum.total - datum.q",
+                    as: "score",
+                },
+                { type: "filter", expr: "isValid(datum.score)" },
+                {
+                    type: "stack",
+                    field: "score",
+                    groupby: ["start", "end"],
+                    offset: "diverging",
+                    sort: { field: "category" },
+                },
+            ],
+            mark: "rect",
+            encoding: {
+                x: { field: "start", type: "quantitative" },
+                x2: { field: "end" },
+                y: { field: "y0", type: "quantitative" },
+                y2: { field: "y1" },
+            },
+        };
+        /** @type {Collector} */
+        let coverageCache;
+        let primaryCompletedBeforeTable = false;
+        const { view, context } = await createHeadlessEngine(
+            {
+                datasets: {
+                    calls: [
+                        { start: 0, end: 2, state: "quiet" },
+                        { start: 0, end: 4, state: "active" },
+                    ],
+                },
+                params: [{ name: "activePrior", value: 0.25 }],
+                data: { name: "calls" },
+                transform: [
+                    {
+                        type: "branch",
+                        transform: [
+                            { type: "collect" },
+                            {
+                                type: "formula",
+                                expr: "datum.state === 'active' ? activePrior : 1 - activePrior",
+                                as: "q",
+                            },
+                            { type: "publish", dataset: "background" },
+                        ],
+                    },
+                    {
+                        type: "categoricalCoverage",
+                        start: "start",
+                        end: "end",
+                        category: "state",
+                    },
+                ],
+                hconcat: [
+                    {
+                        name: "coverage",
+                        mark: { type: "rect", tooltip: null },
+                        encoding: {
+                            x: { field: "start", type: "quantitative" },
+                            x2: { field: "end" },
+                        },
+                    },
+                    summarySpec,
+                ],
+            },
+            {
+                onDataFlowBuilt(dataFlow) {
+                    const source =
+                        dataFlow.findNamedDataSource("calls").dataSource;
+
+                    // Confirm that startup must replay the implicit collector
+                    // once the derived side table publishes.
+                    source.visit((node) => {
+                        if (
+                            node.label === "lookup" &&
+                            node.parent instanceof Collector
+                        ) {
+                            coverageCache = node.parent;
+                            const [table] = node.dataDependencies;
+                            onTestFinished(
+                                coverageCache.observe(() => {
+                                    primaryCompletedBeforeTable ||=
+                                        !table.completed;
+                                })
+                            );
+                        }
+                    });
+                },
+            }
+        );
+        onTestFinished(() => view.disposeSubtree());
+
+        /** @param {import("../view/view.js").default} summary */
+        const offsets = (summary) =>
+            getRows(summary).map(({ start, end, category, y0, y1 }) => [
+                start,
+                end,
+                category,
+                y0,
+                y1,
+            ]);
+        const summary = getView(view, "summary");
+        expect(primaryCompletedBeforeTable).toBe(true);
+        expect(isDataReady(summary.flowHandle.collector)).toBe(true);
+        expect(offsets(summary)).toEqual([
+            [0, 2, "active", 0, 0.25],
+            [0, 2, "quiet", -0.25, 0],
+            [2, 4, "active", 0, 0.75],
+        ]);
+
+        const initialRevision = coverageCache.dataRevision;
+        const source = context.dataFlow.findNamedDataSource("calls").dataSource;
+        const load = vi.spyOn(source, "load");
+        onTestFinished(() => load.mockRestore());
+        view.paramRuntime.setValue("activePrior", 0.75);
+        await view.paramRuntime.whenPropagated();
+        expect(offsets(summary)).toEqual([
+            [0, 2, "active", -0.25, 0],
+            [0, 2, "quiet", 0, 0.25],
+            [2, 4, "active", 0, 0.25],
+        ]);
+        expect(coverageCache.dataRevision).toBe(initialRevision);
+
+        const parent = /** @type {import("../view/concatView.js").default} */ (
+            view
+        );
+        const inserted = await context.createOrImportView(
+            { ...summarySpec, name: "inserted" },
+            parent,
+            getView(view, "coverage"),
+            "inserted"
+        );
+        parent.appendChildView(inserted);
+        await initializeVisibleViewData(
+            view,
+            context.dataFlow,
+            context.textMetrics
+        );
+        expect(offsets(inserted)).toEqual(offsets(summary));
+        const stack = iterateDataDependencies(
+            inserted.flowHandle.collector
+        ).find((node) => node.label === "stack");
+        expect(stack?.parent?.outputGrouping).toMatchObject({
+            keys: expect.arrayContaining([["start", "end"]]),
+            fileFree: true,
+        });
+        expect(load).not.toHaveBeenCalled();
+    });
+
     test("joins lane positions on first load and updates both readers from the same input", async () => {
         let sourceLoads = 0;
         const { view, context } = await createHeadlessEngine(

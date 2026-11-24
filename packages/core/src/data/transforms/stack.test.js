@@ -1,14 +1,117 @@
 import { describe, expect, test } from "vitest";
-import { processData } from "../flowTestUtils.js";
+import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
 import StackTransform from "./stack.js";
 import Collector from "../collector.js";
+import CategoricalCoverageTransform from "./categoricalCoverage.js";
 import CloneTransform from "./clone.js";
+import FormulaTransform from "./formula.js";
 
 const sampleData = [
     { group: "a", choice: "q", value: 1 },
     { group: "b", choice: "x", value: 1 },
     { group: "b", choice: "y", value: 3 },
 ];
+
+test("streams a span with literal coordinate aliases before the facet ends", () => {
+    const coverage = new CategoricalCoverageTransform({
+        type: "categoricalCoverage",
+        start: "start",
+        end: "end",
+        category: "category",
+        asStart: "span.start",
+    });
+    const formula = new FormulaTransform(
+        {
+            type: "formula",
+            expr: "datum.category === 'A' ? -datum.count : datum.count",
+            as: "value",
+        },
+        makeParamRuntimeProvider()
+    );
+    const stack = new StackTransform({
+        type: "stack",
+        groupby: ['["span.start"]', "end"],
+        field: "value",
+        sort: { field: "value" },
+        offset: "diverging",
+    });
+    const output = new Collector();
+    coverage.addChild(formula);
+    formula.addChild(stack);
+    stack.addChild(output);
+    formula.initializeOnce();
+
+    coverage.beginBatch({ type: "facet", facetId: ["first"] });
+    for (const category of ["A", "C", "B"]) {
+        coverage.handle({ start: 0, end: 2, category });
+    }
+    coverage.handle({ start: 2, end: 4, category: "B" });
+    coverage.handle({ start: 4, end: 6, category: "A" });
+    coverage.handle({ start: 6, end: 8, category: "C" });
+
+    /** @param {string} facet */
+    const bounds = (facet) =>
+        output.facetBatches
+            .get([facet])
+            .map((row) => [row["span.start"], row.category, row.y0, row.y1]);
+    const firstSpan = [
+        [0, "A", -1, 0],
+        [0, "C", 0, 1],
+        [0, "B", 1, 2],
+    ];
+    expect(bounds("first")).toEqual(firstSpan);
+
+    coverage.beginBatch({ type: "facet", facetId: ["second"] });
+    coverage.handle({ start: 0, end: 2, category: "A" });
+    coverage.complete();
+
+    expect(bounds("first")).toEqual([
+        ...firstSpan,
+        [2, "B", 0, 1],
+        [4, "A", -1, 0],
+        [6, "C", 0, 1],
+    ]);
+    expect(bounds("second")).toEqual([[0, "A", -1, 0]]);
+});
+
+test("regroups coverage when a formula rewrites a grouping field", () => {
+    const coverage = new CategoricalCoverageTransform({
+        type: "categoricalCoverage",
+        start: "start",
+        end: "end",
+        category: "category",
+    });
+    const formula = new FormulaTransform(
+        { type: "formula", expr: "datum.start % 4", as: "start" },
+        makeParamRuntimeProvider()
+    );
+    const stack = new StackTransform({
+        type: "stack",
+        groupby: ["start", "end"],
+    });
+    const rewriteEnd = new FormulaTransform(
+        { type: "formula", expr: "datum.end % 4", as: "end" },
+        makeParamRuntimeProvider()
+    );
+    coverage.addChild(formula);
+    formula.addChild(rewriteEnd);
+    rewriteEnd.addChild(stack);
+    const output = new Collector();
+    stack.addChild(output);
+    formula.initializeOnce();
+    rewriteEnd.initializeOnce();
+
+    for (const [i, category] of ["A", "B", "C"].entries()) {
+        coverage.handle({ start: 2 * i, end: 2 * i + 2, category });
+    }
+    coverage.complete();
+    const rows = Array.from(output.getData());
+    expect(rows.map(({ start, end, y0, y1 }) => [start, end, y0, y1])).toEqual([
+        [0, 2, 0, 1],
+        [0, 2, 1, 2],
+        [2, 0, 0, 1],
+    ]);
+});
 
 test.each(/** @type {const} */ (["zero", "diverging"]))(
     "%s stacks isolate facets and sort rows across file boundaries",

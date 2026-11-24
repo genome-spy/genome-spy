@@ -39,6 +39,9 @@ export default class Collector extends FlowNode {
     /** @type {import("./fileBatchUtils.js").FileBatchAccessor} */
     #getFileBatch = () => undefined;
 
+    /** @type {import("./outputGrouping.js").OutputGrouping | undefined} */
+    #outputGrouping;
+
     #rowCount = 0;
 
     #uniqueIdAccessor = field(UNIQUE_ID_KEY);
@@ -77,6 +80,10 @@ export default class Collector extends FlowNode {
         return "collect";
     }
 
+    get outputGrouping() {
+        return this.#outputGrouping;
+    }
+
     /**
      * @param {import("../spec/transform.js").CollectParams} [params]
      * @param {import("./flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
@@ -113,6 +120,7 @@ export default class Collector extends FlowNode {
         this.#buffer = [];
         this.#fileBatchStarts = [];
         this.#getFileBatch = () => undefined;
+        this.#outputGrouping = undefined;
         this.#rowCount = 0;
         this.#uniqueIdIndex = new Uint32Array(0);
         this.#keyIndex.invalidate();
@@ -190,6 +198,15 @@ export default class Collector extends FlowNode {
                 data.sort(this.#comparator);
             }
         }
+
+        const grouping = this.parent?.outputGrouping;
+        this.#outputGrouping =
+            grouping && !this.params.groupby?.length && !this.#comparator
+                ? {
+                      keys: grouping.keys,
+                      fileFree: this.#fileBatchStarts.length === 0,
+                  }
+                : undefined;
 
         this.#viewportDomains.complete();
 

@@ -2,6 +2,10 @@ import { makeSelectionTestExpression } from "../../selection/selection.js";
 import Transform from "./transform.js";
 
 export default class FilterTransform extends Transform {
+    get outputGrouping() {
+        return this.parent?.outputGrouping;
+    }
+
     /**
      *
      * @param {import("../../spec/transform.js").FilterParams} params
