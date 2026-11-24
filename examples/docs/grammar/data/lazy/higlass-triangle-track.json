@@ -1,19 +1,18 @@
 {
   "description": "Hi-C triangle track",
   "assembly": "hg19",
+  "projection": "triangle",
 
   "data": {
     "lazy": {
       "type": "higlass",
       "url": "https://higlass.io/api/v1/",
-      "tileset": "CQMd6V_cRw6iCI_-Unl3PQ",
-      "projection": "triangle"
+      "tileset": "CQMd6V_cRw6iCI_-Unl3PQ"
     }
   },
 
   "mark": {
     "type": "raster",
-    "projection": "triangle",
     "tooltip": { "handler": "default" }
   },
   "encoding": {
@@ -28,6 +27,7 @@
         "zoom": true
       }
     },
+    "y": { "dimension": "row", "type": "locus" },
     "color": {
       "field": "value",
       "type": "quantitative",

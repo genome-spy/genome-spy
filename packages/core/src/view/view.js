@@ -29,6 +29,7 @@ import {
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
+import { TRIANGLE_ASPECT_PARAM } from "./triangleProjection.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
@@ -134,6 +135,9 @@ export default class View {
     #heightSetter;
     // TODO: Consider replacing param-backed layout size with built-in layout
     // signals. That would avoid width/height shadowing rules altogether.
+
+    /** @type {(value: number) => void} */
+    #triangleAspectSetter;
 
     /** @type {boolean} */
     #hasRendered = false;
@@ -312,6 +316,15 @@ export default class View {
             }
         }
 
+        if ("projection" in spec && spec.projection === "triangle") {
+            this.#triangleAspectSetter = this.paramRuntime.allocateSetter(
+                TRIANGLE_ASPECT_PARAM,
+                0
+            );
+            layoutSizeRefs.add(
+                this.paramRuntime.getParamRef(TRIANGLE_ASPECT_PARAM)
+            );
+        }
         const params = [
             ...(spec.params ?? []),
             ...(getPostScaleParams(spec) ?? []),
@@ -1473,17 +1486,22 @@ export default class View {
             clipCoords(coords, normalizeClipOptions(options))
         );
 
-        if (this.#widthSetter || this.#heightSetter) {
+        if (
+            this.#widthSetter ||
+            this.#heightSetter ||
+            this.#triangleAspectSetter
+        ) {
             const overhang = this.getOverhang();
             const rootPadding = this.layoutParent
                 ? Padding.zero()
                 : this.getPadding();
 
-            this.#widthSetter?.(
-                coords.width - overhang.width - rootPadding.width
-            );
-            this.#heightSetter?.(
-                coords.height - overhang.height - rootPadding.height
+            const width = coords.width - overhang.width - rootPadding.width;
+            const height = coords.height - overhang.height - rootPadding.height;
+            this.#widthSetter?.(width);
+            this.#heightSetter?.(height);
+            this.#triangleAspectSetter?.(
+                width > 0 && height > 0 ? height / width : 0
             );
         }
 

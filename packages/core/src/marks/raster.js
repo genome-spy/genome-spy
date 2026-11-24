@@ -2,11 +2,15 @@ import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
 import { isValueDef } from "../encoder/encoder.js";
-import { hasGroupingGaps } from "../genome/indexGapMapping.js";
+import { supportsGridCoordinates } from "../scales/scaleRules.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
 import { selectionPredicateLeaves } from "../selection/selectionPredicateTree.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
+import {
+    isTriangleProjected,
+    validateTriangleScale,
+} from "../view/triangleProjection.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional } from "./markUtils.js";
 
@@ -17,9 +21,7 @@ export default class RasterMark extends Mark {
         return ["x", "y", "x2", "y2", "color", "opacity", "tooltip"];
     }
 
-    get isTriangle() {
-        return this.properties.projection === "triangle";
-    }
+    isTriangle = isTriangleProjected(this.unitView, this.properties.projection);
 
     isPickingParticipant() {
         const { tooltip } = this.properties;
@@ -58,9 +60,6 @@ export default class RasterMark extends Mark {
     /** @param {import("../spec/channel.js").Encoding} encoding */
     #fixGridPosition(encoding) {
         const triangle = this.isTriangle;
-        if (triangle && (encoding.y || encoding.y2)) {
-            throw new Error("Triangle rasters use only the x locus axis.");
-        }
         const axes = /** @type {const} */ ([
             ["x", "x2"],
             ["y", "y2"],
@@ -110,6 +109,22 @@ export default class RasterMark extends Mark {
                 domainInert,
             };
         }
+        if (triangle) {
+            const { x, y, y2 } = encoding;
+            const validRow =
+                y && "dimension" in y && "type" in x && y.type === x.type;
+            if (
+                y2 ||
+                (!validRow && (y || isTriangleProjected(this.unitView)))
+            ) {
+                throw new ViewError(
+                    "A triangle raster's y input must bind a grid dimension of the same type as x.",
+                    this.unitView
+                );
+            }
+            // Keep the authored row binding and resolve only the display x scale.
+            delete encoding.y;
+        }
     }
 
     getColorCellBinding() {
@@ -121,12 +136,16 @@ export default class RasterMark extends Mark {
             const direct = this.#usesDirectColor();
             const { x, y } = this.unitView.getEncoding();
             const column = x && "dimension" in x ? x.dimension : undefined;
-            const locus = this.isTriangle;
-            const row = locus
-                ? "row"
-                : y && "dimension" in y
-                  ? y.dimension
-                  : undefined;
+            const row =
+                y && "dimension" in y
+                    ? y.dimension
+                    : this.isTriangle
+                      ? "row"
+                      : undefined;
+            const scaleType = this.isTriangle
+                ? this.unitView.getScaleResolution("x")?.getResolvedScaleType()
+                : undefined;
+            const locus = scaleType === "locus" || scaleType === "index";
             const options = { direct, locus };
             return {
                 type,
@@ -214,6 +233,12 @@ export default class RasterMark extends Mark {
                 }
                 if (type !== "interval") continue;
                 for (const { input, secondaryInput } of projections) {
+                    if (this.isTriangle && input !== "color") {
+                        throw new ViewError(
+                            "Triangle rasters only support interval conditions on color.",
+                            this.unitView
+                        );
+                    }
                     if (input[0] === bandAxis) {
                         throw new ViewError(
                             `Raster band axis "${bandAxis}" requires a categorical selection.`,
@@ -269,12 +294,9 @@ export default class RasterMark extends Mark {
 
     /** @param {"x" | "y" | undefined} bandAxis */
     #validateGridScales(bandAxis) {
-        const triangle = this.isTriangle;
-        if (triangle && this.encoders.x.scale?.type !== "locus") {
-            throw new ViewError(
-                "Triangle rasters need a locus scale on x.",
-                this.unitView
-            );
+        if (this.isTriangle) {
+            validateTriangleScale(this.encoders.x.scale, this.unitView);
+            return;
         }
         if (bandAxis && this.encoders[bandAxis].scale?.type !== "band") {
             throw new ViewError(
@@ -283,14 +305,9 @@ export default class RasterMark extends Mark {
             );
         }
         for (const axis of /** @type {const} */ (["x", "y"])) {
-            if (axis === bandAxis || (triangle && axis === "y")) continue;
-            const scale = this.encoders[axis].scale;
             if (
-                !scale ||
-                !["linear", "index", "locus"].includes(scale.type) ||
-                hasGroupingGaps(scale.props) ||
-                ("paddingInner" in scale && scale.paddingInner()) ||
-                ("paddingOuter" in scale && scale.paddingOuter())
+                axis !== bandAxis &&
+                !supportsGridCoordinates(this.encoders[axis].scale)
             ) {
                 throw new ViewError(
                     "Raster axes need linear or unpadded index/locus scales without gaps.",

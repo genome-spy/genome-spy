@@ -94,7 +94,7 @@ export function resolveRasterCell(occurrences, mark, datum, point, facetId) {
 
 /**
  * Restrict the projection to the track and bound that clip in source pixels.
- * Both source axes use the track's horizontal locus scale.
+ * Both source axes use the track's horizontal scale.
  * @param {import("../../../marks/raster.js").default} mark
  * @param {import("../../../view/layout/rectangle.js").default} coords
  * @param {import("../bounds.js").RenderBounds} visibleBounds

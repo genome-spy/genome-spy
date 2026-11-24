@@ -181,9 +181,12 @@ EXAMPLE examples/docs/grammar/data/lazy/higlass-contact-map.json height=400 spec
 
 #### Triangle track
 
-Set `projection: "triangle"` on both the source and the raster mark. The
-source selects tiles for the triangle, and the mark projects them onto one
-horizontal locus axis. Track height limits the visible contact distance.
+Set the [view projection](../projection.md#triangle-projection) to `"triangle"`
+and bind both raster dimensions.
+HiGlass selects tiles for the projected viewport, and the raster draws them
+against a single horizontal locus axis. Track height limits the visible
+contact distance. Set `projection: null` to display a rectangular matrix
+with the same encodings.
 The logarithmic color domain follows the loaded tiles and stays stable
 while you pan within the same tile set. Cells in clipped parts of a tile can
 affect the visible contrast.

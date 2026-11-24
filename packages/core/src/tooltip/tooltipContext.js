@@ -153,7 +153,7 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
     const columns = horizontal?.count ?? 1;
     const column = index % columns;
     const row = Math.floor(index / columns);
-    const genomeAxis = (/** @type {"x" | "y"} */ axis) =>
+    const scaleAxis = (/** @type {"x" | "y"} */ axis) =>
         mark.isTriangle ? "x" : axis;
     /** @type {TooltipRow[]} */
     const indexRows = [];
@@ -166,20 +166,21 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
         if (!dimension) continue;
         const start = dimension.origin + cell * dimension.step;
         const label = axis === "x" ? "Column" : "Row";
+        const coordinateAxis = scaleAxis(axis);
 
-        if (mark.encoders[axis]?.scale?.type === "index") {
+        if (mark.encoders[coordinateAxis]?.scale?.type === "index") {
             const channel = mark.encoding[axis];
             const title = channel && "title" in channel ? channel.title : null;
             indexRows.push({ key: title || label, value: start });
             continue;
         }
 
-        if (!getGenome(mark, genomeAxis(axis))) continue;
+        if (!getGenome(mark, coordinateAxis)) continue;
         const mode = getConfiguredMode(params, axis);
         if (mode === "disabled") continue;
         const end = start + dimension.step;
         const format = (/** @type {number} */ position) =>
-            formatGenomicLocus(mark, genomeAxis(axis), position);
+            formatGenomicLocus(mark, coordinateAxis, position);
         if (mode === "endpoints") {
             genomicRows.push(
                 { key: label + " start", value: format(start) },
@@ -191,7 +192,7 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
                 value:
                     mode === "locus"
                         ? format(start)
-                        : formatGenomicInterval(mark, genomeAxis(axis), [
+                        : formatGenomicInterval(mark, coordinateAxis, [
                               start,
                               end,
                           ]),
@@ -208,9 +209,9 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
             genomicRows,
             flattenDatumRows: () => [...indexRows, ...flattenDatumRows(datum)],
             formatGenomicLocus: (axis, position) =>
-                formatGenomicLocus(mark, genomeAxis(axis), position),
+                formatGenomicLocus(mark, scaleAxis(axis), position),
             formatGenomicInterval: (axis, interval) =>
-                formatGenomicInterval(mark, genomeAxis(axis), interval),
+                formatGenomicInterval(mark, scaleAxis(axis), interval),
         },
     };
 }

@@ -452,10 +452,21 @@ export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
      * The graphical mark presenting the rows.
      */
     mark: MarkType | MarkProps;
+
+    /** Coordinate projection for this plot. Null keeps Cartesian coordinates. */
+    projection?: "triangle" | null;
 }
 
 export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
+
+    /**
+     * Coordinate projection shared by the layers. A triangle projects matrix
+     * positions to a midpoint and signed separation on a fixed 45° track.
+     * Only x has an axis and supports navigation. Null keeps Cartesian coordinates.
+     */
+    projection?: "triangle" | null;
+
     layer: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
 }
 

@@ -74,17 +74,15 @@ EXAMPLE examples/docs/grammar/mark/raster/sequence-strips.json height=135
 
 ### Triangle tracks
 
-Contacts between distinct loci appear on both sides of a symmetric matrix's
-diagonal. The triangle projection rotates one half by 45° and fits its diagonal
-to a single genomic axis. The diagonal becomes the track baseline, so the
-contact map can share its axis with tracks such as gene annotations.
+A raster with a [triangle projection](../projection.md#triangle-projection)
+draws one half of a contact matrix against a single genomic axis.
 
 ![The same contact and outlined tile in the matrix and the triangle track. A hollow dot marks the tile origin in both views.](../../img/raster-triangle-projection.svg)
 
-The highlighted contact sits horizontally at the midpoint between A and B.
-Its height above the baseline is half the distance between them, measured
-using the same scale as the horizontal axis. Short-range contacts sit near
-the baseline, and long-range contacts appear higher up.
+Bind the column dimension to `x` and the row dimension to `y`, then set
+`"projection": "triangle"` on the raster's unit view or its enclosing layer.
+Annotations can [share the projection](../projection.md#layered-views)
+using their own matrix coordinates.
 
 #### Tile placement
 
@@ -100,8 +98,6 @@ becomes a diamond, as shown by the dark outline. Tiles that cross the matrix
 diagonal are clipped at the baseline. The top of the track also clips tiles,
 so zooming in shows a shorter range of contact distances at the same height.
 
-Set the mark's `projection` to `"triangle"` and bind `x` to the column
-dimension with `type: "locus"`. Omit `y`. The mark reads the other axis from
-`dimensions.row` and uses the same locus scale for both dimensions.
 The [HiGlass triangle track example](../data/lazy.md#triangle-track) shows the
-projection with tiles loaded on demand.
+projection with tiles loaded on demand. Existing specs can use the projection
+on the raster mark, where an omitted `y` binding defaults to `dimensions.row`.

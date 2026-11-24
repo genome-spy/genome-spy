@@ -4,6 +4,46 @@ import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
 import RasterMark from "./raster.js";
 
+test("triangle rasters reject positional cell intervals", async () => {
+    const dimension = { origin: 0, step: 1, count: 2 };
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    {
+                        dimensions: { column: dimension, row: dimension },
+                        fields: { value: [1, 2, 3, 4] },
+                    },
+                ],
+            },
+            projection: "triangle",
+            mark: "raster",
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                },
+            ],
+            encoding: {
+                x: { dimension: "column", type: "locus" },
+                y: { dimension: "row", type: "locus" },
+                color: { field: "value", type: "quantitative" },
+                opacity: { condition: { param: "brush", value: 1 }, value: 0 },
+            },
+        },
+        UnitView
+    );
+    try {
+        expect(() =>
+            /** @type {RasterMark} */ (view.mark).validateRenderingScales()
+        ).toThrow(
+            "Triangle rasters only support interval conditions on color."
+        );
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
 test.each(
     /** @type {const} */ ([
         {

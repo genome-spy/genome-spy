@@ -5,6 +5,7 @@ import { buildDataFlow, collectSubtreeViews } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import DataSource from "./sources/dataSource.js";
 import { VISIT_SKIP } from "../view/view.js";
+import { validateTriangleProjection } from "../view/triangleProjection.js";
 
 /** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
 const inFlightLoads = new WeakMap();
@@ -204,6 +205,7 @@ export function initializeViewSubtree(
     }
 
     for (const view of unitViews) {
+        validateTriangleProjection(view);
         const mark = view.mark;
         mark.initializeEncoders();
 

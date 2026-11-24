@@ -74,6 +74,7 @@ nav = [
             { "Multiscale" = "grammar/composition/multiscale.md" },
         ] },
         { "Scales" = "grammar/scale.md" },
+        "grammar/projection.md",
         { "Genomic Coordinates" = "grammar/genomic-coordinates.md" },
         { "Axes" = "grammar/axis.md" },
         "grammar/title.md",

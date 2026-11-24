@@ -46,6 +46,7 @@ import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
 import { readNumericRasterCell } from "../../data/rasterTile.js";
 import RasterMark from "../../marks/raster.js";
+import { isTriangleProjected } from "../../view/triangleProjection.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string, membership: boolean}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
@@ -767,6 +768,10 @@ function packRasterTiles(mark, data, intern, cellInputs) {
         }
     }
     const gridAxis = bandAxis === "x" ? "y" : "x";
+    const packRowEdges =
+        mark.encoders.x.scale.type === "linear"
+            ? (/** @type {number[]} */ values) => Float32Array.from(values)
+            : packHighPrecisionU32Array;
     return {
         // Core keeps the last covered index for domain inference. The tile
         // snapshot uses a grid edge for both rendering and brush membership.
@@ -785,10 +790,8 @@ function packRasterTiles(mark, data, intern, cellInputs) {
                   )
                 : undefined,
         rowEdges: mark.isTriangle && {
-            start: packHighPrecisionU32Array(
-                tiles.map(({ vertical }) => vertical.origin)
-            ),
-            end: packHighPrecisionU32Array(
+            start: packRowEdges(tiles.map(({ vertical }) => vertical.origin)),
+            end: packRowEdges(
                 tiles.map(
                     ({ vertical }) =>
                         vertical.origin + vertical.step * vertical.count
@@ -1354,6 +1357,15 @@ function createPositionBranch(
                       ),
         });
     } else if (scale?.type == "index" || scale?.type == "locus") {
+        // Core's projected x uses the genomic band start. WebGPU's band
+        // position starts at the lower pixel edge on a reversed range.
+        const indexBand =
+            bandOverride === undefined &&
+            range[0] > range[1] &&
+            (channel === "x" || channel === "x2") &&
+            isTriangleProjected(mark.unitView)
+                ? 1 - band
+                : band;
         const large =
             mark instanceof RasterMark ||
             isLargeIndexDomain(scale.domain().map(Number));
@@ -1368,7 +1380,7 @@ function createPositionBranch(
             scale: createIndexPositionScale(
                 scale,
                 range,
-                band,
+                indexBand,
                 channel,
                 getGapPeer(encoder.channelDef)
             ),

@@ -938,17 +938,16 @@ export interface LinkProps
  * store one packed unsigned RGBA8 value (`0xAABBGGRR`) per cell in
  * `fields.pixels`. Use a row-major `Uint32Array` or array of integers
  * with straight alpha. Set alpha to 255 for opaque RGB pixels.
- * Positional interval selections test overlap with each cell's extent. Gradient
+ * Cartesian positional interval selections test overlap with each cell's extent. Gradient
  * legend intervals test each cell's raw color value.
  */
 export interface RasterProps extends MarkPropsBase {
     type: "raster";
 
     /**
-     * Project the matrix above its diagonal onto a single locus axis. The
-     * horizontal position is the midpoint of the two loci, and height above
-     * the baseline is half their separation at the current x scale. Tile
-     * endpoints on both dimensions must be nonnegative whole-base positions.
+     * Project a contact matrix onto a triangle track. Set the projection on
+     * the view to share it with annotations. On index and locus scales, tile
+     * endpoints on both dimensions are nonnegative whole positions.
      * Omit the color domain to infer it from loaded cells. Viewport-derived
      * color domains are unsupported for this projection.
      */

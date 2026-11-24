@@ -2,9 +2,11 @@
   "description": [
     "Hi-C triangle track",
     "Pan or zoom along the genomic axis. Hover over a cell to see the contact value and genomic bins. Height above the axis shows contact separation. Drag on the logarithmic color legend to filter contact values.",
+    "The point and label mark an illustrative contact using the same projection as the heatmap.",
     "Data source: Rao et al. (2014), GM12878 MboI all replicates on hg19, served by HiGlass."
   ],
   "assembly": "hg19",
+  "projection": "triangle",
 
   "params": [
     {
@@ -21,8 +23,27 @@
     "lazy": {
       "type": "higlass",
       "url": "https://higlass.io/api/v1/",
-      "tileset": "CQMd6V_cRw6iCI_-Unl3PQ",
-      "projection": "triangle"
+      "tileset": "CQMd6V_cRw6iCI_-Unl3PQ"
+    }
+  },
+
+  "scales": {
+    "x": {
+      "type": "locus",
+      "domain": [
+        { "chrom": "chr1", "pos": 49152000 },
+        { "chrom": "chr1", "pos": 57343999 }
+      ],
+      "zoom": true,
+      "name": "matrixX"
+    },
+    "y": {
+      "type": "locus",
+      "domain": [
+        { "chrom": "chr1", "pos": 49152000 },
+        { "chrom": "chr1", "pos": 57343999 }
+      ],
+      "zoom": true
     }
   },
 
@@ -30,28 +51,11 @@
     {
       "mark": {
         "type": "raster",
-        "projection": "triangle",
         "tooltip": { "handler": "default" }
       },
       "encoding": {
-        "x": {
-          "dimension": "column",
-          "type": "locus",
-          "scale": {
-            "domain": [
-              {
-                "chrom": "chr1",
-                "pos": 49152000
-              },
-              {
-                "chrom": "chr1",
-                "pos": 57343999
-              }
-            ],
-            "zoom": true,
-            "name": "matrixX"
-          }
-        },
+        "x": { "dimension": "column", "type": "locus" },
+        "y": { "dimension": "row", "type": "locus" },
         "color": {
           "field": "value",
           "type": "quantitative",
@@ -73,6 +77,39 @@
     },
 
     {
+      "data": {
+        "values": [{ "a": 51200000, "b": 52400000 }]
+      },
+      "encoding": {
+        "x": { "field": "a", "type": "locus" },
+        "y": { "field": "b", "type": "locus" }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "point",
+            "size": 64,
+            "fill": "white",
+            "stroke": "black",
+            "clip": true,
+            "tooltip": null
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "text": "Example contact",
+            "baseline": "middle",
+            "dx": 8,
+            "clip": true,
+            "tooltip": null
+          }
+        }
+      ]
+    },
+
+    {
+      "projection": null,
       "params": [
         { "name": "labelFontSize", "value": 11 },
         { "name": "labelLineHeight", "expr": "1.2 * labelFontSize" },

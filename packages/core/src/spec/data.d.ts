@@ -371,8 +371,9 @@ export interface HiGlassData extends Pick<DebouncedData, "debounce"> {
 
     /**
      * Request tiles for a triangle track using the view's x locus axis and
-     * height. Set the raster mark's `projection` to `"triangle"` to draw this
-     * track. Omit this option for a matrix with two locus axes.
+     * height. A view with `projection: "triangle"` configures the source and
+     * raster together. Supply this option with a mark-level projection in
+     * existing specs.
      */
     projection?: "triangle";
 

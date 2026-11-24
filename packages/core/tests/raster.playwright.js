@@ -60,6 +60,11 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
     }
 }
 
+test("webgpu triangle raster supports fractional linear grid coordinates", ({
+    playwright,
+    baseURL,
+}) => checkTriangleRaster(playwright, baseURL, "webgpu", "quantitative"));
+
 /** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
 async function checkRasterLens(playwright, baseURL, renderer) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
@@ -422,19 +427,30 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
     );
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
-async function checkTriangleRaster(playwright, baseURL, renderer) {
+/**
+ * @param {Playwright} playwright
+ * @param {string} baseURL
+ * @param {RasterRenderer} renderer
+ * @param {"locus" | "quantitative"} [type]
+ */
+async function checkTriangleRaster(
+    playwright,
+    baseURL,
+    renderer,
+    type = "locus"
+) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
         const results = await page.evaluate(
-            async ({ src, renderer, register }) => {
+            async ({ src, renderer, register, type }) => {
                 const { embed } = await import(src + "minimal.js");
                 await import(src + register);
                 await import(src + "rendering/registerSvg.js");
-                const start = 2_000_000_001;
+                // Both domains span 16 units, but linear endpoints are fractional.
+                const start = type === "locus" ? 2_000_000_001 : 0.25;
                 const tile = (column, row, color) => ({
                     dimensions: {
                         column: { origin: start + column, step: 1, count: 2 },
-                        row: { origin: start + row, step: 1, count: 2 },
+                        matrixRow: { origin: start + row, step: 1, count: 2 },
                     },
                     fields: { color: [color, color, color, color] },
                 });
@@ -448,27 +464,63 @@ async function checkTriangleRaster(playwright, baseURL, renderer) {
                             height: 60,
                             padding: 0,
                             view: { stroke: null },
-                            data: {
-                                values: [
-                                    tile(0, 0, 0xff00ff00),
-                                    tile(0, 2, 0xff0000ff),
-                                    tile(0, 4, 0xffff0000),
-                                    tile(-2, 2, 0xff00ffff),
-                                ],
-                            },
-                            mark: { type: "raster", projection: "triangle" },
-                            encoding: {
+                            projection: "triangle",
+                            scales: {
                                 x: {
-                                    dimension: "column",
-                                    type: "locus",
-                                    axis: null,
-                                    scale: {
-                                        domain: [start, start + 15],
-                                        reverse,
+                                    type: type === "locus" ? "locus" : "linear",
+                                    domain: [
+                                        start,
+                                        start + (type === "locus" ? 15 : 16),
+                                    ],
+                                    reverse,
+                                },
+                            },
+                            layer: [
+                                {
+                                    data: {
+                                        values: [
+                                            tile(0, 0, 0xff00ff00),
+                                            tile(0, 2, 0xff0000ff),
+                                            tile(0, 4, 0xffff0000),
+                                            tile(-2, 2, 0xff00ffff),
+                                        ],
+                                    },
+                                    mark: "raster",
+                                    encoding: {
+                                        x: {
+                                            dimension: "column",
+                                            type,
+                                            axis: null,
+                                        },
+                                        y: { dimension: "matrixRow", type },
+                                        color: { field: "color", scale: null },
                                     },
                                 },
-                                color: { field: "color", scale: null },
-                            },
+                                {
+                                    // The center of the tile at column 1 and row 5.
+                                    data: {
+                                        values: [
+                                            {
+                                                column: start + 1,
+                                                row: start + 5,
+                                            },
+                                        ],
+                                    },
+                                    mark: {
+                                        type: "point",
+                                        size: 25,
+                                        color: "black",
+                                    },
+                                    encoding: {
+                                        x: {
+                                            field: "column",
+                                            type,
+                                            axis: null,
+                                        },
+                                        y: { field: "row", type },
+                                    },
+                                },
+                            ],
                         },
                         {
                             renderer,
@@ -490,6 +542,7 @@ async function checkTriangleRaster(playwright, baseURL, renderer) {
                             [5, 57.5],
                             [10, 45],
                             [22.5, 42.5],
+                            [30, 40],
                         ].map(([x, y]) => [
                             Math.floor(reverse ? 160 - x : x),
                             Math.floor(y),
@@ -499,12 +552,24 @@ async function checkTriangleRaster(playwright, baseURL, renderer) {
                             points,
                             null
                         );
-                        const { pixels: svg } =
-                            await globalThis.readSvgRasterPixels(api, points);
+                        const { pixels: svg, document } =
+                            await globalThis.readSvgRasterPixels(
+                                api,
+                                points.slice(0, -1)
+                            );
+                        const point = document.querySelector("circle");
                         samples.push({
-                            raster,
+                            raster: raster.slice(0, -1),
                             svg,
-                            yScale: !!view.getScaleResolution("y"),
+                            pointPixel: raster.at(-1),
+                            pointPosition: [
+                                Number(point.getAttribute("cx")),
+                                Number(point.getAttribute("cy")),
+                            ],
+                            reverse,
+                            zoomableY: view
+                                .getScaleResolution("y")
+                                .isZoomable(),
                         });
                     } finally {
                         api.finalize();
@@ -512,7 +577,7 @@ async function checkTriangleRaster(playwright, baseURL, renderer) {
                 }
                 return samples;
             },
-            setup
+            { ...setup, type }
         );
         const expected = [
             [255, 0, 0, 255],
@@ -520,8 +585,17 @@ async function checkTriangleRaster(playwright, baseURL, renderer) {
             [0, 255, 0, 255],
             [255, 255, 0, 255],
         ];
-        for (const { raster, svg, yScale } of results) {
-            expect(yScale).toBe(false);
+        for (const {
+            raster,
+            svg,
+            pointPixel,
+            pointPosition,
+            reverse,
+            zoomableY,
+        } of results) {
+            expect(zoomableY).toBe(false);
+            expect(pointPixel).toEqual([0, 0, 0, 255]);
+            expect(pointPosition).toEqual([reverse ? 130 : 30, 40]);
             for (const pixels of [raster, svg]) {
                 expect(pixels.slice(0, -1)).toEqual(expected);
                 if (renderer !== "canvas") {
@@ -1747,7 +1821,7 @@ async function withRasterPage(
                     png,
                     points.map(([px, py]) => [px - x, py - y])
                 );
-                return { pixels, rasterized };
+                return { pixels, rasterized, document: svg };
             };
         });
         try {
