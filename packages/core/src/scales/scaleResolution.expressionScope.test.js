@@ -317,12 +317,26 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual([0, 4]);
     });
 
+    const hiddenRange = /Parameter "childRange" is not visible from the shared/;
     test.each([
-        ["size", "quantitative", [0, { expr: "childRange" }], 10],
-        ["color", "nominal", { expr: "childRange" }, ["red", "blue"]],
+        ["size", "quantitative", [0, { expr: "childRange" }], 10, hiddenRange],
+        [
+            "color",
+            "nominal",
+            { expr: "childRange" },
+            ["red", "blue"],
+            hiddenRange,
+        ],
+        [
+            "color",
+            "nominal",
+            { expr: "palette" },
+            undefined,
+            "must return a non-empty array",
+        ],
     ])(
-        "failed child-local %s range leaves initialized scales unchanged",
-        async (channel, type, range, value) => {
+        "rejects an invalid %s range before changing initialized scales",
+        async (channel, type, range, childValue, error) => {
             const base = point(channel, {
                 name: "base",
                 encoding: { x: quantitative() },
@@ -330,6 +344,7 @@ describe("scale resolution expression scope", () => {
             base.encoding[channel].type = type;
             const view = await initView(
                 {
+                    params: [{ name: "palette", value: 1 }],
                     data: { values: pointValues() },
                     layer: [base],
                 },
@@ -347,16 +362,17 @@ describe("scale resolution expression scope", () => {
 
             const invalid = point(channel, {
                 name: "invalid",
-                params: [{ name: "childRange", value }],
+                params:
+                    childValue === undefined
+                        ? undefined
+                        : [{ name: "childRange", value: childValue }],
                 scale: { domain: [0, 1], range },
                 encoding: {
                     x: quantitative("value", { domain: [10, 20] }),
                 },
             });
             invalid.encoding[channel].type = type;
-            await expect(view.addChildSpec(invalid)).rejects.toThrow(
-                `Parameter "childRange" is not visible from the shared ${channel} scale resolution.`
-            );
+            await expect(view.addChildSpec(invalid)).rejects.toThrow(error);
 
             expect(view.children.map((child) => child.name)).toEqual(["base"]);
             expect(resolution.getOrderedMembers()).toHaveLength(1);
@@ -364,6 +380,8 @@ describe("scale resolution expression scope", () => {
             expect(resolution.getScale().range()).toEqual(baselineRange);
             expect(xResolution.getScale().domain()).toEqual(baselineXDomain);
             expect(xDomainNotifications).toBe(0);
+            view.paramRuntime.setValue("palette", 2);
+            await view.paramRuntime.whenPropagated();
         }
     );
 

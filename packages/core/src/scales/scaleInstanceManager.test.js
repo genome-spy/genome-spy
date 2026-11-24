@@ -10,9 +10,10 @@ import "./scaleResolution.js";
 /** @type {Map<ScaleInstanceManager, ViewParamRuntime>} */
 const runtimes = new Map();
 
-/** @param {Omit<ConstructorParameters<typeof ScaleInstanceManager>[0], "getRuntime" | "createExpression"> & {runtime?: ViewParamRuntime}} options */
+/** @param {Omit<ConstructorParameters<typeof ScaleInstanceManager>[0], "channel" | "getRuntime" | "createExpression"> & {runtime?: ViewParamRuntime, channel?: import("../spec/channel.js").Channel}} options */
 function createManager({ runtime = new ViewParamRuntime(), ...options }) {
     const manager = new ScaleInstanceManager({
+        channel: "size",
         ...options,
         getRuntime: () => runtime,
         createExpression: (expr) => runtime.createExpression(expr),
@@ -116,6 +117,7 @@ describe("ScaleInstanceManager", () => {
         });
         const manager = createManager({
             runtime,
+            channel: "fill",
             onRangeChange: () => {},
             onDomainChange: () => {},
             getGenomeStore: () => undefined,
@@ -134,9 +136,9 @@ describe("ScaleInstanceManager", () => {
             "An ordinal scale range expression must return a non-empty array."
         );
         expect(() => setPalette([])).toThrow("must return a non-empty array");
-        expect(() => setPalette([false])).toThrow(
-            "must be strings or finite numbers"
-        );
+        for (const invalid of [[false], [17], ["bogus-color"]]) {
+            expect(() => setPalette(invalid)).toThrow("must be CSS colors");
+        }
         expect(scale.range()).toEqual(["blue", "red"]);
     });
 
