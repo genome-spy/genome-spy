@@ -74,7 +74,34 @@ EXAMPLE examples/docs/grammar/mark/raster/sequence-strips.json height=135
 
 ### Triangle tracks
 
-Set the mark's `projection` to `"triangle"` and bind `x` to a locus dimension.
-The second tile dimension must be named `row`. The
-[HiGlass examples](../data/lazy.md#higlass) show how to load tiles for both
-rectangular contact maps and triangle tracks.
+Contacts between distinct loci appear on both sides of a symmetric matrix's
+diagonal. The triangle projection rotates one half by 45° and fits its diagonal
+to a single genomic axis. The diagonal becomes the track baseline, so the
+contact map can share its axis with tracks such as gene annotations.
+
+![The same contact and outlined tile in the matrix and the triangle track. A hollow dot marks the tile origin in both views.](../../img/raster-triangle-projection.svg)
+
+The highlighted contact sits horizontally at the midpoint between A and B.
+Its height above the baseline is half the distance between them, measured
+using the same scale as the horizontal axis. Short-range contacts sit near
+the baseline, and long-range contacts appear higher up.
+
+#### Tile placement
+
+A tile's `column` and `row` origins locate one corner in the original matrix,
+marked by the hollow dot in the figure. The same midpoint and distance rule
+places that corner in the track. For example, origins at 20 Mb and 30 Mb put
+the corner above 25 Mb, at a height equal to the width of 5 Mb on the locus
+scale.
+
+Each dimension ends at `origin + step * count`. The mark projects all four
+corners from the starts and ends of the two dimensions. A square tile
+becomes a diamond, as shown by the dark outline. Tiles that cross the matrix
+diagonal are clipped at the baseline. The top of the track also clips tiles,
+so zooming in shows a shorter range of contact distances at the same height.
+
+Set the mark's `projection` to `"triangle"` and bind `x` to the column
+dimension with `type: "locus"`. Omit `y`. The mark reads the other axis from
+`dimensions.row` and uses the same locus scale for both dimensions.
+The [HiGlass triangle track example](../data/lazy.md#triangle-track) shows the
+projection with tiles loaded on demand.

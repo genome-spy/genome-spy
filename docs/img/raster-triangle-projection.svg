@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="274" viewBox="0 0 660 274" role="img" aria-labelledby="title description">
+  <title id="title">Projection of a contact matrix onto a triangle track</title>
+  <desc id="description">The left panel shows the contact between column locus A and row locus B in the shaded half of a symmetric contact matrix. On the right, the same cell is a diamond above the midpoint of A and B. Its height is half their separation, and the matrix diagonal is now the baseline. The dark outline tracks a two-by-two tile through the projection. A hollow dot marks the corner defined by the column and row origins.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; font-size: 16px; fill: #334155; text-anchor: middle; }
+    .heading { font-size: 20px; font-weight: 600; text-anchor: start; }
+    .hint { font-size: 14px; }
+    .x { fill: #2d6aaa; }
+    .y { fill: #956018; }
+    .mirror { fill: #e9edf2; stroke: #64748b; stroke-width: 1.5; }
+    .half { fill: #e8f1fc; stroke: #2d6aaa; stroke-width: 1.5; }
+    .grid { fill: none; stroke: #a5bfdc; }
+    .mirror-grid { stroke: #cbd5e1; }
+    .contact { fill: #ffe0b8; stroke: #b37a26; stroke-width: 1.5; }
+    .tile { fill: none; stroke: #475569; stroke-width: 2; }
+    .origin { fill: white; stroke: #475569; stroke-width: 1.5; }
+    .guide { fill: none; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .x-guide { stroke: #2d6aaa; }
+    .y-guide { stroke: #b37a26; }
+    .axis { fill: none; stroke: #64748b; stroke-width: 1.5; }
+    .half, .grid, .contact, .tile { vector-effect: non-scaling-stroke; }
+  </style>
+  <defs>
+    <g id="matrix-half">
+      <path class="half" d="M0 0V-168H168Z"/>
+      <path class="grid" d="M42 -42V-168 M84 -84V-168 M126 -126V-168 M0 -42H42 M0 -84H84 M0 -126H126"/>
+      <rect class="contact" x="0" y="-126" width="42" height="42"/>
+      <rect class="tile" x="0" y="-168" width="84" height="84"/>
+    </g>
+  </defs>
+
+  <rect width="660" height="274" fill="white"/>
+  <text class="heading" x="66" y="28">Contact matrix</text>
+  <text class="heading" x="387" y="28">Triangle track</text>
+
+  <rect class="mirror" x="66" y="52" width="168" height="168"/>
+  <path class="grid mirror-grid" d="M108 178V220 M150 136V220 M192 94V220 M108 178H234 M150 136H234 M192 94H234"/>
+  <use href="#matrix-half" transform="translate(66 220)"/>
+  <path class="guide x-guide" d="M87 115V220"/>
+  <path class="guide y-guide" d="M66 115H87"/>
+  <circle class="origin" cx="66" cy="136" r="3.5"/>
+  <circle cx="87" cy="115" r="3" fill="#334155"/>
+  <text class="hint y" x="53" y="120">B</text>
+  <text class="hint x" x="87" y="242">A</text>
+  <text class="hint" x="150" y="261">Column locus</text>
+  <text class="hint" transform="translate(21 136) rotate(-90)">Row locus</text>
+
+  <text class="hint" x="310" y="123">45° rotation</text>
+  <path class="axis" d="M272 137H348 M340 132L348 137L340 142"/>
+
+  <use href="#matrix-half" transform="translate(387 220) matrix(.5 .5 -.5 .5 0 0)"/>
+  <path class="guide x-guide" d="M408 220L450 178"/>
+  <path class="guide y-guide" d="M492 220L450 178"/>
+  <path class="guide" d="M450 220V178H569"/>
+  <circle class="origin" cx="429" cy="178" r="3.5"/>
+  <circle cx="450" cy="178" r="3" fill="#334155"/>
+  <path class="axis" d="M387 220H555 M408 220V227 M450 220V227 M492 220V227 M565 178H573 M569 178V220 M565 220H573"/>
+  <text class="hint x" x="408" y="244">A</text>
+  <text class="hint" x="450" y="244">Midpoint</text>
+  <text class="hint y" x="492" y="244">B</text>
+  <text class="hint" x="471" y="263">Genomic position</text>
+  <text class="hint" x="613" y="196">Half the</text>
+  <text class="hint" x="613" y="213">separation</text>
+</svg>
