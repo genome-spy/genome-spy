@@ -153,13 +153,15 @@ export interface Scale {
      *
      * - For [Vega-Lite discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [Vega-Lite discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values. Array elements may also be expression references, which use the parameter scope of the view that owns the scale resolution.
      *
+     * - For ordinal scales, an expression reference that returns a non-empty array of strings or finite numbers. The expression uses the same parameter scope as range entry expressions.
+     *
      * __Notes:__
      *
      * 1) For color scales you can also specify a color [`scheme`](https://vega.github.io/vega-lite/docs/scale.html#scheme) instead of `range`.
      *
      * 2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [Vega-Lite size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`).
      */
-    range?: (number | string | ExprRef)[] | string;
+    range?: (number | string | ExprRef)[] | string | ExprRef;
 
     // ordinal
 

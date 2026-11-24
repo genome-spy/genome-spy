@@ -333,6 +333,15 @@ export default class ScaleInstanceManager {
         const expressions = Array.isArray(props.range)
             ? props.range.map((value) => bind(value))
             : undefined;
+        const rangeExpression = isExprRef(props.range)
+            ? props.range
+            : undefined;
+        if (rangeExpression && scale.type !== "ordinal") {
+            throw new Error(
+                'A scale range expression requires scale type "ordinal".'
+            );
+        }
+        const readRange = rangeExpression && bind(rangeExpression);
         const gaps = hasGroupingGaps(props);
         const categorical = scale.type === "band" || scale.type === "point";
         if (gaps && !["index", "locus", "band", "point"].includes(scale.type))
@@ -390,8 +399,31 @@ export default class ScaleInstanceManager {
                 gapPositions = this.#resolveGapPositions(rawPositions, domain);
                 previousPositions = rawPositions;
             }
-            const range = expressions?.map((expression) => expression(null));
-            if (props.reverse) range?.reverse();
+            let range;
+            if (readRange) {
+                const values = readRange(null);
+                if (!Array.isArray(values) || values.length === 0) {
+                    throw new Error(
+                        "An ordinal scale range expression must return a non-empty array."
+                    );
+                }
+                range = props.reverse
+                    ? values.toReversed()
+                    : Array.from(values);
+                if (
+                    !range.every(
+                        (value) =>
+                            typeof value === "string" || Number.isFinite(value)
+                    )
+                ) {
+                    throw new Error(
+                        "Ordinal scale range expression values must be strings or finite numbers."
+                    );
+                }
+            } else {
+                range = expressions?.map((expression) => expression(null));
+                if (props.reverse) range?.reverse();
+            }
             /** @type {[number, number] | undefined} */
             let padding;
             if (paddingInputs) {

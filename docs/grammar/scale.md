@@ -575,6 +575,10 @@ example, the upper end of this size range follows the `maxSize` parameter:
 }
 ```
 
+For an ordinal scale, `"range": { "expr": "stateColors" }` takes the whole
+palette from an array-valued expression. Replacing the palette updates the marks
+and their legend together.
+
 ### Domain transitions
 
 By default, domain updates are applied with a smooth transition when that is

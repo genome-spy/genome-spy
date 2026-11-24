@@ -730,7 +730,9 @@ export default class ScaleResolution {
         }
         // Validate domain expressions too, without changing any live scales.
         this.#getConfiguredOrDefaultDomain();
-        if (Array.isArray(range)) {
+        if (isExprRef(range)) {
+            this.#createExpression(range);
+        } else if (Array.isArray(range)) {
             for (const value of range) {
                 if (isExprRef(value)) {
                     this.#createExpression(value);

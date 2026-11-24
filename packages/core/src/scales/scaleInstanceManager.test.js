@@ -107,6 +107,55 @@ describe("ScaleInstanceManager", () => {
         expect(onRangeChange).toHaveBeenCalledOnce();
     });
 
+    test("ordinal range expressions reverse a copy and reject invalid updates", () => {
+        const runtime = new ViewParamRuntime();
+        const palette = ["red", "blue"];
+        const setPalette = runtime.registerParam({
+            name: "palette",
+            value: palette,
+        });
+        const manager = createManager({
+            runtime,
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale = createScale(manager, {
+            type: "ordinal",
+            domain: ["a", "b"],
+            range: { expr: "palette" },
+            reverse: true,
+        });
+
+        expect(scale.range()).toEqual(["blue", "red"]);
+        expect(palette).toEqual(["red", "blue"]);
+
+        expect(() => setPalette("green")).toThrow(
+            "An ordinal scale range expression must return a non-empty array."
+        );
+        expect(() => setPalette([])).toThrow("must return a non-empty array");
+        expect(() => setPalette([false])).toThrow(
+            "must be strings or finite numbers"
+        );
+        expect(scale.range()).toEqual(["blue", "red"]);
+    });
+
+    test("whole-range expressions require an ordinal scale", () => {
+        const manager = createManager({
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+
+        expect(() =>
+            createScale(manager, {
+                type: "linear",
+                domain: [0, 1],
+                range: { expr: "[0, 1]" },
+            })
+        ).toThrow('A scale range expression requires scale type "ordinal".');
+    });
+
     test("domain writes delegate to the owner before changing the physical scale", () => {
         const onDomainChange = vi.fn();
         const manager = createManager({
