@@ -1,8 +1,8 @@
 # Grouping guarantees in the dataflow
 
-Proposed for GenomeSpy Core. The first delivery uses the Epilogos summary
-pipeline to verify grouping guarantees and a bounded-memory path through
-`stack`. A second delivery applies the same guarantee to `aggregate`.
+Implemented on the grouping guarantees branch. The first milestone uses the
+Epilogos summary pipeline to verify grouping guarantees and bounded buffering in
+`stack`. The second applies the same guarantee to `aggregate`.
 
 ## Motivation and scope
 
@@ -161,3 +161,28 @@ Choose a first sort-derived proof when a workload needs it and the producer can
 establish the key equality behind its comparator. For compound aggregate keys,
 evaluate whether the next producer can establish every prefix directly or can
 derive them from that stronger sort guarantee.
+
+## Implementation verification
+
+Both milestones are complete in `52b7c31d1` and `190a93c0e`. The independent
+implementation review identified a clone-specific alias that invalidates the
+guarantee, legacy `stack` input shapes, and repeated delivery after a row error.
+`7bd87ce70` addresses these with regression tests. The full suite passed before
+the review fixes, and the Core dataflow suites passed after them. Chromium
+produced identical S1 and Frequency summaries before and after a cohort change.
+The information-offset sequence logo passed its browser rendering check.
+
+Paired, warmed Node runs compared `7bd87ce70` against `5131ebb7c`. The
+264-profile simulation at 16 Mb took 997 ms → 821 ms from interval merge through
+publication and 705 ms → 601 ms on cached replay. Ordered rows, facet order, and
+picking IDs matched. Peak pending stack rows fell from 303,025 to 13. The
+coverage collector held 2,212,121 rows in both runs. The single-key aggregate
+workload reduced peak pending rows from 79,994 to 13. Its elapsed difference was
+small relative to trial variability. The uncertified stack and aggregate
+controls preserved row order and had similar timings.
+
+In the 264-profile, 16 Mb CPU profiles, `partitionRows` accounted for 9% of full
+run samples and 13% of replay samples on master. The streaming path did not call
+it. Scoring formulas and generated row propagation accounted for about a third
+of branch replay self time. Exact quantiles remained the largest sampled cost in
+the aggregate workload.
