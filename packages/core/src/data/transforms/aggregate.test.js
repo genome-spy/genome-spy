@@ -1,6 +1,8 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
+import { createHeadlessEngine } from "../../genomeSpy/headlessBootstrap.js";
 import { processData } from "../flowTestUtils.js";
 import Collector from "../collector.js";
+import FlowNode from "../flowNode.js";
 import AggregateTransform from "./aggregate.js";
 
 /**
@@ -248,5 +250,128 @@ describe("Aggregate transform", () => {
             { sample: "y", total: 5 },
         ]);
         expect(collector.facetBatches.get(["empty"])).toEqual([]);
+    });
+
+    test.each([
+        {
+            withChrom: false,
+            key: "spanStart",
+            groups: [
+                [0, 2],
+                [2, 1],
+                [4, 1],
+                [6, 1],
+                [8, 1],
+            ],
+        },
+        {
+            withChrom: true,
+            key: "contig",
+            groups: [
+                ["chr1", 3],
+                ["chr2", 3],
+            ],
+        },
+    ])(
+        "streams categorical coverage groups by $key",
+        async ({ withChrom, key, groups }) => {
+            let rowsBeforeCoverageCompleted = 0;
+            const { view } = await createHeadlessEngine(
+                {
+                    data: {
+                        values: [
+                            { chrom: "chr1", start: 0, end: 2, category: "A" },
+                            { chrom: "chr1", start: 0, end: 2, category: "B" },
+                            { chrom: "chr1", start: 2, end: 4, category: "B" },
+                            { chrom: "chr2", start: 4, end: 6, category: "A" },
+                            { chrom: "chr2", start: 6, end: 8, category: "B" },
+                            { chrom: "chr2", start: 8, end: 10, category: "A" },
+                        ],
+                    },
+                    transform: [
+                        {
+                            type: "categoricalCoverage",
+                            start: "start",
+                            end: "end",
+                            category: "category",
+                            ...(withChrom
+                                ? { chrom: "chrom", asChrom: "contig" }
+                                : { asStart: "spanStart" }),
+                        },
+                        { type: "aggregate", groupby: [key] },
+                    ],
+                    mark: { type: "point", tooltip: null },
+                },
+                {
+                    onDataFlowBuilt(dataFlow) {
+                        const output = dataFlow.collectors.find(
+                            (collector) =>
+                                collector.parent?.label === "aggregate"
+                        );
+                        const coverage = output.parent.parent;
+                        const complete = coverage.complete.bind(coverage);
+                        const probe = vi
+                            .spyOn(coverage, "complete")
+                            .mockImplementation(() => {
+                                rowsBeforeCoverageCompleted =
+                                    output.facetBatches.get(undefined).length;
+                                complete();
+                            });
+                        onTestFinished(() => probe.mockRestore());
+                    },
+                }
+            );
+            onTestFinished(() => view.disposeSubtree());
+
+            expect(rowsBeforeCoverageCompleted).toBeGreaterThan(0);
+            expect(
+                Array.from(view.flowHandle.collector.getData(), (row) => [
+                    row[key],
+                    row.count,
+                ])
+            ).toEqual(groups);
+        }
+    );
+
+    test("contiguous median groups merge signed zero across files and isolate facets", () => {
+        const source = new (class extends FlowNode {
+            get outputGrouping() {
+                return { keys: [["key"]], fileFree: false };
+            }
+        })();
+        const aggregate = new AggregateTransform({
+            type: "aggregate",
+            groupby: ["key"],
+            fields: ["value"],
+            ops: ["median"],
+            as: ["median"],
+        });
+        const output = new Collector();
+        source.addChild(aggregate);
+        aggregate.addChild(output);
+
+        source.beginBatch({ type: "facet", facetId: ["empty"] });
+        source.beginBatch({ type: "facet", facetId: ["A"] });
+        source.beginBatch({ type: "file", url: "first.json" });
+        source.handle({ key: -0, value: 5 });
+        source.beginBatch({ type: "file", url: "second.json" });
+        source.handle({ key: 0, value: 1 });
+        source.handle({ key: 0, value: 3 });
+        source.handle({ key: 2, value: 9 });
+        const firstGroup = { key: 0, median: 3 };
+        expect(output.facetBatches.get(["A"])).toStrictEqual([firstGroup]);
+
+        source.beginBatch({ type: "facet", facetId: ["B"] });
+        source.handle({ key: 2, value: 10 });
+        source.complete();
+
+        expect(output.facetBatches.get(["empty"])).toEqual([]);
+        expect(output.facetBatches.get(["A"])).toEqual([
+            firstGroup,
+            { key: 2, median: 9 },
+        ]);
+        expect(output.facetBatches.get(["B"])).toEqual([
+            { key: 2, median: 10 },
+        ]);
     });
 });

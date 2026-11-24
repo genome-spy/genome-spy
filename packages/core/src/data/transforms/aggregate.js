@@ -1,9 +1,13 @@
 import { InternMap } from "internmap";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
+import { findContiguousKey } from "../outputGrouping.js";
 import Transform from "./transform.js";
 import AGGREGATE_OPS from "./aggregateOps.js";
 
 export default class AggregateTransform extends Transform {
+    /** @type {string | null | undefined} */
+    #streamKey;
+
     get behavior() {
         return BEHAVIOR_CLONES;
     }
@@ -62,12 +66,32 @@ export default class AggregateTransform extends Transform {
     reset() {
         super.reset();
         this.buffer = [];
+        this.#streamKey = undefined;
+    }
+
+    #flushRun() {
+        if (this.buffer.length) {
+            const key = this.buffer[0][this.#streamKey];
+            // Map canonicalizes negative zero when retaining a group key.
+            this.#emit(
+                this.buffer,
+                this.params.groupby,
+                [key === 0 ? 0 : key],
+                1
+            );
+            this.buffer.length = 0;
+        }
     }
 
     /**
      * Propagate the current buffer as one aggregated batch.
      */
     #flushBuffer() {
+        if (this.#streamKey) {
+            this.#flushRun();
+            return;
+        }
+
         const groupby = this.params.groupby ?? [];
         const data = groupby.length
             ? groupRows(
@@ -110,6 +134,24 @@ export default class AggregateTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
+        if (this.#streamKey === undefined) {
+            const groupby = this.params.groupby;
+            this.#streamKey =
+                (groupby?.length === 1 &&
+                    findContiguousKey(
+                        this.parent?.outputGrouping,
+                        groupby
+                    )?.[0]) ||
+                null;
+        }
+        const first = this.buffer[0];
+        if (
+            this.#streamKey &&
+            first &&
+            first[this.#streamKey] !== datum[this.#streamKey]
+        ) {
+            this.#flushRun();
+        }
         this.buffer.push(datum);
     }
 
@@ -134,6 +176,7 @@ export default class AggregateTransform extends Transform {
 
     complete() {
         this.#flushBuffer();
+        this.#streamKey = undefined;
 
         super.complete();
     }

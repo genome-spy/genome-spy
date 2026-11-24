@@ -5,8 +5,8 @@ import { splitAccessPath } from "vega-util";
  *
  * @typedef {object} OutputGrouping
  * @prop {readonly (readonly string[])[]} keys Ordered tuples of literal
- * top-level columns. Each tuple has one run per equal primitive key within
- * a facet or an unfaceted publication.
+ * top-level columns with string or finite numeric values. Each tuple has one
+ * run per equal key within a facet or an unfaceted publication.
  * @prop {boolean} fileFree Whether the output omits physical file boundaries.
  */
 

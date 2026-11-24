@@ -88,7 +88,10 @@ export default class CategoricalCoverageTransform extends Transform {
         const spanKey = output.chrom
             ? [output.chrom, output.start, output.end]
             : [output.start, output.end];
-        this.#outputGrouping = { keys: [spanKey], fileFree: true };
+        this.#outputGrouping = {
+            keys: [spanKey, [output.chrom ?? output.start]],
+            fileFree: true,
+        };
 
         // Compile the output names once so each span row has a fixed shape.
         const fields = Object.entries(output).map(

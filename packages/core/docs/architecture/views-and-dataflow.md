@@ -86,14 +86,17 @@ arrangement.
   restart its reduction. Collectors and buffered row-preserving transforms retain
   file provenance across grouping, sorting, and replay. Whole-flow reset and
   completion retain their publication meaning; identifiers span all facets.
-- A primary output can guarantee consecutive runs of equal primitive keys within
-  each facet or unfaceted publication. The keys name literal output columns.
+- A primary output can guarantee consecutive runs of equal keys within each
+  facet or unfaceted publication. The keys name literal output columns and
+  contain strings or finite numbers.
   Consumers match them against parsed read paths. Row-order-preserving
   transforms can forward keys they leave intact. Plain collectors bind the
   property to their materialized snapshot so cached replay uses the same
-  guarantee. `categoricalCoverage` declares contiguous span keys and omits
-  physical file events. `stack` uses one run at a time when the input guarantees
-  the entire key and omits physical file events.
+  guarantee. `categoricalCoverage` declares contiguous span and chromosome keys,
+  or span and start keys when no chromosome is configured. It omits physical
+  file events. `stack` uses one run at a time when the input guarantees the
+  entire key and omits physical file events. `aggregate` uses one run at a time
+  for a guaranteed single-column key. Physical file events do not split the run.
 - Parameter-driven Filter/Formula replay uses the shared reactive runtime's
   streaming update queue. Replay roots are the actual optimized upstream
   collectors/sources; synchronous ancestors subsume pending descendant replays.
