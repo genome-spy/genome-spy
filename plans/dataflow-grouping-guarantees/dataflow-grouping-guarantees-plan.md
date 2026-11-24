@@ -32,19 +32,23 @@ single property needed for consecutive groups.
   logical partition. Physical file events can occur within a group.
 - A producer establishes the guarantee for canonical field paths and a known key
   equality. Start with the finite numeric and string coordinates validated by
-  `categoricalCoverage`. Resolve its output aliases before publishing the fact.
-  A sort direction or a shorter grouping key requires its own guarantee.
+  `categoricalCoverage`. Each of its aliases is a literal top-level column,
+  including aliases that contain dots. Parse the consumer's read paths before
+  matching their ordered tuple against the reported columns. A sort direction or
+  a shorter grouping key requires its own guarantee.
 - A node that preserves input order can forward the fact if it also preserves
   the key fields. A filter or clone can forward it directly. A formula or
   ordinary lookup with explicit output fields can forward it when those writes
   are disjoint from the key paths. Distinguish a parsed read path from a literal
   top-level write when checking overlap. Unknown transforms, regrouping, and
   reordering conservatively return unknown.
-- Resolve the input fact from the optimized primary edge before processing each
-  publication. A plain collector retains the fact with the rows it materializes,
-  including the collector inserted before a derived lookup. Cached replay uses
-  the fact for that snapshot. An initialized descendant cannot keep relying on a
-  former parent after the graph is relinked.
+- A plain collector retains the fact with the rows it materializes, including
+  the collector inserted before a derived lookup. It exposes the snapshot's fact
+  before forwarding rows, which happens before completion. A consumer selects
+  its path when it receives the first row of a publication, using the actual
+  optimized parent. Reset clears that selection. Cached replay, including
+  unfaceted replay without a batch event, uses the fact for the retained
+  snapshot.
 - Keep `FlowBatch` for existing file and facet events. Carry the guarantee once
   per output or snapshot. A per-group event would add dispatch and require
   collectors to store and replay a second set of boundaries for information the
@@ -89,14 +93,15 @@ arrived, which can affect the provenance assigned to those earlier rows.
 - Compare output rows, their order, and stack bounds with the buffered path.
   Include a negative contribution, tied sort keys, a second run, and the same
   key in the next facet. Assert that a completed run reaches downstream before
-  the facet completes. Cover a key overwrite and an unproven repeating key to
-  exercise fallback. Keep the existing cross-file sorting regression.
+  the facet completes. Cover a dotted output alias, a key overwrite, and an
+  unproven repeating key. Keep the existing cross-file sorting regression.
 - Use an inline headless spec to exercise coverage, the collector inserted by
-  the derived lookup, and stack. Republish the background after a parameter
-  change, then verify the primary collector revision, source load count, and
-  updated stack bounds. Attach a new consumer with an existing unit view's
-  completed collector as its data parent. Verify replay from that collector
-  without a source reload. Reuse the patterns in
+  the derived lookup, and stack. Exercise initial readiness when the side table
+  arrives after the primary rows, then republish the background after a
+  parameter change. Check the primary collector revision, source load count, and
+  updated stack bounds. Existing publication handling exposes only complete
+  output. Attach a new consumer with an existing unit view's completed collector
+  as its data parent and verify cached replay. Reuse the patterns in
   [named data scope tests](../../packages/core/src/data/namedDataScope.test.js)
   and
   [flow publication tests](../../packages/core/src/data/flowOutput.push.test.js).
@@ -120,7 +125,13 @@ Reuse the property and the existing aggregate evaluators for one certified
 single-key group at a time. This reduces the retained input to the largest group
 and also works for reducers that need all group values, including exact
 quantiles. Preserve the aggregate's first representative of the grouping key,
-and its behavior for empty grouped and ungrouped input.
+including Map's normalization of negative zero, and its behavior for empty
+grouped and ungrouped input.
+
+Declare one additional guarantee at the existing coverage sweep. With a
+chromosome field the sweep emits one chromosome run at a time. Without a
+chromosome field, each emitted span start has one run within the facet. A
+single-key aggregate can use the applicable output alias directly.
 
 For compound keys, require a proof for every prefix in declaration order.
 Full-key runs alone can change observable order. With input
@@ -130,10 +141,10 @@ sample order with repeated state keys and is a useful fallback example.
 
 ### Verification
 
-- Use a headless grouped input with several contiguous runs, a facet boundary,
-  and a physical file boundary inside a group. Compare aggregate output order
-  and values with the current implementation. Include an empty group case and
-  one reducer that needs the group's values.
+- Use a headless spec with coverage and aggregate to exercise both singleton
+  keys. Include a reducer that needs the group's values. Use a certified test
+  producer that emits a physical file boundary inside a group to check that it
+  remains one group. Include a facet boundary and an empty input.
 - Use
   [aggregate tests](../../packages/core/src/data/transforms/aggregate.test.js)
   to guard compound output order and key interning. Verify a genuinely grouped
