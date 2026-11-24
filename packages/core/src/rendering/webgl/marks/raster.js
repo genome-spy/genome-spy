@@ -21,9 +21,9 @@ import { readScaleDomainUniform } from "../gl/glslScaleGenerator.js";
 import { createProgram } from "../gl/webGLHelper.js";
 import VERTEX_SHADER from "./raster.vertex.glsl";
 import { rasterFragmentShader, rasterValueType } from "./rasterShader.js";
-import { createRasterOpacityShader } from "./rasterOpacityShader.js";
+import { createRasterPaintShader } from "./rasterPaintShader.js";
 
-/** @typedef {import("./rasterOpacityShader.js").TileGeometry & {texture: WebGLTexture}} TileTexture */
+/** @typedef {import("./rasterPaintShader.js").TileGeometry & {texture: WebGLTexture}} TileTexture */
 /** @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions */
 
 /** @typedef {import("../types.js").WebGLMark} WebGLMark */
@@ -53,8 +53,8 @@ export default class WebGLRasterMark {
     #pixelOffset = 0;
     #picking = false;
 
-    /** @type {ReturnType<typeof createRasterOpacityShader>} */
-    #opacity;
+    /** @type {ReturnType<typeof createRasterPaintShader>} */
+    #paint;
 
     #target = [0, 0];
     #tileUniforms = {
@@ -85,7 +85,7 @@ export default class WebGLRasterMark {
         this.mark.initializeRenderingRevisions([]);
         const gl = this.gl;
         const scale = this.#color?.getScale();
-        this.#opacity = createRasterOpacityShader(
+        this.#paint = createRasterPaintShader(
             this.mark,
             this.glHelper,
             rasterValueType(this.mark, scale),
@@ -96,7 +96,7 @@ export default class WebGLRasterMark {
             this.glHelper.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER),
             this.glHelper.compileShader(
                 gl.FRAGMENT_SHADER,
-                rasterFragmentShader(this.mark, scale, this.#opacity?.source)
+                rasterFragmentShader(this.mark, scale, this.#paint)
             )
         );
     }
@@ -121,7 +121,7 @@ export default class WebGLRasterMark {
     #getPaletteIndexer() {
         const { type } = this.mark.getColorCellBinding();
         if (type === "quantitative") return;
-        return /** @type {{domainIndexer: import("./rasterOpacityShader.js").PaletteIndexer}} */ (
+        return /** @type {{domainIndexer: import("./rasterPaintShader.js").PaletteIndexer}} */ (
             this.#color?.getScale().props
         )?.domainIndexer;
     }
@@ -186,7 +186,7 @@ export default class WebGLRasterMark {
 
     dispose() {
         this.deleteGraphicsData();
-        this.#opacity?.dispose();
+        this.#paint?.dispose();
         if (this.#programStatus)
             this.gl.deleteProgram(this.#programStatus.program);
     }
@@ -218,7 +218,7 @@ export default class WebGLRasterMark {
                     1,
                     viewOpacity * this.mark.getUniformOpacity()
                 );
-                const opacityUniforms = this.#opacity?.prepare();
+                const paintUniforms = this.#paint?.prepare();
                 if (this.#color) {
                     const mapping = this.#color.getMappingRef().get();
                     setUniforms(this.#programInfo, {
@@ -230,8 +230,8 @@ export default class WebGLRasterMark {
                             this.resources.getCategoricalTexture(this.#color),
                     });
                 }
-                if (opacityUniforms)
-                    setUniforms(this.#programInfo, opacityUniforms);
+                if (paintUniforms)
+                    setUniforms(this.#programInfo, paintUniforms);
             },
         ];
     }
@@ -330,7 +330,7 @@ export default class WebGLRasterMark {
         const { uRect } = this.#tileUniforms;
         if (uRect[0] >= uRect[2] || uRect[1] >= uRect[3]) return;
         const gl = this.gl;
-        this.#opacity?.setTileUniforms(this.#tileUniforms, datum, tile);
+        this.#paint?.setTileUniforms(this.#tileUniforms, datum, tile);
         this.#tileUniforms.uCells = texture;
         setUniforms(this.#programInfo, this.#tileUniforms);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

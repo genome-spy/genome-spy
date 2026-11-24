@@ -16,9 +16,9 @@ export function rasterValueType(mark, scale) {
 /**
  * @param {import("../../../marks/raster.js").default} mark
  * @param {import("../../../types/encoder.js").VegaScale | undefined} scale
- * @param {string} [opacity]
+ * @param {ReturnType<import("./rasterPaintShader.js").createRasterPaintShader>} [paint]
  */
-export function rasterFragmentShader(mark, scale, opacity) {
+export function rasterFragmentShader(mark, scale, paint) {
     const { domainUniform, glsl } = generateScaleGlsl(
         "color",
         scale,
@@ -41,7 +41,6 @@ precision highp float;
 precision highp int;
 uniform highp ${integer ? "usampler2D" : "sampler2D"} uCells;
 ${SCALES}
-${opacity ?? ""}
 ${domainUniform ? "uniform " + domainUniform : ""}
 ${glsl}
 
@@ -49,10 +48,12 @@ vec4 cellColor(${valueType} value) {
     ${color}
 }
 
+${paint?.source ?? ""}
+
 vec4 sampleCell(ivec2 cell) {
     ${valueType} value = texelFetch(uCells, cell, 0).r;
-    vec4 color = cellColor(value);
-    ${opacity ? "color.a *= rasterOpacity(cell, value);" : ""}
+    vec4 color = ${paint?.hasColor ? "rasterColor(cell, value)" : "cellColor(value)"};
+    ${paint?.hasOpacity ? "color.a *= rasterOpacity(cell, value);" : ""}
     return vec4(color.rgb * color.a, color.a);
 }
 ${FRAGMENT}`;

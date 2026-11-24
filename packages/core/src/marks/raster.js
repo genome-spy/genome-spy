@@ -3,10 +3,8 @@ import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { hasGroupingGaps } from "../genome/indexGapMapping.js";
-import {
-    getSelectionPredicateTreeParams,
-    selectionPredicateLeaves,
-} from "../selection/selectionPredicateTree.js";
+import { getSelectionPredicateParams } from "../selection/selection.js";
+import { selectionPredicateLeaves } from "../selection/selectionPredicateTree.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
 import Mark from "./mark.js";
@@ -48,8 +46,7 @@ export default class RasterMark extends Mark {
             !("field" in encoding.color) ||
             !["quantitative", "nominal", "ordinal"].includes(
                 encoding.color.type
-            ) ||
-            "condition" in encoding.color
+            )
         ) {
             throw new Error(
                 "Raster requires a quantitative or categorical color field."
@@ -166,32 +163,40 @@ export default class RasterMark extends Mark {
         }
         if ("field" in encoding.color) {
             encoding.color = { ...encoding.color, field: "color" };
+            delete encoding.color.condition;
         }
         return encoding;
     }
 
-    getOpacityPlan() {
-        return getCachedOrCall(this, "opacityPlan", () => {
-            const branches = this.encoders.opacity?.branches ?? [];
-            if (
-                branches.some(
-                    ({ accessor }) => !isValueDef(accessor.channelDef)
-                )
-            ) {
-                throw new ViewError(
-                    "Raster opacity requires value encodings.",
-                    this.unitView
-                );
-            }
-            if (branches.length < 2) return null;
-
-            const conditions = branches.map(
-                ({ accessor, predicate: { selection: tree } }) => ({
-                    tree,
-                    params: tree ? getSelectionPredicateTreeParams(tree) : [],
-                    opacity: accessor.asNumberAccessor(),
-                })
+    getCellPaintPlan() {
+        return getCachedOrCall(this, "cellPaintPlan", () => {
+            /**
+             * @param {import("../types/encoder.js").EncodingBranch[]} branches
+             * @param {string} errorMessage
+             */
+            const planBranches = (branches, errorMessage) =>
+                branches.map(({ accessor, predicate }) => {
+                    if (!isValueDef(accessor.channelDef)) {
+                        throw new ViewError(errorMessage, this.unitView);
+                    }
+                    return {
+                        accessor,
+                        tree: predicate.selection,
+                        params: getSelectionPredicateParams(predicate),
+                    };
+                });
+            const color = planBranches(
+                this.encoders.color.branches.slice(0, -1),
+                "Raster color conditions require value encodings."
             );
+            const opacityBranches = planBranches(
+                this.encoders.opacity?.branches ?? [],
+                "Raster opacity requires value encodings."
+            );
+            const opacity = opacityBranches.length > 1 ? opacityBranches : [];
+            if (!color.length && !opacity.length) return null;
+
+            const conditions = [...color, ...opacity];
             const memberships = conditions
                 .values()
                 .map(({ tree }) => tree)
@@ -224,7 +229,8 @@ export default class RasterMark extends Mark {
                 }
             }
             return {
-                conditions,
+                color,
+                opacity,
                 memberships,
                 params: new Set(conditions.flatMap(({ params }) => params)),
                 bandAxis,
@@ -242,7 +248,7 @@ export default class RasterMark extends Mark {
     validateRenderingScales() {
         const { bandAxis, type, direct } = this.getColorCellBinding();
         this.#validateGridScales(bandAxis);
-        this.getOpacityPlan();
+        this.getCellPaintPlan();
         if (direct) return undefined;
 
         const resolution = this.unitView.getScaleResolution("color");

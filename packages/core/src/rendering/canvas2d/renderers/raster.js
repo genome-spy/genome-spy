@@ -7,7 +7,7 @@ import {
     getRasterTriangle,
     visitRasterTiles,
 } from "../../immediate/marks/raster.js";
-import { getCanvasOpacitySpans } from "../rasterOpacity.js";
+import { getCanvasRasterPaintSpans } from "../rasterPaint.js";
 
 /**
  * A collector publication replaces its tile payloads. Mapping updates can
@@ -24,12 +24,12 @@ const tileCaches = new WeakMap();
  * @param {ReturnType<import("../../../marks/raster.js").default["validateRenderingScales"]>} resolution
  */
 export function prepareCanvasRasterTiles(mark, resolution) {
-    const opacitySpans = getCanvasOpacitySpans(mark);
+    const paintSpans = getCanvasRasterPaintSpans(mark);
     const pickable = mark.isPickingParticipant();
     const signature = [
         resolution?.getMappingRef().get(),
         mark.unitView.getCollector().dataRevision,
-        opacitySpans,
+        paintSpans,
         pickable,
     ];
     let cache = tileCaches.get(mark);
@@ -50,7 +50,7 @@ export function prepareCanvasRasterTiles(mark, resolution) {
                             datum,
                             readTile(datum),
                             colorize,
-                            opacitySpans,
+                            paintSpans,
                             pickable
                         );
                     } catch (error) {
@@ -201,10 +201,10 @@ function makeCellColorMapper(scale, categorical) {
  * @param {object} datum
  * @param {ReturnType<import("../../../data/rasterTile.js").readRasterTile>} tile
  * @param {((value: string | number | null) => number) | undefined} colorize
- * @param {ReturnType<typeof getCanvasOpacitySpans>} opacitySpans
+ * @param {ReturnType<typeof getCanvasRasterPaintSpans>} paintSpans
  * @param {boolean} pickable
  */
-function paintTile(datum, tile, colorize, opacitySpans, pickable) {
+function paintTile(datum, tile, colorize, paintSpans, pickable) {
     const { horizontal, vertical, values } = tile;
     const width = horizontal.count;
     const height = vertical.count;
@@ -218,10 +218,10 @@ function paintTile(datum, tile, colorize, opacitySpans, pickable) {
         pixels.data.byteOffset,
         pixels.data.byteLength
     );
-    /** @param {number} start @param {number} end @param {number} opacity */
-    function paint(start, end, opacity) {
+    /** @param {number} start @param {number} end @param {number} opacity @param {number} [color] */
+    function paint(start, end, opacity, color) {
         for (let i = start; i < end; i++) {
-            let packed = direct ? values[i] : colorize(values[i]);
+            let packed = color ?? (direct ? values[i] : colorize(values[i]));
             if (opacity !== 1) {
                 packed =
                     (packed & 0xffffff) |
@@ -231,7 +231,7 @@ function paintTile(datum, tile, colorize, opacitySpans, pickable) {
             if (alpha) alpha[i] = packed >>> 24;
         }
     }
-    if (opacitySpans) opacitySpans(datum, tile, paint);
+    if (paintSpans) paintSpans(datum, tile, paint);
     else paint(0, values.length, 1);
 
     return {

@@ -84,7 +84,9 @@ export default class UnitView extends View {
             if (select.type !== "point" || !select.encodings) continue;
             const component = select.encodings[0];
             const input = resolveCategoryInput(
-                this.mark.encoding,
+                hasPlotSelectionInput(param)
+                    ? this.mark.encoding
+                    : this.mark.selectionEncoding,
                 component,
                 (channel) => this.getScaleResolution(channel)?.getScale()
             );

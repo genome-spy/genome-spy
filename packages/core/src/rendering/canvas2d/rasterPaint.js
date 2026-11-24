@@ -7,37 +7,39 @@ import {
 import { shallowArrayEquals } from "../../utils/arrayUtils.js";
 import clamp from "../../utils/clamp.js";
 import { getCachedOrCall } from "../../utils/propertyCacher.js";
+import { packCssColor } from "../color.js";
 
 /** @typedef {import("../../marks/raster.js").default} RasterMark */
 /** @typedef {import("../../data/flowNode.js").Datum} Datum */
 /** @typedef {ReturnType<import("../../data/rasterTile.js").readRasterTile>} Tile */
-/** @typedef {(datum: Datum, tile: Tile, paint: (start: number, end: number, alpha: number) => void) => void} PaintOpacitySpans */
+/** @typedef {(datum: Datum, tile: Tile, paint: (start: number, end: number, alpha: number, color?: number) => void) => void} PaintSpans */
+/** @typedef {NonNullable<ReturnType<RasterMark["getCellPaintPlan"]>>} PaintPlan */
 
 /** @param {RasterMark} mark */
-export function getCanvasOpacitySpans(mark) {
-    const plan = mark.getOpacityPlan();
+export function getCanvasRasterPaintSpans(mark) {
+    const plan = mark.getCellPaintPlan();
     if (plan) {
-        return getCachedOrCall(mark, "canvasOpacitySpans", () =>
-            createOpacitySpans(mark, plan)
+        return getCachedOrCall(mark, "canvasRasterPaintSpans", () =>
+            createPaintSpans(mark, plan)
         )();
     }
 }
 
 /**
- * Reuse the cell tests until the selection or branch opacity changes.
+ * Reuse the cell tests until the selection or branch paint changes.
  * @param {RasterMark} mark
- * @param {NonNullable<ReturnType<RasterMark["getOpacityPlan"]>>} plan
- * @returns {() => PaintOpacitySpans}
+ * @param {PaintPlan} plan
+ * @returns {() => PaintSpans}
  */
-function createOpacitySpans(
+function createPaintSpans(
     mark,
-    { conditions, memberships, params, bandAxis, readBand }
+    { color, opacity, memberships, params, bandAxis, readBand }
 ) {
     const { type, direct } = mark.getColorCellBinding();
     const numericColor = type === "quantitative" && !direct;
     /** @type {unknown[]} */
     let previous = [];
-    /** @type {PaintOpacitySpans} */
+    /** @type {PaintSpans} */
     let paintSpans;
     return () => {
         const values = new Map(
@@ -46,19 +48,24 @@ function createOpacitySpans(
                 mark.unitView.paramRuntime.findValue(name),
             ])
         );
-        const opacity = conditions.map(({ opacity }) =>
-            Math.fround(clamp(opacity(null)))
+        const colors = color.map(({ accessor }) =>
+            packCssColor(accessor(null))
         );
-        const signature = [...values.values(), ...opacity];
+        const alphas = opacity.map(({ accessor }) =>
+            Math.fround(clamp(Number(accessor(null))))
+        );
+        const signature = [...values.values(), ...colors, ...alphas];
         if (shallowArrayEquals(signature, previous)) return paintSpans;
         previous = signature;
 
         const lookup = (/** @type {string} */ name) => values.get(name);
-        const predicates = conditions.map(({ tree, params }) =>
+        /** @param {PaintPlan["color"][number]} branch */
+        const compile = ({ tree, params }) =>
             !tree || !params.every(lookup)
                 ? () => !tree
-                : compileSelectionPredicateTree(tree, lookup)
-        );
+                : compileSelectionPredicateTree(tree, lookup);
+        const colorTests = color.map(compile);
+        const opacityTests = opacity.map(compile);
         /** @type {{ x: number[][], y: number[][] }} */
         const intervals = { x: [], y: [] };
         let varyingColor = false;
@@ -91,10 +98,12 @@ function createOpacitySpans(
             if (bandAxis) cell[bandAxis] = readBand(datum);
             const rows = gridCuts(y, varyingColor ? undefined : intervals.y);
             const columns = gridCuts(x, varyingColor ? undefined : intervals.x);
-            const alpha = () => {
+            /** @param {typeof colorTests} predicates */
+            const matchingBranch = (predicates) => {
                 for (let branch = 0; branch < predicates.length; branch++) {
-                    if (predicates[branch](cell)) return opacity[branch];
+                    if (predicates[branch](cell)) return branch;
                 }
+                return -1;
             };
             const projectX = intervals.x.length > 0;
             const projectY = intervals.y.length > 0;
@@ -119,11 +128,19 @@ function createOpacitySpans(
                               )
                             : values[index];
                     }
-                    const value = alpha();
+                    const value = opacityTests.length
+                        ? alphas[matchingBranch(opacityTests)]
+                        : 1;
                     if (!(value > 0)) continue;
+                    const fill = colors[matchingBranch(colorTests)];
                     for (let next = row; next < rows[i]; next++) {
                         const offset = next * x.count;
-                        paint(offset + column, offset + columns[j], value);
+                        paint(
+                            offset + column,
+                            offset + columns[j],
+                            value,
+                            fill
+                        );
                     }
                 }
             }
@@ -133,7 +150,7 @@ function createOpacitySpans(
 }
 
 /**
- * Partition the grid wherever a brush can change the opacity.
+ * Partition the grid wherever a brush can change the paint.
  * @param {import("../../data/rasterTile.js").RasterDimension} dimension
  * @param {number[][] | undefined} intervals Omit when the predicate reads cell values.
  */

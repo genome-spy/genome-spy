@@ -32,6 +32,10 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterBrush(playwright, baseURL, renderer));
+    test(`${renderer} raster color conditions compose with opacity and picking`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterColor(playwright, baseURL, renderer));
     test(`${renderer} positional brush swaps cells between overlapping rasters`, ({
         playwright,
         baseURL,
@@ -948,6 +952,150 @@ async function checkRasterBrush(playwright, baseURL, renderer) {
             brush: null,
             alpha: result.baseline,
             domain: [1, 16],
+        });
+    });
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkRasterColor(playwright, baseURL, renderer) {
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const result = await page.evaluate(
+            async ({ src, renderer, register }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                await import(src + "rendering/registerSvg.js");
+                const api = await embed(
+                    globalThis.document.querySelector("#plot"),
+                    {
+                        width: 90,
+                        height: 30,
+                        padding: 0,
+                        config: { background: null },
+                        view: { stroke: null },
+                        params: [
+                            {
+                                name: "highlight",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["color"],
+                                },
+                                bind: "legend",
+                            },
+                            {
+                                name: "hide",
+                                select: { type: "interval", encodings: ["x"] },
+                            },
+                        ],
+                        data: {
+                            values: [
+                                {
+                                    dimensions: {
+                                        column: {
+                                            origin: 0,
+                                            step: 1,
+                                            count: 3,
+                                        },
+                                        row: { origin: 0, step: 1, count: 1 },
+                                    },
+                                    fields: { signal: [0, 1, 2] },
+                                },
+                            ],
+                        },
+                        mark: "raster",
+                        encoding: {
+                            x: {
+                                dimension: "column",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                dimension: "row",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            color: {
+                                field: "signal",
+                                type: "quantitative",
+                                scale: { range: ["blue", "blue"] },
+                                condition: [
+                                    {
+                                        param: "hide",
+                                        empty: false,
+                                        value: null,
+                                    },
+                                    {
+                                        param: "highlight",
+                                        empty: false,
+                                        value: "red",
+                                    },
+                                ],
+                            },
+                            opacity: {
+                                condition: {
+                                    param: "highlight",
+                                    empty: false,
+                                    value: 0.4,
+                                },
+                                value: 1,
+                            },
+                        },
+                    },
+                    { renderer }
+                );
+                try {
+                    const raster = api.debug
+                        .getViewRoot()
+                        .getDescendants()
+                        .find((view) => view.mark?.getType() === "raster");
+                    const { x, y, width, height } = raster.layoutCoords;
+                    const points = [1 / 6, 1 / 2, 5 / 6].map((fraction) => [
+                        Math.floor(x + width * fraction),
+                        Math.floor(y + height / 2),
+                    ]);
+                    const sample = () =>
+                        globalThis.readRasterPixels(api, points, null);
+                    const before = await sample();
+                    raster.paramRuntime.setValue("highlight", {
+                        type: "interval",
+                        intervals: { color: [1, 3] },
+                    });
+                    // The brush overlaps the last cell and leaves its sampled
+                    // center clear of the brush overlay.
+                    raster.paramRuntime.setValue("hide", {
+                        type: "interval",
+                        intervals: { x: [2.1, 2.2] },
+                    });
+                    const after = await sample();
+                    const svg = await globalThis.readSvgRasterPixels(
+                        api,
+                        points
+                    );
+                    const marks = api.views.root().marks;
+                    const picked = [];
+                    for (const [x, y] of points.slice(1)) {
+                        picked.push((await marks.pick({ x, y })).status);
+                    }
+                    return {
+                        before,
+                        after,
+                        svg: svg.pixels,
+                        domain: raster.getScaleResolution("color").getDomain(),
+                        picked,
+                    };
+                } finally {
+                    api.finalize();
+                }
+            },
+            setup
+        );
+        const blue = [0, 0, 255, 255];
+        const brushed = [blue, [255, 0, 0, 102], [0, 0, 0, 0]];
+        expect(result).toEqual({
+            before: [blue, blue, blue],
+            after: brushed,
+            svg: brushed,
+            domain: [0, 2],
+            picked: ["hit", "empty"],
         });
     });
 }

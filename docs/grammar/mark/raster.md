@@ -51,7 +51,7 @@ supply one packed RGBA8 value per cell in `0xAABBGGRR` order. Use straight alpha
 and write the packed integers in decimal in JSON. In JavaScript, numeric cell
 fields can use `Float32Array`, and packed images can use `Uint32Array`.
 
-The `opacity` channel accepts values and
+The `opacity` channel accepts values. Both `color` and `opacity` support
 [cell-level selection conditions](../conditional-encoding.md#raster-cells).
 Scaled rasters show cell values and tile attributes on hover. Packed RGBA8
 images skip picking by default. Set `mark.tooltip` to `{ "handler": "default" }`

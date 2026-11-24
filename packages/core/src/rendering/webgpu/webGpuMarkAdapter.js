@@ -427,7 +427,7 @@ function createSelectionCondition(mark, predicate) {
         const { param, type, components } = predicate.selectionActive;
         if (type === "categories") {
             const input = resolveCategoryInput(
-                mark.encoding,
+                mark.selectionEncoding,
                 /** @type {import("../../spec/parameter.js").CategorySelectionChannel} */ (
                     components[0]
                 ),
@@ -596,8 +596,23 @@ function createRasterConfig(mark, data, coords, placementIndex) {
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
-    const encoder = mark.encoders.opacity;
-    const opacity = encoder && createNumericChannel(mark, "opacity", data);
+    const fill = createConditionalChannel(mark, "color", data, (encoder) =>
+        isValueDef(encoder.channelDef)
+            ? createColorBranch(mark, "color", data, encoder)
+            : {
+                  input: "color",
+                  scale: color
+                      ? createColorScale(
+                            mark,
+                            "color",
+                            color,
+                            categories?.readDomain
+                        )
+                      : rgba8Unorm,
+              }
+    );
+    const opacity =
+        mark.encoders.opacity && createNumericChannel(mark, "opacity", data);
 
     let cached = rasterDataCache.get(mark);
     if (cached?.data !== data || cached.palette !== palette) {
@@ -699,17 +714,7 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         placementIndex,
         position,
         channels: {
-            fill: {
-                input: "color",
-                scale: color
-                    ? createColorScale(
-                          mark,
-                          "color",
-                          color,
-                          categories?.readDomain
-                      )
-                    : rgba8Unorm,
-            },
+            fill,
             ...(opacity && {
                 opacity: /** @type {RasterConfig["channels"]["opacity"]} */ (
                     opacity

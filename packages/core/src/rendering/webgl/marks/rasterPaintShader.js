@@ -2,10 +2,8 @@ import { getRasterCellRange } from "../../../data/rasterTile.js";
 import { testCategorySelection } from "../../../selection/categorySelection.js";
 import { isSelectionPredicateActive } from "../../../selection/selectionPredicateTree.js";
 import clamp from "../../../utils/clamp.js";
-import {
-    emitSelectionPredicateGlsl,
-    ifElseGlsl,
-} from "../gl/glslScaleGenerator.js";
+import { cssColorToRgba } from "../../color.js";
+import { emitSelectionPredicateGlsl } from "../gl/glslScaleGenerator.js";
 import SELECTION_HASH from "../gl/includes/selectionHash.glsl";
 
 /**
@@ -18,6 +16,7 @@ import SELECTION_HASH from "../gl/includes/selectionHash.glsl";
  * @typedef {(value: import("../../../spec/channel.js").Scalar) => number} PaletteIndexer
  * @typedef {import("../../../selection/selectionPredicateTree.js").SelectionProjection} Projection
  * @typedef {Extract<import("../../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate, {param: string}>} Membership
+ * @typedef {NonNullable<ReturnType<import("../../../marks/raster.js").default["getCellPaintPlan"]>>["color"]} Branches
  */
 
 /**
@@ -29,15 +28,15 @@ import SELECTION_HASH from "../gl/includes/selectionHash.glsl";
  * @param {"float" | "uint"} valueType
  * @param {() => PaletteIndexer | undefined} readPaletteIndexer
  */
-export function createRasterOpacityShader(
+export function createRasterPaintShader(
     mark,
     glHelper,
     valueType,
     readPaletteIndexer
 ) {
-    const plan = mark.getOpacityPlan();
+    const plan = mark.getCellPaintPlan();
     if (!plan) return;
-    const { conditions, params, readBand } = plan;
+    const { color, opacity, params, readBand } = plan;
     /** @type {Map<string, Selection | undefined>} */
     const selections = new Map();
     /** @type {Map<string, (datum?: Datum, tile?: TileGeometry) => Uniform>} */
@@ -48,9 +47,8 @@ export function createRasterOpacityShader(
     const tests = new Map();
     /** @type {(() => void)[]} */
     const deleteCategoryTextures = [];
-    const declarations = [
-        `uniform vec2 uRasterOpacityBranches[${conditions.length}];`,
-    ];
+    /** @type {string[]} */
+    const declarations = [];
 
     /**
      * @param {string} type
@@ -64,15 +62,19 @@ export function createRasterOpacityShader(
         return name;
     }
 
-    const active = new Map(
+    // An uninitialized selection differs from an initialized empty selection.
+    const state = new Map(
         Array.from(params, (param) => [
             param,
-            bind("bool", () => {
+            bind("int", () => {
                 const selection = selections.get(param);
-                return !!selection && isSelectionPredicateActive(selection);
+                if (!selection) return 0;
+                return isSelectionPredicateActive(selection) ? 2 : 1;
             }),
         ])
     );
+    const active = (/** @type {string} */ param) =>
+        `(${state.get(param)} == 2)`;
 
     /**
      * @param {string} param
@@ -161,27 +163,57 @@ export function createRasterOpacityShader(
                 tests.set(key, bindProjection(param, type, projection));
             return tests.get(key);
         });
-        return `(${active.get(param)} ? (${expressions.join(" && ")}) : ${empty})`;
+        return `(${active(param)} ? (${expressions.join(" && ")}) : ${empty})`;
     };
 
-    const shader = ifElseGlsl(
-        conditions.map(({ tree }, i) =>
-            tree
-                ? `(uRasterOpacityBranches[${i}].y > 0.0 && ${emitSelectionPredicateGlsl(tree, emitLeaf, (param) => active.get(param))})`
-                : null
-        ),
-        conditions.map((_, i) => `return uRasterOpacityBranches[${i}].x;`)
+    /**
+     * @param {string} name
+     * @param {"float" | "vec4"} type
+     * @param {Branches} branches
+     * @param {(value: import("../../../spec/channel.js").Scalar) => Uniform} encode
+     * @param {string} [fallback]
+     */
+    function emitPaint(name, type, branches, encode, fallback) {
+        if (!branches.length) return "";
+        const statements = branches.map(({ tree, params, accessor }) => {
+            const result = `return ${bind(type, () => encode(accessor(null)))};`;
+            if (!tree) return result;
+            const test = [
+                ...params.map((param) => `${state.get(param)} > 0`),
+                emitSelectionPredicateGlsl(tree, emitLeaf, active),
+            ].join(" && ");
+            return `if (${test}) ${result}`;
+        });
+        if (fallback) statements.push(`return ${fallback};`);
+        return `${type} ${name}(ivec2 cell, ${valueType} value) {
+${statements.join("\n")}
+}`;
+    }
+
+    const colorShader = emitPaint(
+        "rasterColor",
+        "vec4",
+        color,
+        (value) =>
+            value == null ? [0, 0, 0, 0] : cssColorToRgba(String(value)),
+        "cellColor(value)"
     );
-    const values = new Float32Array(2 * conditions.length);
+    const opacityShader = emitPaint(
+        "rasterOpacity",
+        "float",
+        opacity,
+        (value) => clamp(Number(value))
+    );
     /** @type {Uniforms} */
-    const uniforms = { uRasterOpacityBranches: values };
+    const uniforms = {};
     return {
+        hasColor: !!colorShader,
+        hasOpacity: !!opacityShader,
         source: `
 ${declarations.join("\n")}
 ${deleteCategoryTextures.length ? SELECTION_HASH : ""}
-float rasterOpacity(ivec2 cell, ${valueType} value) {
-${shader}
-}
+${colorShader}
+${opacityShader}
 `,
         prepare() {
             for (const param of params)
@@ -189,12 +221,6 @@ ${shader}
                     param,
                     mark.unitView.paramRuntime.findValue(param)
                 );
-            for (const [i, { opacity, params }] of conditions.entries()) {
-                values[2 * i] = clamp(opacity(null));
-                values[2 * i + 1] = Number(
-                    params.every((param) => selections.get(param))
-                );
-            }
             for (const [name, read] of frameBindings) uniforms[name] = read();
             return uniforms;
         },
