@@ -79,6 +79,67 @@ describe("ScaleInstanceManager", () => {
         );
     });
 
+    test.each([
+        {
+            type: "linear",
+            domain: [10, 20],
+            names: ["viridis", "magma"],
+            extent: [0.2, 0.6],
+        },
+        {
+            type: "ordinal",
+            domain: ["a", "b"],
+            names: ["category10", "tableau10"],
+        },
+    ])(
+        "updates a $type color scheme without changing the domain",
+        ({ type, domain, names, extent }) => {
+            const runtime = new ViewParamRuntime();
+            const setScheme = runtime.registerParam({
+                name: "palette",
+                value: names[0],
+            });
+            const onRangeChange = vi.fn();
+            const manager = createManager({
+                runtime,
+                channel: "fill",
+                onRangeChange,
+                onDomainChange: () => {},
+                getGenomeStore: () => undefined,
+            });
+            const props = /** @type {import("../spec/scale.js").Scale} */ ({
+                type,
+                domain,
+                scheme: extent
+                    ? { name: { expr: "palette" }, extent }
+                    : { expr: "palette" },
+                reverse: true,
+            });
+            const scale = createScale(manager, props);
+            const colors = (/** @type {string} */ name) =>
+                createVegaScale({
+                    ...props,
+                    scheme: extent ? { name, extent } : name,
+                }).range();
+
+            expect(scale.range()).toEqual(colors(names[0]));
+            onRangeChange.mockClear();
+            setScheme(names[1]);
+            expect(scale.range()).toEqual(colors(names[1]));
+            expect(scale.domain()).toEqual(domain);
+            expect(onRangeChange).toHaveBeenCalledOnce();
+
+            expect(() => setScheme("unknown-palette")).toThrow(
+                "Unrecognized scheme name: unknown-palette"
+            );
+            expect(() => setScheme("constructor")).toThrow(
+                "Unrecognized scheme name: constructor"
+            );
+            expect(scale.range()).toEqual(colors(names[1]));
+            expect(onRangeChange).toHaveBeenCalledOnce();
+        }
+    );
+
     test("range expression updates on parameter changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });

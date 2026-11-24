@@ -307,9 +307,12 @@ function describeScale(scale) {
     /** @type {import("lit").TemplateResult<1>[]} */
     const parts = [];
 
-    if (scale.scheme) {
-        const schemeName =
-            typeof scale.scheme === "string" ? scale.scheme : scale.scheme.name;
+    const scheme = scale.scheme;
+    const schemeName =
+        typeof scheme === "string"
+            ? scheme
+            : scheme && "name" in scheme && scheme.name;
+    if (typeof schemeName === "string") {
         parts.push(
             html`<img
                 src=${schemeToDataUrl(schemeName)}

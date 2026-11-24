@@ -18,7 +18,7 @@ const colorTextureMocks = vi.hoisted(() => ({
     createDiscreteColorTexture: vi.fn(() => ({})),
     createDiscreteTexture: vi.fn(() => ({})),
     createInterpolatedColorTexture: vi.fn(() => ({})),
-    createSchemeTexture: vi.fn(() => ({})),
+    createColorInterpolatorTexture: vi.fn(() => ({})),
 }));
 
 vi.mock("./colorUtils.js", () => ({
@@ -70,7 +70,32 @@ test("quantize textures use the scale's resolved color range", () => {
         quantizeScale.range().length,
         undefined
     );
-    expect(colorTextureMocks.createSchemeTexture).not.toHaveBeenCalled();
+});
+
+test("continuous textures use the configured scale interpolator", () => {
+    const props = /** @type {import("../../../spec/scale.js").Scale} */ ({
+        type: "linear",
+        domain: [0, 1],
+        scheme: { name: "viridis", extent: [0.2, 0.8], count: 32 },
+        reverse: true,
+    });
+    const continuous = scale(props);
+    continuous.props = props;
+    const helper = Object.create(WebGLHelper.prototype);
+    helper.gl = {};
+    helper.rangeTextures = new WeakMap();
+    helper._ownedTextures = new Set();
+
+    helper.createRangeTexture({ channel: "fill", getScale: () => continuous });
+
+    expect(
+        colorTextureMocks.createColorInterpolatorTexture
+    ).toHaveBeenCalledExactlyOnceWith(
+        continuous.interpolator(),
+        helper.gl,
+        undefined,
+        32
+    );
 });
 
 /** Return a context with a successfully linked program unless overridden. */

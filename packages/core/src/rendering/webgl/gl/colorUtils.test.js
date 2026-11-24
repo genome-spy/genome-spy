@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 
 const { createOrUpdateTextureMock } = vi.hoisted(() => ({
     createOrUpdateTextureMock: vi.fn((_gl, _options, src) => src),
@@ -9,7 +9,6 @@ vi.mock("./webGLHelper.js", () => ({
 }));
 
 import {
-    createSchemeTexture,
     createDiscreteColorTexture,
     createInterpolatedColorTexture,
 } from "./colorUtils.js";
@@ -34,46 +33,6 @@ const lastColor = (texture) => {
     const bytes = /** @type {Uint8Array} */ (texture);
     return Array.from(bytes.slice(bytes.length - 4));
 };
-
-describe("createSchemeTexture", () => {
-    beforeEach(() => {
-        createOrUpdateTextureMock.mockClear();
-    });
-
-    test("reverses interpolating scheme textures", () => {
-        // The mocked createOrUpdateTexture returns raw texture bytes for direct assertions.
-        const forward = createSchemeTexture("viridis", gl, 32);
-        const reversed = createSchemeTexture(
-            "viridis",
-            gl,
-            32,
-            undefined,
-            true
-        );
-
-        expect(forward).toBeInstanceOf(Uint8Array);
-        expect(reversed).toBeInstanceOf(Uint8Array);
-        expect(firstColor(reversed)).toEqual(lastColor(forward));
-        expect(lastColor(reversed)).toEqual(firstColor(forward));
-    });
-
-    test("reverses discrete scheme textures", () => {
-        // Category10 resolves to a discrete color array.
-        const forward = createSchemeTexture("category10", gl);
-        const reversed = createSchemeTexture(
-            "category10",
-            gl,
-            undefined,
-            undefined,
-            true
-        );
-
-        expect(forward).toBeInstanceOf(Uint8Array);
-        expect(reversed).toBeInstanceOf(Uint8Array);
-        expect(firstColor(reversed)).toEqual(lastColor(forward));
-        expect(lastColor(reversed)).toEqual(firstColor(forward));
-    });
-});
 
 test("retains alpha in discrete and interpolated color textures", () => {
     const colors = ["transparent", "rgba(255, 0, 0, 0.5)", "#00ff0080", "blue"];

@@ -170,9 +170,11 @@ export interface Scale {
      *
      * Discrete color schemes may be used with [Vega-Lite discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) or [Vega-Lite discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales. Continuous color schemes are intended for use with color scales.
      *
+     * An expression reference can return the scheme name. The expression uses the parameter scope of the view that owns the scale resolution.
+     *
      * For the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.
      */
-    scheme?: string | SchemeParams;
+    scheme?: string | SchemeParams | ExprRef;
 
     /**
      * The alignment of the steps within the scale range.
@@ -381,11 +383,11 @@ export interface ViewportDomainRef {
 
 export interface SchemeParams {
     /**
-     * A color scheme name for ordinal scales (e.g., `"category10"` or `"blues"`).
+     * A color scheme name or an expression reference that returns the name.
      *
      * For the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.
      */
-    name: string;
+    name: string | ExprRef;
 
     /**
      * The extent of the color range to use. For example `[0.2, 1]` will rescale the color scheme such that color values in the range _[0, 0.2)_ are excluded from the scheme.

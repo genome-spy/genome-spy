@@ -579,6 +579,11 @@ For an ordinal scale, `"range": { "expr": "stateColors" }` takes the whole
 palette from an array-valued expression. Replacing the palette updates the marks
 and their legend together.
 
+For a color scale, `"scheme": { "expr": "colorScheme" }` selects the scheme
+named by the expression. Changing the name recolors the marks and legend while
+preserving the scale domain. To set options such as `extent`, use the scheme
+object with an expression in its `name` property.
+
 ### Domain transitions
 
 By default, domain updates are applied with a smooth transition when that is

@@ -14,6 +14,8 @@ import createScale, {
     configureScaleRange,
     applyScaleDomain,
     getScalePropertyDefaults,
+    getSchemeExpression,
+    readSchemeName,
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
@@ -41,6 +43,7 @@ const MANAGED_SCALE_PROPERTIES = /** @type {const} */ ([
  *   gapPositions: readonly number[],
  *   gapWidth: number | null,
  *   range: any[] | undefined,
+ *   schemeName: string | undefined,
  *   prepared: (import("../types/encoder.js").VegaScale & {props: import("../spec/scale.js").Scale}) | undefined
  * }} MappingConfiguration
  */
@@ -374,6 +377,8 @@ export default class ScaleInstanceManager {
         const readRange = isExprRef(props.range)
             ? bind(props.range)
             : undefined;
+        const schemeExpression = getSchemeExpression(props.scheme);
+        const readScheme = schemeExpression && bind(schemeExpression);
         const gaps = hasGroupingGaps(props);
         const categorical = scale.type === "band" || scale.type === "point";
         if (gaps && !["index", "locus", "band", "point"].includes(scale.type))
@@ -450,14 +455,16 @@ export default class ScaleInstanceManager {
                 const common = readPadding(0);
                 padding = [readPadding(1, common), readPadding(2, common)];
             }
+            const schemeName = readScheme && readSchemeName(readScheme(null));
             // Interpolating schemes depend on domain cardinality.
             const prepared =
                 scale.type === "null" ||
                 (previous?.scale === scale &&
                     previous.props === props &&
+                    previous.schemeName === schemeName &&
                     previous.domain.length === domain.length)
                     ? undefined
-                    : this.#prepareMapping(props);
+                    : this.#prepareMapping(props, schemeName);
             return {
                 scale,
                 props,
@@ -468,6 +475,7 @@ export default class ScaleInstanceManager {
                 gapPositions,
                 gapWidth: width(null),
                 range,
+                schemeName,
                 prepared,
             };
         });
@@ -476,16 +484,22 @@ export default class ScaleInstanceManager {
 
     /** Validate configuration once and retain its properties for live application.
      * @param {import("../spec/scale.js").Scale} props
+     * @param {string | undefined} schemeName
      */
-    #prepareMapping(props) {
+    #prepareMapping(props, schemeName) {
         props = this.#withPropertyDefaults(props);
         const working = this.#scale.copy();
         working.type = this.#scale.type;
         configureScaleProperties(working, props);
-        configureScaleRange(working, {
-            ...props,
-            range: undefined,
-        });
+
+        let scheme = props.scheme;
+        if (schemeName !== undefined) {
+            scheme =
+                typeof scheme === "object" && "name" in scheme
+                    ? { ...scheme, name: schemeName }
+                    : schemeName;
+        }
+        configureScaleRange(working, { ...props, scheme, range: undefined });
         return Object.assign(working, { props });
     }
 
@@ -675,6 +689,7 @@ function equalMapping(a, b) {
             !!b &&
             a.scale === b.scale &&
             a.props === b.props &&
+            a.schemeName === b.schemeName &&
             equalRange(a.padding, b.padding) &&
             (a.domain === b.domain || shallowArrayEquals(a.domain, b.domain)) &&
             shallowArrayEquals(a.gapDomain ?? [], b.gapDomain ?? []) &&
