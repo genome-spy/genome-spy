@@ -259,8 +259,7 @@ ${attributeType} ${accessorFunctionName}() {
 export function generateDatumGlslAndUniform(channel, scale, conditionNumber) {
     const { attributeType } = getAttributeAndArrayTypes(scale, channel);
 
-    // TODO: Use uniform prefix
-    const uniformName = makeAttributeName(channel);
+    const uniformName = `uDatum_${channel}_${conditionNumber}`;
     const uniformGlsl = `    uniform highp ${attributeType} ${uniformName};`;
 
     const accessorFunctionName = makeAccessorFunctionName(

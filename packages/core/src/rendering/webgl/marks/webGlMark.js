@@ -644,7 +644,13 @@ export default class WebGLMark {
                         ).accessorGlsl
                     );
                 }
-            } else if (isDatumDef(channelDef)) {
+            } else if (
+                isDatumDef(channelDef) ||
+                (isExprDef(channelDef) && accessor.constant)
+            ) {
+                const datum = isDatumDef(channelDef)
+                    ? channelDef.datum
+                    : channelDef;
                 const { uniformName, uniformGlsl, accessorGlsl } =
                     generateDatumGlslAndUniform(
                         channel,
@@ -674,11 +680,7 @@ export default class WebGLMark {
                         : (d) => +d;
 
                 this.#callAfterShaderCompilation.push(() => {
-                    this.registerMarkUniformValue(
-                        uniformName,
-                        channelDef.datum,
-                        adjuster
-                    );
+                    this.registerMarkUniformValue(uniformName, datum, adjuster);
                 });
             } else if (isFieldDef(channelDef)) {
                 const dedupedChannels = dedupedEncodingFields.get([
