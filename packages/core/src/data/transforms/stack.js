@@ -156,6 +156,7 @@ export default class StackTransform extends Transform {
                 sumF = (_values, _accessor) => 1;
         }
 
+        const diverging = params.offset === "diverging";
         for (const group of groups) {
             if (comparator) {
                 group.sort(comparator);
@@ -164,16 +165,26 @@ export default class StackTransform extends Transform {
             const sum = sumF(group, valueAccessor);
 
             let prev = 0;
+            let negative = 0;
             for (const datum of group) {
-                const current = prev + valueAccessor(datum);
+                const value = valueAccessor(datum);
+                if (!inclusionPredicate(datum)) continue;
 
-                if (inclusionPredicate(datum)) {
+                if (diverging && (!Number.isFinite(value) || value === 0)) {
+                    const endpoint = value === 0 ? 0 : NaN;
+                    datum[as[0]] = endpoint;
+                    datum[as[1]] = endpoint;
+                } else if (diverging && value < 0) {
+                    datum[as[1]] = negative;
+                    negative += value;
+                    datum[as[0]] = negative;
+                } else {
                     datum[as[0]] = offsetF(prev, sum);
-                    datum[as[1]] = offsetF(current, sum);
-
-                    propagate(datum);
-                    prev = current;
+                    prev += value;
+                    datum[as[1]] = offsetF(prev, sum);
                 }
+
+                propagate(datum);
             }
         }
 

@@ -430,11 +430,12 @@ export interface StackParams extends TransformParamsBase {
      * How to offset the values in a stack.
      * `"zero"` (default) starts stacking at 0.
      * `"center"` centers the values around zero.
+     * `"diverging"` stacks positive values above zero and negative values below it.
      * `"normalize"` computes intra-stack percentages and normalizes the values to the range of `[0, 1]`.
      * `"information"` computes a layout for a sequence logo. The total height of the stack reflects
      * the group's information content.
      */
-    offset?: "zero" | "center" | "normalize" | "information";
+    offset?: "zero" | "center" | "diverging" | "normalize" | "information";
 
     /**
      * Fields to write the stacked values.
