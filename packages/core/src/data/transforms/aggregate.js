@@ -70,15 +70,19 @@ export default class AggregateTransform extends Transform {
     }
 
     #flushRun() {
-        if (this.buffer.length) {
-            const key = this.buffer[0][this.#streamKey];
-            // Map canonicalizes negative zero when retaining a group key.
+        if (!this.buffer.length) return;
+
+        const key = this.buffer[0][this.#streamKey];
+        // Map canonicalizes negative zero when retaining a group key.
+        try {
             this.#emit(
                 this.buffer,
                 this.params.groupby,
                 [key === 0 ? 0 : key],
                 1
             );
+        } finally {
+            // A source may still complete after a downstream row error.
             this.buffer.length = 0;
         }
     }

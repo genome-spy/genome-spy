@@ -1,5 +1,6 @@
 import { createCachedCloner } from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
+import { preserveClonedGrouping } from "../outputGrouping.js";
 import Transform from "./transform.js";
 
 /**
@@ -11,7 +12,7 @@ export default class CloneTransform extends Transform {
     }
 
     get outputGrouping() {
-        return this.parent?.outputGrouping;
+        return preserveClonedGrouping(this.parent?.outputGrouping);
     }
 
     /** @type {ReturnType<typeof createCachedCloner>} */

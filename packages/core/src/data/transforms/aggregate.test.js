@@ -13,6 +13,12 @@ function transform(params, data) {
     return processData(new AggregateTransform(params), data);
 }
 
+class ContiguousKeySource extends FlowNode {
+    get outputGrouping() {
+        return { keys: [["key"]], fileFree: false };
+    }
+}
+
 describe("Aggregate transform", () => {
     test("Default to count when no data fields or group-by fields are specified", () => {
         const input = [
@@ -334,11 +340,7 @@ describe("Aggregate transform", () => {
     );
 
     test("contiguous median groups merge signed zero across files and isolate facets", () => {
-        const source = new (class extends FlowNode {
-            get outputGrouping() {
-                return { keys: [["key"]], fileFree: false };
-            }
-        })();
+        const source = new ContiguousKeySource();
         const aggregate = new AggregateTransform({
             type: "aggregate",
             groupby: ["key"],
@@ -373,5 +375,26 @@ describe("Aggregate transform", () => {
         expect(output.facetBatches.get(["B"])).toEqual([
             { key: 2, median: 10 },
         ]);
+    });
+
+    test("completing after a downstream row error does not repeat an emitted group", () => {
+        const source = new ContiguousKeySource();
+        const aggregate = new AggregateTransform({
+            type: "aggregate",
+            groupby: ["key"],
+        });
+        const output = new Collector();
+        const failingChild = new FlowNode();
+        vi.spyOn(failingChild, "handle").mockImplementationOnce(() => {
+            throw new Error("Downstream row error");
+        });
+        source.addChild(aggregate);
+        aggregate.addChild(output).addChild(failingChild);
+
+        source.handle({ key: 1 });
+        expect(() => source.handle({ key: 2 })).toThrow("Downstream row error");
+        source.complete();
+
+        expect(Array.from(output.getData())).toEqual([{ key: 1, count: 1 }]);
     });
 });

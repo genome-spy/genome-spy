@@ -5,6 +5,8 @@ import Collector from "../collector.js";
 import CategoricalCoverageTransform from "./categoricalCoverage.js";
 import CloneTransform from "./clone.js";
 import FormulaTransform from "./formula.js";
+import LookupTransform from "./lookup.js";
+import FlowNode from "../flowNode.js";
 
 const sampleData = [
     { group: "a", choice: "q", value: 1 },
@@ -111,6 +113,106 @@ test("regroups coverage when a formula rewrites a grouping field", () => {
         [0, 2, 1, 2],
         [2, 0, 0, 1],
     ]);
+});
+
+test.each(["clone", "lookup"])(
+    "regroups when %s drops an aliased chromosome field",
+    (type) => {
+        const coverage = new CategoricalCoverageTransform({
+            type: "categoricalCoverage",
+            chrom: "chrom",
+            asChrom: "__proto__",
+            start: "start",
+            end: "end",
+            category: "category",
+        });
+        const foreign = new Collector();
+        foreign.handle({ category: "A", value: 1 });
+        foreign.complete();
+        const clone =
+            type === "clone"
+                ? new CloneTransform()
+                : new LookupTransform(
+                      {
+                          type: "lookup",
+                          from: { values: [] },
+                          key: "category",
+                          values: ["value"],
+                      },
+                      foreign
+                  );
+        const stack = new StackTransform({
+            type: "stack",
+            groupby: ["__proto__", "start", "end"],
+        });
+        const output = new Collector();
+        coverage.addChild(clone);
+        clone.addChild(stack);
+        stack.addChild(output);
+
+        for (const chrom of ["chr1", "chr2"]) {
+            coverage.handle({ chrom, start: 0, end: 2, category: "A" });
+            coverage.handle({ chrom, start: 2, end: 4, category: "B" });
+        }
+        coverage.complete();
+
+        expect(
+            Array.from(output.getData(), ({ start, y1 }) => [start, y1])
+        ).toEqual([
+            [0, 1],
+            [0, 2],
+            [2, 1],
+            [2, 2],
+        ]);
+    }
+);
+
+test.each([
+    { groupby: undefined, expected: [1, 2, 3] },
+    { groupby: "key", expected: [1, 2, 1] },
+])("accepts groupby $groupby with certified input", ({ groupby, expected }) => {
+    const source = new (class extends FlowNode {
+        get outputGrouping() {
+            return { keys: [["key"]], fileFree: true };
+        }
+    })();
+    const stack = new StackTransform({
+        type: "stack",
+        // @ts-expect-error Scalar groupby was accepted by the runtime.
+        groupby,
+    });
+    const output = new Collector();
+    source.addChild(stack);
+    stack.addChild(output);
+
+    for (const key of [1, 1, 2]) source.handle({ key });
+    source.complete();
+
+    expect(Array.from(output.getData(), (row) => row.y1)).toEqual(expected);
+});
+
+test("does not replay a partly delivered run after a row error", () => {
+    const source = new (class extends FlowNode {
+        get outputGrouping() {
+            return { keys: [["key"]], fileFree: true };
+        }
+    })();
+    const stack = new StackTransform({ type: "stack", groupby: ["key"] });
+    const output = new Collector();
+    const failing = new FlowNode();
+    failing.handle = ({ y1 }) => {
+        if (y1 === 2) throw new Error("Downstream row error");
+    };
+    source.addChild(stack);
+    stack.addChild(output);
+    stack.addChild(failing);
+
+    source.handle({ key: "a" });
+    source.handle({ key: "a" });
+    expect(() => source.handle({ key: "b" })).toThrow("Downstream row error");
+    source.complete();
+
+    expect(Array.from(output.getData(), (row) => row.y1)).toEqual([1, 2]);
 });
 
 test.each(/** @type {const} */ (["zero", "diverging"]))(

@@ -1,5 +1,6 @@
 import { compare } from "vega-util";
 import { sum as d3sum } from "d3-array";
+import { asArray } from "../../utils/arrayUtils.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { findContiguousKey } from "../outputGrouping.js";
 import partitionRows from "../partitionRows.js";
@@ -62,7 +63,10 @@ export default class StackTransform extends Transform {
             const grouping = this.parent?.outputGrouping;
             this.#streamKey =
                 (grouping?.fileFree &&
-                    findContiguousKey(grouping, this.params.groupby)) ||
+                    findContiguousKey(
+                        grouping,
+                        asArray(this.params.groupby)
+                    )) ||
                 null;
         }
         const first = this.buffer[0];
@@ -94,11 +98,15 @@ export default class StackTransform extends Transform {
     }
 
     #flushRun() {
-        if (this.buffer.length) {
+        if (!this.buffer.length) return;
+
+        try {
             (this.#groupLayout ??= this.#createGroupLayout())(
                 this.buffer,
                 this.#emit
             );
+        } finally {
+            // A source may still complete after a downstream row error.
             this.buffer.length = 0;
         }
     }

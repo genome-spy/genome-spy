@@ -25,6 +25,15 @@ export function preserveGrouping(grouping, writes) {
 }
 
 /**
+ * The row cloner's object literal does not preserve an own `__proto__` column.
+ * @param {OutputGrouping | undefined} grouping
+ * @param {readonly string[]} [writes]
+ */
+export function preserveClonedGrouping(grouping, writes = []) {
+    return preserveGrouping(grouping, ["__proto__", ...writes]);
+}
+
+/**
  * @param {OutputGrouping | undefined} grouping
  * @param {readonly string[]} fields Field paths read by the consumer
  * @returns {readonly string[] | undefined}
