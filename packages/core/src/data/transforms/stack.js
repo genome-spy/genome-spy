@@ -1,11 +1,14 @@
 import { compare } from "vega-util";
-import { group as d3group, sum as d3sum } from "d3-array";
+import { sum as d3sum } from "d3-array";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import partitionRows from "../partitionRows.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
     createFileBatchPropagator,
 } from "../fileBatchUtils.js";
+
+/** @typedef {import("../flowNode.js").Datum} Datum */
 
 /** @type {(value: number, sum: number) => number} */
 const normalize = (value, sum) => value / sum;
@@ -26,7 +29,7 @@ export default class StackTransform extends Transform {
         super(params, paramRuntimeProvider);
         this.params = params;
 
-        /** @type {any[]} */
+        /** @type {Datum[]} */
         this.buffer = [];
     }
 
@@ -38,7 +41,7 @@ export default class StackTransform extends Transform {
 
     /**
      *
-     * @param {import("../flowNode.js").Datum} datum
+     * @param {Datum} datum
      */
     handle(datum) {
         this.buffer.push(datum);
@@ -80,13 +83,24 @@ export default class StackTransform extends Transform {
             ? this.createFieldAccessor(params, "field")
             : () => 1;
 
-        const groupFields = this.createFieldAccessors(params, "groupby");
+        /** @type {Map<number, Date>} */
+        const dates = new Map();
+        const groupFields = this.createFieldAccessors(params, "groupby").map(
+            (accessor) => /** @param {Datum} datum */ (datum) => {
+                const key = accessor(datum);
+                if (!(key instanceof Date)) return key;
 
-        const groups = d3group(this.buffer, (row) =>
-            groupFields.map((f) => f(row)).join()
+                // Parsed dates with the same timestamp share a key of their own type.
+                const time = key.getTime();
+                const previous = dates.get(time);
+                if (previous) return previous;
+                dates.set(time, key);
+                return key;
+            }
         );
+        const groups = partitionRows(this.buffer, groupFields);
 
-        /** @type {(datum: any) => boolean} */
+        /** @type {(datum: Datum) => boolean} */
         let inclusionPredicate = (_datum) => true;
 
         if (params.baseField) {
@@ -97,7 +111,7 @@ export default class StackTransform extends Transform {
         /** @type {(value: number, sum: number) => number} */
         let offsetF = normalize;
 
-        /** @type {(values: number[], accessor: (datum: any) => number) => number} */
+        /** @type {(values: Datum[], accessor: (datum: Datum) => number) => number} */
         let sumF = d3sum;
 
         switch (params.offset) {
@@ -142,7 +156,7 @@ export default class StackTransform extends Transform {
                 sumF = (_values, _accessor) => 1;
         }
 
-        for (const group of groups.values()) {
+        for (const group of groups) {
             if (comparator) {
                 group.sort(comparator);
             }

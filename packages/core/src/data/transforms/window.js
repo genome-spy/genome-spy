@@ -1,5 +1,6 @@
 import { compare } from "vega-util";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
+import partitionRows from "../partitionRows.js";
 import Transform from "./transform.js";
 import {
     createFileBatchAccessor,
@@ -477,45 +478,4 @@ function createPartitionBounds(rows, comparator, frame, ignorePeers) {
  */
 function clamp(value, minimum, maximum) {
     return Math.max(minimum, Math.min(value, maximum));
-}
-
-/**
- * @param {Datum[]} rows
- * @param {((datum: Datum) => any)[]} accessors
- * @returns {Datum[][]}
- */
-function partitionRows(rows, accessors) {
-    if (accessors.length == 0) {
-        return [rows];
-    }
-
-    /** @type {Map<any, any>} */
-    const root = new Map();
-    /** @type {Datum[][]} */
-    const partitions = [];
-
-    for (const datum of rows) {
-        /** @type {Map<any, any>} */
-        let level = root;
-        for (let i = 0; i < accessors.length - 1; i++) {
-            const key = accessors[i](datum);
-            let next = level.get(key);
-            if (!next) {
-                next = new Map();
-                level.set(key, next);
-            }
-            level = next;
-        }
-
-        const key = accessors.at(-1)(datum);
-        let partition = level.get(key);
-        if (!partition) {
-            partition = [];
-            level.set(key, partition);
-            partitions.push(partition);
-        }
-        partition.push(datum);
-    }
-
-    return partitions;
 }

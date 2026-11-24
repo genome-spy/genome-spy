@@ -83,6 +83,44 @@ describe("Stack transform", () => {
         ]);
     });
 
+    test("groups by whole tuples in first-seen order and sorts within each group", () => {
+        const rows = transform(
+            { ...baseParams, groupby: ["group", "subgroup"] },
+            [
+                { group: "a,b", subgroup: "c", item: "first late", value: 4 },
+                { group: "a", subgroup: "b,c", item: "second", value: 3 },
+                { group: "a,b", subgroup: "d", item: "third", value: 5 },
+                { group: "a,b", subgroup: "c", item: "first early", value: 2 },
+            ]
+        );
+
+        expect(rows.map(({ item, z0, z1 }) => [item, z0, z1])).toEqual([
+            ["first early", 0, 2],
+            ["first late", 2, 6],
+            ["second", 0, 3],
+            ["third", 0, 5],
+        ]);
+    });
+
+    test("groups equal dates together while keeping date, number, and string keys distinct", () => {
+        const time = Date.UTC(2025, 0, 1);
+        const rows = transform(baseParams, [
+            { group: new Date(time), value: 2 },
+            { group: time, value: 4 },
+            { group: String(time), value: 5 },
+            { group: new Date(time), value: 3 },
+            { group: new Date(time + 1), value: 6 },
+        ]);
+
+        expect(rows.map(({ value, z0, z1 }) => [value, z0, z1])).toEqual([
+            [2, 0, 2],
+            [3, 2, 5],
+            [4, 0, 4],
+            [5, 0, 5],
+            [6, 0, 6],
+        ]);
+    });
+
     test("Normalize offset", () => {
         const conf = Object.assign({}, baseParams, {
             offset: "normalize",
