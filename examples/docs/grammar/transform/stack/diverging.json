@@ -34,10 +34,6 @@
       "field": "group",
       "type": "nominal",
       "band": 0.7,
-      "scale": {
-        "type": "band",
-        "domain": ["Control", "Treatment A", "Treatment B"]
-      },
       "axis": { "title": null }
     },
     "y": {
@@ -49,7 +45,6 @@
     "color": {
       "field": "component",
       "type": "nominal",
-      "scale": { "domain": ["A", "B", "C", "D"] },
       "legend": { "title": "Component" }
     },
     "tooltip": [
