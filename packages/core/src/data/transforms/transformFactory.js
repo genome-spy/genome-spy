@@ -1,6 +1,7 @@
 import { annotateSpecError } from "../../utils/specError.js";
 import Collector from "../collector.js";
 import AlignmentMismatchesTransform from "./alignmentMismatches.js";
+import CategoricalCoverageTransform from "./categoricalCoverage.js";
 import CoordinateLookupTransform from "./coordinateLookup.js";
 import CrossTransform from "./cross.js";
 import CoverageTransform from "./coverage.js";
@@ -41,6 +42,7 @@ import WindowTransform from "./window.js";
 export const transforms = {
     aggregate: AggregateTransform,
     alignmentMismatches: AlignmentMismatchesTransform,
+    categoricalCoverage: CategoricalCoverageTransform,
     collect: Collector,
     coverage: CoverageTransform,
     dendrogram: DendrogramTransform,

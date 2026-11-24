@@ -3,8 +3,10 @@
 The `"coverage"` transform computes
 [coverage](<https://en.wikipedia.org/wiki/Coverage_(genetics)>) for overlapping
 segments. The result is a new list of non-overlapping segments with the coverage
-values. The segments must be sorted by their start coordinates before passing
-them to the coverage transform.
+values. Sort segments by start, within each chromosome when using `chrom`.
+
+To summarize the distribution of interval labels, see
+[`categoricalCoverage`](categorical-coverage.md).
 
 ## Parameters
 
@@ -12,24 +14,24 @@ SCHEMA CoverageParams
 
 ## Example
 
-Given the following data:
+Start with two overlapping segments.
 
 | start | end |
 | ----- | --- |
 | 0     | 4   |
 | 1     | 3   |
 
-... and configuration:
+Apply the coverage transform to their `start` and `end` fields.
 
 ```json
 {
   "type": "coverage",
-  "start": "startpos",
-  "end": "endpos"
+  "start": "start",
+  "end": "end"
 }
 ```
 
-A new list of segments is produced:
+The result partitions the coordinates into spans with constant coverage.
 
 | start | end | coverage |
 | ----- | --- | -------- |
