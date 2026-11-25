@@ -347,6 +347,7 @@ export default class SampleGroupView extends LayerView {
 
         this.#hasVisibleGroups = visible;
         this.invalidateSizeCache();
+        this.context.requestVisibilityRefresh?.();
     }
 
     #getAttributeTitles() {

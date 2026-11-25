@@ -5,10 +5,11 @@ import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js
 import { prepareViewHierarchy } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import {
     initializeViewData,
-    initializeVisibleViewData,
+    refreshVisibility,
 } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { createSvg } from "@genome-spy/core/svg/index.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
+import { flushMicrotasks } from "../state/testUtils.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import MergeSampleFacets from "./mergeFacets.js";
 import {
@@ -95,6 +96,8 @@ it.each([300, 40])(
             })
         );
         await view.metadataView.awaitMetadataReady();
+        // Refresh while ungrouped so the hidden group marks leave their scales.
+        await refreshVisibility(coreView);
         for (const specifier of ["outer", "inner"]) {
             view.intentExecutor.dispatch(
                 view.actions.groupByNominal({
@@ -102,12 +105,7 @@ it.each([300, 40])(
                 })
             );
         }
-        await Promise.resolve();
-        await initializeVisibleViewData(
-            coreView,
-            context.dataFlow,
-            context.textMetrics
-        );
+        await flushMicrotasks();
 
         const { svg, warnings } = createSvg({
             viewRoot: coreView,
