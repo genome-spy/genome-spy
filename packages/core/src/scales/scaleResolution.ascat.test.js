@@ -119,36 +119,38 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
 
     test("gamma changes recompute the ASCAT sunrise grid", async () => {
         const spec = createTrimmedAscatSpec();
-        const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
+        const { view } = await createEngine(spec);
+        const target = view
+            .getDescendants()
+            .find((descendant) =>
+                descendant.paramRuntime.hasLocalParam("gamma")
+            );
+        const sunrise = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "sunrise-rects")
+            ?.flowHandle?.collector;
 
-        try {
-            const { view } = await createEngine(spec);
-            const target = view
-                .getDescendants()
-                .find((descendant) =>
-                    descendant.paramRuntime.hasLocalParam("gamma")
-                );
-            const sunrise = view
-                .getDescendants()
-                .find((descendant) => descendant.name === "sunrise-rects");
-
-            if (!target || !sunrise?.flowHandle?.collector) {
-                throw new Error(
-                    "Expected the ASCAT gamma parameter and sunrise view."
-                );
-            }
-
-            expect(sunrise.flowHandle.collector.getItemCount()).toBe(9);
-            crossSpy.mockClear();
-
-            target.paramRuntime.setValue("gamma", 0.6);
-            await Promise.resolve();
-
-            expect(crossSpy).toHaveBeenCalled();
-            expect(sunrise.flowHandle.collector.getItemCount()).toBe(9);
-        } finally {
-            crossSpy.mockRestore();
+        if (!target || !sunrise) {
+            throw new Error(
+                "Expected the ASCAT gamma parameter and sunrise view."
+            );
         }
+
+        // The original equations give these distances for rho 0.1 and psi 1.
+        expect(sunrise.getItemCount()).toBe(9);
+        expect(Array.from(sunrise.getData())[0].meanRoundingError).toBeCloseTo(
+            12.2613608654,
+            10
+        );
+
+        target.paramRuntime.setValue("gamma", 0.6);
+        await target.paramRuntime.whenPropagated();
+
+        expect(sunrise.getItemCount()).toBe(9);
+        expect(Array.from(sunrise.getData())[0].meanRoundingError).toBeCloseTo(
+            12.1928963908,
+            10
+        );
     });
 
     test("balanced-segment weighting recomputes the ASCAT sunrise grid", async () => {

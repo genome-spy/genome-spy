@@ -225,8 +225,14 @@
                 "expr": "datum.chr !== 'X'"
               },
               {
+                "type": "formula",
+                "expr": "pow(2, datum.logRMean / gamma)",
+                "as": "copyNumberRatio",
+                "description": "Convert LogR to a copy-number ratio once per segment before combining it with the candidate grid."
+              },
+              {
                 "type": "project",
-                "fields": ["logRMean", "bafMean", "nProbes"]
+                "fields": ["copyNumberRatio", "bafMean", "nProbes"]
               },
               {
                 "type": "formula",
@@ -239,13 +245,13 @@
         },
         {
           "type": "formula",
-          "expr": "(datum.rhoCandidate - 1 + pow(2, datum.logRMean / gamma) * datum.bafMean * (2 * (1 - datum.rhoCandidate) + datum.rhoCandidate * datum.psiCandidate)) / datum.rhoCandidate",
+          "expr": "(datum.rhoCandidate - 1 + datum.copyNumberRatio * datum.bafMean * (2 * (1 - datum.rhoCandidate) + datum.rhoCandidate * datum.psiCandidate)) / datum.rhoCandidate",
           "as": "bRawCandidate",
           "description": "Apply ASCAT Supporting Information Eq. S8 to estimate minor-allele copy number for each candidate and segment."
         },
         {
           "type": "formula",
-          "expr": "(datum.rhoCandidate - 1 + pow(2, datum.logRMean / gamma) * (1 - datum.bafMean) * (2 * (1 - datum.rhoCandidate) + datum.rhoCandidate * datum.psiCandidate)) / datum.rhoCandidate",
+          "expr": "(datum.rhoCandidate - 1 + datum.copyNumberRatio * (1 - datum.bafMean) * (2 * (1 - datum.rhoCandidate) + datum.rhoCandidate * datum.psiCandidate)) / datum.rhoCandidate",
           "as": "aRawCandidate",
           "description": "Apply ASCAT Supporting Information Eq. S7 to estimate major-allele copy number when both alleles are included in the fit."
         },
