@@ -13,12 +13,15 @@ import SoftwarePickingRasterizer from "@genome-spy/core/rendering/canvas2d/picki
 import SoftwarePickingViewRenderingContext from "@genome-spy/core/rendering/canvas2d/picking/softwarePickingViewRenderingContext.js";
 import SvgViewRenderingContext from "@genome-spy/core/rendering/svg/svgViewRenderingContext.js";
 import { createSvg } from "@genome-spy/core/svg/index.js";
-import dataTooltipHandler from "@genome-spy/core/tooltip/dataTooltipHandler.js";
 import { createLayoutResult } from "@genome-spy/core/view/layout/layoutResult.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import MergeSampleFacets from "./mergeFacets.js";
+import {
+    createSampleLabelTooltipHandler,
+    SAMPLE_LABEL_TOOLTIP_HANDLER,
+} from "./sampleLabelTooltip.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -170,15 +173,11 @@ describe("SampleView SVG export", () => {
             ).find((datum) => datum.id === longId);
             const tooltip = document.createElement("div");
             const mark = view.sampleLabelView.mark;
-            const tooltipOptions = mark.properties.tooltip;
-            render(
-                await dataTooltipHandler(
-                    datum,
-                    mark,
-                    tooltipOptions ? tooltipOptions.params : undefined
-                ),
-                tooltip
-            );
+            expect(mark.properties.tooltip).toEqual({
+                handler: SAMPLE_LABEL_TOOLTIP_HANDLER,
+            });
+            const handler = createSampleLabelTooltipHandler();
+            render(await handler(datum, mark), tooltip);
             expect(
                 Array.from(tooltip.querySelectorAll("td"), (cell) =>
                     cell.textContent.trim()

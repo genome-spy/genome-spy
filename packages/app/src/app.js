@@ -8,6 +8,10 @@ import { html, nothing, render } from "lit";
 
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 import SampleView from "./sampleView/sampleView.js";
+import {
+    createSampleLabelTooltipHandler,
+    SAMPLE_LABEL_TOOLTIP_HANDLER,
+} from "./sampleView/sampleLabelTooltip.js";
 import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 
@@ -187,7 +191,16 @@ export default class App {
                 )[0]
             ),
             /** @type {any} */ (this.rootSpec),
-            this.options
+            {
+                ...this.options,
+                tooltipHandlers: {
+                    ...this.options.tooltipHandlers,
+                    [SAMPLE_LABEL_TOOLTIP_HANDLER]:
+                        createSampleLabelTooltipHandler(
+                            this.options.tooltipHandlers?.default
+                        ),
+                },
+            }
         );
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedDebugApi} */

@@ -105,21 +105,21 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
         return;
     }
 
-    const fullTextFields = [
-        mark.encoding.sample?.field,
-        ...(params?.fullTextFields ?? []),
-    ]
-        .filter((field) => typeof field === "string")
-        .map(normalizeFieldPath);
+    const sampleField = mark.encoding.sample?.field;
+    const sampleKey =
+        sampleField == null ? undefined : normalizeFieldPath(sampleField);
     const tableContents = orderedRows.map((row) => {
         const field = row.sourceField ?? row.key;
-        const fullText =
+        const fullSampleName =
+            sampleKey !== undefined &&
             typeof row.value === "string" &&
-            fullTextFields.includes(
-                row.sourceField ? normalizeFieldPath(row.sourceField) : row.key
-            );
+            (row.sourceField
+                ? normalizeFieldPath(row.sourceField)
+                : row.key) === sampleKey;
         const value =
-            row.formatted || fullText ? row.value : formatObject(row.value);
+            row.formatted || fullSampleName
+                ? row.value
+                : formatObject(row.value);
         const valueLegend = legend(field, row.value, datum);
         return html`
             <tr>

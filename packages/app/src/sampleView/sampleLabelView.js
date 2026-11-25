@@ -4,6 +4,7 @@ import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { html } from "lit";
 import { subscribeTo } from "../state/subscribeTo.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
+import { SAMPLE_LABEL_TOOLTIP_HANDLER } from "./sampleLabelTooltip.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const SAMPLE_NAME = "SAMPLE_NAME";
@@ -284,10 +285,7 @@ function createLabelViewSpec(sampleDef, metadataDef) {
                 viewportEdgeFadeDistanceRight: 0,
             }),
             ...(labelOverflow !== "squeeze" && {
-                tooltip: {
-                    handler: "default",
-                    params: { fullTextFields: ["id", "displayName"] },
-                },
+                tooltip: { handler: SAMPLE_LABEL_TOOLTIP_HANDLER },
             }),
         },
         opacity: { expr: "_sampleRowStep > 0 ? 1 : 0" },

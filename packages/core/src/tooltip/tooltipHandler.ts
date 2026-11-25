@@ -12,10 +12,6 @@ export interface TooltipHandlerParams {
     genomicCoordinates?: Partial<
         Record<"x" | "y", TooltipGenomicAxisConfig | TooltipGenomicDisplayMode>
     >;
-
-    /** Fields whose full string values appear in the default tooltip. */
-    fullTextFields?: string[];
-
     [key: string]: any;
 }
 
