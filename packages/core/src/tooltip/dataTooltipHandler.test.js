@@ -79,6 +79,24 @@ test("Falls back to datum flattening when no context is provided", async () => {
     expect(keys).toEqual(["sample", "nested.value"]);
 });
 
+test("Preserves full sample names in the default tooltip", async () => {
+    const longText = "Primary T helper cells from peripheral blood";
+    const mark = /** @type {any} */ ({
+        encoders: {},
+        encoding: { sample: { field: "cellType" } },
+        unitView: { getTitleText: () => "" },
+    });
+    const content = await dataTooltipHandler(
+        { cellType: longText, note: longText },
+        mark
+    );
+    const values = Array.from(
+        toContainer(content).querySelectorAll("td"),
+        (el) => el.textContent.trim()
+    );
+    expect(values).toEqual([longText, "Primary T helper cells from pe"]);
+});
+
 test("Renders only configured tooltip rows when provided", async () => {
     const datum = {
         sample: "S1",
@@ -89,6 +107,7 @@ test("Renders only configured tooltip rows when provided", async () => {
 
     const mark = /** @type {any} */ ({
         encoders: {},
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },
@@ -137,6 +156,7 @@ test("Uses source fields for color legends when tooltip titles differ", async ()
         encoders: {
             fill: fillEncoder,
         },
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },

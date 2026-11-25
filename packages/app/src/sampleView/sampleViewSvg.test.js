@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { render } from "lit";
 import { describe, expect, test, vi } from "vitest";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
 import { prepareViewHierarchy } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
@@ -17,6 +18,10 @@ import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import MergeSampleFacets from "./mergeFacets.js";
+import {
+    createSampleLabelTooltipHandler,
+    SAMPLE_LABEL_TOOLTIP_HANDLER,
+} from "./sampleLabelTooltip.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -79,6 +84,107 @@ describe("SampleView SVG export", () => {
         expect(new Set(plotRows.map(({ clip }) => clip)).size).toBe(1);
         expect(warnings).toEqual([]);
     });
+
+    test.each(/** @type {const} */ ([undefined, "ellipsis", "fade"]))(
+        "renders sidebar labels with labelOverflow %s",
+        async (labelOverflow) => {
+            const longId = "sample-identifier-for-the-treatment-group";
+            const longName = "Primary T helper cells from peripheral blood";
+            const labelLength = 80;
+            const { view, context } = await createSampleViewForTest({
+                initializeFlow: false,
+                spec: {
+                    config: { mark: { color: "black" } },
+                    samples: {
+                        labelLength,
+                        labelOverflow,
+                        identity: {
+                            data: {
+                                values: [
+                                    { id: "S1", label: "Control" },
+                                    { id: longId, label: longName },
+                                ],
+                            },
+                            idField: "id",
+                            displayNameField: "label",
+                        },
+                    },
+                    spec: { data: { values: [{}] }, mark: "point" },
+                },
+            });
+            prepareViewHierarchy(view);
+            await initializeViewData(
+                view,
+                context.dataFlow,
+                context.textMetrics,
+                () => undefined
+            );
+
+            const { svg } = createSvg({
+                viewRoot: view,
+                logicalWidth: 400,
+                logicalHeight: 200,
+            });
+            const selector = '[data-name="sample-labels"] text';
+            const labels = Array.from(svg.querySelectorAll(selector));
+            const labelTexts = labels.map((label) => label.textContent);
+            expect(view.sampleLabelView.getSize().width.px).toBe(labelLength);
+            if (labelOverflow === "ellipsis") {
+                expect(labelTexts).toEqual([
+                    "Control",
+                    expect.stringMatching(/^Primary.*\.\.\.$/),
+                ]);
+                const labelMetrics = context.textMetrics.requestFont({});
+                expect(
+                    labelMetrics.measureWidth(labelTexts[1], 11)
+                ).toBeLessThanOrEqual(labelLength);
+            } else {
+                expect(labelTexts).toEqual(["Control", longName]);
+            }
+
+            if (labelOverflow === "fade") {
+                expect(labels[1].closest("[mask][clip-path]")).not.toBeNull();
+                expect(labels[1].getAttribute("transform")).not.toContain(
+                    "scale("
+                );
+
+                const overview = createSvg({
+                    viewRoot: view,
+                    logicalWidth: 400,
+                    logicalHeight: 35,
+                });
+                const scales = Array.from(
+                    overview.svg.querySelectorAll(selector),
+                    (label) =>
+                        label
+                            .getAttribute("transform")
+                            .match(/scale\(([^)]+)\)/)?.[1]
+                );
+                expect(scales).toHaveLength(2);
+                expect(Number(scales[0])).toBeLessThan(1);
+                expect(scales[1]).toBe(scales[0]);
+            } else if (labelOverflow === undefined) {
+                expect(labels[1].getAttribute("transform")).toContain("scale(");
+                return;
+            }
+
+            const datum = Iterator.from(
+                view.sampleLabelView.getCollector().getData()
+            ).find((datum) => datum.id === longId);
+            const tooltip = document.createElement("div");
+            const mark = view.sampleLabelView.mark;
+            expect(mark.properties.tooltip).toEqual({
+                handler: SAMPLE_LABEL_TOOLTIP_HANDLER,
+            });
+            const handler = createSampleLabelTooltipHandler();
+            render(await handler(datum, mark), tooltip);
+            expect(
+                Array.from(tooltip.querySelectorAll("td"), (cell) =>
+                    cell.textContent.trim()
+                )
+            ).toEqual([longId, longName]);
+        }
+    );
 
     test("keeps grouped metadata bars and labels aligned with independent sample plots", async () => {
         const samples = ["A", "B", "C"];

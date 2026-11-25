@@ -117,6 +117,7 @@
 
         max-width: 450px;
         overflow: hidden;
+        overflow-wrap: anywhere;
 
         --background-color: light-dark(#f6f6f6, #252f3b);
         background: var(--background-color);

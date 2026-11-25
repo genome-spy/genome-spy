@@ -105,13 +105,22 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
         return;
     }
 
+    const sampleField = mark.encoding.sample?.field;
+    const sampleKey =
+        sampleField == null ? undefined : normalizeFieldPath(sampleField);
     const tableContents = orderedRows.map((row) => {
-        const value = row.formatted ? row.value : formatObject(row.value);
-        const valueLegend = legend(
-            row.sourceField ?? row.key,
-            row.value,
-            datum
-        );
+        const field = row.sourceField ?? row.key;
+        const fullSampleName =
+            sampleKey !== undefined &&
+            typeof row.value === "string" &&
+            (row.sourceField
+                ? normalizeFieldPath(row.sourceField)
+                : row.key) === sampleKey;
+        const value =
+            row.formatted || fullSampleName
+                ? row.value
+                : formatObject(row.value);
+        const valueLegend = legend(field, row.value, datum);
         return html`
             <tr>
                 <th>${row.key}</th>
