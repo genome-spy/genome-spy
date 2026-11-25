@@ -1,4 +1,9 @@
 import UnitView from "@genome-spy/core/view/unitView.js";
+import {
+    combineClipOptions,
+    createClipOptions,
+    normalizeClipOptions,
+} from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { html } from "lit";
@@ -139,12 +144,18 @@ export class SampleLabelView extends UnitView {
             return;
         }
 
-        super.arrange(context, coords, {
-            ...options,
-            // Labels should disappear behind the sticky summary area, but the
-            // rest of the sidebar, such as group markers, must remain visible.
-            clipRect: this.#sampleView.locationManager.clipBySummary(coords),
-        });
+        // Keep the inherited viewport bounds and clip labels below the sticky
+        // summary independently of the rest of the sidebar.
+        const labelClip = createClipOptions(
+            this.#sampleView.locationManager.clipBySummary(coords),
+            true,
+            true
+        );
+        const clip = combineClipOptions(
+            normalizeClipOptions(options),
+            labelClip
+        );
+        super.arrange(context, coords, { ...options, clip });
     }
 
     /**

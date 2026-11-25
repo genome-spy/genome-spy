@@ -1473,46 +1473,71 @@ describe("layout and group column", () => {
         );
     });
 
-    test("clips sample labels to the sidebar viewport", async () => {
-        const { view } = await createSampleViewForTest({
+    test("clips scrolled sample labels below the sticky summary", async () => {
+        const values = Array.from({ length: 12 }, (_, x) => ({
+            sample: `S${x}`,
+            x,
+        }));
+        const { view, context } = await createSampleViewForTest({
+            initializeFlow: false,
             spec: {
-                data: {
-                    values: [{ sample: "A", x: 1 }],
-                },
-                samples: {},
+                data: { values },
+                samples: { labelLength: 100, labelOverflow: "fade" },
+                sampleLayout: { sampleHeight: 20 },
                 spec: {
                     mark: "point",
                     encoding: {
                         sample: { field: "sample" },
                         x: { field: "x", type: "quantitative" },
                     },
+                    aggregateSamples: [{ mark: "point", height: 20 }],
                 },
             },
         });
-        view.provenance.store.dispatch(
-            view.actions.setSamples({
-                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
-            })
+        await initializeViewData(
+            /** @type {import("@genome-spy/core/view/view.js").default} */ (
+                /** @type {unknown} */ (view)
+            ),
+            context.dataFlow,
+            context.textMetrics,
+            () => undefined
         );
-        await Promise.resolve();
-        view.getScaleResolution = () =>
-            /** @type {any} */ ({
-                getDataDomain: () => ["A"],
-            });
-        view.handleBroadcast({
-            type: "subtreeDataReady",
-            payload: { subtreeRoot: view },
-        });
 
-        const renderContext = new InspectRenderingContext({ picking: false });
-        view.arrange(renderContext, Rectangle.create(0, 0, 300, 220), {
+        const coords = Rectangle.create(0, 0, 300, 120);
+        view.arrange(new NoOpRenderingContext({ picking: false }), coords, {
             firstFacet: true,
         });
+        // Finish the peek transition before scrolling the rows behind the summary.
+        context.animator.requestTransition = (callback) =>
+            callback(performance.now() + 1000);
+        await view.locationManager.togglePeek(true, 40, values[0].sample);
+        view.locationManager.setScrollOffset(40);
+        expect(view.locationManager.isCloseup()).toBe(true);
+        expect(view.locationManager.getScrollOffset()).toBe(40);
 
-        expect(renderContext.sampleLabels).not.toHaveLength(0);
-        expect(
-            normalizeClipOptions(renderContext.sampleLabels[0])
-        ).toBeDefined();
+        const inheritedClip = {
+            rect: Rectangle.create(10, 0, 70, 120),
+            clipX: true,
+            clipY: false,
+        };
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.arrange(renderContext, coords, {
+            firstFacet: true,
+            clip: inheritedClip,
+        });
+
+        expect(renderContext.sampleLabels).toHaveLength(1);
+        const clip = normalizeClipOptions(renderContext.sampleLabels[0]);
+        expect(clip).toMatchObject({
+            clipX: true,
+            clipY: true,
+            rect: {
+                x: inheritedClip.rect.x,
+                x2: inheritedClip.rect.x2,
+                y: view.childCoords.y + 20,
+                y2: view.childCoords.y2,
+            },
+        });
     });
 
     test("does not clip sample groups to the sticky summary viewport", async () => {
