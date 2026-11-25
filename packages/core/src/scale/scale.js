@@ -27,6 +27,7 @@
  */
 
 import { tickCount } from "./ticks.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import scaleBand, { scalePoint } from "../scales/scaleBand.js";
 import {
     error,
@@ -153,7 +154,9 @@ export function configureScale(
         scale.unknown(domainConfig.ordinalUnknown);
     }
 
-    configureRange(scale, _, configureBins(scale, _, domainConfig.count));
+    const count = configureBins(scale, _, domainConfig.count);
+    // Live scheme expressions bind after the scale's domain is available.
+    if (!getSchemeExpression(_.scheme)) configureRange(scale, _, count);
 }
 
 /**
@@ -521,6 +524,30 @@ function configureRange(scale, _, count) {
     if (range) scale.range(flip(range, _.reverse));
 }
 
+/** @param {import("../spec/scale.js").Scale["scheme"]} scheme */
+export function getSchemeExpression(scheme) {
+    if (isExprRef(scheme)) return scheme;
+    return isExprRef(scheme?.name) ? scheme.name : undefined;
+}
+
+/** @param {unknown} value @returns {string} */
+export function readSchemeName(value) {
+    if (typeof value !== "string") {
+        throw new Error("A scale scheme expression must return a scheme name.");
+    }
+    lookupScheme(value);
+    return value.toLowerCase();
+}
+
+function lookupScheme(name) {
+    const key = name.toLowerCase();
+    const scheme = getScheme(key);
+    if (!scheme || scheme === Object.prototype[key]) {
+        error(`Unrecognized scheme name: ${name}`);
+    }
+    return scheme;
+}
+
 function configureScheme(type, _, count) {
     var extent = _.schemeExtent,
         schemeCount = _.schemeCount,
@@ -531,15 +558,14 @@ function configureScheme(type, _, count) {
         scheme = interpolateColors(_.scheme, _.interpolate, _.interpolateGamma);
     } else {
         if (isString(_.scheme)) {
-            name = _.scheme.toLowerCase();
+            name = _.scheme;
         } else {
-            name = _.scheme.name.toLowerCase();
+            name = _.scheme.name;
             extent = _.scheme.extent ?? extent;
             schemeCount = _.scheme.count ?? schemeCount;
         }
 
-        scheme = getScheme(name);
-        if (!scheme) error(`Unrecognized scheme name: ${_.scheme}`);
+        scheme = lookupScheme(name);
     }
 
     // determine size for potential discrete range

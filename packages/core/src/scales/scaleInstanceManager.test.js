@@ -10,9 +10,10 @@ import "./scaleResolution.js";
 /** @type {Map<ScaleInstanceManager, ViewParamRuntime>} */
 const runtimes = new Map();
 
-/** @param {Omit<ConstructorParameters<typeof ScaleInstanceManager>[0], "getRuntime" | "createExpression"> & {runtime?: ViewParamRuntime}} options */
+/** @param {Omit<ConstructorParameters<typeof ScaleInstanceManager>[0], "channel" | "getRuntime" | "createExpression"> & {runtime?: ViewParamRuntime, channel?: import("../spec/channel.js").Channel}} options */
 function createManager({ runtime = new ViewParamRuntime(), ...options }) {
     const manager = new ScaleInstanceManager({
+        channel: "size",
         ...options,
         getRuntime: () => runtime,
         createExpression: (expr) => runtime.createExpression(expr),
@@ -78,6 +79,67 @@ describe("ScaleInstanceManager", () => {
         );
     });
 
+    test.each([
+        {
+            type: "linear",
+            domain: [10, 20],
+            names: ["viridis", "magma"],
+            extent: [0.2, 0.6],
+        },
+        {
+            type: "ordinal",
+            domain: ["a", "b"],
+            names: ["category10", "tableau10"],
+        },
+    ])(
+        "updates a $type color scheme without changing the domain",
+        ({ type, domain, names, extent }) => {
+            const runtime = new ViewParamRuntime();
+            const setScheme = runtime.registerParam({
+                name: "palette",
+                value: names[0],
+            });
+            const onRangeChange = vi.fn();
+            const manager = createManager({
+                runtime,
+                channel: "fill",
+                onRangeChange,
+                onDomainChange: () => {},
+                getGenomeStore: () => undefined,
+            });
+            const props = /** @type {import("../spec/scale.js").Scale} */ ({
+                type,
+                domain,
+                scheme: extent
+                    ? { name: { expr: "palette" }, extent }
+                    : { expr: "palette" },
+                reverse: true,
+            });
+            const scale = createScale(manager, props);
+            const colors = (/** @type {string} */ name) =>
+                createVegaScale({
+                    ...props,
+                    scheme: extent ? { name, extent } : name,
+                }).range();
+
+            expect(scale.range()).toEqual(colors(names[0]));
+            onRangeChange.mockClear();
+            setScheme(names[1]);
+            expect(scale.range()).toEqual(colors(names[1]));
+            expect(scale.domain()).toEqual(domain);
+            expect(onRangeChange).toHaveBeenCalledOnce();
+
+            expect(() => setScheme("unknown-palette")).toThrow(
+                "Unrecognized scheme name: unknown-palette"
+            );
+            expect(() => setScheme("constructor")).toThrow(
+                "Unrecognized scheme name: constructor"
+            );
+            expect(scale.range()).toEqual(colors(names[1]));
+            expect(onRangeChange).toHaveBeenCalledOnce();
+        }
+    );
+
     test("range expression updates on parameter changes", () => {
         const runtime = new ViewParamRuntime();
         const setValue = runtime.registerParam({ name: "value", value: 1 });
@@ -105,6 +167,56 @@ describe("ScaleInstanceManager", () => {
         runtime.flushNow();
         expect(scale.range()[0]).toBe(5);
         expect(onRangeChange).toHaveBeenCalledOnce();
+    });
+
+    test("ordinal range expressions reverse a copy and reject invalid updates", () => {
+        const runtime = new ViewParamRuntime();
+        const palette = ["red", "blue"];
+        const setPalette = runtime.registerParam({
+            name: "palette",
+            value: palette,
+        });
+        const manager = createManager({
+            runtime,
+            channel: "fill",
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+        const scale = createScale(manager, {
+            type: "ordinal",
+            domain: ["a", "b"],
+            range: { expr: "palette" },
+            reverse: true,
+        });
+
+        expect(scale.range()).toEqual(["blue", "red"]);
+        expect(palette).toEqual(["red", "blue"]);
+
+        expect(() => setPalette("green")).toThrow(
+            "An ordinal scale range expression must return a non-empty array."
+        );
+        expect(() => setPalette([])).toThrow("must return a non-empty array");
+        for (const invalid of [[false], [17], ["bogus-color"]]) {
+            expect(() => setPalette(invalid)).toThrow("must be CSS colors");
+        }
+        expect(scale.range()).toEqual(["blue", "red"]);
+    });
+
+    test("whole-range expressions require an ordinal scale", () => {
+        const manager = createManager({
+            onRangeChange: () => {},
+            onDomainChange: () => {},
+            getGenomeStore: () => undefined,
+        });
+
+        expect(() =>
+            createScale(manager, {
+                type: "linear",
+                domain: [0, 1],
+                range: { expr: "[0, 1]" },
+            })
+        ).toThrow('A scale range expression requires scale type "ordinal".');
     });
 
     test("domain writes delegate to the owner before changing the physical scale", () => {

@@ -1,64 +1,8 @@
 import { cssColorToRgba } from "../../color.js";
 import { range } from "d3-array";
-import { scheme as vegaScheme, interpolateColors } from "vega-scale";
-import { isString, isArray, isFunction } from "vega-util";
-import { peek } from "../../../utils/arrayUtils.js";
+import { interpolateColors } from "vega-scale";
+import { isString } from "vega-util";
 import { createOrUpdateTexture } from "./webGLHelper.js";
-
-/**
- * @param {string | import("../../../spec/scale.js").SchemeParams} schemeParams
- * @param {WebGL2RenderingContext} gl
- * @param {number} [count]
- * @param {WebGLTexture} [existingTexture]
- * @param {boolean} [reverse]
- */
-export function createSchemeTexture(
-    schemeParams,
-    gl,
-    count,
-    existingTexture,
-    reverse = false
-) {
-    const schemeName = isString(schemeParams)
-        ? schemeParams
-        : schemeParams.name;
-    const extent = (!isString(schemeParams) && schemeParams.extent) || [0, 1];
-
-    if (count === undefined && !isString(schemeParams)) {
-        count = schemeParams.count;
-    }
-
-    if (schemeName) {
-        const scheme = vegaScheme(schemeName);
-        if (isFunction(scheme)) {
-            const textureData = interpolatorToTextureData(scheme, {
-                extent,
-                count,
-                reverse,
-            });
-            return createOrUpdateTexture(
-                gl,
-                {
-                    minMag: gl.LINEAR,
-                    format: gl.RGBA,
-                    height: 1,
-                    wrap: gl.CLAMP_TO_EDGE,
-                },
-                textureData,
-                existingTexture
-            );
-        } else if (isArray(scheme)) {
-            return createDiscreteColorTexture(
-                reverse ? Array.from(scheme).reverse() : scheme,
-                gl,
-                count,
-                existingTexture
-            );
-        } else {
-            throw new Error("Unknown scheme: " + schemeName);
-        }
-    }
-}
 
 /**
  * @param {string[]} colors
@@ -80,8 +24,22 @@ export function createInterpolatedColorTexture(
         isString(interpolateParams) ? undefined : interpolateParams.gamma
     );
 
-    // TODO: Reverse
-    const textureData = interpolatorToTextureData(interpolator);
+    return createColorInterpolatorTexture(interpolator, gl, existingTexture);
+}
+
+/**
+ * @param {(position: number) => string} interpolator
+ * @param {WebGL2RenderingContext} gl
+ * @param {WebGLTexture} [existingTexture]
+ * @param {number} [count]
+ */
+export function createColorInterpolatorTexture(
+    interpolator,
+    gl,
+    existingTexture,
+    count = 256
+) {
+    const colors = range(count).map((i) => interpolator(i / (count - 1)));
     return createOrUpdateTexture(
         gl,
         {
@@ -90,7 +48,7 @@ export function createInterpolatedColorTexture(
             height: 1,
             wrap: gl.CLAMP_TO_EDGE,
         },
-        textureData,
+        colorArrayToTextureData(colors),
         existingTexture
     );
 }
@@ -145,35 +103,6 @@ export function createDiscreteColorTexture(colors, gl, count, existingTexture) {
         textureData,
         existingTexture
     );
-}
-
-/**
- * Renders an interpolator to a texture, which can be used for mapping
- * quantitative values to colors (sequential scale).
- *
- * @param {function(number):string} interpolator
- * @param {object} options
- * @param {number[]} [options.extent]
- * @param {boolean} [options.reverse]
- * @param {number} [options.count]
- */
-function interpolatorToTextureData(
-    interpolator,
-    { extent = [0, 1], reverse = false, count = 256 } = {}
-) {
-    const start = extent[0];
-    const span = peek(extent) - start;
-
-    const steps = range(count)
-        .map((x) => x / (count - 1))
-        .map((x) => start + x / span)
-        .map(interpolator);
-
-    if (reverse) {
-        steps.reverse();
-    }
-
-    return colorArrayToTextureData(steps);
 }
 
 /**

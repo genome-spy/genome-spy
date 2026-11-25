@@ -7,19 +7,14 @@ import {
     resizeFramebufferInfo,
     setTextureFromArray,
 } from "twgl.js";
-import { isArray, isString } from "vega-util";
+import { isArray } from "vega-util";
 
+import { isContinuous, isDiscretizing } from "vega-scale";
 import {
-    isContinuous,
-    isDiscrete,
-    isDiscretizing,
-    isInterpolating,
-} from "vega-scale";
-import {
+    createColorInterpolatorTexture,
     createDiscreteColorTexture,
     createDiscreteTexture,
     createInterpolatedColorTexture,
-    createSchemeTexture,
 } from "./colorUtils.js";
 import { getDiscreteRangeCountForGlsl } from "./glslScaleGenerator.js";
 import {
@@ -327,43 +322,24 @@ export default class WebGLHelper {
 
         if (isColorChannel(channel)) {
             const props = scale.props;
-
+            const scheme = props.scheme;
             const range = /** @type {any[]} */ (scale.range());
 
             /** @type {WebGLTexture} */
             let texture;
 
-            if (props.scheme) {
-                if (isDiscrete(scale.type) || isDiscretizing(scale.type)) {
-                    // Scale initialization has resolved the scheme into the exact
-                    // discrete range used by host-side encoders and tooltips.
-                    texture = createDiscreteColorTexture(
-                        range,
-                        this.gl,
-                        isDiscrete(scale.type)
-                            ? range.length
-                            : getDiscreteRangeCountForGlsl(scale),
-                        existingTexture
-                    );
-                } else {
-                    const count = isString(props.scheme)
-                        ? undefined
-                        : props.scheme.count;
-
-                    texture = createSchemeTexture(
-                        props.scheme,
-                        this.gl,
-                        count,
-                        existingTexture,
-                        !!props.reverse
-                    );
-                }
-            } else if (
-                // Interpolating
-                isInterpolating(scale.type) ||
-                // Or piecewise
-                (isContinuous(scale.type) && range.length > 1)
-            ) {
+            if ("interpolator" in scale) {
+                const count =
+                    scheme && typeof scheme === "object" && "count" in scheme
+                        ? scheme.count
+                        : undefined;
+                texture = createColorInterpolatorTexture(
+                    scale.interpolator(),
+                    this.gl,
+                    existingTexture,
+                    count
+                );
+            } else if (isContinuous(scale.type) && range.length > 1) {
                 texture = createInterpolatedColorTexture(
                     range,
                     props.interpolate,

@@ -16,6 +16,7 @@ import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
+import { getSchemeExpression, readSchemeName } from "../scale/scale.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import {
     getScaleMemberAccessors,
@@ -212,6 +213,7 @@ export default class ScaleResolution {
         }
 
         this.#scaleManager = new ScaleInstanceManager({
+            channel,
             getRuntime: () => this.#runtime,
             createExpression: (expr, layoutProperty) => {
                 const expression = this.#createExpression(expr);
@@ -722,7 +724,7 @@ export default class ScaleResolution {
         this.#invalidateOrderedMembers();
         this.#invalidateMergedScaleProps();
 
-        const range = this.#getMergedScaleProps().range;
+        const { type, range, scheme } = this.#getMergedScaleProps();
         // New resolutions bind expressions when first initialized, after the
         // authored hierarchy exists. Keep preflight atomic for live mutations.
         if (!this.#scaleManager.scale) {
@@ -730,7 +732,14 @@ export default class ScaleResolution {
         }
         // Validate domain expressions too, without changing any live scales.
         this.#getConfiguredOrDefaultDomain();
-        if (Array.isArray(range)) {
+        const schemeExpression = getSchemeExpression(scheme);
+        if (schemeExpression) {
+            readSchemeName(this.#createExpression(schemeExpression)(null));
+        }
+        if (isExprRef(range)) {
+            const values = this.#createExpression(range)(null);
+            this.#scaleManager.validateRangeExpression(type, values);
+        } else if (Array.isArray(range)) {
             for (const value of range) {
                 if (isExprRef(value)) {
                     this.#createExpression(value);

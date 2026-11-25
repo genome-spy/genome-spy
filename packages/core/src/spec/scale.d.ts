@@ -153,13 +153,15 @@ export interface Scale {
      *
      * - For [Vega-Lite discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [Vega-Lite discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values. Array elements may also be expression references, which use the parameter scope of the view that owns the scale resolution.
      *
+     * - For ordinal scales, an expression reference that returns a non-empty array of strings or finite numbers. The expression uses the same parameter scope as range entry expressions.
+     *
      * __Notes:__
      *
      * 1) For color scales you can also specify a color [`scheme`](https://vega.github.io/vega-lite/docs/scale.html#scheme) instead of `range`.
      *
      * 2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [Vega-Lite size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`).
      */
-    range?: (number | string | ExprRef)[] | string;
+    range?: (number | string | ExprRef)[] | string | ExprRef;
 
     // ordinal
 
@@ -168,9 +170,11 @@ export interface Scale {
      *
      * Discrete color schemes may be used with [Vega-Lite discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) or [Vega-Lite discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales. Continuous color schemes are intended for use with color scales.
      *
+     * An expression reference can return the scheme name. The expression uses the parameter scope of the view that owns the scale resolution.
+     *
      * For the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.
      */
-    scheme?: string | SchemeParams;
+    scheme?: string | SchemeParams | ExprRef;
 
     /**
      * The alignment of the steps within the scale range.
@@ -379,11 +383,11 @@ export interface ViewportDomainRef {
 
 export interface SchemeParams {
     /**
-     * A color scheme name for ordinal scales (e.g., `"category10"` or `"blues"`).
+     * A color scheme name or an expression reference that returns the name.
      *
      * For the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.
      */
-    name: string;
+    name: string | ExprRef;
 
     /**
      * The extent of the color range to use. For example `[0.2, 1]` will rescale the color scheme such that color values in the range _[0, 0.2)_ are excluded from the scheme.

@@ -1,5 +1,7 @@
 import deepEqual from "../utils/deepEqual.js";
 import { isDiscrete } from "vega-scale";
+import { color } from "d3-color";
+import { isColorChannel } from "../encoder/encoder.js";
 import createIndexer from "../utils/indexer.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
@@ -12,6 +14,8 @@ import createScale, {
     configureScaleRange,
     applyScaleDomain,
     getScalePropertyDefaults,
+    getSchemeExpression,
+    readSchemeName,
 } from "../scale/scale.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
@@ -39,6 +43,7 @@ const MANAGED_SCALE_PROPERTIES = /** @type {const} */ ([
  *   gapPositions: readonly number[],
  *   gapWidth: number | null,
  *   range: any[] | undefined,
+ *   schemeName: string | undefined,
  *   prepared: (import("../types/encoder.js").VegaScale & {props: import("../spec/scale.js").Scale}) | undefined
  * }} MappingConfiguration
  */
@@ -51,6 +56,9 @@ export default class ScaleInstanceManager {
 
     /** @type {ScaleWithProps | undefined} */
     #scale;
+
+    /** @type {import("../spec/channel.js").Channel} */
+    #channel;
 
     /** @type {any[] | undefined} */
     #defaultRange;
@@ -101,6 +109,7 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {object} options
+     * @param {import("../spec/channel.js").Channel} options.channel
      * @param {() => ViewParamRuntime} options.getRuntime
      * @param {(expr: import("../spec/parameter.js").ExprRef, layoutProperty?: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
      * @param {() => void} options.onRangeChange
@@ -110,6 +119,7 @@ export default class ScaleInstanceManager {
      * @param {() => number} [options.getAxisLength]
      */
     constructor({
+        channel,
         getRuntime,
         createExpression,
         onRangeChange,
@@ -120,6 +130,7 @@ export default class ScaleInstanceManager {
         getGenomeStore,
         getAxisLength = () => 0,
     }) {
+        this.#channel = channel;
         this.#getRuntime = getRuntime;
         this.#createExpression = createExpression;
         this.#onRangeChange = onRangeChange;
@@ -319,6 +330,36 @@ export default class ScaleInstanceManager {
         this.#bindGenomeIfNeeded(props);
     }
 
+    /**
+     * @param {string | undefined} scaleType
+     * @param {unknown} values
+     * @returns {(string | number)[]}
+     */
+    validateRangeExpression(scaleType, values) {
+        if (scaleType !== "ordinal") {
+            throw new Error(
+                'A scale range expression requires scale type "ordinal".'
+            );
+        }
+        if (!Array.isArray(values) || values.length === 0) {
+            throw new Error(
+                "An ordinal scale range expression must return a non-empty array."
+            );
+        }
+
+        const paint = isColorChannel(this.#channel);
+        const kind = paint ? "CSS colors" : "strings or finite numbers";
+        for (const value of values) {
+            const valid = paint
+                ? typeof value === "string" && color(value)
+                : typeof value === "string" || Number.isFinite(value);
+            if (!valid) {
+                throw new Error(`Ordinal range values must be ${kind}.`);
+            }
+        }
+        return values;
+    }
+
     /** @param {import("../spec/scale.js").Scale} props */
     configureMapping(props) {
         const scale = this.#scale;
@@ -333,6 +374,11 @@ export default class ScaleInstanceManager {
         const expressions = Array.isArray(props.range)
             ? props.range.map((value) => bind(value))
             : undefined;
+        const readRange = isExprRef(props.range)
+            ? bind(props.range)
+            : undefined;
+        const schemeExpression = getSchemeExpression(props.scheme);
+        const readScheme = schemeExpression && bind(schemeExpression);
         const gaps = hasGroupingGaps(props);
         const categorical = scale.type === "band" || scale.type === "point";
         if (gaps && !["index", "locus", "band", "point"].includes(scale.type))
@@ -390,22 +436,35 @@ export default class ScaleInstanceManager {
                 gapPositions = this.#resolveGapPositions(rawPositions, domain);
                 previousPositions = rawPositions;
             }
-            const range = expressions?.map((expression) => expression(null));
-            if (props.reverse) range?.reverse();
+            let range;
+            if (readRange) {
+                const values = this.validateRangeExpression(
+                    scale.type,
+                    readRange(null)
+                );
+                range = props.reverse
+                    ? values.toReversed()
+                    : Array.from(values);
+            } else {
+                range = expressions?.map((expression) => expression(null));
+                if (props.reverse) range?.reverse();
+            }
             /** @type {[number, number] | undefined} */
             let padding;
             if (paddingInputs) {
                 const common = readPadding(0);
                 padding = [readPadding(1, common), readPadding(2, common)];
             }
+            const schemeName = readScheme && readSchemeName(readScheme(null));
             // Interpolating schemes depend on domain cardinality.
             const prepared =
                 scale.type === "null" ||
                 (previous?.scale === scale &&
                     previous.props === props &&
+                    previous.schemeName === schemeName &&
                     previous.domain.length === domain.length)
                     ? undefined
-                    : this.#prepareMapping(props);
+                    : this.#prepareMapping(props, schemeName);
             return {
                 scale,
                 props,
@@ -416,6 +475,7 @@ export default class ScaleInstanceManager {
                 gapPositions,
                 gapWidth: width(null),
                 range,
+                schemeName,
                 prepared,
             };
         });
@@ -424,16 +484,22 @@ export default class ScaleInstanceManager {
 
     /** Validate configuration once and retain its properties for live application.
      * @param {import("../spec/scale.js").Scale} props
+     * @param {string | undefined} schemeName
      */
-    #prepareMapping(props) {
+    #prepareMapping(props, schemeName) {
         props = this.#withPropertyDefaults(props);
         const working = this.#scale.copy();
         working.type = this.#scale.type;
         configureScaleProperties(working, props);
-        configureScaleRange(working, {
-            ...props,
-            range: undefined,
-        });
+
+        let scheme = props.scheme;
+        if (schemeName !== undefined) {
+            scheme =
+                typeof scheme === "object" && "name" in scheme
+                    ? { ...scheme, name: schemeName }
+                    : schemeName;
+        }
+        configureScaleRange(working, { ...props, scheme, range: undefined });
         return Object.assign(working, { props });
     }
 
@@ -623,6 +689,7 @@ function equalMapping(a, b) {
             !!b &&
             a.scale === b.scale &&
             a.props === b.props &&
+            a.schemeName === b.schemeName &&
             equalRange(a.padding, b.padding) &&
             (a.domain === b.domain || shallowArrayEquals(a.domain, b.domain)) &&
             shallowArrayEquals(a.gapDomain ?? [], b.gapDomain ?? []) &&

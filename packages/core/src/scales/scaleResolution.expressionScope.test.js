@@ -317,54 +317,73 @@ describe("scale resolution expression scope", () => {
         expect(resolution.getScale().range()).toEqual([0, 4]);
     });
 
-    test("failed child-local insertion leaves an initialized resolution unchanged", async () => {
-        const view = await initView(
-            {
-                data: { values: pointValues() },
-                layer: [
-                    point("size", {
-                        name: "base",
-                        encoding: { x: quantitative() },
-                    }),
-                ],
-            },
-            LayerView
-        );
-        const resolution = getRequiredScaleResolution(view, "size");
-        const xResolution = getRequiredScaleResolution(view, "x");
-        const baselineRange = resolution.getScale().range();
-        const baselineXDomain = xResolution.getScale().domain();
-        let xDomainNotifications = 0;
-        xResolution.addEventListener("domain", () => {
-            xDomainNotifications++;
-        });
-        renderToLayout(view);
+    const hiddenRange = /Parameter "childRange" is not visible from the shared/;
+    test.each([
+        ["size", "quantitative", [0, { expr: "childRange" }], 10, hiddenRange],
+        [
+            "color",
+            "nominal",
+            { expr: "childRange" },
+            ["red", "blue"],
+            hiddenRange,
+        ],
+        [
+            "color",
+            "nominal",
+            { expr: "palette" },
+            undefined,
+            "must return a non-empty array",
+        ],
+    ])(
+        "rejects an invalid %s range before changing initialized scales",
+        async (channel, type, range, childValue, error) => {
+            const base = point(channel, {
+                name: "base",
+                encoding: { x: quantitative() },
+            });
+            base.encoding[channel].type = type;
+            const view = await initView(
+                {
+                    params: [{ name: "palette", value: 1 }],
+                    data: { values: pointValues() },
+                    layer: [base],
+                },
+                LayerView
+            );
+            const resolution = getRequiredScaleResolution(view, channel);
+            const xResolution = getRequiredScaleResolution(view, "x");
+            const baselineRange = resolution.getScale().range();
+            const baselineXDomain = xResolution.getScale().domain();
+            let xDomainNotifications = 0;
+            xResolution.addEventListener("domain", () => {
+                xDomainNotifications++;
+            });
+            renderToLayout(view);
 
-        await expect(
-            view.addChildSpec(
-                point("size", {
-                    name: "invalid",
-                    params: [{ name: "childRangeEnd", value: 10 }],
-                    scale: {
-                        domain: [0, 1],
-                        range: [0, { expr: "childRangeEnd" }],
-                    },
-                    encoding: {
-                        x: quantitative("value", { domain: [10, 20] }),
-                    },
-                })
-            )
-        ).rejects.toThrow(
-            'Parameter "childRangeEnd" is not visible from the shared size scale resolution.'
-        );
+            const invalid = point(channel, {
+                name: "invalid",
+                params:
+                    childValue === undefined
+                        ? undefined
+                        : [{ name: "childRange", value: childValue }],
+                scale: { domain: [0, 1], range },
+                encoding: {
+                    x: quantitative("value", { domain: [10, 20] }),
+                },
+            });
+            invalid.encoding[channel].type = type;
+            await expect(view.addChildSpec(invalid)).rejects.toThrow(error);
 
-        expect(view.children.map((child) => child.name)).toEqual(["base"]);
-        expect(resolution.getOrderedMembers()).toHaveLength(1);
-        expect(xResolution.getOrderedMembers()).toHaveLength(1);
-        expect(resolution.getScale().range()).toEqual(baselineRange);
-        expect(xResolution.getScale().domain()).toEqual(baselineXDomain);
-        expect(xDomainNotifications).toBe(0);
-    });
+            expect(view.children.map((child) => child.name)).toEqual(["base"]);
+            expect(resolution.getOrderedMembers()).toHaveLength(1);
+            expect(xResolution.getOrderedMembers()).toHaveLength(1);
+            expect(resolution.getScale().range()).toEqual(baselineRange);
+            expect(xResolution.getScale().domain()).toEqual(baselineXDomain);
+            expect(xDomainNotifications).toBe(0);
+            view.paramRuntime.setValue("palette", 2);
+            await view.paramRuntime.whenPropagated();
+        }
+    );
 
     test("owner-level sashimi domains react to owner geometry and x domains", async () => {
         const view = await initView(
