@@ -217,53 +217,86 @@ export class SampleLabelView extends UnitView {
  */
 function createLabelViewSpec(sampleDef, metadataDef) {
     const labelTitle = getLabelTitle(sampleDef);
+    const { labelLength, labelOverflow = "squeeze" } = sampleDef;
+    const fade = labelOverflow === "fade";
+    const ellipsis = labelOverflow === "ellipsis" && labelLength != null;
+    const labelField = ellipsis ? "_sidebarLabel" : "displayName";
+    const align = sampleDef.labelAlign ?? "left";
+    const labelFont = {
+        fontSize: sampleDef.labelFontSize ?? 11,
+        font: sampleDef.labelFont,
+        fontStyle: sampleDef.labelFontStyle,
+        fontWeight: sampleDef.labelFontWeight,
+    };
+
+    /** @type {import("@genome-spy/core/spec/transform.js").TransformParams[]} */
+    const transform = [
+        {
+            type: "measureText",
+            field: labelField,
+            as: LABEL_WIDTH_FIELD,
+            ...labelFont,
+        },
+        {
+            type: "measureText",
+            field: LABEL_TITLE_FIELD,
+            as: LABEL_TITLE_WIDTH_FIELD,
+            fontSize: metadataDef?.labelFontSize ?? 11,
+            font: metadataDef?.labelFont,
+            fontStyle: metadataDef?.labelFontStyle,
+            fontWeight: metadataDef?.labelFontWeight,
+        },
+    ];
+
+    if (ellipsis) {
+        transform.unshift({
+            type: "truncateText",
+            field: "displayName",
+            as: labelField,
+            limit: labelLength,
+            ...labelFont,
+        });
+    }
 
     /** @type {import("../spec/view.js").AppUnitSpec} */
     const labelSpec = {
         name: "sample-labels",
         datasets: { samples: [] },
         data: { name: "samples" },
-        width: sampleDef.labelLength ?? 0,
+        width: labelLength ?? 0,
         configurableVisibility: true,
-        transform: [
-            {
-                type: "measureText",
-                field: "displayName",
-                as: LABEL_WIDTH_FIELD,
-                fontSize: sampleDef.labelFontSize ?? 11,
-                font: sampleDef.labelFont,
-                fontStyle: sampleDef.labelFontStyle,
-                fontWeight: sampleDef.labelFontWeight,
-            },
-            {
-                type: "measureText",
-                field: LABEL_TITLE_FIELD,
-                as: LABEL_TITLE_WIDTH_FIELD,
-                fontSize: metadataDef?.labelFontSize ?? 11,
-                font: metadataDef?.labelFont,
-                fontStyle: metadataDef?.labelFontStyle,
-                fontWeight: metadataDef?.labelFontWeight,
-            },
-        ],
+        transform,
         mark: {
             type: "text",
             baseline: "middle",
-            font: sampleDef.labelFont,
-            size: sampleDef.labelFontSize ?? 11,
-            fontStyle: sampleDef.labelFontStyle,
-            fontWeight: sampleDef.labelFontWeight,
-            align: sampleDef.labelAlign ?? "left",
+            font: labelFont.font,
+            size: labelFont.fontSize,
+            fontStyle: labelFont.fontStyle,
+            fontWeight: labelFont.fontWeight,
+            align,
             fitToBand: true,
             flushY: false,
             yOffset: 0,
             y2Offset: 0,
+            ...(fade && {
+                squeeze: true,
+                viewportEdgeFadeWidthRight: 12,
+                viewportEdgeFadeDistanceRight: 0,
+            }),
+            ...(labelOverflow !== "squeeze" && {
+                tooltip: {
+                    handler: "default",
+                    params: { fullTextFields: ["id", "displayName"] },
+                },
+            }),
         },
         opacity: { expr: "_sampleRowStep > 0 ? 1 : 0" },
         encoding: {
-            x: { value: 0 },
-            x2: { value: 1 },
+            x: { value: fade ? { left: 0, center: 0.5, right: 1 }[align] : 0 },
+            // A single horizontal anchor leaves only the row height to fit.
+            x2: fade ? null : { value: 1 },
             y: { field: "id", type: "nominal", axis: null },
-            text: { field: "displayName" },
+            text: { field: labelField },
         },
     };
 

@@ -217,7 +217,7 @@ APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labe
 
 In addition, the following sample label properties are supported:
 
-APP_SCHEMA SampleDef labelTitle labelLength
+APP_SCHEMA SampleDef labelTitle labelLength labelOverflow
 
 Sample row and group layout can be adjusted with the `sampleLayout` property:
 

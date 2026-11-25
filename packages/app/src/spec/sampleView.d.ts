@@ -572,9 +572,22 @@ export interface SampleDef {
     /**
      * Width reserved for sample labels in pixels.
      *
-     * If omitted, the width is inferred from the sample labels.
+     * If omitted, the column sizes to the full labels and title.
      */
     labelLength?: number;
+
+    /**
+     * Overflow treatment for sample labels in the sidebar.
+     *
+     * - `"squeeze"` scales text to fit the column width and row height.
+     * - `"ellipsis"` shortens text longer than `labelLength` and adds an ellipsis.
+     * - `"fade"` scales text to fit the row height and fades and clips it at the column's right edge.
+     *
+     * Ellipsis and fade modes show the full sample name in tooltips.
+     *
+     * **Default value:** `"squeeze"`
+     */
+    labelOverflow?: "squeeze" | "ellipsis" | "fade";
 
     /**
      * The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen)
