@@ -1,4 +1,6 @@
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
+import { isExprRef } from "../../../paramRuntime/paramUtils.js";
+import { DEFAULT_GRADIENT_TICK_COUNT } from "../../../config/defaults/legendDefaults.js";
 import {
     createNormalizedScale,
     createLinearPositionScale,
@@ -9,7 +11,6 @@ import DataSource from "../dataSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 const DEFAULT_SAMPLE_COUNT = 64;
-const DEFAULT_TICK_COUNT = 5;
 
 /**
  * @typedef {((value: number) => number) & { invert: (position: number) => number }} NormalizedPositionScale
@@ -67,6 +68,9 @@ class LegendGradientBaseSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
     #domain = undefined;
 
+    /** @type {number | undefined} */
+    #count;
+
     /**
      * @param {LegendGradientSourceData} params
      * @param {import("../../../view/view.js").default} view
@@ -83,6 +87,10 @@ class LegendGradientBaseSource extends DataSource {
         }
 
         const publish = () => this.#publishData();
+        const count = params.count;
+        this.readCount = isExprRef(count)
+            ? view.paramRuntime.watchExpression(count, publish)
+            : () => count;
         this.scaleResolution.addEventListener("domain", publish);
         this.view.registerDisposer(() =>
             this.scaleResolution.removeEventListener("domain", publish)
@@ -96,8 +104,13 @@ class LegendGradientBaseSource extends DataSource {
 
     #publishData() {
         const domain = this.scaleResolution.getDomain();
+        const count = this.readCount();
 
-        if (!this.#domain || !shallowArrayEquals(domain, this.#domain)) {
+        if (
+            !this.#domain ||
+            count !== this.#count ||
+            !shallowArrayEquals(domain, this.#domain)
+        ) {
             const start = Number(domain[0]);
             const stop = Number(domain.at(-1));
             if (!Number.isFinite(start) || !Number.isFinite(stop)) {
@@ -107,9 +120,10 @@ class LegendGradientBaseSource extends DataSource {
             }
 
             this.#domain = domain.slice();
+            this.#count = count;
             this.reset();
             this.beginBatch({ type: "file" });
-            this.publishData(start, stop);
+            this.publishData(start, stop, count);
             this.complete();
         }
     }
@@ -117,8 +131,9 @@ class LegendGradientBaseSource extends DataSource {
     /**
      * @param {number} start
      * @param {number} stop
+     * @param {number} [count]
      */
-    publishData(start, stop) {
+    publishData(start, stop, count) {
         throw new Error(
             "Gradient legend data source must implement publishData."
         );
@@ -134,7 +149,7 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
      * @param {number} start
      * @param {number} stop
      */
-    publishData(start, stop) {
+    publishData(start, stop, count = DEFAULT_SAMPLE_COUNT) {
         const scale = this.scaleResolution.getScale();
         if (scale.type == "threshold") {
             this.#publishThresholdGradient();
@@ -144,7 +159,6 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
             return;
         }
 
-        const count = this.params.count ?? DEFAULT_SAMPLE_COUNT;
         const positionScale = createNormalizedScale(scale, start, stop);
         const invertPosition = (/** @type {number} */ position) =>
             positionScale.invert(position);
@@ -217,7 +231,7 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
      * @param {number} start
      * @param {number} stop
      */
-    publishData(start, stop) {
+    publishData(start, stop, requestedCount = DEFAULT_GRADIENT_TICK_COUNT) {
         const scale = this.scaleResolution.getScale();
         const positionExtent =
             scale.type == "threshold"
@@ -230,11 +244,16 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
             positionExtent[0],
             positionExtent[1]
         );
-        const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
-        const format = tickFormat(scale, requestedCount, this.params.format);
-        const values = this.params.values
-            ? this.params.values.map(finiteNumber).filter((value) => {
+        const explicitValues = this.params.values;
+        const format = tickFormat(
+            scale,
+            requestedCount,
+            this.params.format,
+            !explicitValues
+        );
+        const values = explicitValues
+            ? explicitValues.map(finiteNumber).filter((value) => {
                   const position = positionScale(value);
                   return (
                       Number.isFinite(position) &&
@@ -247,15 +266,10 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
               : tickValues(scale, count).map(finiteNumber);
 
         for (const value of values) {
-            const label = format(value);
-            if (!label) {
-                continue;
-            }
-
             this._propagate({
                 value,
                 position: positionScale(value),
-                label,
+                label: format(value),
             });
         }
     }

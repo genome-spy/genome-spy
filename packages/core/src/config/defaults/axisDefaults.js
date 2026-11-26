@@ -46,9 +46,12 @@ export const AXIS_DEFAULTS = {
     gridWidth: 1,
 };
 
-const ADAPTIVE_TICK_COUNT = {
-    expr: "round(axisLength / (30 + 55 * smoothstep(100, 700, axisLength)))",
-};
+/** @param {string} length Expression for the guide length in pixels. */
+export function adaptiveTickCountExpr(length) {
+    return `round(${length} / (30 + 55 * smoothstep(100, 700, ${length})))`;
+}
+
+const ADAPTIVE_TICK_COUNT = { expr: adaptiveTickCountExpr("axisLength") };
 
 /** @type {import("../../spec/config.js").AxisConfig} */
 export const AXIS_X_DEFAULTS = {

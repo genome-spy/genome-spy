@@ -476,7 +476,7 @@ export interface LegendGradientTicksData {
     channel: ChannelWithScale;
 
     /** Number of ticks to generate */
-    count?: number;
+    count?: number | ExprRef;
 
     /** D3 number format specifier for tick labels */
     format?: string;

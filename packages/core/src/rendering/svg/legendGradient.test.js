@@ -133,6 +133,84 @@ describe("SVG gradient legends", () => {
         }
     );
 
+    test.each(orientations)(
+        "adapts logarithmic ticks to the length of a %s legend",
+        async (orient, horizontal) => {
+            const render = await createLegendRenderer({
+                orient,
+                direction: horizontal ? "horizontal" : "vertical",
+                scale: { type: "log", domain: [1, 100] },
+            });
+            const svg = render();
+            const ramp = svg.querySelector('[data-name="gradientRamp"] rect');
+            const [start, length] = numericAttributes(
+                ramp,
+                horizontal ? ["x", "width"] : ["y", "height"]
+            );
+            const position = Math.log10(5) / 2;
+            const tickPositions = Array.from(
+                svg.querySelectorAll('[data-name="gradientTicks"] line'),
+                (line) => +line.getAttribute(horizontal ? "x1" : "y1")
+            );
+            const labels = Array.from(
+                svg.querySelectorAll('[data-name="gradientLabels"] text'),
+                (label) => label.textContent
+            );
+
+            expect(tickPositions).toContainEqual(
+                expect.closeTo(
+                    start + length * (horizontal ? position : 1 - position),
+                    1
+                )
+            );
+            expect(labels).toEqual(expect.arrayContaining(["1", "10", "100"]));
+            expect(labels).not.toContain("5");
+
+            const shortSvg = render(92, 108);
+            expect(
+                shortSvg.querySelectorAll('[data-name="gradientTicks"] line')
+            ).toHaveLength(3);
+            expect(
+                Array.from(
+                    shortSvg.querySelectorAll(
+                        '[data-name="gradientLabels"] text'
+                    ),
+                    (label) => label.textContent
+                )
+            ).toEqual(["1", "10", "100"]);
+        }
+    );
+
+    test("uses an explicit tick count on a short log legend", async () => {
+        const render = await createLegendRenderer({
+            orient: "right",
+            scale: { type: "log", domain: [1, 100] },
+            legend: { gradientLength: 60, tickCount: 5 },
+        });
+        expect(
+            render().querySelectorAll('[data-name="gradientTicks"] line')
+        ).toHaveLength(19);
+    });
+
+    test("labels explicit in-range log ticks", async () => {
+        const render = await createLegendRenderer({
+            orient: "right",
+            scale: { type: "log", domain: [1, 100] },
+            legend: { values: [3, 50, 200] },
+        });
+        const svg = render();
+
+        expect(
+            svg.querySelectorAll('[data-name="gradientTicks"] line')
+        ).toHaveLength(2);
+        expect(
+            Array.from(
+                svg.querySelectorAll('[data-name="gradientLabels"] text'),
+                (label) => label.textContent
+            )
+        ).toEqual(["3", "50"]);
+    });
+
     test.each(
         /** @type {const} */ ([
             ["top", undefined, undefined, 0, "start"],

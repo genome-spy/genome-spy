@@ -26,7 +26,6 @@ export const LEGEND_DEFAULTS = {
     gradientOpacity: DEFAULT_GRADIENT_OPACITY,
     gradientStrokeWidth: DEFAULT_GRADIENT_STROKE_WIDTH,
     selectionLabel: true,
-    tickCount: DEFAULT_GRADIENT_TICK_COUNT,
     // Shape and stroke width fall back in the generated symbol mark so that
     // only author-configured legend properties override inherited styling.
     symbolSize: 100,

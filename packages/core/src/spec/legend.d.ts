@@ -170,7 +170,7 @@ export interface Legend {
      * Desired number of ticks for a quantitative gradient legend. Explicit
      * `values` take precedence over this property.
      *
-     * __Default value:__ `5`
+     * __Default value:__ Based on ramp length for logarithmic scales, `5` otherwise.
      *
      * @minimum 1
      */

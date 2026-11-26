@@ -1,12 +1,18 @@
 {
-  "description": "Legend test case for a logarithmic color scale.",
+  "description": [
+    "Adaptive ticks on log gradient legends",
+    "Both ramps use the same color scale. The long ramp shows minor ticks, and the short ramp shows fewer ticks and labels."
+  ],
 
   "background": "#fafafa",
 
   "width": 700,
   "height": 300,
+  "padding": { "top": 10, "right": 24, "bottom": 10, "left": 10 },
 
-  "config": { "legend": { "disable": false, "offset": 18 } },
+  "config": {
+    "legend": { "disable": false, "offset": 18, "titlePadding": 10 }
+  },
 
   "resolve": {
     "scale": { "color": "independent" },
@@ -48,7 +54,7 @@
           "type": "quantitative",
           "title": "Log color",
           "scale": { "type": "log", "domain": [1, 10000], "zero": false },
-          "legend": { "title": "Right", "orient": "right" }
+          "legend": { "title": "Long ramp", "orient": "right" }
         }
       }
     },
@@ -62,9 +68,10 @@
           "title": "Log color",
           "scale": { "type": "log", "domain": [1, 10000], "zero": false },
           "legend": {
-            "title": "Bottom",
+            "title": "Short ramp",
             "orient": "bottom",
-            "direction": "horizontal"
+            "direction": "horizontal",
+            "gradientLength": 70
           }
         }
       }

@@ -17,6 +17,7 @@
  * stacked legend regions.
  */
 
+import { isLogarithmic } from "vega-scale";
 import ContainerView from "./containerView.js";
 import {
     FlexDimensions,
@@ -45,6 +46,7 @@ import {
     gradientBrushLayers,
 } from "./legend/gradientLegendBinding.js";
 import { bindLegend } from "./legend/legendBinding.js";
+import { adaptiveTickCountExpr } from "../config/defaults/axisDefaults.js";
 import {
     DEFAULT_GRADIENT_STROKE_WIDTH,
     DEFAULT_GRADIENT_THICKNESS,
@@ -647,6 +649,7 @@ export function createSymbolLegendSpec({
  * @param {LegendConfig} options.legend
  * @param {import("./legend/legendBinding.js").LegendBinding} [options.binding]
  * @param {string} [options.format]
+ * @param {boolean} options.logarithmic
  * @param {import("../types/viewContext.js").default} options.context
  * @returns {LegendRootSpec}
  */
@@ -654,6 +657,7 @@ export function createGradientLegendSpec({
     channel,
     legend,
     format,
+    logarithmic,
     context,
     binding,
 }) {
@@ -696,6 +700,7 @@ export function createGradientLegendSpec({
     const labelX = tickX2 + labelOffset;
     // p is the gradient axis; q is the cross axis.
     const p = h ? "x" : "y";
+    const length = h ? "width" : "height";
     const p2 = /** @type {"x2" | "y2"} */ (p + "2");
     const q = h ? "y" : "x";
     const q2 = /** @type {"x2" | "y2"} */ (q + "2");
@@ -720,7 +725,13 @@ export function createGradientLegendSpec({
         lazy: {
             type: "legendGradientTicks",
             channel,
-            count: legend.tickCount ?? DEFAULT_GRADIENT_TICK_COUNT,
+            count:
+                legend.tickCount ??
+                (logarithmic && !legend.values
+                    ? {
+                          expr: `${length} > 0 ? ${adaptiveTickCountExpr(length)} : ${DEFAULT_GRADIENT_TICK_COUNT}`,
+                      }
+                    : undefined),
             format,
             values: legend.values,
         },
@@ -769,6 +780,7 @@ export function createGradientLegendSpec({
                 {
                     name: "gradientLabels",
                     transform: [
+                        { type: "filter", expr: "datum.label" },
                         {
                             type: "truncateText",
                             field: "label",
@@ -1333,6 +1345,11 @@ export default class LegendView extends ContainerView {
                       channel,
                       legend,
                       format,
+                      logarithmic: isLogarithmic(
+                          dataParent
+                              .getScaleResolution(channel)
+                              ?.getResolvedScaleType()
+                      ),
                       context,
                   })
                 : createSymbolLegendSpec({

@@ -3548,7 +3548,7 @@ describe("GridView legends", () => {
             );
         });
 
-        test("formats gradient legend tick labels with the channel format", async () => {
+        test("formats default linear gradient legend ticks with the channel format", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
                 vconcat: [
@@ -3578,6 +3578,7 @@ describe("GridView legends", () => {
                 "gradientLabels"
             );
 
+            expect(labelData).toHaveLength(6);
             expect(labelData).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({ value: 0, label: "0.0" }),
