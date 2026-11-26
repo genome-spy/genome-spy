@@ -494,6 +494,7 @@ function createSelectionCondition(mark, predicate) {
  */
 function createRectConfig(mark, data, coords) {
     mark.initializeRenderingRevisions([
+        "strokeAlign",
         "cornerRadius",
         "cornerRadiusTopRight",
         "cornerRadiusBottomRight",
@@ -533,6 +534,10 @@ function createRectConfig(mark, data, coords) {
             cornerRadiusBottomRight: cornerRadiusValue(
                 mark,
                 "cornerRadiusBottomRight"
+            ),
+            strokeAlign: liveValue(
+                () => STROKE_ALIGN_CODES.get(readProperty(mark, "strokeAlign")),
+                "u32"
             ),
             cornerRadiusTopLeft: cornerRadiusValue(mark, "cornerRadiusTopLeft"),
             cornerRadiusBottomLeft: cornerRadiusValue(

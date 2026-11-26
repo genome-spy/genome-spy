@@ -1,6 +1,8 @@
 import { createSvgElement } from "../svgElement.js";
 import {
     resolveRectProperties,
+    createRectBoundary,
+    setRectBoundary,
     visitRectInstances,
 } from "../../immediate/marks/rect.js";
 import {
@@ -20,6 +22,8 @@ export function renderRectSvg(baseMark, options) {
         baseMark
     );
     const properties = resolveRectProperties(mark);
+    const outer = createRectBoundary();
+    const inner = createRectBoundary();
     const { shadow, hatch } = properties;
 
     const { group, viewOpacity } = options;
@@ -59,6 +63,12 @@ export function renderRectSvg(baseMark, options) {
         if (options.countOnly) {
             return;
         }
+        if (
+            properties.strokeAlign === "center" &&
+            (instance.width === 0 || instance.height === 0)
+        ) {
+            return;
+        }
         const {
             datum,
             x,
@@ -71,6 +81,7 @@ export function renderRectSvg(baseMark, options) {
             fill,
             fillOpacity,
         } = instance;
+        setRectBoundary(outer, instance, instance.strokeOutset);
         /** @type {Record<string, string | number>} */
         // Fade the completed foreground, including the pattern and border.
         const styles = {
@@ -95,14 +106,14 @@ export function renderRectSvg(baseMark, options) {
 
         if (shadowStyles) {
             const shadowElement = createRectElement(
-                x,
-                y,
-                width,
-                height,
-                radii,
+                outer.x,
+                outer.y,
+                outer.width,
+                outer.height,
+                outer.radii,
                 {
                     ...shadowStyles,
-                    "stroke-width": formatSvgNumber(strokeWidth),
+                    stroke: "none",
                 }
             );
 
@@ -114,27 +125,18 @@ export function renderRectSvg(baseMark, options) {
                 fill != "none" &&
                 fillOpacity * fillAlpha(fill) == 1 &&
                 opacityFactor == 1;
-            if (hasOpaqueFill) {
+            if (hasOpaqueFill && instance.strokeOutset === 0) {
                 group.appendChild(shadowElement);
             } else {
                 // Translucent fills would reveal the blurred source inside the
                 // rect. Clip a parent group so the child filter is evaluated
                 // before the exterior cutout in standards-compliant renderers.
-                const cutoutPadding = strokeWidth / 2;
-                const cutoutRadii = /** @type {CornerRadii} */ (
-                    Object.fromEntries(
-                        Object.entries(radii).map(([corner, radius]) => [
-                            corner,
-                            radius + cutoutPadding,
-                        ])
-                    )
-                );
                 const cutoutPath = createRoundedRectPath(
-                    x - cutoutPadding,
-                    y - cutoutPadding,
-                    width + cutoutPadding * 2,
-                    height + cutoutPadding * 2,
-                    cutoutRadii
+                    outer.x,
+                    outer.y,
+                    outer.width,
+                    outer.height,
+                    outer.radii
                 );
                 const shadowGroup = createSvgElement("g", {
                     "clip-path": options.getShadowClipPathUrl(cutoutPath),
@@ -143,9 +145,59 @@ export function renderRectSvg(baseMark, options) {
                 group.appendChild(shadowGroup);
             }
         }
-        group.appendChild(
-            createRectElement(x, y, width, height, radii, styles)
-        );
+        const stroke = toPaintString(encoders.stroke(datum));
+        const strokeOpacity = encodeNumber(encoders.strokeOpacity, datum);
+        if (strokeWidth <= 0 || stroke === "none" || strokeOpacity <= 0) {
+            group.appendChild(
+                createRectElement(x, y, width, height, radii, styles)
+            );
+        } else {
+            const foreground = createSvgElement("g", {
+                ...(styles.opacity === undefined
+                    ? {}
+                    : { opacity: styles.opacity }),
+            });
+            delete styles.opacity;
+            foreground.appendChild(
+                createRectElement(x, y, width, height, radii, {
+                    ...styles,
+                    stroke: "none",
+                })
+            );
+            setRectBoundary(
+                inner,
+                instance,
+                instance.strokeOutset - strokeWidth
+            );
+            let band = createRoundedRectPath(
+                outer.x,
+                outer.y,
+                outer.width,
+                outer.height,
+                outer.radii
+            );
+            if (inner.width > 0 && inner.height > 0) {
+                band +=
+                    " " +
+                    createRoundedRectPath(
+                        inner.x,
+                        inner.y,
+                        inner.width,
+                        inner.height,
+                        inner.radii
+                    );
+            }
+            foreground.appendChild(
+                createSvgElement("path", {
+                    d: band,
+                    fill: stroke,
+                    "fill-opacity": formatSvgUnitless(strokeOpacity),
+                    "fill-rule": "evenodd",
+                    stroke: "none",
+                })
+            );
+            group.appendChild(foreground);
+        }
     });
 }
 

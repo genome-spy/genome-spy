@@ -5,6 +5,7 @@ layout(std140) uniform Mark {
 
     /** Minimum opacity for the size clamping */
     uniform float uMinOpacity;
+    uniform int uStrokeAlign;
 
     uniform float uCornerRadiusTopRight;
     uniform float uCornerRadiusBottomRight;

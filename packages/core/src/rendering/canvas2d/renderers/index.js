@@ -14,6 +14,8 @@ import { renderTextCanvas } from "./text.js";
  * @prop {import("../../immediate/bounds.js").RenderBounds} visibleBounds
  * @prop {import("../../immediate/bounds.js").RenderBounds} anchorCullBounds
  * @prop {number} viewOpacity
+ * @prop {CanvasRenderingContext2D[]} opacityLayers
+ * @prop {number} opacityLayerIndex
  * @prop {import("../../../fonts/textMetrics.js").TextMetricsProvider} [textMetrics]
  * @prop {(message: string) => void} warn
  * @prop {boolean} [secondOrderPass]
