@@ -193,6 +193,14 @@ export default class View {
     layoutCoords;
 
     /**
+     * The latest arranged plot dimensions, in logical pixels.
+     * @returns {Readonly<{width: number, height: number}> | undefined}
+     */
+    getPlotSize() {
+        return this.layoutCoords;
+    }
+
+    /**
      *
      * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context

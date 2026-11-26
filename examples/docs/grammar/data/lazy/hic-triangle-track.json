@@ -1,0 +1,124 @@
+{
+  "description": [
+    "Contact map from a .hic file",
+    "Pan or zoom on chromosome 8 to load contacts from the file at different bin sizes.",
+    "Use the Normalization input to select raw counts or a stored normalization.",
+    "Data source: GM12878 DpnII contact map from Rao et al. (2014), rebuilt with intrachromosomal contacts only."
+  ],
+  "assembly": "hg19",
+  "projection": "triangle",
+
+  "params": [
+    {
+      "name": "normalization",
+      "value": "NONE",
+      "bind": {
+        "input": "select",
+        "name": "Normalization",
+        "options": ["NONE", "VC", "VC_SQRT", "KR"],
+        "labels": ["Raw counts", "VC", "VC_SQRT", "KR"]
+      }
+    }
+  ],
+
+  "data": {
+    "lazy": {
+      "type": "hic",
+      "url": "https://data.genomespy.app/datasets/geo-gm12878-dpnii-hic/v1/gm12878-dpnii-cis.hic",
+      "normalization": { "expr": "normalization" }
+    }
+  },
+
+  "layer": [
+    {
+      "name": "contacts",
+      "mark": "raster",
+      "encoding": {
+        "x": {
+          "dimension": "column",
+          "type": "locus",
+          "scale": {
+            "name": "contactX",
+            "domain": [
+              { "chrom": "chr8", "pos": 53000000 },
+              { "chrom": "chr8", "pos": 58000000 }
+            ],
+            "zoom": true
+          }
+        },
+        "y": { "dimension": "row", "type": "locus" },
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Contacts",
+          "scale": { "type": "log", "scheme": "higlassfall", "clamp": true }
+        }
+      }
+    },
+
+    {
+      "projection": null,
+      "params": [
+        { "name": "labelFontSize", "value": 11 },
+        { "name": "labelLineHeight", "expr": "1.2 * labelFontSize" },
+        { "name": "labelPadding", "value": 3 },
+        { "name": "labelInset", "value": 4 }
+      ],
+      "transform": [
+        { "type": "aggregate", "groupby": ["binSize"] },
+        {
+          "type": "formula",
+          "as": "resolutionLabel",
+          "expr": "'Current resolution: ' + format(datum.binSize, ',') + ' bp'"
+        },
+        {
+          "type": "measureText",
+          "field": "resolutionLabel",
+          "fontSize": { "expr": "labelFontSize" },
+          "as": "labelWidth"
+        }
+      ],
+      "encoding": {
+        "x": { "value": 1 },
+        "y": { "value": 0 }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rect",
+            "fill": "white",
+            "fillOpacity": 0.7,
+            "x2": 1,
+            "y2": 0,
+            "x2Offset": { "expr": "-labelInset" },
+            "yOffset": {
+              "expr": "-labelInset - 2 * labelPadding - labelLineHeight"
+            },
+            "y2Offset": { "expr": "-labelInset" }
+          },
+          "encoding": {
+            "xOffset": {
+              "expr": "-labelInset - 2 * labelPadding - datum.labelWidth",
+              "scale": null
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "right",
+            "baseline": "middle",
+            "size": { "expr": "labelFontSize" },
+            "xOffset": { "expr": "-labelInset - labelPadding" },
+            "yOffset": {
+              "expr": "-labelInset - labelPadding - labelLineHeight / 2"
+            }
+          },
+          "encoding": {
+            "text": { "field": "resolutionLabel" }
+          }
+        }
+      ]
+    }
+  ]
+}

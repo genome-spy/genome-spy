@@ -409,6 +409,10 @@ SCHEMA HandledTooltip
 
 See the [HiGlassData documentation](data/lazy.md#higlass-parameters).
 
+## HicData
+
+See the [HicData documentation](data/lazy.md#hic-parameters).
+
 ## IdentifierParams
 
 SCHEMA IdentifierParams

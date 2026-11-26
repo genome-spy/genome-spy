@@ -22,6 +22,7 @@ const forbiddenSources = [
     "src/data/sources/lazy/bigWigSource.js",
     "src/data/sources/lazy/figWigSource.js",
     "src/data/sources/lazy/hiGlassSource.js",
+    "src/data/sources/lazy/hicSource.js",
     "src/data/sources/lazy/bigBedSource.js",
     "src/data/sources/lazy/bamSource.js",
     "src/data/sources/lazy/gff3Source.js",
@@ -33,10 +34,15 @@ const optionalRenderingDirectories = [
     "src/rendering/immediate/",
     "src/rendering/svg/",
 ];
-const hiGlassSources = [
-    "src/data/sources/lazy/hiGlassTileSource.js",
-    "src/data/sources/lazy/hiGlassTiles.js",
+const matrixSources = [
+    {
+        registration: "hiGlassSource.js",
+        implementation: "hiGlassTileSource.js",
+    },
+    { registration: "hicSource.js", implementation: "hicTileSource.js" },
 ];
+const hicReader =
+    /node_modules[/\\]@gmod[/\\](?:hic|range-cache-filehandle)[/\\]/;
 const webGlRenderingDirectory = "src/rendering/webgl/";
 const webGpuRenderingDirectory = "src/rendering/webgpu/";
 const rendererRegistrationSources = [
@@ -75,11 +81,17 @@ try {
 
     const minimalBundleSources = readAllOutputSources(minimalOutput);
     if (
-        minimalBundleSources.some((source) =>
-            hiGlassSources.some((file) => source.endsWith(file))
+        minimalBundleSources.some(
+            (source) =>
+                hicReader.test(source) ||
+                matrixSources.some(({ implementation }) =>
+                    source.endsWith(implementation)
+                )
         )
     ) {
-        throw new Error("Minimal bundle must exclude the HiGlass loader.");
+        throw new Error(
+            "Minimal bundle must exclude the contact matrix loaders."
+        );
     }
     const figwigSource = minimalBundleSources.find(isFigwigDependency);
     if (figwigSource) {
@@ -203,18 +215,29 @@ try {
             bundleSources: lazyBundleSources,
         },
     ]) {
+        for (const { registration, implementation } of matrixSources) {
+            if (
+                !staticSources.some((source) =>
+                    source.endsWith("/lazy/" + registration)
+                ) ||
+                staticSources.some((source) =>
+                    source.endsWith("/lazy/" + implementation)
+                ) ||
+                !bundleSources.some((source) =>
+                    source.endsWith("/lazy/" + implementation)
+                )
+            ) {
+                throw new Error(
+                    `${entry} must load ${implementation} asynchronously.`
+                );
+            }
+        }
         if (
-            !staticSources.some((source) =>
-                source.endsWith("src/data/sources/lazy/hiGlassSource.js")
-            ) ||
-            hiGlassSources.some(
-                (file) =>
-                    staticSources.some((source) => source.endsWith(file)) ||
-                    !bundleSources.some((source) => source.endsWith(file))
-            )
+            staticSources.some((source) => hicReader.test(source)) ||
+            !bundleSources.some((source) => hicReader.test(source))
         ) {
             throw new Error(
-                `${entry} must register HiGlass and load its implementation asynchronously.`
+                `${entry} must load the .hic dependencies asynchronously.`
             );
         }
     }

@@ -186,8 +186,7 @@ export default class HiGlassTileSource extends DataSource {
         const [x, y] = this.scales;
         const xDomain = request?.x ?? x.getDomain();
         if (!y) {
-            // TODO: Read the arranged plot size through a view method.
-            const coords = this.view.layoutCoords;
+            const coords = this.view.getPlotSize();
             if (!(coords?.width > 0 && coords.height > 0)) return;
             return getTileWindow(
                 this.#metadata,
@@ -311,7 +310,7 @@ export default class HiGlassTileSource extends DataSource {
      * @param {number} width
      * @param {{x: number, y: number, id: string, mirrored: boolean}[]} positions
      * @param {Record<string, {dense: string, dtype: string}>} response
-     * @returns {import("../../rasterTile.js").RasterTile[]}
+     * @returns {(import("../../rasterTile.js").RasterTile & {binSize: number})[]}
      */
     #readTiles(width, positions, response) {
         const { bins_per_dimension: bins, mirror_tiles: mirrorTiles } =
@@ -331,6 +330,7 @@ export default class HiGlassTileSource extends DataSource {
                 }
                 this.#cache.set(id, values);
                 return {
+                    binSize: step,
                     dimensions: {
                         column: { origin: x * width, step, count: bins },
                         row: { origin: y * width, step, count: bins },

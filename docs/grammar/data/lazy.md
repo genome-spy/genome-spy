@@ -146,6 +146,52 @@ the App's sample filters:
 The data source uses the
 [`@genome-spy/figwig`](https://www.npmjs.com/package/@genome-spy/figwig) library.
 
+## Juicer .hic
+
+The `"hic"` source reads a Juicer contact matrix in place over HTTP. The server
+must support byte-range requests. For a cross-origin file, it must also allow
+the page's origin. Exposing the `Content-Range` header lets GenomeSpy validate
+the returned byte range.
+
+Use a locus assembly that matches the file. Pan and zoom select among the file's
+stored base-pair resolutions. If a chromosome pair lacks the selected
+resolution, the loading error lists the bin sizes stored for that pair. Start
+with a regional domain if the file's coarsest level is too fine to draw a
+genome-wide map.
+
+Raw counts are the default. Bind `normalization` to a parameter to switch
+methods interactively, as in the example below. The requested method must be
+available for the visible chromosomes and resolution.
+
+Each record is a [raster tile](../mark/raster.md#tile-format). Bind the
+`column` and `row` dimensions to `x` and `y`, and encode the contact values
+with the `"value"` color field. Use a
+[triangle projection](../projection.md#triangle-projection) for a single genomic
+axis. A rectangular view uses two locus scales with their own domains.
+Each tile's `binSize` gives the matrix resolution in base pairs. At a
+chromosome's end, the final cell can have a shorter `step`.
+
+With the [minimal entry point](../../api/embedding.md#minimal), import
+`@genome-spy/core/data/sources/lazy/hicSource.js` to register this source.
+
+### Parameters {#hic-parameters}
+
+SCHEMA HicData
+
+### Example
+
+EXAMPLE examples/docs/grammar/data/lazy/hic-triangle-track.json height=240 spechidden
+
+!!! disclaimer ""
+
+    This example shows chromosome 8 from the GM12878 DpnII contact map on hg19.
+    GenomeSpy rebuilt the file with intrachromosomal contacts and recalculated
+    normalization. Credit Rao et al. (2014), the Aiden lab at Baylor College of
+    Medicine, and the ENCODE Consortium.
+    [GEO GSE63525](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525) ·
+    [ENCODE ENCSR968KAY](https://www.encodeproject.org/experiments/ENCSR968KAY/) ·
+    [File accessions and provenance](https://data.genomespy.app/datasets/geo-gm12878-dpnii-hic/v1/provenance.json)
+
 ## HiGlass
 
 The `"higlass"` source loads a Hi-C contact matrix from a HiGlass tile server.
@@ -158,7 +204,8 @@ With the [minimal entry point](../../api/embedding.md#minimal), import
 
 Each data record is a [raster tile](../mark/raster.md#tile-format) with
 `column` and `row` dimensions and contact values in `fields.value`. The
-dimension's `step` is the bin size in base pairs.
+`binSize` field gives the matrix resolution in base pairs and equals the
+dimensions' `step`.
 
 ### Parameters {#higlass-parameters}
 

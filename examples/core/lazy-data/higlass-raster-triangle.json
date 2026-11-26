@@ -117,11 +117,6 @@
         { "name": "labelInset", "value": 4 }
       ],
       "transform": [
-        {
-          "type": "formula",
-          "as": "binSize",
-          "expr": "datum.dimensions.column.step"
-        },
         { "type": "aggregate", "groupby": ["binSize"] },
         {
           "type": "formula",

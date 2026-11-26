@@ -166,6 +166,7 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
             expect(source.isDataReadyForDomain({})).toBe(true);
             const [fineTile] = collector.getData();
             expect(fineTile.dimensions.column.step).toBe(1);
+            expect(fineTile.binSize).toBe(1);
             expect(Array.from(fineTile.fields.value)).toEqual([1, 2, 2, 3]);
 
             // A stale response can arrive after a newer request publishes the same window.

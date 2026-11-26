@@ -45,6 +45,7 @@
   "GenomeSpyConfig": "/grammar/config/#properties",
   "Gff3Data": "/grammar/data/lazy/#parameters_5",
   "HiGlassData": "/grammar/data/lazy/#higlass-parameters",
+  "HicData": "/grammar/data/lazy/#hic-parameters",
   "ImportSpec": "/grammar/import/#properties",
   "IndexDendrogramParams": "/grammar/transform/dendrogram/",
   "IndexUrlTemplate": "/grammar/data/multi-url/#indexed-files",
