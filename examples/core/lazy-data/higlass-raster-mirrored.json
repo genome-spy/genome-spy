@@ -1,0 +1,71 @@
+{
+  "description": [
+    "Mirrored Hi-C contact maps",
+    "Compare wild-type and ΔNipbl contact maps on one zoomable genomic axis.",
+    "Data source: Schwarzer et al. (2017), wild-type and ΔNipbl mouse hepatocytes on mm9, served by HiGlass. https://doi.org/10.1038/nature24281"
+  ],
+  "assembly": "mm9",
+
+  "spacing": 0,
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr14", "pos": 75000000 },
+        { "chrom": "chr14", "pos": 104999999 }
+      ],
+      "zoom": true
+    }
+  },
+
+  "vconcat": [
+    {
+      "title": "Wild type",
+      "projection": "triangle",
+      "data": {
+        "lazy": {
+          "type": "higlass",
+          "url": "https://higlass.io/api/v1/",
+          "tileset": "cTc3lt_7StSgcrr1kHWidQ"
+        }
+      },
+      "mark": "raster",
+      "encoding": {
+        "x": { "dimension": "column", "type": "locus", "axis": null },
+        "y": { "dimension": "row", "type": "locus" },
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "type": "log", "scheme": "higlassfall", "clamp": true },
+          "legend": null
+        }
+      }
+    },
+
+    {
+      "title": { "text": "ΔNipbl", "orient": "bottom" },
+      "projection": { "type": "triangle", "direction": "down" },
+      "data": {
+        "lazy": {
+          "type": "higlass",
+          "url": "https://higlass.io/api/v1/",
+          "tileset": "J2IoKaXJSG-5bH1pITTtTg"
+        }
+      },
+      "mark": "raster",
+      "encoding": {
+        "x": {
+          "dimension": "column",
+          "type": "locus",
+          "axis": { "orient": "top" }
+        },
+        "y": { "dimension": "row", "type": "locus" },
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "type": "log", "scheme": "higlassfall", "clamp": true },
+          "legend": null
+        }
+      }
+    }
+  ]
+}

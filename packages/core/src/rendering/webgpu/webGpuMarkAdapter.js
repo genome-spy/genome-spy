@@ -46,7 +46,7 @@ import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
 import { readNumericRasterCell } from "../../data/rasterTile.js";
 import RasterMark from "../../marks/raster.js";
-import { isTriangleProjected } from "../../view/triangleProjection.js";
+import { getResolvedTriangleDirection } from "../../view/triangleProjection.js";
 
 /** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string, membership: boolean}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
@@ -709,9 +709,14 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         cached.snapshot = { tiles, cells: cached.packed.cells };
     }
 
+    const direction = mark.triangleDirection;
     return {
         data: cached.snapshot,
-        ...(rowEdges && { projection: /** @type {const} */ ("triangle") }),
+        projection: direction
+            ? direction === "down"
+                ? "triangle-down"
+                : "triangle"
+            : undefined,
         placementIndex,
         position,
         channels: {
@@ -1208,6 +1213,7 @@ function createLinkConfig(mark, data, coords) {
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
         noFadingOnSecondPass: !!readProperty(mark, "noFadingOnSecondPass"),
         arcHeightFactor: readNumericProperty(mark, "arcHeightFactor", 1),
+        flipArc: getResolvedTriangleDirection(mark.unitView) === "down",
         minArcHeight: readNumericProperty(mark, "minArcHeight", 1.5),
         clampApex: !!readProperty(mark, "clampApex"),
         maxChordLength: readNumericProperty(mark, "maxChordLength", 50000),
@@ -1363,7 +1369,7 @@ function createPositionBranch(
             bandOverride === undefined &&
             range[0] > range[1] &&
             (channel === "x" || channel === "x2") &&
-            isTriangleProjected(mark.unitView)
+            getResolvedTriangleDirection(mark.unitView)
                 ? 1 - band
                 : band;
         const large =

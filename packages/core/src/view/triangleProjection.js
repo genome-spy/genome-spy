@@ -31,15 +31,31 @@ function getViewProjection(spec) {
 }
 
 /**
+ * Return null for Cartesian coordinates and undefined for inheritance.
+ * @param {ViewSpec} [spec]
+ * @returns {"up" | "down" | null | undefined}
+ */
+export function getTriangleDirection(spec) {
+    const projection = getViewProjection(spec);
+    if (projection === undefined) return;
+    if (projection === null) return null;
+    if (projection === "triangle") return "up";
+    if (projection.type === "triangle") {
+        const { direction } = projection;
+        if (direction === "up" || direction === "down") return direction;
+    }
+    throw new Error("Unknown view projection: " + JSON.stringify(projection));
+}
+
+/**
  * @param {View} [view]
  * @param {"triangle"} [legacyProjection]
+ * @returns {"up" | "down" | undefined}
  */
-export function isTriangleProjected(view, legacyProjection) {
-    const projection = getViewProjection(getProjectionOwner(view)?.spec);
-    return (
-        (projection === undefined ? legacyProjection : projection) ===
-        "triangle"
-    );
+export function getResolvedTriangleDirection(view, legacyProjection) {
+    const owner = getProjectionOwner(view);
+    if (owner) return getTriangleDirection(owner.spec) ?? undefined;
+    if (legacyProjection === "triangle") return "up";
 }
 
 /**
@@ -52,17 +68,16 @@ export function isTriangleProjected(view, legacyProjection) {
  * @returns {ViewSpec}
  */
 export function normalizeTriangleProjection(spec, dataParent, inheritEncoding) {
-    const projection = getViewProjection(spec);
-    if (projection !== "triangle") {
-        if (projection !== undefined && projection !== null) {
-            throw new Error("Unknown view projection: " + projection);
-        }
-        if (projection === null || !isTriangleProjected(dataParent))
-            return spec;
+    const direction = getTriangleDirection(spec);
+    if (
+        direction === null ||
+        (!direction && !getResolvedTriangleDirection(dataParent))
+    ) {
+        return spec;
     }
 
     const projected = inheritSpecOrigin(spec, { ...spec });
-    if (projection === "triangle") {
+    if (direction) {
         projected.scales = {
             ...spec.scales,
             y: {
@@ -72,7 +87,7 @@ export function normalizeTriangleProjection(spec, dataParent, inheritEncoding) {
                 },
                 nice: false,
                 clamp: false,
-                reverse: false,
+                reverse: direction === "down",
                 round: false,
                 zoom: false,
             },
@@ -248,7 +263,7 @@ function datumField(field) {
  */
 export function validateTriangleProjection(view) {
     const owner = getProjectionOwner(view);
-    if (getViewProjection(owner?.spec) !== "triangle") return;
+    if (!owner || !getTriangleDirection(owner.spec)) return;
 
     const x = view.getScaleResolution("x");
     if (!x || x !== owner.getScaleResolution("x")) {

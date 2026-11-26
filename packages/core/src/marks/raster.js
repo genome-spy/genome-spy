@@ -8,7 +8,7 @@ import { selectionPredicateLeaves } from "../selection/selectionPredicateTree.js
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import ViewError from "../view/viewError.js";
 import {
-    isTriangleProjected,
+    getResolvedTriangleDirection,
     validateTriangleScale,
 } from "../view/triangleProjection.js";
 import Mark from "./mark.js";
@@ -21,7 +21,12 @@ export default class RasterMark extends Mark {
         return ["x", "y", "x2", "y2", "color", "opacity", "tooltip"];
     }
 
-    isTriangle = isTriangleProjected(this.unitView, this.properties.projection);
+    triangleDirection = getResolvedTriangleDirection(
+        this.unitView,
+        this.properties.projection
+    );
+
+    isTriangle = this.triangleDirection !== undefined;
 
     isPickingParticipant() {
         const { tooltip } = this.properties;
@@ -115,7 +120,8 @@ export default class RasterMark extends Mark {
                 y && "dimension" in y && "type" in x && y.type === x.type;
             if (
                 y2 ||
-                (!validRow && (y || isTriangleProjected(this.unitView)))
+                (!validRow &&
+                    (y || getResolvedTriangleDirection(this.unitView)))
             ) {
                 throw new ViewError(
                     "A triangle raster's y input must bind a grid dimension of the same type as x.",

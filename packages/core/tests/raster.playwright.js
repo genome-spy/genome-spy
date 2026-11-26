@@ -292,10 +292,11 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                         },
                                     ],
                                 },
-                                mark: {
-                                    type: "raster",
-                                    projection: "triangle",
+                                projection: {
+                                    type: "triangle",
+                                    direction: "down",
                                 },
+                                mark: "raster",
                                 encoding: {
                                     x: {
                                         dimension: "column",
@@ -303,6 +304,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                         axis: null,
                                         scale: { domain: [start, start + 9] },
                                     },
+                                    y: { dimension: "row", type: "locus" },
                                     color: {
                                         field: "contact",
                                         type: "quantitative",
@@ -322,7 +324,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                                                     count: 3,
                                                 },
                                                 row: {
-                                                    origin: 7.5,
+                                                    origin: 87.5,
                                                     step: 5,
                                                     count: 1,
                                                 },
@@ -389,7 +391,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                     page.evaluate(async () => {
                         const result = await globalThis.rasterTooltipApi.views
                             .root()
-                            .marks.pick({ x: 5, y: 90 });
+                            .marks.pick({ x: 5, y: 10 });
                         return result.status === "hit" && result.hit.datum;
                     })
                 )
@@ -397,7 +399,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                     sample: "overlay",
                     dimensions: { column: { count: 3 } },
                 });
-            await canvas.hover({ position: { x: 5, y: 90 } });
+            await canvas.hover({ position: { x: 5, y: 10 } });
             await expect.poll(hovered).toEqual({
                 datum: { sample: "overlay", pixel: 0xff0000ff, quality: 10 },
                 rasterCell: { column: 0, row: 0 },
@@ -405,7 +407,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                     { key: "Column", value: expect.stringMatching(/^chr/) },
                 ],
             });
-            await canvas.hover({ position: { x: 15, y: 90 } });
+            await canvas.hover({ position: { x: 15, y: 10 } });
             await expect.poll(hovered).toEqual({
                 datum: { sample: "overlay", pixel: 0xff00ff00, quality: 20 },
                 rasterCell: { column: 1, row: 0 },
@@ -413,7 +415,7 @@ async function checkRasterTooltips(playwright, baseURL, renderer) {
                     { key: "Column", value: expect.stringMatching(/^chr/) },
                 ],
             });
-            await canvas.hover({ position: { x: 25, y: 90 } });
+            await canvas.hover({ position: { x: 25, y: 10 } });
             await expect.poll(hovered).toMatchObject({
                 datum: { contact: 14 },
                 rasterCell: { column: 1, row: 3 },
@@ -455,7 +457,12 @@ async function checkTriangleRaster(
                     fields: { color: [color, color, color, color] },
                 });
                 const samples = [];
-                for (const reverse of [false, true]) {
+                for (const [reverse, down] of [
+                    [false, false],
+                    [true, false],
+                    [false, true],
+                    [true, true],
+                ]) {
                     const api = await embed(
                         globalThis.document.querySelector("#plot"),
                         {
@@ -464,7 +471,9 @@ async function checkTriangleRaster(
                             height: 60,
                             padding: 0,
                             view: { stroke: null },
-                            projection: "triangle",
+                            projection: down
+                                ? { type: "triangle", direction: "down" }
+                                : "triangle",
                             scales: {
                                 x: {
                                     type: type === "locus" ? "locus" : "linear",
@@ -520,6 +529,28 @@ async function checkTriangleRaster(
                                         y: { field: "row", type },
                                     },
                                 },
+                                {
+                                    // Both anchors lie on the diagonal.
+                                    data: {
+                                        values: [
+                                            {
+                                                a: start + (reverse ? 12 : 8),
+                                                b: start + (reverse ? 8 : 12),
+                                            },
+                                        ],
+                                    },
+                                    mark: {
+                                        type: "link",
+                                        color: "black",
+                                        size: 4,
+                                    },
+                                    encoding: {
+                                        x: { field: "a", type, axis: null },
+                                        y: { field: "a", type },
+                                        x2: { field: "b" },
+                                        y2: { field: "b" },
+                                    },
+                                },
                             ],
                         },
                         {
@@ -543,9 +574,10 @@ async function checkTriangleRaster(
                             [10, 45],
                             [22.5, 42.5],
                             [30, 40],
+                            [100, 40],
                         ].map(([x, y]) => [
                             Math.floor(reverse ? 160 - x : x),
-                            Math.floor(y),
+                            Math.floor(down ? 60 - y : y),
                         ]);
                         const raster = await globalThis.readRasterPixels(
                             api,
@@ -555,18 +587,20 @@ async function checkTriangleRaster(
                         const { pixels: svg, document } =
                             await globalThis.readSvgRasterPixels(
                                 api,
-                                points.slice(0, -1)
+                                points.slice(0, -2)
                             );
                         const point = document.querySelector("circle");
                         samples.push({
-                            raster: raster.slice(0, -1),
+                            raster: raster.slice(0, -2),
                             svg,
-                            pointPixel: raster.at(-1),
+                            pointPixel: raster.at(-2),
+                            arcPixel: raster.at(-1),
                             pointPosition: [
                                 Number(point.getAttribute("cx")),
                                 Number(point.getAttribute("cy")),
                             ],
                             reverse,
+                            down,
                             zoomableY: view
                                 .getScaleResolution("y")
                                 .isZoomable(),
@@ -589,13 +623,16 @@ async function checkTriangleRaster(
             raster,
             svg,
             pointPixel,
+            arcPixel,
             pointPosition,
             reverse,
+            down,
             zoomableY,
         } of results) {
             expect(zoomableY).toBe(false);
             expect(pointPixel).toEqual([0, 0, 0, 255]);
-            expect(pointPosition).toEqual([reverse ? 130 : 30, 40]);
+            expect(arcPixel).toEqual([0, 0, 0, 255]);
+            expect(pointPosition).toEqual([reverse ? 130 : 30, down ? 20 : 40]);
             for (const pixels of [raster, svg]) {
                 expect(pixels.slice(0, -1)).toEqual(expected);
                 if (renderer !== "canvas") {

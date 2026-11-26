@@ -229,7 +229,7 @@ export function lowerRasterConfig(config, schema, prepared) {
     return {
         count: prepared.count,
         picking: schema.picking,
-        triangle: config.projection === "triangle",
+        projection: config.projection,
         initialCells: prepared.cells,
         inputs,
         cellPredicates: {

@@ -11,9 +11,9 @@ set it to `null` to opt out of an inherited projection.
 Triangle projection is designed for rotated contact matrices such as Hi-C maps.
 Set `"projection": "triangle"` to display one half of the matrix as a 45° track.
 Bind `x` to the column coordinate and `y` to the row coordinate. The horizontal
-axis shows their midpoint. The height above the baseline is half their
+axis shows their midpoint. The distance from the baseline is half their
 separation at the x scale. The matrix diagonal becomes the baseline, and
-contacts with `y < x` fall below it and are clipped.
+contacts with `y < x` fall outside the plot and are clipped.
 
 ![A contact at matrix coordinates 20 and 30 Mb moves above the midpoint at 25 Mb, at a height equivalent to 5 Mb on the same scale.](../img/triangle-projection-axes.svg)
 
@@ -28,6 +28,17 @@ and locus midpoints use the usual rounding to whole positions.
     it projects the anchors or endpoints and derives a vertical scale from the
     current x domain and plot dimensions. This keeps annotations aligned with
     the raster during zoom and resize.
+
+### Downward-facing tracks
+
+Set `"projection": { "type": "triangle", "direction": "down" }` to put the
+baseline at the top of the plot. The same contacts and annotations extend
+downward from it. The shorthand `"projection": "triangle"` places the baseline
+at the bottom.
+
+To compare two contact maps face to face, put an upward-facing view above a
+downward-facing view in a `vconcat` with a shared x scale. Both maps then pan
+and zoom together.
 
 ### Unit views
 

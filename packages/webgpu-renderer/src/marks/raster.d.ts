@@ -66,8 +66,9 @@ export type RasterConfig = Pick<MarkConfig, "order" | "placementIndex"> & {
     /**
      * Rotate bounded tiles onto a diagonal baseline. Both axes must supply
      * endpoints projected in the horizontal view's logical pixels.
+     * The baseline is at the bottom for "triangle" and at the top for "triangle-down".
      */
-    projection?: "triangle";
+    projection?: "triangle" | "triangle-down";
     /**
      * A tile divides each axis uniformly between its endpoints.
      * Both endpoints use the same scale on each axis.

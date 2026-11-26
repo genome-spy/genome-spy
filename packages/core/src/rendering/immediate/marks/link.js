@@ -1,3 +1,4 @@
+import { getResolvedTriangleDirection } from "../../../view/triangleProjection.js";
 import { isMarkClamped } from "../../../marks/markUtils.js";
 import { intersectsBounds } from "../bounds.js";
 import {
@@ -21,6 +22,7 @@ export function resolveLinkProperties(mark) {
         shape: resolveMarkProperty(mark, props.linkShape),
         orient: resolveMarkProperty(mark, props.orient),
         arcHeightFactor: resolveMarkProperty(mark, props.arcHeightFactor),
+        flipArc: getResolvedTriangleDirection(mark.unitView) === "down",
         minArcHeight: resolveMarkProperty(mark, props.minArcHeight),
         maxChordLength: resolveMarkProperty(mark, props.maxChordLength),
         clampApex: resolveMarkProperty(mark, props.clampApex),

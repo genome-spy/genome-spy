@@ -5,7 +5,7 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import { debounce } from "../../../utils/debounce.js";
 import { resolveUrl } from "../../../utils/url.js";
-import { isTriangleProjected } from "../../../view/triangleProjection.js";
+import { getResolvedTriangleDirection } from "../../../view/triangleProjection.js";
 import {
     decodeTile,
     getTileWindow,
@@ -66,7 +66,7 @@ export default class HiGlassTileSource extends DataSource {
         this.baseUrl = new URL(resolveUrl(view.getBaseUrl(), params.url));
         if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
         this.scales = [view.getScaleResolution("x")];
-        if (!isTriangleProjected(view, params.projection))
+        if (!getResolvedTriangleDirection(view, params.projection))
             this.scales.push(view.getScaleResolution("y"));
         if (this.scales.some((scale) => scale?.type !== "locus")) {
             throw new Error("HiGlass needs a locus scale on each matrix axis.");

@@ -29,7 +29,10 @@ import {
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree, setChromeOverride } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
-import { TRIANGLE_ASPECT_PARAM } from "./triangleProjection.js";
+import {
+    getTriangleDirection,
+    TRIANGLE_ASPECT_PARAM,
+} from "./triangleProjection.js";
 import { analyzeExpression } from "../utils/expression.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { NamedDataScope } from "../data/namedDataScope.js";
@@ -316,7 +319,7 @@ export default class View {
             }
         }
 
-        if ("projection" in spec && spec.projection === "triangle") {
+        if (getTriangleDirection(spec)) {
             this.#triangleAspectSetter = this.paramRuntime.allocateSetter(
                 TRIANGLE_ASPECT_PARAM,
                 0

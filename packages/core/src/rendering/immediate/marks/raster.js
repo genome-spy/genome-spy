@@ -101,13 +101,14 @@ export function resolveRasterCell(occurrences, mark, datum, point, facetId) {
  */
 export function getRasterTriangle(mark, coords, visibleBounds) {
     if (!mark.isTriangle) return;
-    const baseline = coords.y2;
-    const direction = mark.encoders.x.scale.props.reverse ? -1 : 1;
+    const down = mark.triangleDirection === "down";
+    const baseline = down ? coords.y : coords.y2;
+    const direction = down === !!mark.encoders.x.scale.props.reverse ? 1 : -1;
     const clip = {
         x1: Math.max(visibleBounds.x1, coords.x),
         y1: Math.max(visibleBounds.y1, coords.y),
         x2: Math.min(visibleBounds.x2, coords.x2),
-        y2: Math.min(visibleBounds.y2, baseline),
+        y2: Math.min(visibleBounds.y2, coords.y2),
     };
     const near = (clip.y2 - baseline) * direction;
     const far = (clip.y1 - baseline) * direction;

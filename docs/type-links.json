@@ -306,6 +306,7 @@
   "VcfDataFormat": "/grammar/types/#vcfdataformat",
   "ViewBackground": "/grammar/types/#viewbackground",
   "ViewOpacityDef": "/grammar/types/#viewopacitydef",
+  "ViewProjection": "/grammar/types/#viewprojection",
   "ViewSpec": "/grammar/types/#viewspec",
   "ViewportSizeDef": "/grammar/types/#viewportsizedef",
   "WigDataFormat": "/grammar/types/#wigdataformat",

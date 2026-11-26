@@ -60,11 +60,13 @@ fn anchor_${axis}(i: u32, count: u32, anchor: u32, fallback: f32) -> f32 {
 
 /**
  * @param {import("../shaders/channelIR.js").ChannelIR[]} irs
- * @param {boolean} triangle
+ * @param {unknown} projection
  * @param {boolean} picking
  * @param {ReadonlySet<"x" | "y">} coordinates
  */
-function rasterShader(irs, triangle, picking, coordinates) {
+function rasterShader(irs, projection, picking, coordinates) {
+    const down = projection === "triangle-down";
+    const triangle = projection === "triangle" || down;
     const x = indexAxisShader(irs, "x");
     const y = indexAxisShader(irs, "y", triangle ? "x" : "y");
     const coordinateFields = [];
@@ -117,7 +119,8 @@ fn rasterCoordinate_${axis}(edge: u32) -> ${type} {
         out.pos = vec4<f32>(2.0, 2.0, 0.0, 1.0);
         return out;
     }
-    out.triangle = vec2<f32>(bottomRight.y, select(-1.0, 1.0, start.x < end.x));
+    out.triangle = vec2<f32>(${down ? "topLeft.y" : "bottomRight.y"},
+        ${down ? "-" : ""}select(-1.0, 1.0, start.x < end.x));
     let vertical = (out.triangleClip.yw - out.triangle.x) * out.triangle.y;
     let lo = min(vertical.x, vertical.y);
     let hi = max(vertical.x, vertical.y);
@@ -434,7 +437,7 @@ export default class RasterProgram extends BaseProgram {
         );
         return rasterShader(
             irs,
-            !!this._markConfig.triangle,
+            this._markConfig.projection,
             !!this._markConfig.picking,
             coordinates
         );

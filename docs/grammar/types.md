@@ -1153,6 +1153,10 @@ See the [ViewConfig documentation](config.md#view-size-defaults).
 
 SCHEMA ViewOpacityDef
 
+## ViewProjection
+
+SCHEMA ViewProjection
+
 ## ViewSpec
 
 SCHEMA ViewSpec

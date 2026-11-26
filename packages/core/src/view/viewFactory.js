@@ -23,7 +23,8 @@ import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
 import { prepareLazyDataSource } from "../data/sources/lazy/lazyDataSourceRegistry.js";
 import {
-    isTriangleProjected,
+    getResolvedTriangleDirection,
+    getTriangleDirection,
     normalizeTriangleProjection,
 } from "./triangleProjection.js";
 import { isInChromeSubtree } from "./viewChrome.js";
@@ -179,11 +180,10 @@ export class ViewFactory {
                 dataParent,
                 options?.inheritEncoding
             );
-            const projection =
-                "projection" in spec ? spec.projection : undefined;
+            const direction = getTriangleDirection(spec);
             if (
-                projection === "triangle" ||
-                (projection === null && isTriangleProjected(dataParent))
+                direction ||
+                (direction === null && getResolvedTriangleDirection(dataParent))
             ) {
                 options = {
                     ...options,

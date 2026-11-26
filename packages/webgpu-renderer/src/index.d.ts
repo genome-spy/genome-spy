@@ -1132,6 +1132,9 @@ export type LinkMarkOptions = {
     /** Height multiplier for arc shape. */
     arcHeightFactor?: number;
 
+    /** Bow the arc to the right of the directed chord. The default bows left. */
+    flipArc?: boolean;
+
     /** Minimum arc height in pixels. */
     minArcHeight?: number;
 
