@@ -38,18 +38,25 @@ Put cell values in named arrays under `fields`. Each array has one entry per
 cell, in row-major order. For a tile with three columns and two rows, the first
 three entries are the first row and the next three are the second.
 
+For categorical cells, use an array of labels such as `["exon", "intron"]` or
+numeric codes such as `[0, 1]`. A string is shorthand for an array of
+single-character categories. For example, `"ACTG-"` represents
+`["A", "C", "T", "G", "-"]`, with one base or gap per cell.
+
 ## Channels
 
 Bind `x` and `y` to named grid dimensions using `dimension`. The mark derives
 the cell edges from the tile. Grid dimensions support linear, index, and locus
 scales. Use unpadded index and locus scales without grouping gaps.
 
-The `color` channel's `field` names a cell array under `fields`. Quantitative
+The `color` channel's `field` names a cell field under `fields`. Quantitative
 fields use a numeric color scale. Categorical fields use an ordinal color scale
-with an explicit domain. For decoded images, set `color.scale` to `null` and
-supply one packed RGBA8 value per cell in `0xAABBGGRR` order. Use straight alpha
-and write the packed integers in decimal in JSON. In JavaScript, numeric cell
-fields can use `Float32Array`, and packed images can use `Uint32Array`.
+with an explicit domain of category labels or codes.
+
+For decoded images, set `color.scale` to `null` and supply one packed RGBA8 value
+per cell in `0xAABBGGRR` order. Use straight alpha and write the packed integers
+in decimal in JSON. In JavaScript, numeric cell fields can use `Float32Array`,
+and packed images can use `Uint32Array`.
 
 The `opacity` channel accepts values. Both `color` and `opacity` support
 [cell-level selection conditions](../conditional-encoding.md#raster-cells).
@@ -66,9 +73,9 @@ SCHEMA RasterProps
 ### Sequence strips
 
 For a horizontal strip, bind `x` to a grid dimension and `y` to a categorical
-field on a band scale. Swap the axes for vertical strips. The band field is a
-top-level field of the tile record. A sequence such as `"ACTG"` can supply the
-categorical cell values, with one character per cell.
+field on a band scale. Swap the axes for vertical strips. In this example, the
+top-level `sequence` field places the strip in a band, and `fields.base` supplies
+the categorical value for each cell.
 
 EXAMPLE examples/docs/grammar/mark/raster/sequence-strips.json height=135
 

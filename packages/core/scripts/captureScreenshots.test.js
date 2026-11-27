@@ -43,8 +43,8 @@ describe("captureScreenshots arguments", () => {
 test("includes raster examples in batch capture", () => {
     expect(collectCuratedExamplePaths()).toEqual(
         expect.arrayContaining([
-            "examples/core/lazy-data/higlass-raster.json",
             "examples/core/raster/msa.json",
+            "examples/docs/grammar/data/lazy/higlass-contact-map.json",
         ])
     );
 });
