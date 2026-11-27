@@ -73,18 +73,38 @@ export function decodeTile({ dense, dtype }, bins) {
     if (dtype !== "float16" && dtype !== "float32") {
         throw new Error("Unsupported HiGlass tile dtype: " + dtype);
     }
-    const bytes = Uint8Array.fromBase64(dense);
+    const bytes =
+        Uint8Array.fromBase64?.(dense) ??
+        Uint8Array.from(atob(dense), (character) => character.charCodeAt(0));
     const size = dtype === "float16" ? 2 : 4;
     if (bytes.length !== bins * bins * size) {
         throw new Error("Unexpected HiGlass tile size.");
     }
     const view = new DataView(bytes.buffer, bytes.byteOffset);
-    const read = dtype === "float16" ? view.getFloat16 : view.getFloat32;
+    const read =
+        dtype === "float16"
+            ? (view.getFloat16 ?? readFloat16)
+            : view.getFloat32;
     const values = new Float32Array(bins * bins);
     for (let i = 0; i < values.length; i++) {
         values[i] = read.call(view, i * size, true);
     }
     return values;
+}
+
+/**
+ * @this {DataView}
+ * @param {number} offset
+ * @param {boolean} littleEndian
+ */
+function readFloat16(offset, littleEndian) {
+    const bits = this.getUint16(offset, littleEndian);
+    const sign = bits & 0x8000 ? -1 : 1;
+    const exponent = (bits >> 10) & 0x1f;
+    const fraction = bits & 0x3ff;
+    if (exponent === 0x1f) return fraction ? NaN : sign * Infinity;
+    if (exponent === 0) return sign * fraction * 2 ** -24;
+    return sign * (1 + fraction / 1024) * 2 ** (exponent - 15);
 }
 
 /**

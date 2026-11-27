@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { afterEach, expect, test, vi } from "vitest";
 import Collector from "../../collector.js";
 import GenomeSpy from "../../../genomeSpyBase.js";
@@ -48,12 +49,20 @@ test("triangle windows include an offscreen endpoint and key the projected tile 
 });
 
 test("decodes float16 cells and mirrors the stored triangle", () => {
-    const bytes = new Uint8Array([0, 60, 0, 0, 0, 126, 0, 0]);
-    const values = decodeTile({ dense: bytes.toBase64(), dtype: "float16" }, 2);
-    expect(Array.from(values)).toEqual([1, 0, NaN, 0]);
-    expect(Array.from(transposeTile(values, 2))).toEqual([1, NaN, 0, 0]);
+    // Little-endian -1, -0, NaN, and the smallest positive subnormal.
+    const dense = Buffer.from([0, 188, 0, 128, 0, 126, 1, 0]).toString(
+        "base64"
+    );
+    const values = decodeTile({ dense, dtype: "float16" }, 2);
+    expect(Array.from(values)).toEqual([-1, -0, NaN, 2 ** -24]);
+    expect(Array.from(transposeTile(values, 2))).toEqual([
+        -1,
+        NaN,
+        -0,
+        2 ** -24,
+    ]);
     mirrorDiagonal(values, 2);
-    expect(Array.from(values)).toEqual([1, NaN, NaN, 0]);
+    expect(Array.from(values)).toEqual([-1, NaN, NaN, 2 ** -24]);
 });
 
 test.each([undefined, /** @type {const} */ ("triangle")])(
@@ -118,9 +127,9 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
                 );
             }
         );
-        const dense = new Uint8Array(
+        const dense = Buffer.from(
             new Float32Array([1, 0, 2, 3]).buffer
-        ).toBase64();
+        ).toString("base64");
         vi.stubGlobal("fetch", fetch);
 
         try {
@@ -244,7 +253,7 @@ test("debounces domain changes within one tile window and honors the cache budge
             getAssembly: () => ({ contigs: [{ name: "chr1", size: 8 }] }),
         }),
     });
-    const dense = new Uint8Array(16).toBase64();
+    const dense = Buffer.alloc(16).toString("base64");
     const fetch = vi.fn(async (/** @type {URL} */ url) => {
         const ids = url.searchParams.getAll("d");
         if (omitLastTile) ids.pop();
