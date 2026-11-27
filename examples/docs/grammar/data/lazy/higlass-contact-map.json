@@ -2,6 +2,22 @@
   "description": "Zoomable Hi-C contact map",
   "assembly": "hg19",
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr1", "pos": 49152000 },
+        { "chrom": "chr1", "pos": 57343999 }
+      ]
+    },
+    "y": {
+      "domain": [
+        { "chrom": "chr1", "pos": 49152000 },
+        { "chrom": "chr1", "pos": 57343999 }
+      ],
+      "reverse": true
+    }
+  },
+
   "data": {
     "lazy": {
       "type": "higlass",
@@ -12,29 +28,8 @@
 
   "mark": "raster",
   "encoding": {
-    "x": {
-      "dimension": "column",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr1", "pos": 49152000 },
-          { "chrom": "chr1", "pos": 57343999 }
-        ],
-        "zoom": true
-      }
-    },
-    "y": {
-      "dimension": "row",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr1", "pos": 49152000 },
-          { "chrom": "chr1", "pos": 57343999 }
-        ],
-        "reverse": true,
-        "zoom": true
-      }
-    },
+    "x": { "dimension": "column", "type": "locus" },
+    "y": { "dimension": "row", "type": "locus" },
     "color": {
       "field": "value",
       "type": "quantitative",

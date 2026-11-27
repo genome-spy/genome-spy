@@ -8,6 +8,15 @@
   "assembly": "hg19",
   "projection": "triangle",
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr1", "pos": 49152000 },
+        { "chrom": "chr1", "pos": 57343999 }
+      ]
+    }
+  },
+
   "params": [
     {
       "name": "contactRange",
@@ -27,32 +36,9 @@
     }
   },
 
-  "scales": {
-    "x": {
-      "type": "locus",
-      "domain": [
-        { "chrom": "chr1", "pos": 49152000 },
-        { "chrom": "chr1", "pos": 57343999 }
-      ],
-      "zoom": true,
-      "name": "matrixX"
-    },
-    "y": {
-      "type": "locus",
-      "domain": [
-        { "chrom": "chr1", "pos": 49152000 },
-        { "chrom": "chr1", "pos": 57343999 }
-      ],
-      "zoom": true
-    }
-  },
-
   "layer": [
     {
-      "mark": {
-        "type": "raster",
-        "tooltip": { "handler": "default" }
-      },
+      "mark": "raster",
       "encoding": {
         "x": { "dimension": "column", "type": "locus" },
         "y": { "dimension": "row", "type": "locus" },

@@ -3,6 +3,15 @@
   "assembly": "hg19",
   "projection": "triangle",
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr1", "pos": 49152000 },
+        { "chrom": "chr1", "pos": 57343999 }
+      ]
+    }
+  },
+
   "data": {
     "lazy": {
       "type": "higlass",
@@ -11,22 +20,9 @@
     }
   },
 
-  "mark": {
-    "type": "raster",
-    "tooltip": { "handler": "default" }
-  },
+  "mark": "raster",
   "encoding": {
-    "x": {
-      "dimension": "column",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr1", "pos": 49152000 },
-          { "chrom": "chr1", "pos": 57343999 }
-        ],
-        "zoom": true
-      }
-    },
+    "x": { "dimension": "column", "type": "locus" },
     "y": { "dimension": "row", "type": "locus" },
     "color": {
       "field": "value",

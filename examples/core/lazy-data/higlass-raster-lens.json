@@ -6,6 +6,22 @@
   ],
   "assembly": "mm9",
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr14", "pos": 75000000 },
+        { "chrom": "chr14", "pos": 104999999 }
+      ]
+    },
+    "y": {
+      "domain": [
+        { "chrom": "chr14", "pos": 75000000 },
+        { "chrom": "chr14", "pos": 104999999 }
+      ],
+      "reverse": true
+    }
+  },
+
   "params": [
     {
       "name": "lens",
@@ -18,31 +34,8 @@
   ],
 
   "encoding": {
-    "x": {
-      "dimension": "column",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr14", "pos": 75000000 },
-          { "chrom": "chr14", "pos": 104999999 }
-        ],
-        "zoom": true,
-        "name": "matrixX"
-      }
-    },
-    "y": {
-      "dimension": "row",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr14", "pos": 75000000 },
-          { "chrom": "chr14", "pos": 104999999 }
-        ],
-        "reverse": true,
-        "zoom": true,
-        "name": "matrixY"
-      }
-    },
+    "x": { "dimension": "column", "type": "locus" },
+    "y": { "dimension": "row", "type": "locus" },
     "color": {
       "field": "value",
       "type": "quantitative",

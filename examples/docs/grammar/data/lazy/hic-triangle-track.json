@@ -8,6 +8,15 @@
   "assembly": "hg19",
   "projection": "triangle",
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr7", "pos": 101766005 },
+        { "chrom": "chr7", "pos": 113444896 }
+      ]
+    }
+  },
+
   "params": [
     {
       "name": "normalization",
@@ -44,18 +53,7 @@
       "name": "contacts",
       "mark": "raster",
       "encoding": {
-        "x": {
-          "dimension": "column",
-          "type": "locus",
-          "scale": {
-            "name": "contactX",
-            "domain": [
-              { "chrom": "chr7", "pos": 101766005 },
-              { "chrom": "chr7", "pos": 113444896 }
-            ],
-            "zoom": true
-          }
-        },
+        "x": { "dimension": "column", "type": "locus" },
         "y": { "dimension": "row", "type": "locus" },
         "color": {
           "field": "value",

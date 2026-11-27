@@ -7,13 +7,13 @@
   "assembly": "mm9",
 
   "spacing": 0,
+
   "scales": {
     "x": {
       "domain": [
         { "chrom": "chr14", "pos": 75000000 },
         { "chrom": "chr14", "pos": 104999999 }
-      ],
-      "zoom": true
+      ]
     }
   },
 
