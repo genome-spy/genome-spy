@@ -4,11 +4,11 @@
 
 ## Properties
 
-### maxVectorInstances
+### maxVectorInstances?
 
-> **maxVectorInstances**: `number`
+> `optional` **maxVectorInstances?**: `number`
 
-Rasterize a mark when its visible instance count is larger than this.
+Also rasterize vector layers whose visible instance count exceeds this threshold.
 
 ***
 

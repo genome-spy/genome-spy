@@ -18,7 +18,7 @@ export default class RenderCoordinator {
     #getBackground;
     /** @type {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} */
     #broadcast;
-    /** @type {() => void} */
+    /** @type {(layout: import("../../view/layout/layoutResult.js").default) => void} */
     #onLayoutComputed;
     /** @type {BufferedViewRenderingContext} */
     #renderingContext;
@@ -33,7 +33,7 @@ export default class RenderCoordinator {
      * @param {import("./rendererResources.js").default} options.markAdapter
      * @param {() => string | undefined} options.getBackground
      * @param {(type: import("../../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast
-     * @param {() => void} options.onLayoutComputed
+     * @param {(layout: import("../../view/layout/layoutResult.js").default) => void} options.onLayoutComputed
      */
     constructor({
         viewRoot,
@@ -80,7 +80,7 @@ export default class RenderCoordinator {
 
             if (!this.#glHelper.invalidateSize()) {
                 this.#collectLayout(pass);
-                this.#onLayoutComputed();
+                this.#onLayoutComputed(pass.layoutResult);
                 this.#broadcast("layoutComputed");
                 return;
             }

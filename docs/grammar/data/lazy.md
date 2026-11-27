@@ -9,10 +9,9 @@ infeasible to load in their entirety.
 !!! note "How it works"
 
     Most lazy data sources observe the scale domains of the view where the data
-    source is specified. When the domain changes as a result of an user interaction,
-    the data source invokes a request to fetch a new subset of the data. Lazy
-    sources need the visual `channel` to be specified, which is used to determine the
-    scale to observe. For genomic data sources, the channel defaults to `"x"`.
+    source is specified. When the domain changes as a result of a user interaction,
+    the data source requests a new subset. For single-axis genomic sources,
+    `channel` selects the scale to observe and defaults to `"x"`.
 
 Lazy data sources are specified using the `lazy` property of the `data` object.
 Unlike in eager data, the `type` of the data source must be specified explicitly:
@@ -146,6 +145,89 @@ the App's sample filters:
 
 The data source uses the
 [`@genome-spy/figwig`](https://www.npmjs.com/package/@genome-spy/figwig) library.
+
+## Juicer .hic
+
+The `"hic"` source reads a Juicer contact matrix in place over HTTP. The server
+must support byte-range requests. For a cross-origin file, it must also allow
+the page's origin. Exposing the `Content-Range` header lets GenomeSpy validate
+the returned byte range.
+
+Use a locus assembly that matches the file. As you zoom, GenomeSpy chooses a
+bin size for the view from the resolutions stored in the `.hic` file.
+
+A genome-wide view can require too many raster tiles even at the largest bin
+size in the file. If this happens, set the initial locus scale `domain` to a
+smaller region, as in the example below.
+
+Raw counts are the default. Bind `normalization` to a parameter to switch
+methods interactively, as in the example below. The requested method must be
+available for the visible chromosomes and resolution.
+
+Each record is a [raster tile](../mark/raster.md#tile-format). Bind the `column`
+and `row` dimensions to `x` and `y` with `type: "locus"`, and encode color using
+the `value` field. Each tile's `binSize` gives the matrix resolution in base
+pairs. At a chromosome's end, the final cell can have a shorter `step`.
+
+With the [minimal entry point](../../api/embedding.md#minimal), import
+`@genome-spy/core/data/sources/lazy/hicSource.js` to register this source.
+
+### Parameters {#hic-parameters}
+
+SCHEMA HicData
+
+### Example
+
+EXAMPLE examples/docs/grammar/data/lazy/hic-triangle-track.json height=240 spechidden
+
+!!! disclaimer ""
+
+    This example shows part of chromosome 7 in the hg19 GM12878 DpnII contact map.
+    The file was rebuilt for the GenomeSpy examples with only intrachromosomal
+    contacts and recalculated normalization, following the [dataset recipe](https://github.com/genome-spy/genomespy-dataset-recipes/tree/main/recipes/geo-gm12878-dpnii-hic).
+    The data come from Rao et al. (2014), the Aiden lab at Baylor College of
+    Medicine, and the ENCODE Consortium. Source records are in
+    [GEO GSE63525](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525)
+    and [ENCODE ENCSR968KAY](https://www.encodeproject.org/experiments/ENCSR968KAY/).
+
+## HiGlass
+
+The `"higlass"` source loads a Hi-C contact matrix from a HiGlass tile server.
+It selects tiles and bin sizes as you pan and zoom. Use a square-bin matrix
+tileset and the matching genome assembly, including chromosome names, order, and
+lengths.
+
+With the [minimal entry point](../../api/embedding.md#minimal), import
+`@genome-spy/core/data/sources/lazy/hiGlassSource.js` to enable this source.
+
+Each data record is a [raster tile](../mark/raster.md#tile-format) with `column`
+and `row` dimensions and contact values in `fields.value`. The `binSize` field
+gives the matrix resolution in base pairs and equals the dimensions' `step`.
+
+### Parameters {#higlass-parameters}
+
+SCHEMA HiGlassData
+
+The raster mark guide shows a
+[rectangular contact map](../mark/raster.md#rectangular-contact-map).
+
+### Example {#triangle-track}
+
+Set the [view projection](../projection.md#triangle-projection) to `"triangle"`
+and bind both raster dimensions. HiGlass selects tiles for the projected
+viewport, and the raster draws them against a single horizontal locus axis.
+Track height limits the visible contact distance. Set `projection: null` to
+display a rectangular matrix with the same encodings. The logarithmic color
+domain follows the loaded tiles and stays stable while you pan within the same
+tile set. Cells in clipped parts of a tile can affect the visible contrast.
+
+EXAMPLE examples/docs/grammar/data/lazy/higlass-triangle-track.json height=210 spechidden
+
+!!! disclaimer ""
+
+    This example loads raster tiles from [higlass.io](https://higlass.io) for the
+    hg19 GM12878 MboI contact map (all replicates) from
+    [Rao et al. (2014)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5635824/).
 
 ## BigBed
 

@@ -5,6 +5,11 @@ import { exportCanvas, exportRaster } from "./canvasExport.js";
 import WebGLRendererResources from "./rendererResources.js";
 import { rasterizeSvgRuns } from "./svgRasterizer.js";
 import BmFontManager from "./fonts/bmFontManager.js";
+import { createRasterCellResolver } from "../immediate/marks/raster.js";
+import {
+    pickingPixelCenter,
+    RASTER_COORDINATE_OFFSET,
+} from "../renderingConstants.js";
 
 /**
  * @param {import("../renderingBackend.js").RenderingBackendOptions} options
@@ -51,6 +56,18 @@ export function createWebGLRenderingBackend(options) {
                 ...rasterOptions,
                 webGLHelper: glHelper,
                 markAdapter: rendererResources,
+            }),
+        createCellIndexResolver: (layout) =>
+            createRasterCellResolver(layout, (mark, x, y) => {
+                const point = pickingPixelCenter(
+                    x,
+                    y,
+                    glHelper.getDevicePixelRatio()
+                );
+                point.x -= RASTER_COORDINATE_OFFSET;
+                // Adding the same offset to both matrix axes moves the midpoint only.
+                if (!mark.isTriangle) point.y -= RASTER_COORDINATE_OFFSET;
+                return point;
             }),
         readPickingId: (x, y) => {
             const dpr = glHelper.getDevicePixelRatio();

@@ -11,6 +11,7 @@ import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { create } from "../view/testUtils.js";
+import { createTopLevelDatasetApi } from "../view/viewMutationApi.js";
 import {
     getRequiredScaleResolution,
     getScaleDomain,
@@ -845,6 +846,49 @@ describe("Scale resolution domain handling", () => {
         spy.mockRestore();
     });
 
+    test("a shared color domain includes cells and scalar fields from the same collector", async () => {
+        const color = /** @type {const} */ ({
+            field: "value",
+            type: "quantitative",
+            scale: { zero: false },
+        });
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        {
+                            value: 100,
+                            dimensions: {
+                                column: { origin: 0, step: 1, count: 2 },
+                            },
+                            fields: { value: [2, 8] },
+                            row: "a",
+                        },
+                    ],
+                },
+                resolve: { scale: { color: "shared" } },
+                layer: [
+                    { mark: "point", encoding: { color } },
+                    {
+                        mark: "raster",
+                        encoding: {
+                            x: { dimension: "column", type: "index" },
+                            y: { field: "row", type: "nominal" },
+                            color,
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+        const [points, raster] = view.children;
+        // A picking ID transform can give the point layer its own collector.
+        points.flowHandle.collector = raster.getCollector();
+        const resolution = getRequiredScaleResolution(points, "color");
+        resolution.reconfigureDomain();
+        expect(resolution.getDomain()).toEqual([2, 100]);
+    });
+
     test("Scales of primary and secondary channels are shared and extracted domains merged properly", async () => {
         const view = await initView(
             {
@@ -983,6 +1027,158 @@ describe("Scale resolution domain handling", () => {
         const resolution = getRequiredScaleResolution(view, "y");
         expect(resolution.isDomainDefinedExplicitly()).toBe(false);
         expect(getScaleDomain(view, "y")).toEqual([0, 3]);
+    });
+
+    test.each([
+        ["linear", [0, 4], [0, 0]],
+        ["log", [3, 4], [4, 4]],
+    ])("raster %s viewport domain", async (type, initial, zeroOnly) => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        {
+                            dimensions: {
+                                column: { origin: 0, step: 1, count: 3 },
+                                row: { origin: 0, step: 1, count: 3 },
+                            },
+                            fields: {
+                                value: [0, 3, 80, 4, 4, 90, 100, 110, null],
+                            },
+                        },
+                    ],
+                },
+                mark: "raster",
+                encoding: {
+                    x: {
+                        dimension: "column",
+                        type: "quantitative",
+                        scale: { domain: [0.5, 2] },
+                    },
+                    y: {
+                        dimension: "row",
+                        type: "quantitative",
+                        scale: { domain: [0.5, 2], reverse: true },
+                    },
+                    color: {
+                        field: "value",
+                        type: "quantitative",
+                        scale: {
+                            type,
+                            domain: { source: "viewport" },
+                            zero: false,
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+        view.onBeforeRender();
+        const x = getRequiredScaleResolution(view, "x").getScale();
+        const y = getRequiredScaleResolution(view, "y").getScale();
+        expect(r(getScaleDomain(view, "color"))).toEqual(initial);
+
+        vi.useFakeTimers();
+        try {
+            x.domain([1, 2]);
+            y.domain([1, 2]);
+            await vi.advanceTimersByTimeAsync(150);
+            expect(r(getScaleDomain(view, "color"))).toEqual([4, 4]);
+
+            x.domain([2, 3]);
+            y.domain([2, 3]);
+            await vi.advanceTimersByTimeAsync(150);
+            expect(r(getScaleDomain(view, "color"))).toEqual([4, 4]);
+
+            x.domain([0, 1]);
+            y.domain([0, 1]);
+            await vi.advanceTimersByTimeAsync(150);
+            expect(r(getScaleDomain(view, "color"))).toEqual(zeroOnly);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("shared triangle tiles have distinct cached linear and log domains", async () => {
+        const dimension = { origin: 0, step: 1, count: 2 };
+        const tile = (value) => ({
+            dimensions: { column: dimension, row: dimension },
+            fields: { value },
+        });
+        const view = await initView(
+            {
+                datasets: { tiles: [tile([0, 2, 4, 8])] },
+                data: { name: "tiles" },
+                projection: "triangle",
+                resolve: { scale: { color: "independent" } },
+                encoding: {
+                    x: { dimension: "column", type: "locus" },
+                    y: { dimension: "row", type: "locus" },
+                },
+                layer: ["log", "linear"].map((type) => ({
+                    mark: { type: "raster", tooltip: null },
+                    encoding: {
+                        color: {
+                            field: "value",
+                            type: "quantitative",
+                            scale: { type, zero: false },
+                        },
+                    },
+                })),
+            },
+            LayerView
+        );
+        try {
+            const [log, linear] = view.children;
+            const collector = log.getCollector();
+            // Exercise cache identity with both marks reading the same collector.
+            linear.flowHandle.collector = collector;
+            expect(getScaleDomain(log, "color")).toEqual([2, 8]);
+            expect(getScaleDomain(linear, "color")).toEqual([0, 8]);
+
+            const logResolution = getRequiredScaleResolution(log, "color");
+            const linearResolution = getRequiredScaleResolution(
+                linear,
+                "color"
+            );
+            expect(r(linearResolution.getDataDomain())).toEqual([0, 8]);
+            const readTiles = vi.spyOn(collector, "getData");
+            expect(r(logResolution.getDataDomain())).toEqual([2, 8]);
+            expect(r(linearResolution.getDataDomain())).toEqual([0, 8]);
+            expect(readTiles).not.toHaveBeenCalled();
+
+            createTopLevelDatasetApi({ viewRoot: view }).set("tiles", [
+                tile([0, 3, 6, 12]),
+            ]);
+            expect(getScaleDomain(log, "color")).toEqual([3, 12]);
+            expect(getScaleDomain(linear, "color")).toEqual([0, 12]);
+        } finally {
+            view.disposeSubtree();
+        }
+    });
+
+    test("triangle rasters reject an inherited viewport color domain", async () => {
+        await expect(
+            initView(
+                {
+                    projection: "triangle",
+                    scales: { color: { domain: { source: "viewport" } } },
+                    layer: [
+                        {
+                            mark: "raster",
+                            encoding: {
+                                x: { dimension: "column", type: "locus" },
+                                y: { dimension: "row", type: "locus" },
+                                color: { field: "value", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                LayerView
+            )
+        ).rejects.toThrow(
+            "Triangle rasters cannot use a viewport-derived paint domain"
+        );
     });
 
     test("visible y domains use the current x viewport", async () => {

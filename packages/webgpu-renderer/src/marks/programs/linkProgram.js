@@ -312,7 +312,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             clampChordLength(&p1, &p4, &chordLength);
 
             let height = max(chordLength / 2.0 * params.uArcHeightFactor, params.uMinArcHeight);
-            let controlOffset = chordNormal * height / 0.75;
+            let controlOffset = chordNormal * select(height, -height, params.uFlipArc != 0u) / 0.75;
 
             p2 = p1 + controlOffset;
             p3 = p4 + controlOffset;
@@ -477,6 +477,11 @@ export default class LinkProgram extends BaseProgram {
                 encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
             },
             arcHeightFactor: { uniform: "uArcHeightFactor", default: 1 },
+            flipArc: {
+                uniform: "uFlipArc",
+                default: false,
+                encode: (/** @type {boolean} */ value) => (value ? 1 : 0),
+            },
             minArcHeight: { uniform: "uMinArcHeight", default: 1.5 },
             linkShape: {
                 uniform: "uShape",
@@ -548,6 +553,7 @@ export default class LinkProgram extends BaseProgram {
             { name: "uArcFadingDistance", type: "f32", components: 2 },
             { name: "uNoFadingOnSecondPass", type: "u32", components: 1 },
             { name: "uArcHeightFactor", type: "f32", components: 1 },
+            { name: "uFlipArc", type: "u32", components: 1 },
             { name: "uMinArcHeight", type: "f32", components: 1 },
             { name: "uShape", type: "u32", components: 1 },
             { name: "uOrient", type: "u32", components: 1 },

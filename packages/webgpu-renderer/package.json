@@ -32,6 +32,10 @@
       "types": "./src/marks/rect.d.ts",
       "default": "./src/marks/rect.js"
     },
+    "./marks/raster": {
+      "types": "./src/marks/raster.d.ts",
+      "default": "./src/marks/raster.js"
+    },
     "./marks/rule": {
       "types": "./src/marks/rule.d.ts",
       "default": "./src/marks/rule.js"

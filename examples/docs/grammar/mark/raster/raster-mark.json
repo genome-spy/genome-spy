@@ -1,0 +1,31 @@
+{
+  "description": "A raster tile with six cells",
+
+  "data": {
+    "values": [
+      {
+        "dimensions": {
+          "column": { "origin": 10, "step": 2, "count": 3 },
+          "row": { "origin": 0, "step": 1, "count": 2 }
+        },
+        "fields": { "value": [1, 2, 3, 4, 5, 6] }
+      }
+    ]
+  },
+
+  "mark": "raster",
+  "encoding": {
+    "x": {
+      "dimension": "column",
+      "type": "quantitative",
+      "title": "Column coordinate",
+      "scale": { "zero": false }
+    },
+    "y": {
+      "dimension": "row",
+      "type": "quantitative",
+      "title": "Row coordinate"
+    },
+    "color": { "field": "value", "type": "quantitative" }
+  }
+}

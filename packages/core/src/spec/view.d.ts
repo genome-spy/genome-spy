@@ -430,6 +430,16 @@ export interface DynamicOpacitySpec {
     opacity?: ViewOpacityDef;
 }
 
+/** A static view projection. The triangle shorthand points upward. Null selects Cartesian coordinates. */
+export type ViewProjection =
+    | "triangle"
+    | {
+          type: "triangle";
+          /** Whether the triangle extends up from the bottom or down from the top. */
+          direction: "up" | "down";
+      }
+    | null;
+
 export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
     /**
      * Define a selection test once instead of repeating it across this unit's
@@ -452,10 +462,21 @@ export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
      * The graphical mark presenting the rows.
      */
     mark: MarkType | MarkProps;
+
+    /** Coordinate projection for this plot. Null keeps Cartesian coordinates. */
+    projection?: ViewProjection;
 }
 
 export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
+
+    /**
+     * Coordinate projection shared by the layers. A triangle projects matrix
+     * positions to a midpoint and signed separation on a fixed 45° track.
+     * Only x has an axis and supports navigation. Null keeps Cartesian coordinates.
+     */
+    projection?: ViewProjection;
+
     layer: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
 }
 

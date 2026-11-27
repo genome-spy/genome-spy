@@ -5,8 +5,8 @@ and demonstrate the capabilities of GenomeSpy.
 
 ## Genomic data examples
 
-The example specs below mostly display a single dataset to keep the examples
-simple and focused. Gene annotation track, etc. are omitted from the examples.
+The examples range from individual genomic tracks to views that align several
+tracks on a shared axis.
 
 EXAMPLE_GALLERY examples/docs/examples/genomic-data
 
@@ -18,6 +18,7 @@ EXAMPLE_GALLERY examples/docs/examples/genomic-data
 - [Sashimi Plot from Splice Junctions](genomic-data/sashimi-plot.md) sashimi-plot.json
 - [PISA Squid Plot](genomic-data/bpreveal-pisa-squid.md) bpreveal-pisa-squid.json
 - [PISA Interaction Matrix](genomic-data/bpreveal-pisa-matrix.md) bpreveal-pisa-matrix.json
+- [SELL Promoter–Enhancer Contact](genomic-data/sell-promoter-enhancer.md) sell-promoter-enhancer.json
 - [TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape](genomic-data/tcga-ov-gistic.md) tcga-ov-gistic.json
 - [PIK3CA Mutation Lollipop Plot](genomic-data/pik3ca-tcga-brca-lollipop.md) pik3ca-tcga-brca-lollipop.json
 - [ClinVar Small-Variant Classifications](genomic-data/clinvar-variants.md) clinvar-variants.json

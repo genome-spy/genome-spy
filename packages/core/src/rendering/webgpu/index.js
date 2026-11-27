@@ -4,6 +4,11 @@ import { exportRaster, rasterizeSvgRuns } from "./webGpuRasterExport.js";
 import { createOutlineFontPreparer } from "./webGpuFontCatalog.js";
 import { createNativeTextMetricsProvider } from "../nativeTextMetrics.js";
 import OutlineTextMetricsProvider from "./outlineTextMetrics.js";
+import { createRasterCellResolver } from "../immediate/marks/raster.js";
+import {
+    pickingPixelCenter,
+    RASTER_COORDINATE_OFFSET,
+} from "../renderingConstants.js";
 
 /**
  * Creates the experimental WebGPU backend used by the first-example vertical
@@ -56,6 +61,17 @@ export async function createWebGpuRenderingBackend(options) {
             new WebGpuRenderCoordinator({
                 ...coordinatorOptions,
                 surface,
+            }),
+        createCellIndexResolver: (layout) =>
+            createRasterCellResolver(layout, (_mark, x, y) => {
+                const point = pickingPixelCenter(
+                    x,
+                    y,
+                    surface.getDevicePixelRatio()
+                );
+                point.x -= RASTER_COORDINATE_OFFSET;
+                point.y -= RASTER_COORDINATE_OFFSET;
+                return point;
             }),
         readPickingId: (x, y) => surface.pick(x, y),
         exportCanvas: () => {

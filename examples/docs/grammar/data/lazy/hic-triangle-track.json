@@ -1,0 +1,56 @@
+{
+  "description": [
+    "Contact map from a .hic file",
+    "Pan or zoom on chromosome 7 to load contacts from the file at different bin sizes.",
+    "The normalization selector switches between raw and normalized contact counts.",
+    "Data source: GM12878 DpnII contact map from Rao et al. (2014), rebuilt with intrachromosomal contacts only."
+  ],
+  "assembly": "hg19",
+  "projection": "triangle",
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr7", "pos": 101766005 },
+        { "chrom": "chr7", "pos": 113444896 }
+      ]
+    }
+  },
+
+  "params": [
+    {
+      "name": "normalization",
+      "value": "KR",
+      "bind": {
+        "input": "select",
+        "name": "Normalization",
+        "options": ["NONE", "VC", "VC_SQRT", "KR"],
+        "labels": ["Raw counts", "VC", "VC_SQRT", "KR"]
+      }
+    }
+  ],
+
+  "data": {
+    "lazy": {
+      "type": "hic",
+      "url": "https://data.genomespy.app/datasets/geo-gm12878-dpnii-hic/v1/gm12878-dpnii-cis.hic",
+      "normalization": { "expr": "normalization" }
+    }
+  },
+
+  "mark": "raster",
+  "encoding": {
+    "x": { "dimension": "column", "type": "locus" },
+    "y": { "dimension": "row", "type": "locus" },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Contacts",
+      "scale": {
+        "type": "log",
+        "scheme": "juiceboxred",
+        "clamp": true
+      }
+    }
+  }
+}

@@ -43,6 +43,7 @@ import {
     primaryPositionalChannels,
 } from "../../../encoder/encoder.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
+import GLSL_SELECTION_HASH from "../gl/includes/selectionHash.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
 import GLSL_SAMPLE_FACET from "../gl/includes/sampleFacet.glsl";
 import GLSL_PICKING_VERTEX from "../gl/includes/picking.vertex.glsl";
@@ -951,6 +952,7 @@ export default class WebGLMark {
             debugHeader,
             ...extraHeaders,
             GLSL_COMMON,
+            GLSL_SELECTION_HASH,
             GLSL_SCALES,
             [...attributeCode].join("\n"),
             ...(gapY ? [GLSL_SAMPLE_FACET] : []),

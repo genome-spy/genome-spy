@@ -38,6 +38,8 @@ an early browser-side LLM agent with a thin Python relay.
   check; substantial features need a written plan under `plans/`. Follow the
   planning skill's review rules. Do not infer permission to edit from a question
   or review request.
+- When reviewing a change that adds or widens a feature boundary, apply the
+  [deletability check](.agents/skills/plan-genomespy-change/SKILL.md#review-for-deletability).
 - For localized fixes that preserve public APIs, ownership, and architecture,
   make the smallest coherent change and extend existing regression coverage.
   Existing discussion can satisfy the architectural check; do not create plans,

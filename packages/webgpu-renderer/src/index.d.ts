@@ -25,7 +25,7 @@ export type NumericValue =
 
 export type SelectionType = "single" | "multi" | "interval";
 
-export type IntervalSelectionProjection = Readonly<{
+type FieldIntervalProjection = Readonly<{
     /** Opaque identifier of the retained interval component. */
     component: string;
     /** Primary input tested by this component. */
@@ -35,6 +35,15 @@ export type IntervalSelectionProjection = Readonly<{
     /** Hit-test mode for ranged data; omitted means intersects. */
     hitTest?: "intersects" | "encloses" | "endpoints";
 }>;
+
+/** Test whether the brush overlaps a raster cell's unscaled grid bounds. */
+type RasterIntervalProjection = Readonly<{
+    component: string;
+    position: "x" | "y";
+}>;
+
+export type IntervalSelectionProjection =
+    FieldIntervalProjection | RasterIntervalProjection;
 
 export type SelectionStateReference =
     | Readonly<{
@@ -254,7 +263,7 @@ export type ChannelSlotGroup<T> = Partial<T> & {
 export type SeriesData = TypedArray | string | string[];
 
 export type SeriesSlotHandle<
-    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TSeries extends object = Record<string, SeriesData>,
 > = {
     /**
      * Replace every series-backed logical channel configured on the mark.
@@ -264,7 +273,7 @@ export type SeriesSlotHandle<
 };
 
 export type MarkHandle<
-    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TSeries extends object = Record<string, SeriesData>,
     TProperties extends object = Record<never, never>,
 > = {
     markId: MarkId;
@@ -1123,6 +1132,9 @@ export type LinkMarkOptions = {
     /** Height multiplier for arc shape. */
     arcHeightFactor?: number;
 
+    /** Bow the arc to the right of the directed chord. The default bows left. */
+    flipArc?: boolean;
+
     /** Minimum arc height in pixels. */
     minArcHeight?: number;
 
@@ -1340,7 +1352,7 @@ export type RenderPassState = {
 export class RendererError extends Error {}
 
 export type MarkProgram<
-    TSeries extends Record<string, SeriesData> = Record<string, SeriesData>,
+    TSeries extends object = Record<string, SeriesData>,
     TProperties extends object = Record<never, never>,
 > = {
     /** Immutable edge-antialiasing strategy selected when the program is created. */
@@ -1369,7 +1381,7 @@ export type MarkProgram<
 
 export type MarkDefinition<
     TConfig = MarkConfig,
-    TSeries extends Record<string, SeriesData> = Record<string, TypedArray>,
+    TSeries extends object = Record<string, TypedArray>,
     TProperties extends object = Record<never, never>,
 > = Readonly<{
     /** Diagnostic name; dispatch uses the definition value, not this string. */
@@ -1394,11 +1406,7 @@ export class Renderer {
     ): DetachedTargetHandle;
 
     /** Create a retained mark from an explicitly imported definition. */
-    createMark<
-        TConfig,
-        TSeries extends Record<string, SeriesData>,
-        TProperties extends object,
-    >(
+    createMark<TConfig, TSeries extends object, TProperties extends object>(
         definition: MarkDefinition<TConfig, TSeries, TProperties>,
         config: TConfig,
         options?: MarkCreationOptions

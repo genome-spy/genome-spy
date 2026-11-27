@@ -35,6 +35,7 @@ export interface WebGLMark {
         coords: import("../../view/layout/rectangle.js").default,
         clip?: ClipOptions,
         cullClip?: ClipOptions,
-        pixelOffset?: number
+        pixelOffset?: number,
+        framebufferSize?: { width: number; height: number }
     ): boolean;
 }

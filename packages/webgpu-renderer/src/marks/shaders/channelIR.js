@@ -1,4 +1,5 @@
 import { formatLiteral } from "../../wgsl/literals.js";
+import { getFragmentInput } from "../../types.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -6,7 +7,7 @@ import { formatLiteral } from "../../wgsl/literals.js";
  * @typedef {import("../../types.js").ScalarType} ScalarType
  * @typedef {ReturnType<typeof import("./channelAnalysis.js").buildChannelAnalysis>} ChannelAnalysis
  *
- * @typedef {"series"|"uniform"|"literal"} ChannelSourceKind
+ * @typedef {"series"|"fragment"|"uniform"|"literal"} ChannelSourceKind
  *
  * @typedef {object} ChannelIR
  *   Resolved per-channel description used by shader generation and bindings.
@@ -17,7 +18,8 @@ import { formatLiteral } from "../../wgsl/literals.js";
  * @prop {string} [sharedScaleName]
  *   WGSL binding name assigned by the mark program when it borrows a scale.
  * @prop {ChannelSourceKind} sourceKind
- *   Where the values originate: series buffer, uniform, or literal constant.
+ *   Where the values originate. Fragment sources read from mark-owned buffers.
+ * @prop {boolean} [transparentOnNonFinite]
  * @prop {string} rawValueExpr
  *   WGSL expression that yields the raw (pre-scale) value for this channel.
  * @prop {"f32"|"u32"|"i32"} scalarType
@@ -25,7 +27,7 @@ import { formatLiteral } from "../../wgsl/literals.js";
  * @prop {1|2|4} outputComponents
  *   Number of components expected by the mark shader (1 for scalars, 4 for colors).
  * @prop {1|2|4} inputComponents
- *   Number of components stored in the series buffer (defaults to outputComponents).
+ *   Number of components in the raw input (defaults to outputComponents).
  * @prop {"f32"|"u32"|"i32"} outputScalarType
  *   Scalar type of the scaled output when outputComponents is 1.
  * @prop {ScaleType} scaleType
@@ -47,6 +49,11 @@ import { formatLiteral } from "../../wgsl/literals.js";
  * @prop {ChannelIR[]} channelIRs
  * @prop {ReadonlySet<string>} channelNames
  * @prop {ReadonlySet<string>} inputNames
+ * @prop {CellPredicateInputs} [cellPredicates]
+ *
+ * @typedef {object} CellPredicateInputs
+ * @prop {ReadonlyMap<string, { name: string }>} fields
+ * @prop {(axis: "x" | "y") => { value: string, secondary: string, readPackedBound: (field: string) => string }} position
  */
 
 /**
@@ -74,13 +81,14 @@ function buildChannelIR(analysis, seriesIndexExpression) {
     const channel = /** @type {ChannelConfigResolved} */ (analysis.channel);
 
     const sourceKind =
-        analysis.sourceKind === "series"
-            ? "series"
+        analysis.sourceKind !== "value"
+            ? analysis.sourceKind
             : "dynamic" in channel && channel.dynamic
               ? "uniform"
               : "literal";
     const rawValueExpr =
-        sourceKind === "series"
+        getFragmentInput(channel) ??
+        (sourceKind === "series"
             ? `read_${name}(${seriesIndexExpression})`
             : sourceKind === "uniform"
               ? `params.u_${name}`
@@ -91,12 +99,17 @@ function buildChannelIR(analysis, seriesIndexExpression) {
                         /** @type {import("../../index.d.ts").NumericValue} */ (
                             channel.default
                         )
-                );
+                ));
 
     return {
         name,
         channel,
         sourceKind,
+        transparentOnNonFinite:
+            sourceKind === "fragment" &&
+            scalarType === "f32" &&
+            outputScalarType === "f32" &&
+            (outputComponents === 1 || outputComponents === 4),
         rawValueExpr,
         scalarType,
         outputComponents,
@@ -139,6 +152,7 @@ function buildChannelIRs(analysisByChannel, seriesIndexExpression) {
  * @param {ReadonlyMap<string, ChannelAnalysis>} params.analysisByChannel
  * @param {ReadonlySet<string>} params.channelNames
  * @param {ReadonlySet<string>} params.inputNames
+ * @param {CellPredicateInputs} [params.cellPredicates]
  * @param {string} [params.seriesIndexExpression]
  * @returns {CompiledMarkChannels}
  */
@@ -147,6 +161,7 @@ export function compileMarkChannels({
     analysisByChannel,
     channelNames,
     inputNames,
+    cellPredicates,
     seriesIndexExpression = "i",
 }) {
     return {
@@ -155,5 +170,6 @@ export function compileMarkChannels({
         channelIRs: buildChannelIRs(analysisByChannel, seriesIndexExpression),
         channelNames,
         inputNames,
+        cellPredicates,
     };
 }

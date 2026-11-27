@@ -4,6 +4,7 @@ import {
     isPositionalChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
+import { hasGroupingGaps } from "../genome/indexGapMapping.js";
 import {
     INDEX,
     LOCUS,
@@ -15,6 +16,20 @@ import {
 /** @param {string | undefined} type */
 export function isCategoricalPositionScale(type) {
     return type === "band" || type === "point";
+}
+
+/** @param {import("../types/encoder.js").VegaScale} scale */
+export function supportsGridCoordinates(scale) {
+    return (
+        scale &&
+        ["linear", INDEX, LOCUS].includes(scale.type) &&
+        scale.domain().length === 2 &&
+        !scale.props.clamp &&
+        !scale.props.round &&
+        !hasGroupingGaps(scale.props) &&
+        !("paddingInner" in scale && scale.paddingInner()) &&
+        !("paddingOuter" in scale && scale.paddingOuter())
+    );
 }
 
 /** Gesture support is distinct from continuous-domain lifecycle policy.

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { parseArgs } from "./captureScreenshots.mjs";
+import {
+    collectCuratedExamplePaths,
+    parseArgs,
+} from "./captureScreenshots.mjs";
 
 describe("captureScreenshots arguments", () => {
     test("enables non-writing example checks", () => {
@@ -35,4 +38,13 @@ describe("captureScreenshots arguments", () => {
             "Unknown renderer: unknown"
         );
     });
+});
+
+test("includes raster examples in batch capture", () => {
+    expect(collectCuratedExamplePaths()).toEqual(
+        expect.arrayContaining([
+            "examples/core/raster/msa.json",
+            "examples/docs/grammar/data/lazy/higlass-contact-map.json",
+        ])
+    );
 });

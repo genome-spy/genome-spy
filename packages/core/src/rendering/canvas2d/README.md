@@ -41,8 +41,12 @@ dependencies.
 
 Canvas2D uses the same view and scale interaction dispatcher as WebGL, so
 coordinate-based zooming, panning, scrolling, and other view interactions work.
-All Canvas-supported marks also support datum hover, data tooltips, datum
-clicks, and point-selection hit testing through a software ID buffer.
+Datum hover, data tooltips, datum clicks, and point-selection hit testing use
+a software ID buffer. Raster tiles are excluded from picking.
+
+Raster tiles are colorized into bitmaps and drawn with nearest-neighbor
+sampling. The renderer reuses those bitmaps while tile data and the color
+mapping stay stable.
 
 Picking regions are intentionally conservative. Points use a square that
 contains the rotated shape and outward stroke, rules are at least one logical

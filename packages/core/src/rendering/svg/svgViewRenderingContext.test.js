@@ -453,7 +453,7 @@ describe("SvgViewRenderingContext", () => {
         ).toBeNull();
         expect(
             runs.flatMap((run) =>
-                run.targets.map((target) => target.mark.getType())
+                Array.from(run.marks, (mark) => mark.getType())
             )
         ).toEqual(markTypes.filter((markType) => markType != "text"));
         expect(
@@ -501,8 +501,12 @@ describe("SvgViewRenderingContext", () => {
             }
             const runs = context.getRasterRuns();
             expect(runs).toHaveLength(1);
-            expect(runs[0].targets).toHaveLength(1);
-            expect(runs[0].targets[0].instanceCount).toBe(2);
+            expect(runs[0].marks.size).toBe(1);
+            expect(
+                context.getVisibleInstanceCount(
+                    runs[0].marks.values().next().value
+                )
+            ).toBe(2);
             expect(runs[0].image.closest("[opacity]")).toBe(
                 runs[0].opacityScope
             );
@@ -552,7 +556,7 @@ describe("SvgViewRenderingContext", () => {
             context.endInstanceCounting();
             view.arrange(context, coords);
             const runs = context.getRasterRuns();
-            expect(runs.map((run) => run.targets.length)).toEqual([2, 1, 1]);
+            expect(runs.map((run) => run.marks.size)).toEqual([2, 1, 1]);
             const svg = context.getSvg();
             const outer = svg.querySelector('[data-name="outer"]');
             const faded = svg.querySelector('[data-name="faded"]');

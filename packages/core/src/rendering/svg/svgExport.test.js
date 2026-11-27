@@ -166,16 +166,119 @@ describe("SVG export", () => {
         );
     });
 
+    test("embeds raster layers in paint order without a vector threshold", async () => {
+        const { view } = await createHeadlessEngine({
+            layer: [
+                rasterLayer(),
+                {
+                    data: { values: [{}] },
+                    mark: { type: "rule", color: "black" },
+                    encoding: { x: { value: 0.5 } },
+                },
+                rasterLayer(),
+            ],
+        });
+        const options = {
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+        };
+
+        const analysis = await analyzeSvgExport(options);
+        expect(
+            analysis.layers.filter((layer) => layer.requiresRasterization)
+        ).toEqual([
+            expect.objectContaining({ markType: "raster", instanceCount: 1 }),
+            expect.objectContaining({ markType: "raster", instanceCount: 1 }),
+        ]);
+
+        const { svg, rasterized } = await createSvgExport({
+            ...options,
+            rasterizeSvgRuns,
+        });
+        expect(
+            Array.from(
+                svg.querySelectorAll(
+                    "[data-rasterized], [data-mark-type=rule]"
+                ),
+                (node) =>
+                    node.hasAttribute("data-rasterized") ? "image" : "rule"
+            )
+        ).toEqual(["image", "rule", "image"]);
+        expect(rasterized).toEqual(
+            Array.from({ length: 2 }, () => ({
+                targets: [{ markType: "raster", instanceCount: 1 }],
+                reason: "raster-mark",
+                pixelRatio: 2,
+            }))
+        );
+    });
+
+    test("reports a mixed run as required and rejects it when rasterization is unavailable", async () => {
+        const { view } = await createHeadlessEngine({
+            layer: [
+                rasterLayer(),
+                {
+                    data: { values: [{}, {}] },
+                    mark: "point",
+                    encoding: {
+                        x: { value: 0.5 },
+                        y: { value: 0.5 },
+                        fill: { value: "black" },
+                    },
+                },
+            ],
+        });
+
+        const options = {
+            viewRoot: view,
+            logicalWidth: 100,
+            logicalHeight: 100,
+            rasterization: { maxVectorInstances: 1 },
+        };
+        const { rasterized } = await createSvgExport({
+            ...options,
+            rasterizeSvgRuns,
+        });
+        expect(rasterized).toEqual([
+            {
+                targets: [
+                    { markType: "raster", instanceCount: 1 },
+                    { markType: "point", instanceCount: 2 },
+                ],
+                reason: "raster-mark",
+                maxVectorInstances: 1,
+                pixelRatio: 2,
+            },
+        ]);
+        await expect(
+            createSvgExport({
+                ...options,
+                rasterizeSvgRuns: () => {
+                    throw new RasterizationUnavailableError("No Canvas2D");
+                },
+            })
+        ).rejects.toThrow(
+            "requires a raster rendering backend for raster marks"
+        );
+    });
+
     test("falls back to vectors when no rasterizer is available", async () => {
         const { view } = await createHeadlessEngine({
-            data: { values: [{}, {}] },
-            mark: "point",
-            encoding: {
-                x: { value: 0.5 },
-                y: { value: 0.5 },
-                size: { value: 100 },
-                fill: { value: "black" },
-            },
+            layer: [
+                // The tile touches the viewport edge and covers no visible area.
+                rasterLayer(-1),
+                {
+                    data: { values: [{}, {}] },
+                    mark: "point",
+                    encoding: {
+                        x: { value: 0.5 },
+                        y: { value: 0.5 },
+                        size: { value: 100 },
+                        fill: { value: "black" },
+                    },
+                },
+            ],
         });
         const { svg, warnings, rasterized } = await createSvgExport({
             viewRoot: view,
@@ -529,3 +632,36 @@ describe("SVG export", () => {
         expect(clearedFills).toEqual(["#4c78a8", "#f58518"]);
     });
 });
+
+/** @returns {import("../../spec/view.js").UnitSpec} */
+function rasterLayer(origin = 0) {
+    return {
+        mark: { type: "raster", clip: true },
+        data: {
+            values: [
+                {
+                    dimensions: {
+                        column: { origin, step: 1, count: 1 },
+                        row: { origin: 0, step: 1, count: 1 },
+                    },
+                    fields: { value: [1] },
+                },
+            ],
+        },
+        encoding: {
+            x: {
+                dimension: "column",
+                type: "quantitative",
+                scale: { domain: [0, 1] },
+                axis: null,
+            },
+            y: {
+                dimension: "row",
+                type: "quantitative",
+                scale: { domain: [0, 1] },
+                axis: null,
+            },
+            color: { field: "value", type: "quantitative", legend: null },
+        },
+    };
+}

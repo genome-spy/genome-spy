@@ -25,6 +25,9 @@ propagate to its descendants. For example, in the above example, the `"Bar"` and
 `"Label"` views inherit the data and encodings for the `x` and `y` channels from
 their parent, the layer view.
 
+Declare a [projection](../projection.md#layered-views) on the layered view
+to share a coordinate mapping across the child marks.
+
 ## Zoom-driven layer opacity
 
 Layer (and unit) views support zoom-dependent opacity using `opacity` with

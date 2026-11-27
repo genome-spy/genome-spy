@@ -47,14 +47,21 @@ export class SeriesBufferManager {
      * @param {Record<string, ChannelConfigResolved>} channels
      * @param {Record<string, ChannelSpec>} channelSpecs
      * @param {string} [label]
+     * @param {boolean} [aliasByIdentity]
      */
-    constructor(device, channels, channelSpecs, label = "mark") {
+    constructor(
+        device,
+        channels,
+        channelSpecs,
+        label = "mark",
+        aliasByIdentity = true
+    ) {
         this.#device = device;
         this.#channels = channels;
 
         this.#label = label;
 
-        this.#initializeSeriesAliases();
+        if (aliasByIdentity) this.#initializeSeriesAliases();
         this.#packedSeriesLayout = buildPackedSeriesLayout(
             channels,
             channelSpecs,
@@ -105,13 +112,11 @@ export class SeriesBufferManager {
      */
     inferCount(channels) {
         let inferred = null;
-        let hasSeries = false;
 
         for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
-            hasSeries = true;
             const data = channels?.[name] ?? channel.data;
             if (!data) {
                 throw new Error(`Missing data for channel "${name}"`);
@@ -143,10 +148,7 @@ export class SeriesBufferManager {
             }
         }
 
-        if (!hasSeries) {
-            return null;
-        }
-        return inferred ?? 0;
+        return inferred;
     }
 
     /**
@@ -177,12 +179,12 @@ export class SeriesBufferManager {
     /**
      * @param {Record<string, TypedArray>} channels
      * @param {number} count
-     * @returns {boolean} Whether a packed buffer identity changed.
+     * @returns {{ arrays: Record<string, TypedArray>, words: Uint32Array } | undefined}
      */
-    updateSeries(channels, count) {
+    prepareSeries(channels, count) {
         const layout = this.#packedSeriesLayout;
         if (!layout.stride) {
-            return false;
+            return;
         }
 
         validateStorageBufferSize(
@@ -193,6 +195,8 @@ export class SeriesBufferManager {
 
         /** @type {Map<string, TypedArray>} */
         const groupArrays = new Map();
+        /** @type {Record<string, TypedArray>} */
+        const arrays = {};
 
         for (const [name, channel] of Object.entries(this.#channels)) {
             if (!isSeriesChannelConfig(channel)) {
@@ -213,15 +217,37 @@ export class SeriesBufferManager {
                 );
             }
             groupArrays.set(group, sourceArray);
-            channel.data = sourceArray;
+            arrays[name] = sourceArray;
         }
 
         const words = packSeriesArrays({
             channels: this.#channels,
+            arrays,
             layout,
             count,
         });
-        return this.#ensurePackedBuffer(words);
+        return { arrays, words };
+    }
+
+    /**
+     * @param {ReturnType<SeriesBufferManager["prepareSeries"]>} prepared
+     * @returns {boolean} Whether a packed buffer identity changed.
+     */
+    applySeries(prepared) {
+        if (!prepared) return false;
+        const changed = this.#ensurePackedBuffer(prepared.words);
+        for (const [name, data] of Object.entries(prepared.arrays)) {
+            this.#channels[name].data = data;
+        }
+        return changed;
+    }
+
+    /**
+     * @param {Record<string, TypedArray>} channels
+     * @param {number} count
+     */
+    updateSeries(channels, count) {
+        return this.applySeries(this.prepareSeries(channels, count));
     }
 
     /**
@@ -229,13 +255,11 @@ export class SeriesBufferManager {
      * @returns {string[]}
      */
     #getAliasMembers(group) {
-        const members = [];
-        for (const [name, alias] of this.#seriesBufferAliases.entries()) {
-            if (alias === group) {
-                members.push(name);
-            }
-        }
-        return members.length > 0 ? members : [group];
+        return this.#seriesBufferAliases
+            .entries()
+            .filter(([, alias]) => alias === group)
+            .map(([name]) => name)
+            .toArray();
     }
 
     /**

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="466" viewBox="0 0 900 466" role="img" aria-labelledby="title desc">
+  <title id="title">How the triangle projection maps x and y</title>
+  <desc id="desc">A contact in a matrix has column coordinate x equal to 20 megabases and row coordinate y equal to 30 megabases. The triangle projection displays it at the midpoint 25 megabases and at a height equivalent to 5 megabases on the horizontal scale. The matrix diagonal x equals y becomes the baseline. Only the horizontal axis is navigable.</desc>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #334155; }
+    .title { font-size: 28px; font-weight: 700; fill: #0f172a; }
+    .heading { font-size: 20px; font-weight: 650; fill: #0f172a; }
+    .caption { font-size: 15px; }
+    .tick { font-size: 14px; text-anchor: middle; }
+    .axis-label { font-size: 15px; font-weight: 600; text-anchor: middle; }
+    .formula { font-size: 18px; font-weight: 600; }
+    .x { fill: #205b99; }
+    .height { fill: #8b4d13; }
+    .half { fill: #e8f1fc; stroke: #3473b0; stroke-width: 1.5; }
+    .grid { fill: none; stroke: #abc4e0; }
+    .axis { fill: none; stroke: #475569; stroke-width: 1.5; }
+    .guide { fill: none; stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .x-guide { stroke: #2d6aaa; }
+    .y-guide { stroke: #a96222; }
+    .half, .grid, .cell { vector-effect: non-scaling-stroke; }
+    .cell { fill: #ffe2bd; stroke: #a96222; stroke-width: 1.5; }
+    .point { fill: #813f14; stroke: white; stroke-width: 1.6; }
+  </style>
+  <defs>
+    <g id="retained-half">
+      <path class="half" d="M0 0V-240H240Z"/>
+      <path class="grid" d="M80 -80V-240 M160 -160V-240 M0 -80H80 M0 -160H160"/>
+      <rect class="cell" x="67" y="-173" width="26" height="26"/>
+    </g>
+  </defs>
+
+  <rect width="900" height="466" fill="#ffffff"/>
+  <text class="title" x="38" y="45">Triangle projection</text>
+  <text class="caption" x="38" y="72">Two loci become a midpoint and a height above the diagonal.</text>
+
+  <text class="heading" x="94" y="120">Contact matrix</text>
+  <text class="heading" x="519" y="120">Triangle track</text>
+
+  <g transform="translate(94 385)">
+    <rect x="0" y="-240" width="240" height="240" fill="#f1f4f8" stroke="#aab8c9"/>
+    <path d="M80 -80V0 M160 -160V0 M80 -80H240 M160 -160H240" fill="none" stroke="#d3dee9"/>
+    <use href="#retained-half"/>
+    <path class="guide x-guide" d="M80 -160V0"/>
+    <path class="guide y-guide" d="M0 -160H80"/>
+    <circle class="point" cx="80" cy="-160" r="5"/>
+    <path class="axis" d="M0 -240V0H240 M0 0V6 M80 0V6 M160 0V6 M240 0V6 M-6 -240H0 M-6 -160H0 M-6 -80H0 M-6 0H0"/>
+  </g>
+  <text class="tick" x="94" y="410">10</text>
+  <text class="tick x" x="174" y="410">20</text>
+  <text class="tick" x="254" y="410">30</text>
+  <text class="tick" x="334" y="410">40</text>
+  <text class="axis-label x" x="214" y="438">x · column locus (Mb)</text>
+  <g class="caption" text-anchor="end">
+    <text x="79" y="150">40</text>
+    <text class="height" x="79" y="230">30</text>
+    <text x="79" y="310">20</text>
+    <text x="79" y="390">10</text>
+  </g>
+  <text class="axis-label height" transform="translate(41 265) rotate(-90)">y · row locus (Mb)</text>
+  <text class="caption" x="192" y="212">(20, 30)</text>
+
+  <text class="caption" x="426" y="252" text-anchor="middle">45° projection</text>
+  <path class="axis" d="M370 269H483 M475 263L483 269L475 275"/>
+
+  <text class="formula x" x="519" y="167">x′ = (x + y) / 2 = 25 Mb</text>
+  <text class="formula height" x="519" y="196">h = (y − x) / 2 = 5 Mb</text>
+  <text class="caption" x="519" y="224">Height uses the same scale as x′.</text>
+  <g transform="translate(519 385)">
+    <use href="#retained-half" transform="matrix(.5 .5 -.5 .5 0 0)"/>
+    <path class="guide x-guide" d="M120 -40V0"/>
+    <path class="guide y-guide" d="M120 -40H253"/>
+    <path class="axis" d="M0 0H240 M0 0V6 M80 0V6 M120 0V8 M160 0V6 M240 0V6"/>
+    <path d="M249 -40H257 M253 -40V0 M249 0H257" fill="none" stroke="#a96222" stroke-width="1.5"/>
+    <circle class="point" cx="120" cy="-40" r="5"/>
+  </g>
+  <text class="caption height" x="785" y="370">5 Mb high</text>
+  <text class="tick" x="519" y="410">10</text>
+  <text class="tick" x="599" y="410">20</text>
+  <text class="tick x" x="639" y="410" font-weight="700">25</text>
+  <text class="tick" x="679" y="410">30</text>
+  <text class="tick" x="759" y="410">40</text>
+  <text class="axis-label x" x="639" y="438">x′ · genomic midpoint (Mb)</text>
+</svg>

@@ -1,0 +1,89 @@
+{
+  "description": [
+    "Hi-C comparison lens",
+    "Shift-drag near the chr14:80–100 Mb diagonal to reveal the contact domains visible in wild type. The ΔNipbl map remains visible outside the lens. Drag inside to move it, or double-click to clear it.",
+    "Data source: Schwarzer et al. (2017), wild-type and ΔNipbl mouse hepatocytes on mm9, served by HiGlass. https://doi.org/10.1038/nature24281"
+  ],
+  "assembly": "mm9",
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr14", "pos": 75000000 },
+        { "chrom": "chr14", "pos": 104999999 }
+      ]
+    },
+    "y": {
+      "domain": [
+        { "chrom": "chr14", "pos": 75000000 },
+        { "chrom": "chr14", "pos": 104999999 }
+      ],
+      "reverse": true
+    }
+  },
+
+  "params": [
+    {
+      "name": "lens",
+      "select": {
+        "type": "interval",
+        "encodings": ["x", "y"],
+        "mark": { "fillOpacity": 0, "strokeOpacity": 0.35 }
+      }
+    }
+  ],
+
+  "encoding": {
+    "x": { "dimension": "column", "type": "locus" },
+    "y": { "dimension": "row", "type": "locus" },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Contact value",
+      "scale": {
+        "type": "log",
+        "domain": { "source": "viewport" },
+        "scheme": "higlassfall",
+        "clamp": true
+      }
+    }
+  },
+
+  "layer": [
+    {
+      "name": "nipblDeletion",
+      "data": {
+        "lazy": {
+          "type": "higlass",
+          "url": "https://higlass.io/api/v1/",
+          "tileset": "J2IoKaXJSG-5bH1pITTtTg"
+        }
+      },
+      "mark": "raster",
+      "encoding": {
+        "opacity": {
+          "condition": { "param": "lens", "empty": false, "value": 0 },
+          "value": 1
+        }
+      }
+    },
+
+    {
+      "name": "wildType",
+      "data": {
+        "lazy": {
+          "type": "higlass",
+          "url": "https://higlass.io/api/v1/",
+          "tileset": "cTc3lt_7StSgcrr1kHWidQ"
+        }
+      },
+      "mark": "raster",
+      "encoding": {
+        "opacity": {
+          "condition": { "param": "lens", "empty": false, "value": 1 },
+          "value": 0
+        }
+      }
+    }
+  ]
+}

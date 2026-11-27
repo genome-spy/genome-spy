@@ -1,50 +1,33 @@
 import { createFramebufferInfo } from "twgl.js";
 
 import { framebufferToDataUrl } from "./gl/framebufferReadback.js";
-import { createLayoutResult } from "../../view/layout/layoutResult.js";
+import { getRasterExportLayout } from "../rasterization.js";
 import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
-import Rectangle from "../../view/layout/rectangle.js";
 import { getPhysicalCrop, setRasterImage } from "../svg/raster/rasterImage.js";
 
 /**
  * Renders each contiguous raster run into the same reusable transparent
  * framebuffer and assigns the cropped PNG to its SVG image placeholder.
  *
- * @param {object} options
- * @param {import("../svg/svgViewRenderingContext.js").SvgRasterRun[]} options.runs
- * @param {import("../../view/view.js").default} options.viewRoot
- * @param {import("../../view/layout/layoutResult.js").default} [options.layoutResult]
- * @param {import("./gl/webGLHelper.js").default} options.webGLHelper
- * @param {import("./rendererResources.js").default} options.markAdapter
- * @param {number} options.logicalWidth
- * @param {number} options.logicalHeight
- * @param {number} options.pixelRatio
+ * @param {Omit<import("../renderingBackend.js").SvgRunRasterizationOptions, "textMetrics"> & {
+ *     webGLHelper: import("./gl/webGLHelper.js").default,
+ *     markAdapter: import("./rendererResources.js").default,
+ * }} options
  */
-export function rasterizeSvgRuns({
-    runs,
-    viewRoot,
-    layoutResult,
-    webGLHelper,
-    markAdapter,
-    logicalWidth,
-    logicalHeight,
-    pixelRatio,
-}) {
+export function rasterizeSvgRuns(options) {
+    const {
+        runs,
+        webGLHelper,
+        markAdapter,
+        logicalWidth,
+        logicalHeight,
+        pixelRatio,
+    } = options;
     const gl = webGLHelper.gl;
     const width = Math.ceil(logicalWidth * pixelRatio);
     const height = Math.ceil(logicalHeight * pixelRatio);
     validateFramebufferSize(gl, width, height);
-    const rasterLayoutResult =
-        pixelRatio == 1 && layoutResult
-            ? layoutResult
-            : createLayoutResult(
-                  viewRoot,
-                  Rectangle.create(0, 0, logicalWidth, logicalHeight),
-                  {
-                      devicePixelRatio: pixelRatio,
-                      renderingOptions: { firstFacet: true },
-                  }
-              );
+    const layoutResult = getRasterExportLayout(options);
 
     const framebufferInfo = createFramebufferInfo(
         gl,
@@ -77,7 +60,7 @@ export function rasterizeSvgRuns({
                     pixelOffset: 0,
                 }
             );
-            rasterLayoutResult.collectRenderCommands(renderingContext);
+            layoutResult.collectRenderCommands(renderingContext);
             renderingContext.finish();
             renderingContext.render();
 

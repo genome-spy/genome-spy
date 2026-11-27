@@ -44,6 +44,22 @@ import { isInChromeSubtree } from "../view/viewChrome.js";
  */
 
 /**
+ * @typedef {object} MarkDomainBinding
+ * @prop {() => string} getKey Identity of the current domain read on the collector.
+ * @prop {(collector: import("../data/collector.js").default, constraints?: import("../data/viewportDomain.js").ViewportConstraint[]) => import("../utils/domainArray.js").DomainArray} read
+ * @prop {string} [viewportError]
+ */
+
+/**
+ * @typedef {"x" | "y"} TooltipAxis
+ * @typedef {object} CellTooltipData
+ * @prop {import("../data/flowNode.js").Datum} datum
+ * @prop {{column: number, row: number}} cell
+ * @prop {{axis: TooltipAxis, start: number, end: number}[]} axes
+ * @prop {(axis: TooltipAxis) => TooltipAxis} scaleAxis
+ */
+
+/**
  * Backend-neutral mark configuration, encoders, and data semantics. Rendering
  * backends own any retained state derived from the mark.
  *
@@ -133,6 +149,21 @@ export default class Mark {
 
         /** @type {P} */
         this.properties = properties;
+    }
+
+    /**
+     * Supplies domain values that cannot be read by a scalar accessor.
+     * @type {((channel: import("../spec/channel.js").ChannelWithScale) => MarkDomainBinding | undefined) | undefined}
+     */
+    getDomainBinding;
+
+    /**
+     * @param {object} _datum
+     * @param {number} _index
+     * @returns {CellTooltipData | undefined}
+     */
+    getCellTooltipData(_datum, _index) {
+        return undefined;
     }
 
     /**
@@ -502,6 +533,10 @@ export default class Mark {
     initializeEncoders() {
         this.unitView.validatePointSelectionSources();
         this.encoders = createEncoders(this.unitView, this.encoding);
+    }
+
+    get selectionEncoding() {
+        return this.encoding;
     }
 
     /**

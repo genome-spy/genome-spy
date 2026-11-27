@@ -57,7 +57,7 @@ test.each(["lookup", "cross"])(
         // Domain invalidation precedes the side observer that replays primary rows.
         /** @type {boolean[]} */
         const observed = [];
-        foreign.subscribeDomainChanges("readiness", () =>
+        foreign.subscribeDomainChanges(() =>
             observed.push(isDataReady(output))
         );
         publish(foreign, [{ id: 0, score: 9 }]);

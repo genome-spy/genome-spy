@@ -7,3 +7,5 @@ import "./bamSource.js";
 import "./tabixTsvSource.js";
 import "./gff3Source.js";
 import "./vcfSource.js";
+import "./hiGlassSource.js";
+import "./hicSource.js";

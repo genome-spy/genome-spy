@@ -148,6 +148,15 @@ EXAMPLE examples/docs/grammar/conditional-encoding/endpoint-brushes.json height=
 For endpoint brushes, hover, and several conditional channels, see the
 [PISA Squid Plot](../examples/genomic-data/bpreveal-pisa-squid.md).
 
+## Raster Cells
+
+Color and opacity conditions with value branches are evaluated for each
+[raster](mark/raster.md) cell. An encoded field and its scale supply the
+fallback for the channel that reads the field. A positional interval tests
+overlap with the cell's data-space bounds, and a gradient interval tests its raw
+color value. Layer two aligned rasters with opposite opacity conditions to
+reveal a comparison dataset inside a brush.
+
 ## Multiple Conditions
 
 Conditions in an array are tested in order. The channel's main definition is

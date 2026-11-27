@@ -16,4 +16,4 @@ Mark type included in the raster image.
 
 > **instanceCount**: `number`
 
-Number of visible instances across all rendered facets.
+Number of visible instances across all rendered facets. For raster marks, counts tiles.

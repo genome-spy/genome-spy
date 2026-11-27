@@ -271,6 +271,35 @@ describe("Axes resolve properly", () => {
         expect(view.getAxisResolution("x").getTitle()).toEqual("a");
     });
 
+    test.each(/** @type {const} */ (["locus", "index", "quantitative"]))(
+        "Raster dimensions omit the default %s axis title",
+        async (type) => {
+            const view = await createAndInitialize(
+                {
+                    data: { values: [] },
+                    mark: "raster",
+                    encoding: {
+                        x: {
+                            dimension: "column",
+                            type,
+                            scale: { domain: [0, 2] },
+                        },
+                        y: {
+                            dimension: "row",
+                            type: "quantitative",
+                            title: "Position",
+                        },
+                        color: { field: "value", type: "quantitative" },
+                    },
+                },
+                UnitView
+            );
+
+            expect(view.getAxisResolution("x").getTitle()).toBeNull();
+            expect(view.getAxisResolution("y").getTitle()).toBe("Position");
+        }
+    );
+
     test("Primary and secondary channels are included in the title", async () => {
         let view = await createAndInitialize(
             {

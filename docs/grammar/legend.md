@@ -154,11 +154,13 @@ its space to keep layout stable.
 Set `legend.selectionLabel: false` to hide it and reclaim the space, or use
 `config.legend.selectionLabel: false` globally. Ticks and brushing remain available.
 
-Bindings require an unconditional quantitative field and a monotonic, invertible
-continuous scale, such as linear or logarithmic. Discrete color buckets are
-unsupported. Each shared or collected legend binds one selection with compatible
-event and brush settings. Compatible `push: "outer"` declarations can share bounds
-across independent scales and differently oriented ramps.
+Bindings require a quantitative field and a monotonic, invertible continuous
+scale, such as linear or logarithmic. Raster legends brush the raw field even
+when color has value overrides. Other marks require an unconditional field.
+Discrete color buckets are unsupported. Each shared or collected legend binds
+one selection with compatible event and brush settings. Compatible
+`push: "outer"` declarations can share bounds across independent scales and
+differently oriented ramps.
 
 !!! note "Vega-Lite compatibility"
 

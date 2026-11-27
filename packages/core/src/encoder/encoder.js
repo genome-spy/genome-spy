@@ -173,6 +173,7 @@ export default function createEncoders(unitView, encoding) {
 
     /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
+    const selectionEncoding = unitView.mark.selectionEncoding;
 
     /**
      * @param {import("../spec/channel.js").ChannelWithScale} channel */
@@ -207,7 +208,7 @@ export default function createEncoders(unitView, encoding) {
             createConditionalBranches(
                 typedChannel,
                 typedChannelDef,
-                encoding,
+                selectionEncoding,
                 unitView.paramRuntime,
                 unitView.mark.defaultHitTestMode,
                 (channel) => unitView.getScaleResolution(channel)?.type,

@@ -4,6 +4,7 @@ import {
     isExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import { getScalePositionAdjustment } from "../../scales/scalePosition.js";
+import { getResolvedTriangleDirection } from "../../view/triangleProjection.js";
 import Transform from "./transform.js";
 import { Displace2DConstraintSolver } from "./displace2dConstraintSolver.js";
 
@@ -45,6 +46,9 @@ export default class Displace2DTransform extends Transform {
 
     /** @type {import("../../scales/scaleResolution.js").default} */
     #yScaleResolution;
+
+    /** @type {boolean} */
+    #triangle;
 
     /** @type {import("../flowNode.js").Datum[]} */
     #data = [];
@@ -188,6 +192,7 @@ export default class Displace2DTransform extends Transform {
         if (!this.#xScaleResolution || !this.#yScaleResolution) {
             throw new Error("displace2d requires x and y scales.");
         }
+        this.#triangle = getResolvedTriangleDirection(view) !== undefined;
 
         const scaleChanged = () => this.#scheduleReplay();
         for (const resolution of [
@@ -244,7 +249,12 @@ export default class Displace2DTransform extends Transform {
         const yScale = this.#yScaleResolution.getScale();
         const xAxisLength = this.#xScaleResolution.getAxisLength();
         const yAxisLength = this.#yScaleResolution.getAxisLength();
-        const xAdjustment = getScalePositionAdjustment(xScale);
+        const xType = this.#xScaleResolution.type;
+        const roundMidpoint = xType === "locus" || xType === "index";
+        // Projected marks place the midpoint at band zero.
+        const xAdjustment = this.#triangle
+            ? 0
+            : getScalePositionAdjustment(xScale);
         const yAdjustment = getScalePositionAdjustment(yScale);
         /** @type {[number, number] | undefined} */
         const xExtent = [0, xAxisLength];
@@ -270,11 +280,20 @@ export default class Displace2DTransform extends Transform {
             if (keyAccessor) {
                 nextStates.set(key, item);
             }
-            const anchorX =
-                (xScale(this.#xAccessor(datum)) + xAdjustment) * xAxisLength;
-            const anchorY =
-                (1 - yScale(this.#yAccessor(datum)) - yAdjustment) *
-                yAxisLength;
+            let x = this.#xAccessor(datum);
+            let y = this.#yAccessor(datum);
+            if (this.#triangle) {
+                if (Number.isFinite(x) && Number.isFinite(y)) {
+                    const midpoint = (x + y) / 2;
+                    y -= x;
+                    x = roundMidpoint ? Math.floor(midpoint) : midpoint;
+                } else {
+                    x = NaN;
+                    y = NaN;
+                }
+            }
+            const anchorX = (xScale(x) + xAdjustment) * xAxisLength;
+            const anchorY = (1 - yScale(y) - yAdjustment) * yAxisLength;
             const anchorInViewport =
                 anchorX >= 0 &&
                 anchorX <= xAxisLength &&

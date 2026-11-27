@@ -88,11 +88,13 @@ export function resolveLegendBindings(viewRoot) {
                         `Legend binding "${param.name}" requires the corresponding legend kind.`
                     );
                 if (gradient) {
-                    const encoding =
+                    const unit =
                         /** @type {import("../unitView.js").default} */ (
                             definition.view
-                        ).getEncoding();
-                    const input = encoding[component];
+                        );
+                    const input =
+                        unit.mark.selectionEncoding[component] ??
+                        unit.getEncoding()[component];
                     if (
                         !input ||
                         !("field" in input) ||

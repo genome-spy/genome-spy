@@ -367,7 +367,7 @@ describe("example scale-domain lifecycle contracts", () => {
         expect(screenshotReady).not.toHaveBeenCalled();
         /** @type {boolean[]} */
         const beforeReplay = [];
-        const unsubscribe = foreign.subscribeDomainChanges("readiness", () => {
+        const unsubscribe = foreign.subscribeDomainChanges(() => {
             beforeReplay.push(isSubtreeLazyReady(track, { x: [0, 1] }));
         });
         source.publish([], [0, 1]);

@@ -187,8 +187,6 @@ function installCanvasMocks() {
 function createContext(canvas) {
     return {
         canvas,
-        resetTransform: vi.fn(),
-        clearRect: vi.fn(),
         drawImage: vi.fn(),
     };
 }
@@ -201,7 +199,6 @@ function createContext(canvas) {
 function createRun(marks, bounds) {
     return {
         marks,
-        targets: [],
         viewNodes: new Set(),
         opacityScope: document.createElementNS(
             "http://www.w3.org/2000/svg",

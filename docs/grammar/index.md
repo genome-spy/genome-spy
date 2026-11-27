@@ -38,6 +38,7 @@ A GenomeSpy specification describes a hierarchy of views. A unit view is a leaf
 in the hierarchy that renders rows using a graphical [mark](mark/index.md). The
 `mark` is its only required property. A unit view can define its own `data`,
 `transform`, and `encoding`, or inherit them from an ancestor composition view.
+Unit and layered views can also declare a [projection](projection.md).
 
 EXAMPLE examples/docs/grammar/index/single-view-specification.json height=200
 

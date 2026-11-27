@@ -1,3 +1,4 @@
+import runRasterScene from "./rasterScene.js";
 import runBasicScene from "./basicScene.js";
 import runHatchScene from "./hatchScene.js";
 import runBarScene from "./barScene.js";
@@ -29,6 +30,10 @@ const EXAMPLES = {
     bars: {
         label: "Bar Chart",
         run: runBarScene,
+    },
+    raster: {
+        label: "Raster Cells",
+        run: runRasterScene,
     },
     threshold: {
         label: "Threshold Colors",

@@ -64,31 +64,43 @@ export function bindGradientLegend(legend, binding, units, format) {
             Math.max(domain[0], domain.at(-1)),
         ]);
     };
-    const getScale = () => {
-        const domain = resolution.getDomain().map(Number);
-        if (
-            domain.length < 2 ||
-            !domain.every(Number.isFinite) ||
-            domain.some(
-                (v, i) =>
-                    i && (v - domain[i - 1]) * (domain[1] - domain[0]) <= 0
+    const getScale = () => mapping.get();
+    const mapping = legend.paramRuntime.computed(
+        "gradient legend position mapping",
+        [resolution.getMappingRef()],
+        () => {
+            const domain = resolution.getDomain().map(Number);
+            // Lazy domains may be empty or flat until data arrives. A flat ramp
+            // can display color but has no interval to invert.
+            if (
+                !domain.length ||
+                (Number.isFinite(domain[0]) &&
+                    domain.every((v) => v === domain[0]))
             )
-        )
-            throw new Error(
-                `Gradient binding "${name}" requires a strictly monotonic finite domain.`
+                return undefined;
+            if (
+                !domain.every(Number.isFinite) ||
+                domain.some(
+                    (v, i) =>
+                        i && (v - domain[i - 1]) * (domain[1] - domain[0]) <= 0
+                )
+            )
+                throw new Error(
+                    `Gradient binding "${name}" requires a strictly monotonic finite domain.`
+                );
+            const scale = createNormalizedScale(
+                resolution.getScale(),
+                domain[0],
+                domain.at(-1),
+                true
             );
-        const scale = createNormalizedScale(
-            resolution.getScale(),
-            domain[0],
-            domain.at(-1),
-            true
-        );
-        if (![0, 0.5, 1].every((p) => Number.isFinite(scale.invert(p))))
-            throw new Error(
-                `Gradient binding "${name}" requires an invertible numeric mapping.`
-            );
-        return scale;
-    };
+            if (![0, 0.5, 1].every((p) => Number.isFinite(scale.invert(p))))
+                throw new Error(
+                    `Gradient binding "${name}" requires an invertible numeric mapping.`
+                );
+            return scale;
+        }
+    );
     legend.paramRuntime.registerParam({
         name: "intervalDragActive",
         value: false,
@@ -100,10 +112,11 @@ export function bindGradientLegend(legend, binding, units, format) {
     });
     legend.paramRuntime.registerComputed(
         "legendBrush",
-        () => [runtime.getParamRef(name), resolution.getMappingRef()],
+        () => [runtime.getParamRef(name), mapping],
         () => {
             const bounds = runtime.findValue(name).intervals[component];
             const scale = getScale();
+            if (!scale) return { active: false, start: 0, end: 0, label: "" };
             const formatBound = tickFormat(
                 resolution.getScale(),
                 legend.legendProps.tickCount ?? DEFAULT_GRADIENT_TICK_COUNT,

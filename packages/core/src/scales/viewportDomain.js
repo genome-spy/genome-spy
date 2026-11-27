@@ -88,6 +88,13 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
         throw new Error("Cannot mix viewport domain modes on a shared scale.");
     }
 
+    if (modes.size) {
+        for (const { view, channel } of members) {
+            const error = view.mark.getDomainBinding?.(channel)?.viewportError;
+            if (error) throw new Error(error);
+        }
+    }
+
     return modes.values().next().value;
 }
 
@@ -120,6 +127,13 @@ export function resolveVisibleDataDomain(
 
         const constraints = getViewportConstraints(member);
         const collector = member.view.getCollector();
+        const binding =
+            collector && member.view.mark.getDomainBinding?.(member.channel);
+        if (binding) {
+            domain.extendAll(binding.read(collector, constraints));
+            hasContributors = true;
+            continue;
+        }
         for (const accessor of accessors) {
             if (collector) {
                 domain.extendAll(

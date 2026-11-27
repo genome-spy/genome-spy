@@ -327,7 +327,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                                 coords,
                                 request.clip,
                                 request.cullClip,
-                                this.#pixelOffset
+                                this.#pixelOffset,
+                                this.#framebufferInfo
                             );
                         })
                     );

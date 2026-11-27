@@ -63,8 +63,11 @@ export default class Collector extends FlowNode {
      */
     #comparator;
 
-    /** @type {DomainCache} */
-    #domainCache = new DomainCache();
+    /** @type {Map<string, import("../utils/domainArray.js").DomainArray>} */
+    #domainCache = new Map();
+
+    /** @type {Set<() => void>} */
+    #domainListeners = new Set();
 
     /** @type {ViewportDomainManager} */
     #viewportDomains;
@@ -297,7 +300,7 @@ export default class Collector extends FlowNode {
      * @returns {import("../utils/domainArray.js").DomainArray}
      */
     getDomain(domainKey, type, accessor) {
-        return this.#domainCache.getDomain(domainKey, () => {
+        return this.#getOrCacheDomain(domainKey, () => {
             const domain = createDomain(type);
 
             if (accessor.constant) {
@@ -312,6 +315,30 @@ export default class Collector extends FlowNode {
 
             return domain;
         });
+    }
+
+    /**
+     * A reset collector has no current data, even if the previous batch left a cached domain.
+     * @param {string} domainKey
+     * @param {() => import("../utils/domainArray.js").DomainArray} read
+     */
+    getCachedDomain(domainKey, read) {
+        return this.completed
+            ? this.#getOrCacheDomain(domainKey, read)
+            : read();
+    }
+
+    /**
+     * @param {string} domainKey
+     * @param {() => import("../utils/domainArray.js").DomainArray} read
+     */
+    #getOrCacheDomain(domainKey, read) {
+        const cached = this.#domainCache.get(domainKey);
+        if (cached) return cached;
+
+        const domain = read();
+        this.#domainCache.set(domainKey, domain);
+        return domain;
     }
 
     /**
@@ -345,12 +372,13 @@ export default class Collector extends FlowNode {
     }
 
     /**
-     * @param {string} domainKey
      * @param {() => void} listener
-     * @returns {() => void}
      */
-    subscribeDomainChanges(domainKey, listener) {
-        return this.#domainCache.subscribe(domainKey, listener);
+    subscribeDomainChanges(listener) {
+        this.#domainListeners.add(listener);
+        return () => {
+            this.#domainListeners.delete(listener);
+        };
     }
 
     /**
@@ -411,10 +439,11 @@ export default class Collector extends FlowNode {
     }
 
     #invalidateDomains() {
-        if (this.#domainCache.hasCachedDomains()) {
-            this.#domainCache.clear();
+        if (this.#domainCache.size) this.#domainCache.clear();
+        if (this.#domainListeners.size) {
+            // Listeners can rebuild subscriptions during notification.
+            for (const listener of [...this.#domainListeners]) listener();
         }
-        this.#domainCache.notify();
     }
 
     /**
@@ -499,84 +528,6 @@ export default class Collector extends FlowNode {
             keyTuple,
             this.facetBatches.values()
         );
-    }
-}
-
-/**
- * Manages cached domains and subscriptions for invalidation.
- */
-class DomainCache {
-    /** @type {Map<string, import("../utils/domainArray.js").DomainArray>} */
-    #cache = new Map();
-
-    /** @type {Map<string, Set<() => void>>} */
-    #observers = new Map();
-
-    hasCachedDomains() {
-        return this.#cache.size > 0;
-    }
-
-    clear() {
-        this.#cache.clear();
-    }
-
-    /**
-     * @param {string} domainKey
-     * @param {() => import("../utils/domainArray.js").DomainArray} build
-     * @returns {import("../utils/domainArray.js").DomainArray}
-     */
-    getDomain(domainKey, build) {
-        const cached = this.#cache.get(domainKey);
-        if (cached) {
-            return cached;
-        } else {
-            const domain = build();
-            this.#cache.set(domainKey, domain);
-            return domain;
-        }
-    }
-
-    /**
-     * @param {string} domainKey
-     * @param {() => void} listener
-     * @returns {() => void}
-     */
-    subscribe(domainKey, listener) {
-        let listeners = this.#observers.get(domainKey);
-        if (!listeners) {
-            listeners = new Set();
-            this.#observers.set(domainKey, listeners);
-        }
-        listeners.add(listener);
-
-        return () => {
-            const entry = this.#observers.get(domainKey);
-            if (!entry) {
-                return;
-            }
-            entry.delete(listener);
-            if (entry.size === 0) {
-                this.#observers.delete(domainKey);
-            }
-        };
-    }
-
-    notify() {
-        if (this.#observers.size === 0) {
-            return;
-        }
-
-        /** @type {Set<() => void>} */
-        const listeners = new Set();
-        for (const observers of this.#observers.values()) {
-            for (const observer of observers) {
-                listeners.add(observer);
-            }
-        }
-
-        for (const listener of listeners) {
-            listener();
-        }
     }
 }
 

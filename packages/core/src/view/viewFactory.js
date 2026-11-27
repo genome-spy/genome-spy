@@ -21,6 +21,13 @@ import {
 } from "./viewSelectors.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
 import { getOutputDeclarations } from "./transformOutputDeclarations.js";
+import { prepareLazyDataSource } from "../data/sources/lazy/lazyDataSourceRegistry.js";
+import {
+    getResolvedTriangleDirection,
+    getTriangleDirection,
+    normalizeTriangleProjection,
+} from "./triangleProjection.js";
+import { isInChromeSubtree } from "./viewChrome.js";
 import {
     isConcatSpec,
     isFacetSpec,
@@ -164,6 +171,29 @@ export class ViewFactory {
      * @param {CreateViewOptions} [options]
      */
     createView(spec, context, layoutParent, dataParent, defaultName, options) {
+        if (
+            !options?.chrome &&
+            (!layoutParent || !isInChromeSubtree(layoutParent))
+        ) {
+            spec = normalizeTriangleProjection(
+                spec,
+                dataParent,
+                options?.inheritEncoding
+            );
+            const direction = getTriangleDirection(spec);
+            if (
+                direction ||
+                (direction === null && getResolvedTriangleDirection(dataParent))
+            ) {
+                options = {
+                    ...options,
+                    resolutionBoundaryChannels: [
+                        ...(options?.resolutionBoundaryChannels ?? []),
+                        "y",
+                    ],
+                };
+            }
+        }
         for (const [guard, factory] of this.#types) {
             if (guard(spec)) {
                 return factory(
@@ -314,6 +344,12 @@ export class ViewFactory {
         );
 
         try {
+            const data = view.spec.data;
+            if (data && "lazy" in data) {
+                const preparation = prepareLazyDataSource(data.lazy);
+                if (preparation) await preparation;
+            }
+
             // Reserve local dataset names before constructing descendants.
             for (const { transform } of getOutputDeclarations(
                 view.spec.transform ?? []

@@ -21,6 +21,8 @@ const forbiddenSources = [
     "src/data/sources/lazy/indexedFastaSource.js",
     "src/data/sources/lazy/bigWigSource.js",
     "src/data/sources/lazy/figWigSource.js",
+    "src/data/sources/lazy/hiGlassSource.js",
+    "src/data/sources/lazy/hicSource.js",
     "src/data/sources/lazy/bigBedSource.js",
     "src/data/sources/lazy/bamSource.js",
     "src/data/sources/lazy/gff3Source.js",
@@ -32,6 +34,15 @@ const optionalRenderingDirectories = [
     "src/rendering/immediate/",
     "src/rendering/svg/",
 ];
+const matrixSources = [
+    {
+        registration: "hiGlassSource.js",
+        implementation: "hiGlassTileSource.js",
+    },
+    { registration: "hicSource.js", implementation: "hicTileSource.js" },
+];
+const hicReader =
+    /node_modules[/\\]@gmod[/\\](?:hic|range-cache-filehandle)[/\\]/;
 const webGlRenderingDirectory = "src/rendering/webgl/";
 const webGpuRenderingDirectory = "src/rendering/webgpu/";
 const rendererRegistrationSources = [
@@ -69,6 +80,19 @@ try {
     }
 
     const minimalBundleSources = readAllOutputSources(minimalOutput);
+    if (
+        minimalBundleSources.some(
+            (source) =>
+                hicReader.test(source) ||
+                matrixSources.some(({ implementation }) =>
+                    source.endsWith(implementation)
+                )
+        )
+    ) {
+        throw new Error(
+            "Minimal bundle must exclude the contact matrix loaders."
+        );
+    }
     const figwigSource = minimalBundleSources.find(isFigwigDependency);
     if (figwigSource) {
         throw new Error(
@@ -123,22 +147,25 @@ try {
         directory: "src/rendering/canvas2d/",
     });
 
-    const figwigEntry = path.resolve("scripts/fixtures/minimalFigwig.js");
-    const figwigOutput = await buildEntry(
-        figwigEntry,
-        "genomeSpyEmbedMinimalFigwig",
-        path.join(tempDir, "minimal-figwig")
+    const lazySourcesEntry = path.resolve(
+        "scripts/fixtures/minimalLazySources.js"
     );
-    const figwigStaticSources = readStaticEntrySources(
-        figwigOutput,
-        figwigEntry
+    const lazySourcesOutput = await buildEntry(
+        lazySourcesEntry,
+        "genomeSpyEmbedMinimalLazySources",
+        path.join(tempDir, "minimal-lazy-sources")
     );
+    const lazyStaticSources = readStaticEntrySources(
+        lazySourcesOutput,
+        lazySourcesEntry
+    );
+    const lazyBundleSources = readAllOutputSources(lazySourcesOutput);
     if (
-        !figwigStaticSources.some((source) =>
+        !lazyStaticSources.some((source) =>
             source.endsWith("src/data/sources/lazy/figWigSource.js")
         ) ||
-        figwigStaticSources.some(isFigwigReaderDependency) ||
-        !readAllOutputSources(figwigOutput).some(isFigwigReaderDependency)
+        lazyStaticSources.some(isFigwigReaderDependency) ||
+        !lazyBundleSources.some(isFigwigReaderDependency)
     ) {
         throw new Error(
             "Minimal plus Figwig must register the source and load its reader asynchronously."
@@ -176,6 +203,44 @@ try {
     }
 
     const productionBundleSources = readAllOutputSources(productionOutput);
+    for (const { entry, staticSources, bundleSources } of [
+        {
+            entry: "Production",
+            staticSources: productionSources,
+            bundleSources: productionBundleSources,
+        },
+        {
+            entry: "Minimal with explicit sources",
+            staticSources: lazyStaticSources,
+            bundleSources: lazyBundleSources,
+        },
+    ]) {
+        for (const { registration, implementation } of matrixSources) {
+            if (
+                !staticSources.some((source) =>
+                    source.endsWith("/lazy/" + registration)
+                ) ||
+                staticSources.some((source) =>
+                    source.endsWith("/lazy/" + implementation)
+                ) ||
+                !bundleSources.some((source) =>
+                    source.endsWith("/lazy/" + implementation)
+                )
+            ) {
+                throw new Error(
+                    `${entry} must load ${implementation} asynchronously.`
+                );
+            }
+        }
+        if (
+            staticSources.some((source) => hicReader.test(source)) ||
+            !bundleSources.some((source) => hicReader.test(source))
+        ) {
+            throw new Error(
+                `${entry} must load the .hic dependencies asynchronously.`
+            );
+        }
+    }
     for (const sources of [
         readAllOutputSources(minimalOutput),
         productionBundleSources,

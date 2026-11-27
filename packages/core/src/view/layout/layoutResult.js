@@ -3,6 +3,7 @@ import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 /** @typedef {import("../view.js").default} View */
 /** @typedef {import("../../marks/mark.js").default} Mark */
 /** @typedef {import("../../types/rendering.js").RenderingOptions} RenderingOptions */
+/** @typedef {{coords: import("./rectangle.js").default, options: RenderingOptions}} MarkOccurrence */
 
 /**
  * Performs one complete view traversal and returns its ordered semantic output.
@@ -34,6 +35,27 @@ export default class LayoutResult {
     /** @param {LayoutCommand[]} commands */
     constructor(commands) {
         this.#commands = commands;
+    }
+
+    /** @param {(mark: Mark) => boolean} include */
+    getMarkOccurrences(include) {
+        /** @type {Map<Mark, MarkOccurrence[]> | undefined} */
+        let occurrences;
+        const coords = [];
+        for (const command of this.#commands) {
+            if (command.type === "pushView") coords.push(command.coords);
+            else if (command.type === "popView") coords.pop();
+            else if (command.type === "renderMark" && include(command.mark)) {
+                occurrences ??= new Map();
+                if (!occurrences.has(command.mark))
+                    occurrences.set(command.mark, []);
+                occurrences.get(command.mark).push({
+                    coords: coords.at(-1),
+                    options: command.options,
+                });
+            }
+        }
+        return occurrences;
     }
 
     /**

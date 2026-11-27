@@ -266,7 +266,7 @@ function queryIndex(index, domainKey, type, targetAccessor, constraints) {
         throw new Error("Viewport index has not been built.");
     }
 
-    const normalizedConstraints = constraints.map(normalizeConstraint);
+    const normalizedConstraints = constraints.map(normalizeViewportConstraint);
     const xConstraint = normalizedConstraints.find(
         (constraint) => constraint.channel === "x"
     );
@@ -332,7 +332,7 @@ function queryIndex(index, domainKey, type, targetAccessor, constraints) {
  */
 function scanDomain(batches, type, targetAccessor, constraints) {
     const domain = createDomain(type);
-    const normalizedConstraints = constraints.map(normalizeConstraint);
+    const normalizedConstraints = constraints.map(normalizeViewportConstraint);
     for (const data of batches) {
         scanRows(
             data,
@@ -371,7 +371,7 @@ function scanRows(data, start, end, domain, targetAccessor, constraints) {
  * @param {ViewportConstraint} constraint
  * @returns {ViewportConstraint}
  */
-function normalizeConstraint(constraint) {
+function normalizeViewportConstraint(constraint) {
     const start = Math.min(constraint.domain[0], constraint.domain[1]);
     const end = Math.max(constraint.domain[0], constraint.domain[1]);
     return { ...constraint, domain: [start, end] };

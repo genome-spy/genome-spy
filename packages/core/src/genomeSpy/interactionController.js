@@ -3,7 +3,7 @@ import { VISIT_STOP } from "../view/view.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming, stopPanInertia } from "../view/zoom.js";
-import createTooltipContext from "../tooltip/tooltipContext.js";
+import { createPickedTooltip } from "../tooltip/tooltipContext.js";
 import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -18,6 +18,11 @@ import {
 /** @typedef {import("../types/interactionApi.d.ts").InternalMarkHit} InternalMarkHit */
 /** @typedef {import("../types/interactionApi.d.ts").MarkInteractionEvent} MarkInteractionEvent */
 /** @typedef {import("../types/interactionApi.d.ts").NativeInteractionEvent} NativeInteractionEvent */
+/**
+ * Returns a cell index for a refined hit. Undefined keeps the datum hit.
+ * Null rejects the candidate.
+ * @typedef {(mark: import("../marks/mark.js").default, datum: object, x: number, y: number, facetId?: import("../spec/channel.js").Scalar[]) => number | null | undefined} ResolveCellIndex
+ */
 
 const TAP_DISTANCE = 4;
 const markEventTypes = ["click", "dblclick", "contextmenu"];
@@ -39,6 +44,8 @@ export default class InteractionController {
     #renderPickingFramebuffer;
     /** @type {((x: number, y: number) => number | null | Promise<number | null>) | undefined} */
     #readPickingId;
+    /** @type {ResolveCellIndex | undefined} */
+    #resolveCellIndex;
     /** @type {InteractionDispatcher} */
     #interactionDispatcher;
     /** @type {CursorManager} */
@@ -93,6 +100,7 @@ export default class InteractionController {
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} [options.renderPickingFramebuffer]
      * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.readPickingId]
+     * @param {ResolveCellIndex} [options.resolveCellIndex]
      * @param {(error: unknown) => void} [options.reportError]
      * @param {() => boolean} [options.canPick]
      * @param {"default" | "cooperative"} [options.wheelBehavior]
@@ -106,6 +114,7 @@ export default class InteractionController {
         tooltipHandlers,
         renderPickingFramebuffer,
         readPickingId,
+        resolveCellIndex,
         reportError,
         canPick,
         wheelBehavior = "default",
@@ -119,6 +128,7 @@ export default class InteractionController {
         this.#tooltipHandlers = tooltipHandlers;
         this.#renderPickingFramebuffer = renderPickingFramebuffer ?? (() => {});
         this.#readPickingId = readPickingId;
+        this.#resolveCellIndex = resolveCellIndex;
         this.#reportError = reportError ?? this.#reportError;
         this.#canPick = canPick ?? this.#canPick;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
@@ -1094,7 +1104,7 @@ export default class InteractionController {
             const mark = hover.mark;
             this.updateTooltip(
                 hover.datum,
-                async (datum) => {
+                async () => {
                     if (!mark.isPickingParticipant()) {
                         return;
                     }
@@ -1110,11 +1120,9 @@ export default class InteractionController {
                             );
                         }
 
-                        const context = createTooltipContext(
-                            datum,
-                            mark,
-                            tooltipProps?.params,
-                            hover.facetId
+                        const { datum, context } = createPickedTooltip(
+                            hover,
+                            tooltipProps?.params
                         );
                         return handler(
                             datum,
@@ -1150,6 +1158,7 @@ export default class InteractionController {
                 view.mark.isPickingParticipant() &&
                 (!scopeView || view.getLayoutAncestors().includes(scopeView))
             ) {
+                const mark = view.mark;
                 for (const [facetId, coords] of view.facetCoords) {
                     // Only facet operators establish cell identity by bounds.
                     const cellFacetId =
@@ -1178,10 +1187,19 @@ export default class InteractionController {
                         .getCollector()
                         ?.findDatumByUniqueId(uniqueId);
                     if (datum) {
+                        const cellIndex = this.#resolveCellIndex?.(
+                            mark,
+                            datum,
+                            x,
+                            y,
+                            cellFacetId
+                        );
+                        if (cellIndex === null) continue;
                         hit = {
-                            mark: view.mark,
+                            mark,
                             datum,
                             uniqueId,
+                            ...(cellIndex === undefined ? {} : { cellIndex }),
                             ...(cellFacetId === undefined
                                 ? {}
                                 : { facetId: cellFacetId }),
@@ -1251,6 +1269,7 @@ export default class InteractionController {
                 previousHover.mark === hover.mark &&
                 previousHover.uniqueId === hover.uniqueId &&
                 previousHover.datum === hover.datum &&
+                previousHover.cellIndex === hover.cellIndex &&
                 (previousHover.facetId === hover.facetId ||
                     (previousHover.facetId &&
                         hover.facetId &&

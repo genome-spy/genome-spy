@@ -5,6 +5,7 @@ import {
     LinkProps,
     MarkPropsBase,
     PointProps,
+    RasterProps,
     RectProps,
     RuleProps,
     TickProps,
@@ -260,6 +261,9 @@ export interface GenomeSpyConfig {
      * Defaults for rect marks.
      */
     rect?: RectConfig;
+
+    /** Defaults for raster marks. */
+    raster?: Partial<Omit<RasterProps, "type">>;
 
     /**
      * Defaults for arrow marks.

@@ -188,7 +188,6 @@ function createFixture(maxSize = 4096) {
 function createRun(bounds) {
     return /** @type {import("../svg/svgViewRenderingContext.js").SvgRasterRun} */ ({
         marks: new Set(),
-        targets: [],
         viewNodes: new Set(),
         anchor: document.createComment("raster-run"),
         bounds,

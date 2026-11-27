@@ -209,6 +209,27 @@ export default class SingleAxisLazySource extends DataSource {
         }
     }
 
+    /** @param {DataReadinessRequest} [request] */
+    ensureViewportData(request) {
+        const domain = this.#viewportDomain(request);
+        if (domain) this.ensureDataForDomain(domain);
+    }
+
+    /** @param {DataReadinessRequest} [request] */
+    isViewportReady(request) {
+        const domain = this.#viewportDomain(request);
+        return (
+            !!domain && this.isDataReadyForDomain({ [this.channel]: domain })
+        );
+    }
+
+    /** @param {DataReadinessRequest} [request] */
+    #viewportDomain(request) {
+        return request
+            ? request[this.channel]
+            : this.scaleResolution.getDomain();
+    }
+
     /**
      * Returns the continuous interval covered by the latest data batch.
      *

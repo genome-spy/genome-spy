@@ -5,6 +5,7 @@ import COMMON_SHADER from "./link.common.glsl";
 import { LinkVertexBuilder } from "../gl/dataToVertices.js";
 
 import WebGLMark from "./webGlMark.js";
+import { getResolvedTriangleDirection } from "../../../view/triangleProjection.js";
 
 const LINK_SHAPES = ["arc", "dome", "diagonal", "line", "orthogonal"];
 const ORIENTS = ["vertical", "horizontal"];
@@ -81,6 +82,10 @@ export default class WebGLLinkMark extends WebGLMark {
             props.arcHeightFactor
         );
         this.registerMarkUniformValue("uMinArcHeight", props.minArcHeight);
+        this.registerMarkUniformValue(
+            "uFlipArc",
+            getResolvedTriangleDirection(this.mark.unitView) === "down"
+        );
         this.registerMarkUniformValue("uMinPickingSize", props.minPickingSize);
         this.registerMarkUniformValue("uShape", props.linkShape, (linkShape) =>
             LINK_SHAPES.indexOf(linkShape)

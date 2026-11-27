@@ -43,6 +43,7 @@ function configuredMember(domain, type = "quantitative", channel = "x") {
         channel,
         channelDef: { type, scale: { domain } },
         contributesToDomain: true,
+        view: { mark: {} },
     });
 }
 

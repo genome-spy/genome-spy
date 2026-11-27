@@ -1,0 +1,381 @@
+import {
+    createProgramInfoFromProgram,
+    createTexture,
+    setUniforms,
+} from "twgl.js";
+import { readNumericRasterCell } from "../../../data/rasterTile.js";
+import clamp from "../../../utils/clamp.js";
+import ViewError from "../../../view/viewError.js";
+import { createVisibleBounds } from "../../immediate/bounds.js";
+import {
+    SampleFacetCoordsResolver,
+    visitMarkOccurrences,
+} from "../../immediate/markData.js";
+import { encodeNumber } from "../../immediate/markEncoding.js";
+import {
+    getRasterTriangle,
+    visitRasterTiles,
+} from "../../immediate/marks/raster.js";
+import { RASTER_COORDINATE_OFFSET } from "../../renderingConstants.js";
+import {
+    DOMAIN_PREFIX,
+    getRangeForGlsl,
+    RANGE_PREFIX,
+    readScaleDomainUniform,
+} from "../gl/glslScaleGenerator.js";
+import { createProgram } from "../gl/webGLHelper.js";
+import VERTEX_SHADER from "./raster.vertex.glsl";
+import { rasterFragmentShader, rasterValueType } from "./rasterShader.js";
+import { createRasterPaintShader } from "./rasterPaintShader.js";
+
+/** @typedef {import("./rasterPaintShader.js").TileGeometry & {texture: WebGLTexture}} TileTexture */
+/** @typedef {import("../types.js").WebGLMarkRenderingOptions} MarkRenderingOptions */
+
+/** @typedef {import("../types.js").WebGLMark} WebGLMark */
+
+/** @implements {WebGLMark} */
+export default class WebGLRasterMark {
+    /** @type {Map<object, TileTexture>} */
+    #tiles = new Map();
+
+    /** @type {ReturnType<typeof createProgram>} */
+    #programStatus;
+
+    /** @type {import("twgl.js").ProgramInfo} */
+    #programInfo;
+
+    /** @type {ReturnType<import("../../../marks/raster.js").default["validateRenderingScales"]>} */
+    #cellScale;
+
+    /** @type {import("../../../view/layout/rectangle.js").default} */
+    #coords;
+
+    #sampleFacetCoords = new SampleFacetCoordsResolver();
+
+    #bounds = createVisibleBounds(0, 0, undefined);
+
+    #dpr = 1;
+    #pixelOffset = 0;
+    #picking = false;
+
+    /** @type {ReturnType<typeof createRasterPaintShader>} */
+    #paint;
+
+    #target = [0, 0];
+    #tileUniforms = {
+        uRect: [0, 0, 0, 0],
+        uAnchor: [0, 0, 0, 0],
+        uCellsPerPixel: [0, 0],
+        uCells: /** @type {WebGLTexture | null} */ (null),
+        uOpacity: 1,
+        uPickColor: [0, 0, 0, 0],
+    };
+
+    /**
+     * @param {import("../../../marks/mark.js").default} mark
+     * @param {import("../gl/webGLHelper.js").default} glHelper
+     * @param {import("../rendererResources.js").default} resources
+     */
+    constructor(mark, glHelper, resources) {
+        this.mark = /** @type {import("../../../marks/raster.js").default} */ (
+            mark
+        );
+        this.glHelper = glHelper;
+        this.gl = glHelper.gl;
+        this.resources = resources;
+    }
+
+    initializeGraphics() {
+        this.#cellScale = this.mark.validateRenderingScales();
+        this.mark.initializeRenderingRevisions([]);
+        const gl = this.gl;
+        const scale = this.#cellScale?.getScale();
+        this.#paint = createRasterPaintShader(
+            this.mark,
+            this.glHelper,
+            rasterValueType(this.mark),
+            () => this.#getPaletteIndexer()
+        );
+        this.#programStatus = createProgram(
+            gl,
+            this.glHelper.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER),
+            this.glHelper.compileShader(
+                gl.FRAGMENT_SHADER,
+                rasterFragmentShader(this.mark, scale, this.#paint)
+            )
+        );
+    }
+
+    finalizeGraphicsInitialization() {
+        const status = this.#programStatus;
+        const error = status.getProgramErrors();
+        if (error) {
+            // The shader helper deletes the failed program.
+            this.#programStatus = undefined;
+            throw new ViewError(
+                error.detail ?? error.message,
+                this.mark.unitView
+            );
+        }
+        this.#programInfo = createProgramInfoFromProgram(
+            this.gl,
+            status.program
+        );
+    }
+
+    #getPaletteIndexer() {
+        const { type } = this.mark.getCellBinding();
+        if (type === "quantitative") return;
+        return /** @type {{domainIndexer: import("./rasterPaintShader.js").PaletteIndexer}} */ (
+            this.#cellScale?.getScale().props
+        )?.domainIndexer;
+    }
+
+    /** @param {import("../../../data/collector.js").default} collector */
+    updateGraphicsData(collector) {
+        // Publication can reuse a datum or array with edited cells.
+        // Rebuild textures even when the payload identity is the same.
+        this.deleteGraphicsData();
+        const gl = this.gl;
+        const { readTile } = this.mark.getCellBinding();
+        const indexer = this.#getPaletteIndexer();
+        const size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+        try {
+            for (const datum of collector.getData()) {
+                if (this.#tiles.has(datum)) continue;
+                const { horizontal, vertical, values } = readTile(datum);
+                const width = horizontal.count;
+                const height = vertical.count;
+                if (width > size || height > size) {
+                    throw new Error(
+                        `Raster tile ${width} × ${height} exceeds WebGL texture size ${size}.`
+                    );
+                }
+                let src;
+                if (values instanceof Uint32Array) {
+                    src = values;
+                } else if (indexer) {
+                    src = Uint32Array.from({ length: values.length }, (_, i) =>
+                        indexer(values[i])
+                    );
+                } else {
+                    src =
+                        values instanceof Float32Array
+                            ? values
+                            : Float32Array.from(values, readNumericRasterCell);
+                }
+                const texture = createTexture(gl, {
+                    width,
+                    height,
+                    src,
+                    internalFormat:
+                        src instanceof Uint32Array ? gl.R32UI : gl.R32F,
+                    minMag: gl.NEAREST,
+                    wrap: gl.CLAMP_TO_EDGE,
+                    auto: false,
+                });
+                this.#tiles.set(datum, { texture, horizontal, vertical });
+            }
+        } catch (error) {
+            this.deleteGraphicsData();
+            throw new ViewError(error.message, this.mark.unitView);
+        }
+    }
+
+    deleteGraphicsData() {
+        for (const { texture } of this.#tiles.values()) {
+            this.gl.deleteTexture(texture);
+        }
+        this.#tiles.clear();
+    }
+
+    dispose() {
+        this.deleteGraphicsData();
+        this.#paint?.dispose();
+        if (this.#programStatus)
+            this.gl.deleteProgram(this.#programStatus.program);
+    }
+
+    isReady() {
+        return !!this.#programInfo;
+    }
+
+    getDebugState() {
+        return { markUniformsAltered: false, rangeCount: this.#tiles.size };
+    }
+
+    /** @param {MarkRenderingOptions} options */
+    prepareRender(options) {
+        const gl = this.gl;
+        const { channel } = this.mark.getCellBinding();
+        return [
+            () => {
+                gl.useProgram(this.#programInfo.program);
+                gl.bindVertexArray(null);
+                this.#picking = !!options.picking;
+                if (this.#picking) gl.disable(gl.BLEND);
+                else gl.enable(gl.BLEND);
+                setUniforms(this.#programInfo, { uPicking: this.#picking });
+                const viewOpacity =
+                    options.applyViewOpacity === false
+                        ? 1
+                        : this.mark.unitView.getEffectiveOpacity();
+                this.#tileUniforms.uOpacity = Math.min(
+                    1,
+                    viewOpacity * this.mark.getUniformOpacity()
+                );
+                const paintUniforms = this.#paint?.prepare();
+                if (this.#cellScale) {
+                    const mapping = this.#cellScale.getMappingRef().get();
+                    const { scale } = mapping;
+                    setUniforms(this.#programInfo, {
+                        [DOMAIN_PREFIX + channel]:
+                            readScaleDomainUniform(mapping),
+                        ...(channel === "opacity"
+                            ? {
+                                  [RANGE_PREFIX + channel]: getRangeForGlsl(
+                                      scale,
+                                      channel
+                                  ),
+                              }
+                            : {
+                                  uRangeTexture_color:
+                                      this.glHelper.rangeTextures.get(scale),
+                                  uDomainTexture_color:
+                                      this.resources.getCategoricalTexture(
+                                          this.#cellScale
+                                      ),
+                              }),
+                    });
+                }
+                if (paintUniforms)
+                    setUniforms(this.#programInfo, paintUniforms);
+            },
+        ];
+    }
+
+    /**
+     * @param {{width: number, height: number}} canvasSize
+     * @param {number} dpr
+     * @param {import("../../../view/layout/rectangle.js").default} coords
+     * @param {import("../../../types/rendering.js").ClipOptions} [clip]
+     * @param {import("../../../types/rendering.js").ClipOptions} [_cullClip]
+     * @param {number} [pixelOffset]
+     * @param {{width: number, height: number}} [framebufferSize]
+     */
+    setViewport(
+        canvasSize,
+        dpr,
+        coords,
+        clip,
+        _cullClip,
+        pixelOffset = RASTER_COORDINATE_OFFSET,
+        framebufferSize
+    ) {
+        this.#coords = coords;
+        this.#bounds = createVisibleBounds(
+            canvasSize.width,
+            canvasSize.height,
+            clip
+        );
+        this.#dpr = dpr;
+        this.#pixelOffset = pixelOffset;
+        const gl = this.gl;
+        this.#target[0] = framebufferSize?.width ?? gl.drawingBufferWidth;
+        this.#target[1] = framebufferSize?.height ?? gl.drawingBufferHeight;
+        gl.viewport(0, 0, this.#target[0], this.#target[1]);
+        gl.disable(gl.SCISSOR_TEST);
+        setUniforms(this.#programInfo, { uTarget: this.#target });
+        return coords.isDefined();
+    }
+
+    /** @param {MarkRenderingOptions} options */
+    render(options) {
+        return () => {
+            if (this.mark.unitView.getCollector()?.completed) {
+                visitMarkOccurrences(
+                    this.mark,
+                    options,
+                    this.#coords,
+                    this.#sampleFacetCoords,
+                    this.#drawOccurrence
+                );
+            }
+        };
+    }
+
+    /**
+     * @param {import("../../../view/layout/rectangle.js").default} coords
+     * @param {object[]} data
+     */
+    #drawOccurrence = (coords, data) => {
+        const triangle = getRasterTriangle(this.mark, coords, this.#bounds);
+        if (triangle) {
+            const { x1, y1, x2, y2 } = triangle.clip;
+            const dpr = this.#dpr;
+            setUniforms(this.#programInfo, {
+                uTriangle: [triangle.baseline * dpr, triangle.direction],
+                uTriangleClip: [x1 * dpr, y1 * dpr, x2 * dpr, y2 * dpr],
+            });
+        }
+        visitRasterTiles(
+            this.mark,
+            { coords, data, visibleBounds: this.#bounds, triangle },
+            this.#drawTile
+        );
+    };
+
+    /**
+     * @param {object} datum @param {number} x0 @param {number} y0 @param {number} dx @param {number} dy
+     * @param {ReturnType<import("../../immediate/marks/raster.js").getRasterTriangle>} [triangle]
+     */
+    #drawTile = (datum, x0, y0, dx, dy, triangle) => {
+        if (!(this.#tileUniforms.uOpacity > 0)) return;
+        if (this.#picking) {
+            const id = encodeNumber(this.mark.encoders.uniqueId, datum);
+            const color = this.#tileUniforms.uPickColor;
+            for (let i = 0; i < 4; i++)
+                color[i] = ((id >>> (8 * i)) & 255) / 255;
+        }
+
+        const tile = this.#tiles.get(datum);
+        const { texture, horizontal, vertical } = tile;
+        const width = horizontal.count;
+        const height = vertical.count;
+        const { x1, y1, x2, y2 } = triangle?.sourceBounds ?? this.#bounds;
+        this.#setAxis(0, x0, dx, width, x1, x2);
+        this.#setAxis(1, y0, dy, height, y1, y2);
+        const { uRect } = this.#tileUniforms;
+        if (uRect[0] >= uRect[2] || uRect[1] >= uRect[3]) return;
+        const gl = this.gl;
+        this.#paint?.setTileUniforms(this.#tileUniforms, datum, tile);
+        this.#tileUniforms.uCells = texture;
+        setUniforms(this.#programInfo, this.#tileUniforms);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+
+    /**
+     * Clip in double precision and give the fragment shader a nearby grid line.
+     * The signed step preserves cell order on reversed axes.
+     * @param {0 | 1} axis @param {number} start @param {number} span
+     * @param {number} count @param {number} lo @param {number} hi
+     */
+    #setAxis(axis, start, span, count, lo, hi) {
+        const { uRect, uAnchor, uCellsPerPixel } = this.#tileUniforms;
+        start += this.#pixelOffset;
+        const end = start + span;
+        const first = Math.max(lo, Math.min(start, end));
+        const last = Math.min(hi, Math.max(start, end));
+        const step = span / count;
+        const anchor = clamp(
+            Math.round(((first + last) * 0.5 - start) / step),
+            0,
+            count
+        );
+        uRect[axis] = first * this.#dpr;
+        uRect[axis + 2] = last * this.#dpr;
+        uAnchor[axis] = (start + anchor * step) * this.#dpr;
+        uAnchor[axis + 2] = anchor;
+        uCellsPerPixel[axis] = 1 / (step * this.#dpr);
+    }
+}

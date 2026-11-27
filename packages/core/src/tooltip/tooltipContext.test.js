@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import Genome from "../genome/genome.js";
-import createTooltipContext from "./tooltipContext.js";
+import RasterMark from "../marks/raster.js";
+import createTooltipContext, { createPickedTooltip } from "./tooltipContext.js";
 
 const genome = new Genome({
     name: "test",
@@ -58,6 +59,55 @@ function makeMark({ encoders, encoding = {}, parent }) {
 }
 
 describe("Tooltip context rows", () => {
+    test("Reports the index position of the hovered raster cell", () => {
+        const mark = makeMark({
+            encoders: { x: { scale: { type: "index" } } },
+            encoding: {
+                x: { dimension: "column", type: "index", title: "pos" },
+            },
+        });
+        mark.getCellBinding = () => ({ column: "column" });
+        mark.getCellTooltipData = RasterMark.prototype.getCellTooltipData;
+        const tile = {
+            dimensions: { column: { origin: 10, step: 2, count: 3 } },
+            fields: { base: "AGT" },
+        };
+
+        const { context } = createPickedTooltip({
+            datum: tile,
+            mark,
+            cellIndex: 1,
+        });
+
+        expect(context.flattenDatumRows()).toEqual([
+            { key: "pos", value: 12 },
+            { key: "base", value: "G" },
+        ]);
+    });
+
+    test("Reports the hovered row of a vertical raster strip", () => {
+        const mark = makeMark({ encoders: { y: makeLocusEncoder("row") } });
+        mark.getCellBinding = () => ({ row: "row" });
+        mark.getCellTooltipData = RasterMark.prototype.getCellTooltipData;
+        const tile = {
+            sample: "S1",
+            dimensions: { row: { origin: 10, step: 2, count: 3 } },
+            fields: { base: "AGT" },
+        };
+
+        const { datum, context } = createPickedTooltip({
+            datum: tile,
+            mark,
+            cellIndex: 1,
+        });
+
+        expect(datum).toEqual({ sample: "S1", base: "G" });
+        expect(context.rasterCell).toEqual({ column: 0, row: 1 });
+        expect(context.genomicRows).toEqual([
+            { key: "Row", value: "chr1:13-14" },
+        ]);
+    });
+
     test("Creates context with datum row flattening utility", () => {
         const datum = {
             sample: "S1",

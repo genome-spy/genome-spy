@@ -3,6 +3,7 @@
  * @prop {"arc" | "dome" | "diagonal" | "line" | "orthogonal"} shape
  * @prop {"vertical" | "horizontal"} orient
  * @prop {number} arcHeightFactor
+ * @prop {boolean} [flipArc]
  * @prop {number} minArcHeight
  * @prop {number} maxChordLength
  * @prop {boolean} clampApex
@@ -67,7 +68,10 @@ export function getBezierPoints(a, b, viewport, options) {
             (chordLength / 2) * options.arcHeightFactor,
             options.minArcHeight
         );
-        const controlOffset = scale(normal, height / 0.75);
+        const controlOffset = scale(
+            normal,
+            (options.flipArc ? -height : height) / 0.75
+        );
         return [p1, add(p1, controlOffset), add(p4, controlOffset), p4];
     } else if (options.shape == "dome") {
         /** @type {[number, number]} */

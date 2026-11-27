@@ -2,6 +2,7 @@
  * @typedef {import("./tooltipHandler.js").TooltipContext} TooltipContext
  * @typedef {import("./tooltipHandler.js").TooltipGenomicDisplayMode} TooltipGenomicDisplayMode
  * @typedef {import("./tooltipHandler.js").TooltipRow} TooltipRow
+ * @typedef {import("./tooltipHandler.js").TooltipHandlerParams} TooltipHandlerParams
  */
 
 import { asArray } from "../utils/arrayUtils.js";
@@ -99,6 +100,91 @@ export default function createTooltipContext(datum, mark, params, facetId) {
             formatGenomicLocus(mark, axis, continuousPos),
         formatGenomicInterval: (axis, interval) =>
             formatGenomicInterval(mark, axis, interval),
+    };
+}
+
+/**
+ * @param {import("../types/viewContext.js").Hover} hover
+ * @param {TooltipHandlerParams} [params]
+ */
+export function createPickedTooltip(
+    { datum, mark, facetId, cellIndex },
+    params
+) {
+    const cell =
+        cellIndex === undefined
+            ? undefined
+            : mark.getCellTooltipData(datum, cellIndex);
+    return {
+        datum: cell?.datum ?? datum,
+        context: cell
+            ? createCellTooltipContext(cell, mark, params, facetId)
+            : createTooltipContext(datum, mark, params, facetId),
+    };
+}
+
+/**
+ * @param {import("../marks/mark.js").CellTooltipData} cell
+ * @param {import("../marks/mark.js").default} mark
+ * @param {TooltipHandlerParams} [params]
+ * @param {import("../spec/channel.js").Scalar[]} [facetId]
+ * @returns {TooltipContext}
+ */
+function createCellTooltipContext(
+    { datum, cell, axes, scaleAxis },
+    mark,
+    params,
+    facetId
+) {
+    /** @type {TooltipRow[]} */
+    const indexRows = [];
+    /** @type {TooltipRow[]} */
+    const genomicRows = [];
+    for (const { axis, start, end } of axes) {
+        const label = axis === "x" ? "Column" : "Row";
+        const coordinateAxis = scaleAxis(axis);
+
+        if (mark.encoders[coordinateAxis]?.scale?.type === "index") {
+            const channel = mark.encoding[axis];
+            const title = channel && "title" in channel ? channel.title : null;
+            indexRows.push({ key: title || label, value: start });
+            continue;
+        }
+
+        if (!getGenome(mark, coordinateAxis)) continue;
+        const mode = getConfiguredMode(params, axis);
+        if (mode === "disabled") continue;
+        const format = (/** @type {number} */ position) =>
+            formatGenomicLocus(mark, coordinateAxis, position);
+        if (mode === "endpoints") {
+            genomicRows.push(
+                { key: label + " start", value: format(start) },
+                { key: label + " end", value: format(end) }
+            );
+        } else {
+            genomicRows.push({
+                key: label,
+                value:
+                    mode === "locus"
+                        ? format(start)
+                        : formatGenomicInterval(mark, coordinateAxis, [
+                              start,
+                              end,
+                          ]),
+            });
+        }
+    }
+
+    return {
+        facetId: facetId?.slice(),
+        rasterCell: cell,
+        tooltipRows: getConfiguredTooltipRows(datum, mark),
+        genomicRows,
+        flattenDatumRows: () => [...indexRows, ...flattenDatumRows(datum)],
+        formatGenomicLocus: (axis, position) =>
+            formatGenomicLocus(mark, scaleAxis(axis), position),
+        formatGenomicInterval: (axis, interval) =>
+            formatGenomicInterval(mark, scaleAxis(axis), interval),
     };
 }
 

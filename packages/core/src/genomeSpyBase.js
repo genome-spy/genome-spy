@@ -1,4 +1,5 @@
 import { iterateDataDependencies } from "./data/dataReadiness.js";
+import DataSource from "./data/sources/dataSource.js";
 import {
     createContainerUi,
     createMessageBox,
@@ -43,7 +44,6 @@ import {
     validateSelectorConstraints,
 } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
-import IntervalUrlSource from "./data/sources/lazy/intervalUrlSource.js";
 import { initializeViewGuides } from "./view/gridView/guideViewSync.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import {
@@ -74,6 +74,10 @@ export default class GenomeSpy {
     #destructionCallbacks = [];
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
     #renderCoordinator;
+
+    /** @type {import("./genomeSpy/interactionController.js").ResolveCellIndex | undefined} */
+    #resolveCellIndex;
+
     /** @type {LoadingIndicatorManager} */
     #loadingIndicatorManager;
     /** @type {LoadingStatusRegistry} */
@@ -400,6 +404,7 @@ export default class GenomeSpy {
     }
 
     #disposeInitializedResources() {
+        this.#resolveCellIndex = undefined;
         if (this.viewRoot && this.#disposedViewRoot !== this.viewRoot) {
             this.viewRoot.disposeSubtree();
             this.#disposedViewRoot = this.viewRoot;
@@ -577,8 +582,13 @@ export default class GenomeSpy {
                 viewRoot: this.viewRoot,
                 getBackground: this.#getCanvasBackground,
                 broadcast: this.broadcast.bind(this),
-                onLayoutComputed: () =>
-                    this.#loadingIndicatorManager.updateLayout(),
+                onLayoutComputed: (layout) => {
+                    this.#resolveCellIndex =
+                        this.#renderingBackend.createCellIndexResolver?.(
+                            layout
+                        );
+                    this.#loadingIndicatorManager.updateLayout();
+                },
             });
 
         // Allow early layout requests from view subscriptions created during initialization.
@@ -623,6 +633,7 @@ export default class GenomeSpy {
                 ? this.renderPickingFramebuffer.bind(this)
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
+            resolveCellIndex: (...args) => this.#resolveCellIndex?.(...args),
             reportError: this.#reportRuntimeError.bind(this),
             canPick: () => Boolean(this.viewRoot?.hasRendered()),
         });
@@ -739,7 +750,7 @@ export default class GenomeSpy {
             undefined,
             signal,
             (view) =>
-                isEffectivelyVisible(view) && hasIntervalLazyDataSource(view)
+                isEffectivelyVisible(view) && hasRemoteLazyDataSource(view)
         );
     }
 
@@ -1032,12 +1043,12 @@ async function loadSvgRenderer() {
 /**
  * @param {View} view
  */
-function hasIntervalLazyDataSource(view) {
+function hasRemoteLazyDataSource(view) {
     const collector = view.flowHandle?.collector;
     return (
         !!collector &&
         iterateDataDependencies(collector).some(
-            (node) => node instanceof IntervalUrlSource
+            (node) => node instanceof DataSource && node.isRemoteLazy
         )
     );
 }

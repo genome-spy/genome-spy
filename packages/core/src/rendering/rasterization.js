@@ -1,4 +1,27 @@
+import { createLayoutResult } from "../view/layout/layoutResult.js";
+import Rectangle from "../view/layout/rectangle.js";
 import { renderingModules } from "./renderingModuleRegistry.js";
+
+/**
+ * @param {Pick<import("./renderingBackend.js").SvgRunRasterizationOptions, "viewRoot" | "layoutResult" | "logicalWidth" | "logicalHeight" | "pixelRatio">} options
+ */
+export function getRasterExportLayout({
+    viewRoot,
+    layoutResult,
+    logicalWidth,
+    logicalHeight,
+    pixelRatio,
+}) {
+    if (pixelRatio === 1 && layoutResult) return layoutResult;
+    return createLayoutResult(
+        viewRoot,
+        Rectangle.create(0, 0, logicalWidth, logicalHeight),
+        {
+            devicePixelRatio: pixelRatio,
+            renderingOptions: { firstFacet: true },
+        }
+    );
+}
 
 /**
  * Signals that a raster backend could not be initialized or does not support

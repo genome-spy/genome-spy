@@ -694,37 +694,26 @@ describe("Domain caching and notifications", () => {
         expect(calls).toBe(data.length + 2);
     });
 
-    test("Collector domain subscriptions notify and unregister", () => {
+    test("Collector notifies a snapshot of domain listeners before data observers", () => {
         const collector = new Collector();
 
-        let calls = 0;
-        const unregister = collector.subscribeDomainChanges("key", () => {
-            calls += 1;
+        /** @type {string[]} */
+        const calls = [];
+        const unregister = collector.subscribeDomainChanges(() => {
+            calls.push("domain");
+            collector.subscribeDomainChanges(() => calls.push("replacement"));
         });
+        collector.observe(() => calls.push("data"));
 
         collector.handle({ x: 1 });
         collector.complete();
 
-        expect(calls).toBe(1);
+        expect(calls).toEqual(["domain", "data"]);
 
         unregister();
         collector.repropagate();
 
-        expect(calls).toBe(1);
-    });
-
-    test("Collector observers are notified after repropagation", () => {
-        const collector = new Collector();
-        let calls = 0;
-        collector.observe(() => {
-            calls += 1;
-        });
-
-        collector.handle({ x: 1 });
-        collector.complete();
-        collector.repropagate();
-
-        expect(calls).toBe(2);
+        expect(calls).toEqual(["domain", "data", "replacement", "data"]);
     });
 });
 

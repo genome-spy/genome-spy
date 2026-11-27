@@ -518,9 +518,12 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
         }
 
         const collector = member.view.getCollector();
+        const binding =
+            collector && member.view.mark.getDomainBinding?.(member.channel);
+        const boundKey = binding && binding.getKey();
 
         for (const accessor of accessors) {
-            const domainKey = getAccessorDomainKey(accessor, type);
+            const domainKey = boundKey ?? getAccessorDomainKey(accessor, type);
 
             const collectorKey = collector ?? null;
             let domainsForCollector = domainsByCollector.get(collectorKey);
@@ -535,7 +538,11 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
 
             let domain;
             if (collector) {
-                domain = collector.getDomain(domainKey, type, accessor);
+                domain = binding
+                    ? collector.getCachedDomain(domainKey, () =>
+                          binding.read(collector)
+                      )
+                    : collector.getDomain(domainKey, type, accessor);
             } else if (accessor.constant) {
                 domain = createDomain(type);
                 domain.extend(accessor({}));

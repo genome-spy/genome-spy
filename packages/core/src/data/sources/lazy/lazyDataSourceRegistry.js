@@ -12,6 +12,36 @@ const customLazySources = [];
 /** @type {LazySourceEntry<any>[]} */
 const builtinLazySources = [];
 
+/** @typedef {LazySourceEntry<any>["Source"]} SourceConstructor */
+
+/** @type {Map<import("../../../spec/data.js").LazyDataParams["type"], {
+ *     load: () => Promise<{ default: SourceConstructor }>,
+ *     Source?: SourceConstructor
+ * }>} */
+const builtinSourceLoaders = new Map();
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams["type"]} type
+ * @param {() => Promise<{ default: SourceConstructor }>} load
+ */
+export function registerBuiltInLazyDataSourceLoader(type, load) {
+    builtinSourceLoaders.set(type, { load });
+}
+
+/** @param {import("../../../spec/data.js").LazyDataParams} params */
+export function prepareLazyDataSource(params) {
+    const entry = builtinSourceLoaders.get(params.type);
+    if (
+        entry &&
+        !entry.Source &&
+        !customLazySources.some(({ guard }) => guard(params))
+    ) {
+        return entry.load().then(({ default: Source }) => {
+            entry.Source = Source;
+        });
+    }
+}
+
 /**
  * Registers a lazy data source for a custom type.
  *
@@ -58,6 +88,8 @@ export function createLazyDataSource(params, view) {
             return new entry.Source(/** @type {any} */ (params), view);
         }
     }
+    const Source = builtinSourceLoaders.get(params.type)?.Source;
+    if (Source) return new Source(params, view);
 
     throw new Error(
         "Cannot figure out the data source type: " + JSON.stringify(params)

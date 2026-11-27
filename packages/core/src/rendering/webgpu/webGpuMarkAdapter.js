@@ -13,6 +13,7 @@ import {
 } from "@genome-spy/webgpu-renderer/high-precision";
 import { pointMark } from "@genome-spy/webgpu-renderer/marks/point";
 import { rectMark } from "@genome-spy/webgpu-renderer/marks/rect";
+import { rasterMark } from "@genome-spy/webgpu-renderer/marks/raster";
 import { ruleMark } from "@genome-spy/webgpu-renderer/marks/rule";
 import { linkMark } from "@genome-spy/webgpu-renderer/marks/link";
 import {
@@ -43,8 +44,11 @@ import {
 } from "../../encoder/encoder.js";
 import { measurePerformance } from "../../debug/performanceProfiler.js";
 import forEachInBatch from "../../utils/forEachInBatch.js";
+import { readNumericRasterCell } from "../../data/rasterTile.js";
+import RasterMark from "../../marks/raster.js";
+import { getResolvedTriangleDirection } from "../../view/triangleProjection.js";
 
-/** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string}>>} */
+/** @type {WeakMap<import("../../marks/mark.js").default, Map<string, {param: string, input: string, membership: boolean}>>} */
 const CATEGORY_SELECTION_BINDINGS = new WeakMap();
 
 /** Values evaluated by Core can depend on scales without a renderer scale slot.
@@ -67,15 +71,23 @@ export function getWebGpuCategorySelectionBinding(mark, slot) {
     return CATEGORY_SELECTION_BINDINGS.get(mark)?.get(slot);
 }
 
-/** @param {import("../../marks/mark.js").default} mark @param {string} param @param {string} input */
-function categorySelectionSlot(mark, param, input) {
+/**
+ * @param {import("../../marks/mark.js").default} mark
+ * @param {string} param
+ * @param {string} input
+ * @param {boolean} [membership]
+ */
+function categorySelectionSlot(mark, param, input, membership = false) {
     let bindings = CATEGORY_SELECTION_BINDINGS.get(mark);
     if (!bindings) {
         bindings = new Map();
         CATEGORY_SELECTION_BINDINGS.set(mark, bindings);
     }
     for (const [slot, binding] of bindings) {
-        if (binding.param === param && binding.input === input) return slot;
+        if (binding.param === param && binding.input === input) {
+            binding.membership ||= membership;
+            return slot;
+        }
     }
     let index = bindings.size;
     let slot;
@@ -85,7 +97,7 @@ function categorySelectionSlot(mark, param, input) {
         mark.unitView.paramRuntime.findConfiguredParam(slot) ||
         bindings.has(slot)
     );
-    bindings.set(slot, { param, input });
+    bindings.set(slot, { param, input, membership });
     return slot;
 }
 
@@ -207,6 +219,12 @@ export function createWebGpuMarkConfig(
     if (markType == "point") {
         definition = pointMark;
         config = createPointConfig(mark, data, coords);
+    } else if (mark instanceof RasterMark) {
+        return {
+            definition: rasterMark,
+            config: createRasterConfig(mark, data, coords, placementIndex),
+            properties: {},
+        };
     } else if (markType == "rect") {
         definition = rectMark;
         config = createRectConfig(mark, data, coords);
@@ -244,21 +262,7 @@ export function createWebGpuMarkConfig(
         };
     }
 
-    return createTranslation(
-        definition,
-        addOccurrenceConfig(config, placementIndex, mark, coords),
-        mark
-    );
-}
-
-/**
- * Keeps Core's live property readers outside the public renderer config.
- *
- * @param {import("@genome-spy/webgpu-renderer").MarkDefinition<any, any>} definition
- * @param {Record<string, any>} config
- * @param {import("../../marks/mark.js").default} mark
- */
-function createTranslation(definition, config, mark) {
+    addOccurrenceConfig(config, placementIndex, mark, coords);
     const order = mark.getOrder?.();
     if (order) {
         config.order = {
@@ -266,6 +270,7 @@ function createTranslation(definition, config, mark) {
             matching: order.passes[0] === "matching" ? "first" : "last",
         };
     }
+
     const properties = config.retainedProperties ?? {};
     delete config.retainedProperties;
     return { definition, config, properties };
@@ -308,7 +313,6 @@ function addOccurrenceConfig(config, placementIndex, mark, coords) {
             };
         }
     }
-    return config;
 }
 
 /**
@@ -317,11 +321,11 @@ function addOccurrenceConfig(config, placementIndex, mark, coords) {
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
- * @param {object[]} data
  * @param {(encoder: import("../../types/encoder.js").Encoder, branch: import("../../types/encoder.js").EncodingBranch) => any} build
+ * @param {boolean} [cellPositions]
  * @returns {any}
  */
-function createConditionalChannel(mark, channel, data, build) {
+function createConditionalChannel(mark, channel, build, cellPositions = false) {
     const encoder = requireEncoder(mark, channel);
     const branches = encoder.branches;
     const fallback = branches.at(-1);
@@ -350,7 +354,11 @@ function createConditionalChannel(mark, channel, data, build) {
 
     const conditions = branches.slice(0, -1).map((branch) => {
         const branchConfig = buildBranch(branch);
-        const when = createSelectionCondition(mark, branch.predicate.selection);
+        const when = createSelectionCondition(
+            mark,
+            branch.predicate.selection,
+            cellPositions
+        );
         return { when, channel: branchConfig };
     });
 
@@ -400,31 +408,34 @@ function createBranchEncoder(mark, encoder, branch) {
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate
+ * @param {boolean} [cellPositions] Match interval selections against cell edges.
  * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
  */
-function createSelectionCondition(mark, predicate) {
+function createSelectionCondition(mark, predicate, cellPositions = false) {
     if ("all" in predicate) {
         return {
             all: predicate.all.map((child) =>
-                createSelectionCondition(mark, child)
+                createSelectionCondition(mark, child, cellPositions)
             ),
         };
     }
     if ("any" in predicate) {
         return {
             any: predicate.any.map((child) =>
-                createSelectionCondition(mark, child)
+                createSelectionCondition(mark, child, cellPositions)
             ),
         };
     }
     if ("not" in predicate) {
-        return { not: createSelectionCondition(mark, predicate.not) };
+        return {
+            not: createSelectionCondition(mark, predicate.not, cellPositions),
+        };
     }
     if ("selectionActive" in predicate) {
         const { param, type, components } = predicate.selectionActive;
         if (type === "categories") {
             const input = resolveCategoryInput(
-                mark.encoding,
+                mark.selectionEncoding,
                 /** @type {import("../../spec/parameter.js").CategorySelectionChannel} */ (
                     components[0]
                 ),
@@ -454,7 +465,12 @@ function createSelectionCondition(mark, predicate) {
     if (predicate.type === "categories") {
         const input = predicate.projections[0].input;
         return {
-            selection: categorySelectionSlot(mark, predicate.param, input),
+            selection: categorySelectionSlot(
+                mark,
+                predicate.param,
+                input,
+                true
+            ),
             type: "multi",
             input:
                 mark.getType() === "text" && input === "color" ? "fill" : input,
@@ -468,12 +484,20 @@ function createSelectionCondition(mark, predicate) {
             projections:
                 /** @type {[import("@genome-spy/webgpu-renderer").IntervalSelectionProjection, ...import("@genome-spy/webgpu-renderer").IntervalSelectionProjection[]]} */ (
                     predicate.projections.map(
-                        ({ component, input, secondaryInput, hitTest }) => ({
-                            component,
-                            input,
-                            secondaryInput,
-                            hitTest,
-                        })
+                        ({ component, input, secondaryInput, hitTest }) => {
+                            if (
+                                cellPositions &&
+                                (input === "x" || input === "y")
+                            ) {
+                                return { component, position: input };
+                            }
+                            return {
+                                component,
+                                input,
+                                secondaryInput,
+                                hitTest,
+                            };
+                        }
                     )
                 ),
             empty: predicate.empty,
@@ -555,6 +579,273 @@ function createRectConfig(mark, data, coords) {
                 () => mapProperty(mark, "hatch", HATCH_CODES, "none"),
                 "u32"
             ),
+        },
+    };
+}
+
+/**
+ * @typedef {import("@genome-spy/webgpu-renderer/marks/raster").RasterData} RasterData
+ * @typedef {import("@genome-spy/webgpu-renderer/marks/raster").RasterConfig} RasterConfig
+ */
+
+/** @type {WeakMap<RasterMark, {data: object[], palette: import("../../types/encoder.js").VegaScale | undefined, packed: ReturnType<typeof packRasterTiles>, snapshot?: RasterData}>} */
+const rasterDataCache = new WeakMap();
+
+/**
+ * @param {RasterMark} mark
+ * @param {object[]} data
+ * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {import("@genome-spy/webgpu-renderer").MarkConfig["placementIndex"]} placementIndex
+ * @returns {RasterConfig}
+ */
+function createRasterConfig(mark, data, coords, placementIndex) {
+    const { channel, bandAxis, type } = mark.getCellBinding();
+    const cellScale = mark.validateRenderingScales()?.getScale();
+    const color = channel === "color" ? cellScale : undefined;
+    const palette = type !== "quantitative" ? color : undefined;
+    const categories = palette && getCategoricalMapping(mark, "color", palette);
+
+    const fill = createConditionalChannel(
+        mark,
+        "color",
+        (encoder) =>
+            isValueDef(encoder.channelDef)
+                ? createColorBranch(mark, "color", data, encoder)
+                : {
+                      input: "color",
+                      scale: color
+                          ? createColorScale(
+                                mark,
+                                "color",
+                                color,
+                                categories?.readDomain
+                            )
+                          : rgba8Unorm,
+                  },
+        true
+    );
+    const opacity =
+        mark.encoders.opacity &&
+        createConditionalChannel(
+            mark,
+            "opacity",
+            (encoder) =>
+                encoder.constant
+                    ? createNumericBranch(mark, "opacity", data, encoder)
+                    : {
+                          input: "opacity",
+                          scale: createNonPositionalScale(
+                              mark,
+                              "opacity",
+                              encoder.scale
+                          ),
+                      },
+            true
+        );
+
+    let cached = rasterDataCache.get(mark);
+    if (cached?.data !== data || cached.palette !== palette) {
+        try {
+            /** @type {Record<string, Uint32Array>} */
+            const cellInputs = {};
+            const bindings = CATEGORY_SELECTION_BINDINGS.get(mark)?.values();
+            for (const { input, membership } of bindings ?? []) {
+                if (
+                    !membership ||
+                    input === "color" ||
+                    Object.hasOwn(cellInputs, input)
+                )
+                    continue;
+                const inputEncoder = requireEncoder(mark, input);
+                cellInputs[input] = toCategoricalArray(
+                    mark,
+                    input,
+                    data,
+                    inputEncoder.branches[0].accessor,
+                    inputEncoder.scale
+                ).values;
+            }
+            cached = {
+                data,
+                palette,
+                packed: packRasterTiles(
+                    mark,
+                    data,
+                    categories?.intern,
+                    cellInputs
+                ),
+            };
+        } catch (error) {
+            throw unsupported(mark, error.message, error);
+        }
+        rasterDataCache.set(mark, cached);
+    }
+
+    const { rowEdges, indexEndX, indexEndY } = cached.packed;
+    // Grid endpoints are genomic boundaries. Index band 0 is on the lower
+    // pixel side, which is the trailing side on a reversed range.
+    const xScale = mark.encoders.x.scale;
+    const yScale = mark.encoders.y?.scale;
+    const xBand = bandAxis === "x" ? undefined : xScale.props.reverse ? 1 : 0;
+    const yBand =
+        bandAxis === "y" || rowEdges ? undefined : yScale.props.reverse ? 0 : 1;
+    /** @param {"x" | "y" | "x2" | "y2"} channel @param {number} [band] */
+    const positionChannel = (channel, band) =>
+        createPositionChannel(mark, channel, data, coords, band, true);
+    const channels = {
+        x: positionChannel("x", xBand),
+        ...(rowEdges ? {} : { y: positionChannel("y", yBand) }),
+    };
+    const position = Object.fromEntries(
+        Object.entries(channels).map(([name, channel]) => {
+            const { scale, inputComponents } = channel;
+            // A strip covers the symmetric interval within its band.
+            const bandEnd =
+                name === bandAxis && "band" in scale
+                    ? 1 - scale.band
+                    : undefined;
+            const descriptor = { scale, inputComponents, bandEnd };
+            SCALE_DEPENDENT_VALUES.set(
+                descriptor,
+                getWebGpuChannelResolution(channel)
+            );
+            return [name, descriptor];
+        })
+    );
+    if (rowEdges) position.y = position.x;
+    const tiles = /** @type {RasterData["tiles"]} */ ({
+        ...cached.packed.tiles,
+        x0: channels.x.data,
+        y0: rowEdges ? rowEdges.start : channels.y.data,
+        x1:
+            bandAxis === "x"
+                ? channels.x.data
+                : (indexEndX ?? positionChannel("x2", xBand).data),
+        y1: rowEdges
+            ? rowEdges.end
+            : bandAxis === "y"
+              ? channels.y.data
+              : (indexEndY ?? positionChannel("y2", yBand).data),
+    });
+    if (
+        !cached.snapshot ||
+        Object.entries(tiles).some(
+            ([key, array]) => array !== cached.snapshot.tiles[key]
+        )
+    ) {
+        cached.snapshot = { tiles, cells: cached.packed.cells };
+    }
+
+    const direction = mark.triangleDirection;
+    return {
+        data: cached.snapshot,
+        projection: direction
+            ? direction === "down"
+                ? "triangle-down"
+                : "triangle"
+            : undefined,
+        placementIndex,
+        position,
+        channels: {
+            fill,
+            ...(opacity && {
+                opacity: /** @type {RasterConfig["channels"]["opacity"]} */ (
+                    opacity
+                ),
+            }),
+        },
+    };
+}
+
+/**
+ * @param {RasterMark} mark
+ * @param {object[]} data
+ * @param {((value: import("../../spec/channel.js").Scalar) => number) | undefined} intern
+ * @param {Record<string, Uint32Array>} cellInputs
+ */
+function packRasterTiles(mark, data, intern, cellInputs) {
+    const { channel, direct, readTile, bandAxis } = mark.getCellBinding();
+    const tiles = data.map(readTile);
+    const columns = new Uint32Array(tiles.length);
+    const rows = new Uint32Array(tiles.length);
+    const offsets = new Uint32Array(tiles.length);
+    const length = tiles.reduce((count, tile) => count + tile.values.length, 0);
+    const cellValues =
+        direct || intern ? new Uint32Array(length) : new Float32Array(length);
+    const encodeCell = intern ?? readNumericRasterCell;
+    /** @type {RasterData["cells"]} */
+    const cells = { [channel]: cellValues };
+    let offset = 0;
+    for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
+        columns[index] = horizontal.count;
+        rows[index] = vertical.count;
+        offsets[index] = offset;
+        if (
+            values instanceof Uint32Array ||
+            (!intern && values instanceof Float32Array)
+        ) {
+            cellValues.set(values, offset);
+        } else {
+            for (let cell = 0; cell < values.length; cell++) {
+                cellValues[offset + cell] = encodeCell(values[cell]);
+            }
+        }
+        offset += values.length;
+    }
+    for (const [name, values] of Object.entries(cellInputs)) {
+        const field = new Uint32Array(length);
+        cells[name] = field;
+        for (const [index, start] of offsets.entries()) {
+            field.fill(values[index], start, offsets[index + 1] ?? length);
+        }
+    }
+    // Core keeps the last covered index for domain inference. The tile
+    // snapshot uses the exclusive edge for rendering and brush membership.
+    /** @param {"x" | "y"} axis @param {"horizontal" | "vertical"} dimension */
+    const packIndexEnd = (axis, dimension) => {
+        if (
+            mark.isTriangle ||
+            bandAxis === axis ||
+            mark.encoders[axis].scale.type !== "index"
+        )
+            return;
+        return packHighPrecisionU32Array(
+            tiles.map((tile) => {
+                const { origin, step, count } = tile[dimension];
+                return readIndexValue(mark, axis + "2", origin + step * count);
+            })
+        );
+    };
+    const packRowEdges =
+        mark.encoders.x.scale.type === "linear"
+            ? (/** @type {number[]} */ values) => Float32Array.from(values)
+            : packHighPrecisionU32Array;
+    return {
+        indexEndX: packIndexEnd("x", "horizontal"),
+        indexEndY: packIndexEnd("y", "vertical"),
+        rowEdges: mark.isTriangle && {
+            start: packRowEdges(tiles.map(({ vertical }) => vertical.origin)),
+            end: packRowEdges(
+                tiles.map(
+                    ({ vertical }) =>
+                        vertical.origin + vertical.step * vertical.count
+                )
+            ),
+        },
+        cells,
+        tiles: {
+            columns,
+            rows,
+            offsets,
+            pickingIds: mark.isPickingParticipant()
+                ? toUint32Array(data, (datum) =>
+                      readUnsignedInteger(
+                          mark,
+                          "uniqueId",
+                          mark.encoders.uniqueId(datum)
+                      )
+                  )
+                : undefined,
         },
     };
 }
@@ -951,6 +1242,7 @@ function createLinkConfig(mark, data, coords) {
         arcFadingDistance: readDistancePair(mark, "arcFadingDistance"),
         noFadingOnSecondPass: !!readProperty(mark, "noFadingOnSecondPass"),
         arcHeightFactor: readNumericProperty(mark, "arcHeightFactor", 1),
+        flipArc: getResolvedTriangleDirection(mark.unitView) === "down",
         minArcHeight: readNumericProperty(mark, "minArcHeight", 1.5),
         clampApex: !!readProperty(mark, "clampApex"),
         maxChordLength: readNumericProperty(mark, "maxChordLength", 50000),
@@ -1024,11 +1316,28 @@ function createArrowConfig(mark, data, coords) {
  * @param {"x" | "x2" | "y" | "y2"} channel
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
+ * @param {number} [bandOverride]
+ * @param {boolean} [packedIndex]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionChannel(mark, channel, data, coords) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
-        createPositionBranch(mark, channel, data, coords, encoder)
+function createPositionChannel(
+    mark,
+    channel,
+    data,
+    coords,
+    bandOverride,
+    packedIndex = false
+) {
+    return createConditionalChannel(mark, channel, (encoder) =>
+        createPositionBranch(
+            mark,
+            channel,
+            data,
+            coords,
+            encoder,
+            bandOverride,
+            packedIndex
+        )
     );
 }
 
@@ -1038,15 +1347,26 @@ function createPositionChannel(mark, channel, data, coords) {
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {import("../../types/encoder.js").Encoder} encoder
+ * @param {number} [bandOverride]
+ * @param {boolean} [packedIndex]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionBranch(mark, channel, data, coords, encoder) {
+function createPositionBranch(
+    mark,
+    channel,
+    data,
+    coords,
+    encoder,
+    bandOverride,
+    packedIndex
+) {
     const accessor = encoder.branches[0].accessor;
     // Value definitions are viewport-relative even when another conditional
     // branch uses a data scale. Datum definitions share the field scale path.
     const scale = isValueDef(encoder.channelDef) ? undefined : encoder.scale;
     const range = getPositionRange(channel, coords, scale);
     const band =
+        bandOverride ??
         /** @type {import("../../spec/channel.js").BandMixins} */ (
             encoder.channelDef
         ).band ??
@@ -1090,7 +1410,17 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
                       ),
         });
     } else if (scale?.type == "index" || scale?.type == "locus") {
-        const large = isLargeIndexDomain(scale.domain().map(Number));
+        // Core's projected x uses the genomic band start. WebGPU's band
+        // position starts at the lower pixel edge on a reversed range.
+        const indexBand =
+            bandOverride === undefined &&
+            range[0] > range[1] &&
+            (channel === "x" || channel === "x2") &&
+            getResolvedTriangleDirection(mark.unitView)
+                ? 1 - band
+                : band;
+        const large =
+            packedIndex || isLargeIndexDomain(scale.domain().map(Number));
         const input = encoder.constant
             ? createIndexValue(mark, channel, () => accessor(data[0]), large)
             : {
@@ -1102,7 +1432,7 @@ function createPositionBranch(mark, channel, data, coords, encoder) {
             scale: createIndexPositionScale(
                 scale,
                 range,
-                band,
+                indexBand,
                 channel,
                 getGapPeer(encoder.channelDef)
             ),
@@ -1254,10 +1584,8 @@ function retainBandScaleProperties(target, scale, channel, peer) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createNumericChannel(mark, channel, data) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
-        isStaticConstantEncoder(encoder)
-            ? { value: Number(encoder(data[0])) }
-            : createNumericBranch(mark, channel, data, encoder)
+    return createConditionalChannel(mark, channel, (encoder) =>
+        createNumericBranch(mark, channel, data, encoder)
     );
 }
 
@@ -1281,7 +1609,9 @@ function isStaticConstantEncoder(encoder) {
  */
 function createNumericBranch(mark, channel, data, encoder) {
     if (encoder.constant) {
-        return liveValue(() => Number(encoder(data[0])));
+        return isStaticConstantEncoder(encoder)
+            ? { value: Number(encoder(data[0])) }
+            : liveValue(() => Number(encoder(data[0])));
     }
 
     const accessor = encoder.branches[0].accessor;
@@ -1336,7 +1666,7 @@ function createNumericBranch(mark, channel, data, encoder) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createEnumChannel(mark, channel, data, values) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
+    return createConditionalChannel(mark, channel, (encoder) =>
         createEnumBranch(mark, channel, data, values, encoder)
     );
 }
@@ -1432,7 +1762,7 @@ function createEnumBranch(mark, channel, data, values, encoder) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createColorChannel(mark, channel, data) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
+    return createConditionalChannel(mark, channel, (encoder) =>
         createColorBranch(mark, channel, data, encoder)
     );
 }
@@ -1740,7 +2070,11 @@ function createNumericScale(mark, channel, scale, range, domain) {
         range: readRange(),
         clamp: getScaleProperty(configurableScale, "clamp", false),
     });
-    const round = getScaleProperty(configurableScale, "round", false);
+    const round = getScaleProperty(
+        configurableScale,
+        "round",
+        scale.props?.round ?? false
+    );
     if (round) {
         options.round = true;
     }

@@ -1,6 +1,8 @@
+import RasterMark from "../../../marks/raster.js";
 import { renderArrowCanvas } from "./arrow.js";
 import { renderLinkCanvas } from "./link.js";
 import { renderPointCanvas } from "./point.js";
+import { renderRasterCanvas } from "./raster.js";
 import { renderRectCanvas } from "./rect.js";
 import { renderRuleCanvas } from "./rule.js";
 import { renderTextCanvas } from "./text.js";
@@ -34,6 +36,8 @@ export function renderMarkCanvas(mark, options) {
         return renderArrowCanvas(mark, options);
     } else if (mark.getType() == "link") {
         return renderLinkCanvas(mark, options);
+    } else if (mark instanceof RasterMark) {
+        return renderRasterCanvas(mark, options);
     } else if (mark.getType() == "rect") {
         return renderRectCanvas(mark, options);
     } else if (mark.getType() == "point") {

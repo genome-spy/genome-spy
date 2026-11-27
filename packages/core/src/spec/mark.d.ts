@@ -4,7 +4,7 @@ import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
 export type MarkType =
-    "rect" | "point" | "rule" | "tick" | "text" | "link" | "arrow";
+    "rect" | "raster" | "point" | "rule" | "tick" | "text" | "link" | "arrow";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -131,6 +131,11 @@ export interface MarkPropsBase {
      * opt-out. If string, specifies the
      * [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
+     *
+     * Raster marks with scaled colors show cell tooltips by default. Packed
+     * RGBA images (`color.scale: null`) need an explicit handler for tooltips.
+     * For raster marks, `null` always disables picking. The handler receives
+     * the hovered cell's raw fields and tile attributes.
      */
     tooltip?: Tooltip;
 }
@@ -923,8 +928,26 @@ export interface LinkProps
     noFadingOnPointSelection?: boolean | ExprRef;
 }
 
+/**
+ * Draws regular grids of cells. A grid dimension on one axis and a band field
+ * on the other draw one strip per record. Put the grid dimension on x for
+ * horizontal strips or on y for vertical strips. Use categorical selections
+ * on the band axis.
+ * Categorical cell colors use an ordinal scale with an explicit domain.
+ * To draw an image, use `color: { field: "pixels", scale: null }` and
+ * store one packed unsigned RGBA8 value (`0xAABBGGRR`) per cell in
+ * `fields.pixels`. Use a row-major `Uint32Array` or array of integers
+ * with straight alpha. Set alpha to 255 for opaque RGB pixels.
+ * Cartesian positional interval selections test overlap with each cell's extent. Gradient
+ * legend intervals test each cell's raw color value.
+ */
+export interface RasterProps extends MarkPropsBase {
+    type: "raster";
+}
+
 export type MarkProps =
     | RectProps
+    | RasterProps
     | ArrowProps
     | TextProps
     | RuleProps

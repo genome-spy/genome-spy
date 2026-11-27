@@ -26,6 +26,9 @@ export interface TooltipContext {
     /** Tuple for a `facet` cell in row/column order, or undefined outside one. */
     readonly facetId?: readonly import("../spec/channel.js").Scalar[];
 
+    /** Tile-local indices for a raster tooltip. */
+    readonly rasterCell?: { readonly column: number; readonly row: number };
+
     /**
      * Rows selected by `encoding.tooltip`. If undefined, the default tooltip
      * handler uses flattened datum rows.

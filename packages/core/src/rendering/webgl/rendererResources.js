@@ -12,6 +12,7 @@ import {
 import WebGLArrowMark from "./marks/arrow.js";
 import WebGLLinkMark from "./marks/link.js";
 import WebGLPointMark from "./marks/point.js";
+import WebGLRasterMark from "./marks/raster.js";
 import WebGLRectMark from "./marks/rect.js";
 import WebGLRuleMark from "./marks/rule.js";
 import WebGLTextMark from "./marks/text.js";
@@ -25,6 +26,7 @@ const SCALE_BINDINGS = { x: 8, y: 9 };
 const markTypes = {
     point: WebGLPointMark,
     rect: WebGLRectMark,
+    raster: WebGLRasterMark,
     arrow: WebGLArrowMark,
     rule: WebGLRuleMark,
     tick: WebGLRuleMark,
@@ -39,7 +41,8 @@ const markTypes = {
  * @returns {import("./types.js").WebGLMark}
  */
 export function createWebGLMark(mark, glHelper, rendererResources) {
-    const Mark = markTypes[mark.getType()];
+    const Mark =
+        markTypes[/** @type {keyof typeof markTypes} */ (mark.getType())];
     if (!Mark) {
         throw new Error("Unsupported WebGL mark type: " + mark.getType());
     }

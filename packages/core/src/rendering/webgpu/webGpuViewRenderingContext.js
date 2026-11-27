@@ -49,8 +49,11 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
     /** @type {{width: number, height: number, dpr: number}} */
     #target;
 
+    /** @type {number} */
+    #pixelOffset;
+
     /**
-     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean, applyViewOpacity?: boolean}} options
+     * @param {{surface: import("./webGpuSurface.js").default, target?: {width: number, height: number, dpr: number}, markPredicate?: (mark: import("../../marks/mark.js").default) => boolean, applyViewOpacity?: boolean, pixelOffset?: number}} options
      */
     constructor(options) {
         super({ applyViewOpacity: options.applyViewOpacity });
@@ -66,6 +69,7 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             };
         }
         this.#markPredicate = options.markPredicate;
+        this.#pixelOffset = options.pixelOffset ?? RASTER_COORDINATE_OFFSET;
     }
 
     getDevicePixelRatio() {
@@ -134,10 +138,9 @@ export default class WebGpuViewRenderingContext extends ViewRenderingContext {
             return;
         }
         const coords = this.currentCoords;
-        const markCoords = coords.translate(
-            RASTER_COORDINATE_OFFSET,
-            RASTER_COORDINATE_OFFSET
-        );
+        const markCoords = this.#pixelOffset
+            ? coords.translate(this.#pixelOffset, this.#pixelOffset)
+            : coords;
         let state = this.#marks.get(mark);
         if (!state) {
             state = {

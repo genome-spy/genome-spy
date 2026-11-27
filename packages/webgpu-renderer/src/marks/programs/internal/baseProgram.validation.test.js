@@ -477,7 +477,7 @@ describe("BaseProgram channel validation", () => {
             [
                 "unknown inputs",
                 { projections: [{ component: "range", input: "missing" }] },
-                "unknown selection input",
+                "references unknown input",
             ],
             [
                 "hit tests without endpoints",

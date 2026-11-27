@@ -33,6 +33,7 @@ float scaleIdentity(uint value) {
 
 float scaleLinear(float value, vec2 domain, vec2 range) {
     float domainSpan = domain[1] - domain[0];
+    if (domainSpan == 0.0) return mix(range[0], range[1], 0.5);
     float rangeSpan = range[1] - range[0];
     return (value - domain[0]) / domainSpan * rangeSpan + range[0];
 }
@@ -40,8 +41,8 @@ float scaleLinear(float value, vec2 domain, vec2 range) {
 float scaleLog(float value, vec2 domain, vec2 range, float base) {
     // y = m log(x) + b 
     // TODO: Perf optimization: precalculate log domain in js.
-    // TODO: Reversed domain, etc
-    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+    float direction = sign(domain[0]);
+    return scaleLinear(log(value * direction) / log(base), log(domain * direction) / log(base), range);
 }
 
 float symlog(float value, float constant) {

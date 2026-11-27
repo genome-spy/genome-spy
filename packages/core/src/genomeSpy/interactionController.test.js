@@ -106,12 +106,14 @@ function createMinimalInteractionController({
  * @param {(x: number, y: number) => number | null | Promise<number | null>} [options.reader]
  * @param {() => void} [options.render]
  * @param {() => boolean} [options.canPick]
+ * @param {import("./interactionController.js").ResolveCellIndex} [options.resolveCellIndex]
  */
 function createPickingHarness({
     supportsPicking = true,
     reader = readPickingId,
     render = vi.fn(),
     canPick,
+    resolveCellIndex,
 } = {}) {
     const canvas = new CanvasStub();
     const scope = /** @type {any} */ ({ name: "scope" });
@@ -163,6 +165,7 @@ function createPickingHarness({
         renderPickingFramebuffer: render,
         readPickingId: supportsPicking ? reader : undefined,
         canPick,
+        resolveCellIndex,
     });
 
     return {
@@ -1996,6 +1999,23 @@ describe("InteractionController", () => {
     );
 
     describe("explicit picking", () => {
+        it("can refine a datum hit to cell zero or reject the hit", async () => {
+            const { controller, datum } = createPickingHarness({
+                reader: () => 1,
+                resolveCellIndex: (_mark, _datum, x) => (x < 20 ? 0 : null),
+            });
+
+            await expect(
+                controller.pick({ x: 10, y: 20 })
+            ).resolves.toMatchObject({
+                status: "hit",
+                hit: { datum, cellIndex: 0 },
+            });
+            await expect(controller.pick({ x: 20, y: 20 })).resolves.toEqual({
+                status: "empty",
+            });
+        });
+
         it("prefers the owning plot in nested views sharing record IDs", async () => {
             const { controller, pickerUnitView, viewRoot } =
                 createPickingHarness({

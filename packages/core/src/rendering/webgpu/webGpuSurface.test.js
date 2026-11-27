@@ -764,6 +764,39 @@ describe("WebGpuSurface", () => {
         expect(mocks.renderer.destroyMark).toHaveBeenCalledTimes(3);
     });
 
+    test("updates raster tile placement indices without recreating the mark", async () => {
+        const surface = new WebGpuSurface(
+            /** @type {any} */ ({
+                container: document.body,
+                onCanvasResize: vi.fn(),
+            })
+        );
+        await surface.initialize();
+        onTestFinished(() => surface.finalize());
+        const mark = /** @type {any} */ ({});
+        const definition = /** @type {any} */ ({ type: "raster" });
+        configureMockMark(mark, definition);
+        const data = { tiles: {}, cells: {} };
+        const config = {
+            data,
+            placementIndex: { data: new Uint32Array([0]), type: "u32" },
+        };
+        surface.updateMark(mark, definition, config);
+        surface.updateMark(mark, definition, { ...config });
+        expect(mocks.handle.series.replace).not.toHaveBeenCalled();
+
+        const indices = new Uint32Array([1]);
+        surface.updateMark(mark, definition, {
+            ...config,
+            placementIndex: { data: indices, type: "u32" },
+        });
+        expect(mocks.renderer.createMark).toHaveBeenCalledOnce();
+        expect(mocks.handle.series.replace).toHaveBeenCalledExactlyOnceWith(
+            { ...data, placementIndex: indices },
+            undefined
+        );
+    });
+
     test("replaces logical text and position series on retained text marks", async () => {
         const container = document.createElement("div");
         const surface = new WebGpuSurface(

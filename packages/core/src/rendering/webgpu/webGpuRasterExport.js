@@ -1,7 +1,8 @@
-import { createLayoutResult } from "../../view/layout/layoutResult.js";
-import Rectangle from "../../view/layout/rectangle.js";
-import { RasterizationUnavailableError } from "../rasterization.js";
-import { getPhysicalCrop, setRasterImage } from "../svg/raster/rasterImage.js";
+import {
+    getRasterExportLayout,
+    RasterizationUnavailableError,
+} from "../rasterization.js";
+import { setRasterImageFromCanvas } from "../svg/raster/rasterImage.js";
 import { TRANSPARENT_GPU_COLOR, toGpuColor } from "./webGpuColor.js";
 
 /**
@@ -25,12 +26,12 @@ export async function exportRaster(surface, options) {
         pixelRatio
     );
     try {
-        const layoutResult = createExportLayout(
-            options.viewRoot,
+        const layoutResult = getRasterExportLayout({
+            viewRoot: options.viewRoot,
             logicalWidth,
             logicalHeight,
-            pixelRatio
-        );
+            pixelRatio,
+        });
         surface.renderLayoutToTarget(
             layoutResult,
             target,
@@ -55,59 +56,32 @@ export async function rasterizeSvgRuns(surface, options) {
         options.pixelRatio
     );
     try {
-        const cropCanvas = document.createElement("canvas");
-        const cropContext = cropCanvas.getContext("2d");
+        const cropContext = document.createElement("canvas").getContext("2d");
         if (!cropContext) {
             throw new RasterizationUnavailableError(
                 "Unable to initialize a WebGPU SVG crop context."
             );
         }
-        const layoutResult =
-            options.layoutResult && options.pixelRatio == 1
-                ? options.layoutResult
-                : createExportLayout(
-                      options.viewRoot,
-                      options.logicalWidth,
-                      options.logicalHeight,
-                      options.pixelRatio
-                  );
+        const layoutResult = getRasterExportLayout(options);
 
         for (const run of options.runs) {
             surface.renderLayoutToTarget(
                 layoutResult,
                 target,
                 TRANSPARENT_GPU_COLOR,
-                (mark) => run.marks.has(mark),
-                false
+                {
+                    markPredicate: (mark) => run.marks.has(mark),
+                    applyViewOpacity: false,
+                    pixelOffset: 0,
+                }
             );
             await target.handle.onSubmittedWorkDone();
 
-            const crop = getPhysicalCrop(
-                run.bounds,
-                options.pixelRatio,
-                target.canvas.width,
-                target.canvas.height
-            );
-            cropCanvas.width = crop.width;
-            cropCanvas.height = crop.height;
-            cropContext.resetTransform();
-            cropContext.clearRect(0, 0, crop.width, crop.height);
-            cropContext.drawImage(
-                target.canvas,
-                crop.x,
-                crop.y,
-                crop.width,
-                crop.height,
-                0,
-                0,
-                crop.width,
-                crop.height
-            );
-            setRasterImage(
+            setRasterImageFromCanvas(
                 run,
-                crop,
-                options.pixelRatio,
-                cropCanvas.toDataURL("image/png")
+                target.canvas,
+                cropContext,
+                options.pixelRatio
             );
         }
     } finally {
@@ -130,23 +104,6 @@ function createExportTarget(surface, width, height, pixelRatio) {
             { cause: error }
         );
     }
-}
-
-/**
- * @param {import("../../view/view.js").default} viewRoot
- * @param {number} logicalWidth
- * @param {number} logicalHeight
- * @param {number} pixelRatio
- */
-function createExportLayout(viewRoot, logicalWidth, logicalHeight, pixelRatio) {
-    return createLayoutResult(
-        viewRoot,
-        Rectangle.create(0, 0, logicalWidth, logicalHeight),
-        {
-            devicePixelRatio: pixelRatio,
-            renderingOptions: { firstFacet: true },
-        }
-    );
 }
 
 /** @param {HTMLCanvasElement} canvas @param {"image/png"} mimeType */

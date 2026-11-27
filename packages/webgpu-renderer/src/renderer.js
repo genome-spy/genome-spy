@@ -369,7 +369,7 @@ export class Renderer {
         this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
         /**
-         * @type {Map<MarkId, import("./index.d.ts").MarkProgram>}
+         * @type {Map<MarkId, import("./index.d.ts").MarkProgram<any, any>>}
          * @internal Development GPU checks and benchmarks inspect mark programs.
          */
         this._marks = new Map();
@@ -612,7 +612,7 @@ export class Renderer {
 
     /**
      * @template TConfig
-     * @template {Record<string, import("./index.d.ts").SeriesData>} TSeries
+     * @template {object} TSeries
      * @template {object} TProperties
      * @param {import("./index.d.ts").MarkDefinition<TConfig, TSeries, TProperties>} definition
      * @param {TConfig} config
@@ -1588,7 +1588,7 @@ export class Renderer {
         const state = new RenderPassState(pass);
         pass.setViewport(0, 0, target.width, target.height, 0, 1);
         for (const draw of draws) {
-            if (picking && draw.orderPass & 4) {
+            if (draw.instanceCount === 0 || (picking && draw.orderPass & 4)) {
                 continue;
             }
             const mark = this._marks.get(draw.markId);

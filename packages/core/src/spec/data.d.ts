@@ -345,6 +345,8 @@ export type LazyDataParams =
     | LegendGradientData
     | LegendGradientTicksData
     | AxisGenomeData
+    | HiGlassData
+    | HicData
     | IndexedFastaData
     | BigWigData
     | FigWigData
@@ -353,6 +355,55 @@ export type LazyDataParams =
     | TabixTsvData
     | Gff3Data
     | VcfData;
+
+/**
+ * Fetches a HiGlass contact matrix as regular two-dimensional raster tiles.
+ * During navigation, `debounce` delays requests for missing tiles until the
+ * viewport settles. Cached windows appear on the next frame.
+ */
+export interface HiGlassData extends Pick<DebouncedData, "debounce"> {
+    type: "higlass";
+
+    /** Base URL of the HiGlass API, for example `https://higlass.io/api/v1/`. */
+    url: string;
+
+    /** HiGlass tileset UID. */
+    tileset: string;
+
+    /**
+     * Maximum memory for decoded tiles cached by this source, in MiB.
+     * Set to zero to disable retaining tiles for later requests.
+     *
+     * __Default value:__ `64`
+     * @minimum 0
+     */
+    cacheSizeMiB?: number;
+}
+
+/** Reads a Juicer .hic contact matrix as two-dimensional raster tiles. */
+export interface HicData extends Pick<DebouncedData, "debounce"> {
+    type: "hic";
+
+    /** URL of the .hic file. The server must support HTTP byte-range requests. */
+    url: string;
+
+    /**
+     * Stored normalization to apply, such as `"KR"` or `"SCALE"`.
+     * The normalization must be available for the displayed chromosomes and bin size.
+     *
+     * __Default value:__ `"NONE"` (raw counts)
+     */
+    normalization?: string | ExprRef;
+
+    /**
+     * Maximum memory retained for decoded raster tiles, in MiB.
+     * Set to zero to disable retaining tiles for later requests.
+     *
+     * __Default value:__ `32`
+     * @minimum 0
+     */
+    cacheSizeMiB?: number;
+}
 
 /** Generates group endpoints from resolved positional band/point/index/locus scales. */
 export interface ScaleGroupsData {

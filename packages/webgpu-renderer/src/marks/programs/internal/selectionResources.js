@@ -45,17 +45,26 @@ const INACTIVE_PACKED_BOUNDS = [0, 0, 0, 0];
 
 /**
  * @typedef {{ scalarType: ScalarType, inputComponents: 1 | 2 }} IntervalRepresentation
- * @typedef {import("../../../index.d.ts").IntervalSelectionProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
+ * @typedef {import("../../../index.d.ts").IntervalSelectionProjection} IntervalProjection
+ * @typedef {import("../../shaders/channelIR.js").CellPredicateInputs} CellPredicateInputs
+ * @typedef {(name: string, position?: boolean) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} GetAnalysis
+ * @typedef {IntervalProjection & IntervalRepresentation & { hitTest: "intersects" | "encloses" | "endpoints" }} IntervalProjectionDef
  * @typedef {{ name: string, type: SelectionType, input?: string, components?: string[], declaredComponents?: string[], representations?: Map<string, IntervalRepresentation>, projections?: IntervalProjectionDef[], membershipUsed?: boolean }} SelectionDef
  */
 
 /**
  * @param {string} selectionName
  * @param {import("../../../index.d.ts").IntervalSelectionProjection} projection
- * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
+ * @param {GetAnalysis} getAnalysis
+ * @param {CellPredicateInputs | undefined} cellPredicates
  * @returns {IntervalProjectionDef}
  */
-function resolveProjection(selectionName, projection, getAnalysis) {
+function resolveProjection(
+    selectionName,
+    projection,
+    getAnalysis,
+    cellPredicates
+) {
     if (
         !projection ||
         typeof projection.component !== "string" ||
@@ -65,49 +74,55 @@ function resolveProjection(selectionName, projection, getAnalysis) {
             `Interval selection "${selectionName}" projections require a component.`
         );
     }
-    if (typeof projection.input !== "string" || !projection.input) {
-        throw new Error(
-            `Interval selection "${selectionName}" projections require an input.`
-        );
+    const raster = "position" in projection;
+    if (raster && !cellPredicates) {
+        throw new Error("Cell positions require a raster mark.");
     }
+    const input = raster ? projection.position : projection.input;
+    const secondary = raster ? input + "2" : projection.secondaryInput;
+    const hitTest = raster ? undefined : projection.hitTest;
+    const keys = raster
+        ? ["component", "position"]
+        : ["component", "input", "secondaryInput", "hitTest"];
     if (
-        Object.keys(projection).some(
-            (key) =>
-                !["component", "input", "secondaryInput", "hitTest"].includes(
-                    key
-                )
-        )
+        typeof input !== "string" ||
+        !input ||
+        Object.keys(projection).some((key) => !keys.includes(key)) ||
+        (raster && !["x", "y"].includes(input))
     ) {
         throw new Error(
-            `Interval selection "${selectionName}" projection has unsupported properties.`
+            `Interval selection "${selectionName}" has an invalid projection.`
         );
     }
-    const analysis = getAnalysis(projection.input);
-    if (
-        analysis.inputComponents !== 1 &&
-        !(analysis.inputComponents === 2 && analysis.scalarType === "u32")
-    ) {
+
+    const analysis = getAnalysis(input, raster);
+    if (cellPredicates && !raster && analysis.scalarType !== "f32") {
         throw new Error(
-            `Interval selection "${selectionName}" requires a scalar or packed numeric input "${projection.input}".`
+            "Raster field interval projections require a Float32Array."
         );
     }
-    if (projection.secondaryInput !== undefined) {
-        const secondary = getAnalysis(projection.secondaryInput);
+    const packed =
+        analysis.inputComponents === 2 && analysis.scalarType === "u32";
+    if (analysis.inputComponents !== 1 && !packed) {
+        throw new Error(
+            `Interval selection "${selectionName}" requires a scalar or packed numeric input "${input}".`
+        );
+    }
+    if (secondary !== undefined) {
+        const end = getAnalysis(secondary, raster);
         if (
-            secondary.inputComponents !== analysis.inputComponents ||
-            secondary.scalarType !== analysis.scalarType
+            end.inputComponents !== analysis.inputComponents ||
+            (!raster && end.scalarType !== analysis.scalarType)
         ) {
             throw new Error(
-                `Interval selection "${selectionName}" requires matching representations for inputs "${projection.input}" and "${projection.secondaryInput}".`
+                `Interval selection "${selectionName}" requires matching representations for inputs "${input}" and "${secondary}".`
             );
         }
     }
     if (
-        projection.hitTest !== undefined &&
-        (!projection.secondaryInput ||
-            !["intersects", "encloses", "endpoints"].includes(
-                projection.hitTest
-            ))
+        hitTest !== undefined &&
+        (!secondary ||
+            !["intersects", "encloses", "endpoints"].includes(hitTest))
     ) {
         throw new Error(
             `Interval selection "${selectionName}" has an invalid hit-test mode.`
@@ -115,10 +130,27 @@ function resolveProjection(selectionName, projection, getAnalysis) {
     }
     return {
         ...projection,
-        hitTest: projection.hitTest ?? "intersects",
-        scalarType: analysis.scalarType,
-        inputComponents: /** @type {1 | 2} */ (analysis.inputComponents),
+        hitTest: hitTest ?? "intersects",
+        scalarType: raster && !packed ? "f32" : analysis.scalarType,
+        inputComponents: packed ? 2 : 1,
     };
+}
+
+/**
+ * @param {IntervalProjectionDef} a
+ * @param {IntervalProjection} b
+ */
+export function matchesProjection(a, b) {
+    if (a.component !== b.component) return false;
+    if ("position" in a) {
+        return "position" in b && a.position === b.position;
+    }
+    return (
+        "input" in b &&
+        a.input === b.input &&
+        a.secondaryInput === b.secondaryInput &&
+        a.hitTest === (b.hitTest ?? "intersects")
+    );
 }
 
 /**
@@ -202,19 +234,20 @@ function addSelectionReference(defs, reference) {
 /**
  * @param {import("../../../index.d.ts").VisibilityPredicate | undefined} node
  * @param {Map<string, SelectionDef>} defs
- * @param {(name: string) => ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>} getAnalysis
+ * @param {GetAnalysis} getAnalysis
+ * @param {CellPredicateInputs | undefined} cellPredicates
  * @returns {void}
  */
-function collectSelections(node, defs, getAnalysis) {
+function collectSelections(node, defs, getAnalysis, cellPredicates) {
     if (!node) {
         return;
     }
     if ("all" in node || "any" in node) {
         for (const child of "all" in node ? node.all : node.any) {
-            collectSelections(child, defs, getAnalysis);
+            collectSelections(child, defs, getAnalysis, cellPredicates);
         }
     } else if ("not" in node) {
-        collectSelections(node.not, defs, getAnalysis);
+        collectSelections(node.not, defs, getAnalysis, cellPredicates);
     } else if ("selectionActive" in node) {
         addSelectionReference(defs, node.selectionActive);
     } else if ("selection" in node) {
@@ -250,32 +283,27 @@ function collectSelections(node, defs, getAnalysis) {
             const resolved = resolveProjection(
                 node.selection,
                 projection,
-                getAnalysis
+                getAnalysis,
+                cellPredicates
             );
             if (!def.components?.includes(resolved.component)) {
                 def.components?.push(resolved.component);
             }
-            const current = def.representations?.get(resolved.component);
+            const { component, scalarType, inputComponents } = resolved;
+            const current = def.representations.get(component);
             if (
                 current &&
-                (current.scalarType !== resolved.scalarType ||
-                    current.inputComponents !== resolved.inputComponents)
+                (current.scalarType !== scalarType ||
+                    current.inputComponents !== inputComponents)
             ) {
                 throw new Error(
-                    `Interval selection "${node.selection}" component "${resolved.component}" must keep one comparison representation.`
+                    `Interval selection "${node.selection}" component "${component}" must keep one comparison representation.`
                 );
             }
-            def.representations?.set(resolved.component, {
-                scalarType: resolved.scalarType,
-                inputComponents: resolved.inputComponents,
-            });
+            def.representations.set(component, { scalarType, inputComponents });
             if (
-                !def.projections?.some(
-                    (item) =>
-                        item.component === resolved.component &&
-                        item.input === resolved.input &&
-                        item.secondaryInput === resolved.secondaryInput &&
-                        item.hitTest === resolved.hitTest
+                !def.projections.some((item) =>
+                    matchesProjection(item, resolved)
                 )
             ) {
                 def.projections?.push(resolved);
@@ -289,14 +317,25 @@ function collectSelections(node, defs, getAnalysis) {
  * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} analysisByChannel
  * @param {import("../../../index.d.ts").VisibilityPredicate | undefined} visibleWhen
  * @param {import("../../../index.d.ts").MarkOrder | undefined} order
+ * @param {CellPredicateInputs | undefined} cellPredicates
  * @returns {Map<string, SelectionDef>}
  */
-function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
+function collectSelectionDefs(
+    channels,
+    analysisByChannel,
+    visibleWhen,
+    order,
+    cellPredicates
+) {
     /** @type {Map<string, SelectionDef>} */
     const defs = new Map();
-    /** @param {string} name */
-    const getAnalysis = (name) => {
-        const analysis = analysisByChannel.get(name);
+    /** @type {GetAnalysis} */
+    const getAnalysis = (name, position) => {
+        const input =
+            cellPredicates && !position
+                ? cellPredicates.fields.get(name)?.name
+                : name;
+        const analysis = analysisByChannel.get(input);
         if (!analysis) {
             throw new Error(`Selection references unknown input "${name}".`);
         }
@@ -305,11 +344,16 @@ function collectSelectionDefs(channels, analysisByChannel, visibleWhen, order) {
 
     for (const channel of Object.values(channels)) {
         for (const condition of channel.conditions ?? []) {
-            collectSelections(condition.when, defs, getAnalysis);
+            collectSelections(
+                condition.when,
+                defs,
+                getAnalysis,
+                cellPredicates
+            );
         }
     }
-    collectSelections(visibleWhen, defs, getAnalysis);
-    collectSelections(order?.when, defs, getAnalysis);
+    collectSelections(visibleWhen, defs, getAnalysis, cellPredicates);
+    collectSelections(order?.when, defs, getAnalysis, cellPredicates);
 
     for (const def of defs.values()) {
         if (
@@ -385,6 +429,7 @@ export class SelectionResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {ReadonlyMap<string, ReturnType<typeof import("../../shaders/channelAnalysis.js").buildChannelAnalysis>>} params.analysisByChannel
      * @param {VisibilityPredicate} [params.visibleWhen]
+     * @param {CellPredicateInputs} [params.cellPredicates]
      * @param {import("../../../index.d.ts").MarkOrder} [params.order]
      * @param {string} [params.label]
      * @param {(name: string, value: UniformValue) => void} params.setUniformValue
@@ -394,10 +439,12 @@ export class SelectionResourceManager {
         channels,
         analysisByChannel,
         visibleWhen,
+        cellPredicates,
         order,
         label = "mark",
         setUniformValue,
     }) {
+        this.cellPredicates = !!cellPredicates;
         this.#device = device;
         this.#label = label;
         this.#setUniformValue = setUniformValue;
@@ -406,7 +453,8 @@ export class SelectionResourceManager {
             channels,
             analysisByChannel,
             visibleWhen,
-            order
+            order,
+            cellPredicates
         );
         this.#orderSelectionActive = new Map(
             Array.from(this.#selectionDefs.values())
@@ -501,7 +549,7 @@ export class SelectionResourceManager {
                 wgslName: bufferName,
                 wgslType: "array<HashEntry>",
                 bufferType: "read-only-storage",
-                visibility: "vertex",
+                visibility: this.cellPredicates ? "fragment" : "vertex",
             });
         }
         return extras;
@@ -571,7 +619,7 @@ export class SelectionResourceManager {
                     ? active
                         ? representation.inputComponents === 2
                             ? packHighPrecisionU32Array(interval)
-                            : Array.from(interval)
+                            : interval
                         : representation.inputComponents === 2
                           ? INACTIVE_PACKED_BOUNDS
                           : INACTIVE_INTERVAL_BOUNDS

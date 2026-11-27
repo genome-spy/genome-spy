@@ -1,6 +1,10 @@
 ---
 name: plan-genomespy-change
-description: Create, revise, reconcile, or retire GenomeSpy design proposals and implementation plans. Use before implementing a substantial new feature or when the user asks for a design, architecture proposal, migration plan, implementation plan, or work on plan files under `plans/`; do not use for a brief conversational plan for a routine edit.
+description:
+  Plan GenomeSpy changes and review their architectural fit. Use for substantial
+  features, design proposals, architecture or migration plans, implementation
+  plans, work on plan files under plans/, and reviews of changes to subsystem
+  boundaries. Skip for brief conversational plans for routine edits.
 ---
 
 # Plan a GenomeSpy change
@@ -98,6 +102,14 @@ Apply this strategy when implementation and commits are authorized.
   when the fix is independently meaningful.
 - Re-review fixes only when they materially change behavior, architecture, or
   risk.
+
+## Review for deletability
+
+When a change adds or widens a feature boundary, ask what it would take to
+remove the feature. Identify the shared code, unrelated callers, and public
+contracts that removal would touch. Flag concrete dependencies that make removal
+harder. A small amount of local duplication can be worth keeping when it lets
+implementations change or be removed independently.
 
 ## Retire the plan
 

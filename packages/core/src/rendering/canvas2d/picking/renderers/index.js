@@ -32,6 +32,13 @@ import {
     visitTextInstances,
 } from "../../../immediate/marks/text.js";
 import { requestLogoInkBounds } from "../../../nativeTextMetrics.js";
+import RasterMark from "../../../../marks/raster.js";
+import {
+    createRasterCellLookup,
+    getRasterTileBounds,
+    visitRasterTiles,
+} from "../../../immediate/marks/raster.js";
+import { prepareCanvasRasterTiles } from "../../renderers/raster.js";
 
 const MIN_RULE_PICKING_WIDTH = 1;
 
@@ -55,7 +62,9 @@ const MIN_RULE_PICKING_WIDTH = 1;
  */
 export function renderMarkSoftwarePicking(mark, options) {
     const type = mark.getType();
-    if (type == "arrow") {
+    if (mark instanceof RasterMark) {
+        return renderRaster(mark, options);
+    } else if (type == "arrow") {
         return renderArrow(mark, options);
     } else if (type == "rect") {
         return renderRect(mark, options);
@@ -76,6 +85,7 @@ export function renderMarkSoftwarePicking(mark, options) {
 export function isSoftwarePickingMarkSupported(mark) {
     const type = mark.getType();
     return (
+        mark instanceof RasterMark ||
         type == "rect" ||
         type == "arrow" ||
         type == "point" ||
@@ -83,6 +93,51 @@ export function isSoftwarePickingMarkSupported(mark) {
         type == "tick" ||
         type == "link" ||
         type == "text"
+    );
+}
+
+/** @param {RasterMark} mark @param {SoftwarePickingMarkRenderingOptions} options */
+function renderRaster(mark, options) {
+    const resolution = mark.validateRenderingScales();
+    if (!(mark.getUniformOpacity() > 0)) return 0;
+    const getTile = prepareCanvasRasterTiles(mark, resolution);
+    return visitRasterTiles(
+        mark,
+        options,
+        (datum, x0, y0, dx, dy, triangle) => {
+            const id = getPickingId(mark, datum);
+            if (!id) return;
+            const bounds = getRasterTileBounds(x0, y0, dx, dy, triangle);
+            const clip = triangle?.clip ?? options.visibleBounds;
+            const left = Math.max(bounds.x1, clip.x1);
+            const right = Math.min(bounds.x2, clip.x2);
+            const top = Math.max(bounds.y1, clip.y1);
+            const bottom = Math.min(bounds.y2, clip.y2);
+            if (left >= right || top >= bottom) return;
+            const { width, height, alpha } = getTile(datum);
+            const indexAt = createRasterCellLookup(
+                x0,
+                y0,
+                dx,
+                dy,
+                width,
+                height,
+                triangle
+            );
+            options.rasterizer.fillRect(
+                id,
+                left,
+                top,
+                right - left,
+                bottom - top,
+                (x, y) => {
+                    if (x < left || x >= right || y < top || y >= bottom)
+                        return false;
+                    const index = indexAt(x, y);
+                    return index >= 0 && alpha[index] > 0;
+                }
+            );
+        }
     );
 }
 

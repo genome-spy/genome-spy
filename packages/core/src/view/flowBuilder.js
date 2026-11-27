@@ -19,7 +19,6 @@ import DataSource from "../data/sources/dataSource.js";
 import {
     isChannelDefWithScale,
     isChromPosDef,
-    isDatumDef,
     isFieldDef,
     isPositionalChannel,
     getPrimaryChannel,
@@ -706,29 +705,27 @@ export function linearizeLocusAccess(view) {
  */
 function getCompareParamsForView(view, encoding) {
     const e = { ...view.getEncoding(), ...encoding }.x;
+    if (
+        !isChannelDefWithScale(e) ||
+        !view.getScaleResolution("x")?.isZoomable()
+    ) {
+        return;
+    }
     const normalizedX = view.mark.encoding.x;
-    if (isChannelDefWithScale(e)) {
-        if (view.getScaleResolution("x")?.isZoomable()) {
-            if (isFieldDef(e)) {
-                // TODO: Don't sort if the data is already sorted.
-                // The sort status should be tracked in the data flow.
-                // For instance, genomic data is typically already sorted
-                // by position within a chromosome (but not necessarily
-                // across chromosomes).
-                return isChannelDefWithScale(normalizedX) &&
-                    "buildIndex" in normalizedX &&
-                    normalizedX.buildIndex
-                    ? { field: e.field }
-                    : null;
-            } else if (isDatumDef(e)) {
-                // Nop
-            } else if (isExprDef(e)) {
-                // TODO: Support expr by inserting a Formula transform
-                throw new Error(
-                    "A zoomable x channel must be mapped to a field."
-                );
-            }
-        }
+    const buildIndex =
+        isChannelDefWithScale(normalizedX) && "buildIndex" in normalizedX
+            ? normalizedX.buildIndex
+            : undefined;
+    if (buildIndex === false) {
+        return null;
+    }
+    if (isFieldDef(e)) {
+        return buildIndex ? { field: e.field } : null;
+    }
+    if (isExprDef(e)) {
+        throw new Error(
+            "An indexed zoomable x channel must be mapped to a field."
+        );
     }
 }
 

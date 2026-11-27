@@ -200,7 +200,7 @@ function normalizeRequestedPaths(examplePaths) {
         });
 }
 
-function collectCuratedExamplePaths() {
+export function collectCuratedExamplePaths() {
     /** @type {string[]} */
     const examplePaths = [];
 

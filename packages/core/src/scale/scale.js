@@ -68,7 +68,7 @@ import {
     interpolateRange,
     interpolate as getInterpolate,
     scale as getScale,
-    scheme as getScheme,
+    scheme as vegaScheme,
     scaleImplicit,
     quantizeInterpolator,
 } from "vega-scale";
@@ -79,6 +79,12 @@ import { interpolate, interpolateRound } from "d3-interpolate";
 
 getScale(Band, scaleBand, ["discrete"]);
 getScale(Point, scalePoint, ["discrete"]);
+
+vegaScheme(
+    "higlassfall",
+    interpolateColors(["#ffffff", "#f5a623", "#d0021b", "#000000"])
+);
+vegaScheme("juiceboxred", interpolateColors(["#ffffff", "#ff0000"]));
 
 const Locus = "locus";
 const Index = "index";
@@ -222,8 +228,8 @@ export default function createScale(_, logger) {
     const scaleProps = suppressUninitializedDomain
         ? {
               ..._,
-              // [0, 0] indicates an uninitialized domain.
-              domain: [0, 0],
+              // A pending log domain must remain valid when copied to guides.
+              domain: isLogarithmic(_.type) ? [1, 1] : [0, 0],
           }
         : _;
 
@@ -424,8 +430,7 @@ function domainCheck(
     logger,
     suppressUninitializedDomain = false
 ) {
-    // createScale seeds continuous scales with [0, 0] before data initializes
-    // their domain. Do not report that internal placeholder as user input.
+    // A provisional domain can be replaced when data arrives.
     if (isLogarithmic(type) && !suppressUninitializedDomain) {
         // sum signs of domain values
         // if all pos or all neg, abs(sum) === domain.length
@@ -541,7 +546,7 @@ export function readSchemeName(value) {
 
 function lookupScheme(name) {
     const key = name.toLowerCase();
-    const scheme = getScheme(key);
+    const scheme = vegaScheme(key);
     if (!scheme || scheme === Object.prototype[key]) {
         error(`Unrecognized scheme name: ${name}`);
     }

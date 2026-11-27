@@ -5,7 +5,8 @@ import {
     ViewFactory,
     VIEW_ROOT_NAME,
 } from "./viewFactory.js";
-import { createTestViewContext } from "./testUtils.js";
+import { create, createTestViewContext } from "./testUtils.js";
+import { initializeViewSubtree } from "../data/flowInit.js";
 import UnitView from "./unitView.js";
 import ConcatView from "./concatView.js";
 import ContainerView from "./containerView.js";
@@ -177,6 +178,45 @@ test("Throws if importing is not allowed", async () => {
     await expect(() =>
         factory.createOrImportView({ import: { url: "" } }, undefined)
     ).rejects.toThrow();
+});
+
+test("prepares the deferred HiGlass source declared by an imported view", async () => {
+    const root = await create(
+        {
+            assembly: "hg19",
+            templates: {
+                contactMap: {
+                    projection: "triangle",
+                    data: {
+                        lazy: {
+                            type: "higlass",
+                            url: "https://example.test/",
+                            tileset: "matrix",
+                        },
+                    },
+                    mark: "raster",
+                    encoding: {
+                        x: { dimension: "column", type: "locus" },
+                        y: { dimension: "row", type: "locus" },
+                        color: { field: "value", type: "quantitative" },
+                    },
+                },
+            },
+            vconcat: [{ import: { template: "contactMap" } }],
+        },
+        ConcatView
+    );
+    try {
+        const { dataSources } = initializeViewSubtree(
+            root,
+            root.context.dataFlow
+        );
+        expect(Array.from(dataSources, (source) => source.label)).toContain(
+            "hiGlassSource"
+        );
+    } finally {
+        root.disposeSubtree();
+    }
 });
 
 test("inserted import resolves visibility in its own scope on a live shared scale", async () => {

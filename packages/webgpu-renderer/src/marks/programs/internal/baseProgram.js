@@ -2,7 +2,12 @@ import {
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
 } from "../../../wgsl/prefixes.js";
-import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
+import {
+    fragmentInput,
+    getFragmentInput,
+    isSeriesChannelConfig,
+    isValueChannelConfig,
+} from "../../../types.js";
 import { UniformBuffer } from "../../../utils/uniformBuffer.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
 import { buildBindGroup } from "./bindGroupBuilder.js";
@@ -17,6 +22,7 @@ import {
 } from "../../shaders/visibilityPredicate.js";
 import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import { compileMarkChannels } from "../../shaders/channelIR.js";
+import { asGpuBufferSource } from "../../../utils/webgpuTextureUtils.js";
 import { gpuLabel } from "../../../utils/gpuLabel.js";
 import { sharedScaleResources } from "./sharedScale.js";
 
@@ -69,8 +75,9 @@ function normalizeScalarInputs(inputs, channelNames) {
         if (
             !config ||
             typeof config !== "object" ||
-            !ArrayBuffer.isView(config.data) ||
-            config.data instanceof DataView
+            (!getFragmentInput(config) &&
+                (!ArrayBuffer.isView(config.data) ||
+                    config.data instanceof DataView))
         ) {
             throw new Error(
                 `Scalar input "${name}" must specify typed-array data.`
@@ -89,6 +96,7 @@ function normalizeScalarInputs(inputs, channelNames) {
             /** @type {import("../../../index.d.ts").ChannelConfigResolved} */ (
                 /** @type {unknown} */ ({
                     data: config.data,
+                    [fragmentInput]: getFragmentInput(config),
                     type: config.type,
                     components: 1,
                     inputComponents: 1,
@@ -197,6 +205,7 @@ export function setDebugResourcesEnabled(enabled) {
  * Base class for marks that build WGSL dynamically based on channel configs.
  * Subclasses supply channel lists, defaults, and shader bodies.
  */
+/** @template {object} [TSeries=Record<string, import("../../../index.d.ts").SeriesData>] */
 export default class BaseProgram {
     #destroyed = false;
 
@@ -245,7 +254,7 @@ export default class BaseProgram {
 
     #slotBindingsDirty = false;
 
-    /** @type {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">} */
+    /** @type {Omit<import("../../../index.d.ts").MarkHandle<TSeries, any>, "markId">} */
     #slotHandles;
 
     /**
@@ -300,10 +309,15 @@ export default class BaseProgram {
             visualChannelNames
         );
         this.#scalarSlots = normalizeScalarSlots(config.scalarSlots);
+        const cellPredicates =
+            /** @type {import("../../shaders/channelIR.js").CellPredicateInputs | undefined} */ (
+                config.cellPredicates
+            );
         const visibleWhen = normalizeVisibilityPredicate(
             /** @type {import("../../../index.d.ts").VisibilityPredicate | undefined} */ (
                 config.visibleWhen
-            )
+            ),
+            !cellPredicates
         );
         /** @internal */
         this._order = normalizeOrder(config.order);
@@ -319,6 +333,7 @@ export default class BaseProgram {
             analysisByChannel: normalizedChannels.analysisByChannel,
             channelNames: publicChannelNames,
             inputNames: new Set(Object.keys(normalizedInputs)),
+            cellPredicates,
             seriesIndexExpression:
                 typeof config.seriesIndexExpression === "string"
                     ? config.seriesIndexExpression
@@ -330,9 +345,11 @@ export default class BaseProgram {
             this.device,
             this._channels,
             this.channelSpecs,
-            this.label
+            this.label,
+            !cellPredicates
         );
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
+        const initialSeries = this._seriesBuffers.prepareSeries({}, this.count);
         this.#scaleResources = new ScaleResourceManager({
             device: this.device,
             analysisByChannel: compiledChannels.analysisByChannel,
@@ -348,6 +365,7 @@ export default class BaseProgram {
             channels: this._channels,
             analysisByChannel: compiledChannels.analysisByChannel,
             visibleWhen,
+            cellPredicates,
             order: this._order,
             label: this.label,
             setUniformValue: (name, value) =>
@@ -419,7 +437,7 @@ export default class BaseProgram {
                     name: bindingName,
                     kind: "buffer",
                     role: "extraBuffer",
-                    visibility: "vertex",
+                    visibility: cellPredicates ? "all" : "vertex",
                     bufferType: "uniform",
                     wgslType: "array<vec4<f32>, 3>",
                 });
@@ -440,7 +458,10 @@ export default class BaseProgram {
             pickFormat: renderer.pickFormat,
             compiledChannels,
             uniformLayout: this.#uniformLayout,
-            shaderBody: this.shaderBody,
+            shaderBody: this.buildShaderBody(
+                compiledChannels.channelIRs,
+                this.#selectionResources.selectionDefs
+            ),
             usesPickingEnabledInVertex: this.usesPickingEnabledInVertex,
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
@@ -478,15 +499,7 @@ export default class BaseProgram {
         this.#getPipeline = getPipeline;
         this.#getPickPipeline = getPickPipeline;
 
-        // Initialize any series-backed channels.
-        this.updateSeries(
-            Object.fromEntries(
-                Object.entries(this._channels)
-                    .filter(([, v]) => isSeriesChannelConfig(v))
-                    .map(([k, v]) => [k, v.data])
-            ),
-            this.count
-        );
+        this._applyPreparedSeries(initialSeries, this.count, false);
         this.#scaleResources.subscribeSharedScales((rebind) =>
             this._queueSlotUpdate(rebind)
         );
@@ -561,11 +574,53 @@ export default class BaseProgram {
     _initializeExtraResources() {}
 
     /**
+     * @param {string} name
+     * @param {ArrayBuffer | ArrayBufferView} data
+     * @param {number} minimumSize Byte size of one declared WGSL array element.
+     * @returns {boolean} Whether the buffer identity changed.
+     * @protected
+     */
+    _writeExtraBuffer(name, data, minimumSize) {
+        // Zero-instance draws still validate the storage element binding size.
+        const size = Math.max(minimumSize, data.byteLength);
+        const previous = this._extraBuffers.get(name);
+        const changed = !previous || previous.size < size;
+        const buffer = changed
+            ? this.device.createBuffer({
+                  label: gpuLabel(this.label, name),
+                  size,
+                  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+              })
+            : previous;
+        if (data.byteLength) {
+            this.device.queue.writeBuffer(
+                buffer,
+                0,
+                ArrayBuffer.isView(data) ? asGpuBufferSource(data) : data
+            );
+        }
+        if (changed) {
+            this._extraBuffers.set(name, buffer);
+            previous?.destroy();
+        }
+        return changed;
+    }
+
+    /**
      * @returns {string}
      * @protected
      */
     get shaderBody() {
         return "";
+    }
+
+    /**
+     * @param {import("../../shaders/channelIR.js").ChannelIR[]} _channels
+     * @param {import("./selectionResources.js").SelectionDef[]} _selections
+     * @protected
+     */
+    buildShaderBody(_channels, _selections) {
+        return this.shaderBody;
     }
 
     /**
@@ -626,12 +681,27 @@ export default class BaseProgram {
      * @returns {void}
      */
     updateSeries(channels, count, boundResourcesChanged = false) {
-        const inferred = count ?? this._seriesBuffers.inferCount(channels);
-        this.count = inferred ?? this.count ?? 1;
-        const packedBuffersChanged = this._seriesBuffers.updateSeries(
-            channels,
-            this.count
+        const nextCount =
+            count ??
+            this._seriesBuffers.inferCount(channels) ??
+            this.count ??
+            1;
+        this._applyPreparedSeries(
+            this._seriesBuffers.prepareSeries(channels, nextCount),
+            nextCount,
+            boundResourcesChanged
         );
+    }
+
+    /**
+     * @protected
+     * @param {ReturnType<SeriesBufferManager["prepareSeries"]>} prepared
+     * @param {number} count
+     * @param {boolean} boundResourcesChanged
+     */
+    _applyPreparedSeries(prepared, count, boundResourcesChanged) {
+        const packedBuffersChanged = this._seriesBuffers.applySeries(prepared);
+        this.count = count;
 
         if (packedBuffersChanged || boundResourcesChanged || !this.#bindGroup) {
             this._rebuildBindGroup();
@@ -642,12 +712,19 @@ export default class BaseProgram {
     /**
      * Replace the complete logical series set exposed through the public handle.
      *
-     * @param {Record<string, import("../../../index.d.ts").SeriesData>} channels
+     * @param {TSeries} channels
      * @param {number} [count]
      * @returns {void}
      */
     replaceSeries(channels, count) {
-        this.updateSeries(this._resolveSeries(channels), count);
+        this.updateSeries(
+            this._resolveSeries(
+                /** @type {Record<string, import("../../../index.d.ts").SeriesData>} */ (
+                    channels
+                )
+            ),
+            count
+        );
     }
 
     /**
@@ -843,7 +920,7 @@ export default class BaseProgram {
     /**
      * Slot handles for scale/value/selection updates (default + conditional branches).
      *
-     * @returns {Omit<import("../../../index.d.ts").MarkHandle<any, any>, "markId">}
+     * @returns {Omit<import("../../../index.d.ts").MarkHandle<TSeries, any>, "markId">}
      */
     getSlotHandles() {
         return this.#slotHandles;
@@ -1130,10 +1207,7 @@ export default class BaseProgram {
                         channel.inputComponents ?? channel.components ?? 1,
                 });
             }
-            if (isSeriesChannelConfig(channel) && channel.scale) {
-                this.#scaleResources.addScaleUniforms(layout, name, channel);
-            }
-            if (isValueChannelConfig(channel) && channel.scale) {
+            if (channel.scale) {
                 this.#scaleResources.addScaleUniforms(layout, name, channel);
             }
         }
@@ -1164,11 +1238,7 @@ export default class BaseProgram {
      */
     #initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (
-                (isSeriesChannelConfig(channel) ||
-                    isValueChannelConfig(channel)) &&
-                channel.scale
-            ) {
+            if (channel.scale) {
                 const updater = this.#scaleResources.initializeScale(
                     name,
                     channel

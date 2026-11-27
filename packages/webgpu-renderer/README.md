@@ -185,8 +185,8 @@ Use `rgba8Unorm` as the scale for a `u32` series of packed colors. Built-in
 marks and scale factories use explicit, side-effect-free subpaths so bundlers
 can exclude unused features.
 
-Available mark subpaths are `marks/point`, `marks/rect`, `marks/rule`,
-`marks/link`, `marks/arrow`, and `marks/text`. Scale subpaths are
+Available mark subpaths are `marks/point`, `marks/rect`, `marks/raster`,
+`marks/rule`, `marks/link`, `marks/arrow`, and `marks/text`. Scale subpaths are
 `scales/identity`, `scales/linear`, `scales/log`, `scales/pow`, `scales/sqrt`,
 `scales/symlog`, `scales/quantize`, `scales/band`, `scales/index`,
 `scales/ordinal`, and `scales/threshold`.
@@ -307,6 +307,53 @@ transient attachments are pooled within a bounded free-cache budget.
 
 Picking remains a separate flat, single-sampled frame. Visual render scopes do
 not change pick ordering, IDs, or attachment ownership.
+
+### Raster tiles
+
+With the renderer from [Quick start](#quick-start), draw two adjacent 2×2 tiles
+with a shared color scale.
+
+```js
+import { rasterMark } from "@genome-spy/webgpu-renderer/marks/raster";
+import { linearScale } from "@genome-spy/webgpu-renderer/scales/linear";
+
+const mark = renderer.createMark(rasterMark, {
+  data: {
+    tiles: {
+      // Left, right, top, and bottom edges in viewport-local logical pixels.
+      x0: new Float32Array([20, 120]),
+      x1: new Float32Array([120, 220]),
+      y0: new Float32Array([20, 20]),
+      y1: new Float32Array([140, 140]),
+
+      // Grid dimensions in cells, one entry per tile.
+      columns: new Uint32Array([2, 2]),
+      rows: new Uint32Array([2, 2]),
+
+      // Starting index of each tile in every cell field.
+      offsets: new Uint32Array([0, 4]),
+    },
+    cells: {
+      // Row-major values, left tile first.
+      value: new Float32Array([0.1, 0.4, 0.7, 1, 1, 0.7, 0.4, 0.1]),
+    },
+  },
+  channels: {
+    fill: {
+      input: "value",
+      scale: linearScale({
+        domain: [0, 1],
+        range: ["#eff6ff", "#1d4ed8"],
+      }),
+    },
+  },
+});
+
+renderer.render({ draws: [{ mark }] });
+```
+
+With `position.x.scale` or `position.y.scale`, supply that axis's tile edges in
+data units. The scale maps both edges to logical pixels.
 
 ### Arrow opacity
 
@@ -609,6 +656,10 @@ const mark = renderer.createMark(pointMark, {
 renderer.render({ draws: [{ mark, placement: { set: placements } }] });
 ```
 
+Raster marks use the same options, with one instance per tile. In per-instance
+mode, pass the current tile indices as `placementIndex` in
+`mark.series.replace({ tiles, cells, placementIndex })`.
+
 The rectangle payload is 16 bytes per placement before capacity alignment. A
 per-instance index adds four bytes per logical instance. A zero-area rectangle
 suppresses that placement in both normal and picking passes. Set
@@ -617,11 +668,11 @@ the selected rectangle.
 
 ### Visibility predicates
 
-Every built-in mark accepts an immutable `visibleWhen` predicate. It can test
-selections or compare scalar channels, non-visual `inputs`, and retained
-`scalarSlots`. Tests can be combined with non-empty `all` and `any` nodes or
-negated with `not`. The same predicate runs in normal and picking vertex
-pipelines.
+Every built-in mark accepts an immutable `visibleWhen` selection predicate for
+rendering and picking. Raster predicates apply to individual cells.
+Ordinary marks also support comparisons of scalar channels, non-visual
+`inputs`, and retained `scalarSlots`. Combine tests with non-empty `all` and
+`any` nodes or negate them with `not`.
 
 ```js
 const mark = renderer.createMark(pointMark, {

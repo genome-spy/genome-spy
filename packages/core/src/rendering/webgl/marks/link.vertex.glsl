@@ -210,7 +210,7 @@ void main(void) {
 
             // This is a bit poor approximation of a circular arc, but it's probably enough for most purposes.
             // TODO: Consider a more sophisticated approach: https://stackoverflow.com/a/44829356/1547896
-            vec2 controlOffset = chordNormal * height / 0.75;
+            vec2 controlOffset = chordNormal * (uFlipArc ? -height : height) / 0.75;
             p2 = p1 + controlOffset;
             p3 = p4 + controlOffset;
         }

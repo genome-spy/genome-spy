@@ -108,7 +108,8 @@ export function buildMarkShader({
     extraResources = [],
     placementIndex,
 }) {
-    const { channels, channelIRs, channelNames, inputNames } = compiledChannels;
+    const { channels, channelIRs, channelNames, inputNames, cellPredicates } =
+        compiledChannels;
     const drawPlacement =
         placementIndex &&
         "source" in placementIndex &&
@@ -178,9 +179,16 @@ export function buildMarkShader({
         domainMapChannelIRs.length
     ) {
         const binding = bindingIndex++;
+        const readInFragment = channelIRs.some(
+            (ir) =>
+                ir.sourceKind === "fragment" &&
+                (ir.needsDomainMap || ir.needsOrdinalRange)
+        );
         resourceBindings.push({
             binding,
-            visibility: vertexComputeVisibility,
+            visibility:
+                vertexComputeVisibility |
+                (readInFragment ? GPUShaderStage.FRAGMENT : 0),
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name: "scaleTables", role: "scaleTables" });
@@ -195,28 +203,32 @@ export function buildMarkShader({
     const channelIRByName = new Map(
         channelIRs.map((channelIR) => [channelIR.name, channelIR])
     );
+    /** @param {string} name */
+    const getSelectionInput = (name) =>
+        channelIRByName.get(
+            cellPredicates ? cellPredicates.fields.get(name)?.name : name
+        );
     const selectionDefsByName = new Map(
         selectionDefs.map((def) => [def.name, def])
     );
-    const visibilityPredicate = buildVisibilityPredicate({
-        predicate: visibleWhen,
-        functionName:
-            order || hasGaps ? "isInstanceVisibleBase" : "isInstanceVisible",
+    const predicateInputs = {
         channelIRs,
         channelNames,
         inputNames,
         scalarSlots,
         selectionDefs,
+    };
+    const visibilityPredicate = buildVisibilityPredicate({
+        ...predicateInputs,
+        predicate: visibleWhen,
+        functionName:
+            order || hasGaps ? "isInstanceVisibleBase" : "isInstanceVisible",
     });
     const orderPredicate = order
         ? buildVisibilityPredicate({
+              ...predicateInputs,
               predicate: order.when,
               functionName: "isInstanceOrderMatch",
-              channelIRs,
-              channelNames,
-              inputNames,
-              scalarSlots,
-              selectionDefs,
           })
         : "";
     const gapChecks = gapChannels.map(({ name, channel, sharedScaleName }) => {
@@ -280,7 +292,7 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
 `;
             }
             case "multi": {
-                const input = channelIRByName.get(def.input ?? "uniqueId");
+                const input = getSelectionInput(def.input ?? "uniqueId");
                 const bufferName = SELECTION_BUFFER_PREFIX + def.name;
                 const lookupName = hashLookupFunctionName(bufferName);
                 return /* wgsl */ `
@@ -304,15 +316,23 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                         const componentIndex = components.indexOf(
                             projection.component
                         );
-                        const channelIR = channelIRByName.get(projection.input);
-                        const secondaryIR = projection.secondaryInput
-                            ? channelIRByName.get(projection.secondaryInput)
-                            : undefined;
-                        if (
-                            componentIndex < 0 ||
-                            !channelIR ||
-                            (projection.secondaryInput && !secondaryIR)
-                        ) {
+                        const {
+                            value,
+                            secondary,
+                            readPackedBound = (/** @type {string} */ field) =>
+                                field,
+                        } = "position" in projection
+                            ? cellPredicates.position(projection.position)
+                            : {
+                                  value: getSelectionInput(projection.input)
+                                      ?.rawValueExpr,
+                                  secondary:
+                                      projection.secondaryInput &&
+                                      getSelectionInput(
+                                          projection.secondaryInput
+                                      )?.rawValueExpr,
+                              };
+                        if (componentIndex < 0 || !value) {
                             throw new Error(
                                 `Selection "${def.name}" has an unresolved projection input or component.`
                             );
@@ -334,11 +354,9 @@ fn ${SELECTION_EMPTY_PREFIX}${def.name}(i: u32) -> bool {
                             packed ? `hpLess(${a}, ${b})` : `(${a} < ${b})`;
                         const lo = packed ? "lo" : "min(bound.x, bound.y)";
                         const hi = packed ? "hi" : "max(bound.x, bound.y)";
-                        const value = channelIR.rawValueExpr;
-                        const secondary = secondaryIR?.rawValueExpr;
                         const boundsSetup = packed
-                            ? `    let bound0 = params.${bounds}.xy;
-    let bound1 = params.${bounds}.zw;
+                            ? `    let bound0 = ${readPackedBound(`params.${bounds}.xy`)};
+    let bound1 = ${readPackedBound(`params.${bounds}.zw`)};
     let lo = select(bound1, bound0, hpLessEq(bound0, bound1));
     let hi = select(bound0, bound1, hpLessEq(bound0, bound1));`
                             : `    let bound = params.${bounds};`;
@@ -692,11 +710,14 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
         const { name } = channelIR;
         const hasConditions = (channelIR.channel.conditions?.length ?? 0) > 0;
         const baseFunctionName = hasConditions ? `${name}_base` : name;
+        const mappingName = channelIR.transparentOnNonFinite
+            ? `${name}_finite`
+            : baseFunctionName;
         if (channelIR.needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
-                    functionName: baseFunctionName,
+                    functionName: mappingName,
                     scaleDef: channelIR.scaleDef,
                     rawValueExpr: channelIR.rawValueExpr,
                     scalarType: channelIR.scalarType,
@@ -712,9 +733,17 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
                 })
             );
         } else {
-            channelFns.push(
-                emitPassthroughFunction(channelIR, baseFunctionName)
-            );
+            channelFns.push(emitPassthroughFunction(channelIR, mappingName));
+        }
+        if (channelIR.transparentOnNonFinite) {
+            const type = channelIR.outputComponents === 1 ? "f32" : "vec4<f32>";
+            channelFns.push(/* wgsl */ `
+fn ${SCALED_FUNCTION_PREFIX}${baseFunctionName}(i: u32) -> ${type} {
+    if ((bitcast<u32>(${channelIR.rawValueExpr}) & 0x7f800000u) == 0x7f800000u) {
+        return ${type}(0.0);
+    }
+    return ${SCALED_FUNCTION_PREFIX}${mappingName}(i);
+}`);
         }
         if (hasConditions) {
             channelFns.push(

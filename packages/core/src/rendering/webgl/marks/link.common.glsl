@@ -1,5 +1,6 @@
 layout(std140) uniform Mark {
     uniform float uArcHeightFactor;
+    uniform bool uFlipArc;
 
     /** Make very small arcs visible */
     uniform float uMinArcHeight;
