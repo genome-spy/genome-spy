@@ -1,9 +1,41 @@
 {
   "description": [
     "The SELL promoter–enhancer contact",
-    "Pan or zoom to explore the GM12878 contact map alongside histone signals and nearby genes. Dashed guides trace three published contacts to their genomic anchors."
+    "A rotated Hi-C map shows three annotated chromatin contacts at the SELL locus in GM12878 cells, alongside H3K4me1 and H3K4me3 signals and nearby genes."
   ],
   "assembly": "hg19",
+
+  "params": [
+    { "name": "contactHover", "persist": false },
+    { "name": "contactSelection", "persist": false }
+  ],
+
+  "config": {
+    "style": {
+      "annotation-tooltip": {
+        "tooltip": {
+          "handler": "default",
+          "params": { "genomicCoordinates": { "x": { "mode": "disabled" } } }
+        }
+      }
+    }
+  },
+
+  "data": {
+    "values": [
+      { "left": 169445000, "right": 169515000, "label": "SLC19A2-F5" },
+      {
+        "left": 169572500,
+        "right": 169677500,
+        "label": "SELL"
+      },
+      { "left": 169565000, "right": 169775000, "label": "SELP-FIRRM" }
+    ]
+  },
+  "transform": [
+    { "type": "identifier" },
+    { "type": "formula", "expr": "[datum.left, datum.right]", "as": "_anchors" }
+  ],
 
   "scales": {
     "x": {
@@ -26,325 +58,441 @@
       "height": { "grow": 1, "minPx": 100 },
       "projection": "triangle",
 
-      "data": {
-        "lazy": {
-          "type": "hic",
-          "url": "https://data.genomespy.app/datasets/geo-gm12878-dpnii-hic/v1/gm12878-dpnii-cis.hic",
-          "normalization": "KR"
-        }
-      },
-
       "layer": [
         {
-          "name": "contactMatrix",
-          "mark": "raster",
-          "encoding": {
-            "x": { "dimension": "column", "type": "locus" },
-            "y": { "dimension": "row", "type": "locus" },
-            "color": {
-              "field": "value",
-              "type": "quantitative",
-              "title": "KR contacts",
-              "scale": {
-                "type": "log",
-                "scheme": "juiceboxred",
-                "clamp": true
-              },
-              "legend": { "style": null, "orient": "right" }
+          "name": "hiCTiles",
+          "data": {
+            "lazy": {
+              "type": "hic",
+              "url": "https://data.genomespy.app/datasets/geo-gm12878-dpnii-hic/v1/gm12878-dpnii-cis.hic",
+              "normalization": "KR"
             }
-          }
+          },
+          "layer": [
+            {
+              "name": "contactMatrix",
+              "mark": "raster",
+              "encoding": {
+                "x": { "dimension": "column", "type": "locus" },
+                "y": { "dimension": "row", "type": "locus" },
+                "color": {
+                  "field": "value",
+                  "type": "quantitative",
+                  "title": "KR contacts",
+                  "scale": {
+                    "type": "log",
+                    "scheme": "juiceboxred",
+                    "clamp": true
+                  },
+                  "legend": { "style": null, "orient": "right" }
+                }
+              }
+            },
+
+            {
+              "name": "binSizeOverlay",
+              "projection": null,
+              "params": [
+                { "name": "labelFontSize", "value": 11 },
+                { "name": "labelLineHeight", "expr": "1.2 * labelFontSize" },
+                { "name": "labelPadding", "value": 3 },
+                { "name": "labelInset", "value": 4 }
+              ],
+              "transform": [
+                { "type": "aggregate", "groupby": ["binSize"] },
+                {
+                  "type": "formula",
+                  "as": "resolutionLabel",
+                  "expr": "'Bin size: ' + format(datum.binSize, ',') + ' bp'"
+                },
+                {
+                  "type": "measureText",
+                  "field": "resolutionLabel",
+                  "fontSize": { "expr": "labelFontSize" },
+                  "as": "labelWidth"
+                }
+              ],
+              "encoding": {
+                "x": { "value": 1 },
+                "y": { "value": 0 }
+              },
+              "layer": [
+                {
+                  "name": "binSizeBackground",
+                  "mark": {
+                    "type": "rect",
+                    "fill": "white",
+                    "fillOpacity": 0.7,
+                    "x2": 1,
+                    "y2": 0,
+                    "x2Offset": { "expr": "-labelInset" },
+                    "yOffset": {
+                      "expr": "-labelInset - 2 * labelPadding - labelLineHeight"
+                    },
+                    "y2Offset": { "expr": "-labelInset" }
+                  },
+                  "encoding": {
+                    "xOffset": {
+                      "expr": "-labelInset - 2 * labelPadding - datum.labelWidth",
+                      "scale": null
+                    }
+                  }
+                },
+                {
+                  "name": "binSizeLabel",
+                  "mark": {
+                    "type": "text",
+                    "align": "right",
+                    "baseline": "middle",
+                    "size": { "expr": "labelFontSize" },
+                    "xOffset": { "expr": "-labelInset - labelPadding" },
+                    "yOffset": {
+                      "expr": "-labelInset - labelPadding - labelLineHeight / 2"
+                    }
+                  },
+                  "encoding": {
+                    "text": { "field": "resolutionLabel" }
+                  }
+                }
+              ]
+            }
+          ]
         },
+
         {
           "name": "publishedContacts",
-          "data": {
-            "values": [
-              { "left": 169445000, "right": 169515000, "label": "SLC19A2-F5" },
-              {
-                "left": 169572500,
-                "right": 169677500,
-                "label": "SELL"
-              },
-              { "left": 169565000, "right": 169775000, "label": "SELP-FIRRM" }
-            ]
-          },
           "encoding": {
             "x": { "field": "left", "type": "locus" },
-            "y": { "field": "right", "type": "locus" }
+            "y": { "field": "right", "type": "locus" },
+            "tooltip": [
+              { "field": "label", "title": "Contact" },
+              {
+                "expr": "'chr1:' + format(datum.left + 1, ',d')",
+                "title": "Left anchor"
+              },
+              {
+                "expr": "'chr1:' + format(datum.right + 1, ',d')",
+                "title": "Right anchor"
+              }
+            ]
           },
           "layer": [
             {
               "name": "contactGuides",
               "transform": [
-                {
-                  "type": "formula",
-                  "expr": "[datum.left, datum.right]",
-                  "as": "anchor"
-                },
-                { "type": "flatten", "fields": ["anchor"] }
+                { "type": "flatten", "fields": ["_anchors"], "as": ["_anchor"] }
               ],
               "mark": {
                 "type": "rule",
                 "color": "#334155",
-                "size": 1,
                 "strokeDash": [4, 3],
                 "clip": true,
                 "tooltip": null
               },
               "encoding": {
-                "x2": { "field": "anchor" },
-                "y2": { "field": "anchor" }
+                "x2": { "field": "_anchor" },
+                "y2": { "field": "_anchor" },
+                "size": {
+                  "condition": {
+                    "param": "contactSelection",
+                    "empty": false,
+                    "value": 1.5
+                  },
+                  "value": 1
+                }
               }
             },
             {
               "name": "contactMarkers",
+              "params": [
+                {
+                  "name": "contactHover",
+                  "push": "outer",
+                  "persist": false,
+                  "select": {
+                    "type": "point",
+                    "on": "pointerover",
+                    "clear": "mouseout"
+                  }
+                },
+                {
+                  "name": "contactSelection",
+                  "push": "outer",
+                  "persist": false,
+                  "select": { "type": "point", "on": "click", "toggle": false }
+                }
+              ],
               "mark": {
                 "type": "point",
+                "style": "annotation-tooltip",
                 "size": 130,
                 "fillOpacity": 0,
                 "stroke": "#334155",
-                "strokeWidth": 1.5,
-                "clip": true,
-                "tooltip": null
+                "cursor": "pointer",
+                "clip": true
+              },
+              "encoding": {
+                "strokeWidth": {
+                  "condition": {
+                    "test": {
+                      "param": { "or": ["contactHover", "contactSelection"] },
+                      "empty": false
+                    },
+                    "value": 2
+                  },
+                  "value": 1.5
+                }
               }
             },
             {
               "name": "contactLabels",
+              "params": [
+                {
+                  "name": "contactHover",
+                  "push": "outer",
+                  "persist": false,
+                  "select": {
+                    "type": "point",
+                    "on": "pointerover",
+                    "clear": "mouseout"
+                  }
+                },
+                {
+                  "name": "contactSelection",
+                  "push": "outer",
+                  "persist": false,
+                  "select": { "type": "point", "on": "click", "toggle": false }
+                }
+              ],
               "transform": [
                 {
                   "type": "measureText",
                   "field": "label",
                   "fontSize": 11,
-                  "as": "labelWidth"
+                  "as": "_labelWidth"
                 },
                 {
                   "type": "formula",
-                  "expr": "datum.labelWidth + 6",
-                  "as": "labelWidth"
+                  "expr": "datum._labelWidth + 6",
+                  "as": "_labelWidth"
                 },
                 {
                   "type": "displace2d",
                   "key": "label",
                   "x": "left",
                   "y": "right",
-                  "width": "labelWidth",
+                  "width": "_labelWidth",
                   "height": 15,
                   "anchorWidth": 16,
-                  "anchorHeight": 16
+                  "anchorHeight": 16,
+                  "as": ["_xDisplacement", "_yDisplacement"]
                 }
               ],
               "mark": {
                 "type": "text",
+                "style": "annotation-tooltip",
                 "align": "center",
                 "baseline": "middle",
                 "fontWeight": "bold",
                 "size": 11,
                 "color": "#334155",
-                "clip": true,
-                "tooltip": null
+                "cursor": "pointer",
+                "clip": true
               },
               "encoding": {
                 "text": { "field": "label" },
-                "xOffset": { "field": "xDisplacement", "scale": null },
-                "yOffset": { "field": "yDisplacement", "scale": null }
-              }
-            }
-          ]
-        },
-        {
-          "name": "binSizeOverlay",
-          "projection": null,
-          "params": [
-            { "name": "labelFontSize", "value": 11 },
-            { "name": "labelLineHeight", "expr": "1.2 * labelFontSize" },
-            { "name": "labelPadding", "value": 3 },
-            { "name": "labelInset", "value": 4 }
-          ],
-          "transform": [
-            { "type": "aggregate", "groupby": ["binSize"] },
-            {
-              "type": "formula",
-              "as": "resolutionLabel",
-              "expr": "'Bin size: ' + format(datum.binSize, ',') + ' bp'"
-            },
-            {
-              "type": "measureText",
-              "field": "resolutionLabel",
-              "fontSize": { "expr": "labelFontSize" },
-              "as": "labelWidth"
-            }
-          ],
-          "encoding": {
-            "x": { "value": 1 },
-            "y": { "value": 0 }
-          },
-          "layer": [
-            {
-              "name": "binSizeBackground",
-              "mark": {
-                "type": "rect",
-                "fill": "white",
-                "fillOpacity": 0.7,
-                "x2": 1,
-                "y2": 0,
-                "x2Offset": { "expr": "-labelInset" },
-                "yOffset": {
-                  "expr": "-labelInset - 2 * labelPadding - labelLineHeight"
-                },
-                "y2Offset": { "expr": "-labelInset" }
-              },
-              "encoding": {
-                "xOffset": {
-                  "expr": "-labelInset - 2 * labelPadding - datum.labelWidth",
-                  "scale": null
-                }
-              }
-            },
-            {
-              "name": "binSizeLabel",
-              "mark": {
-                "type": "text",
-                "align": "right",
-                "baseline": "middle",
-                "size": { "expr": "labelFontSize" },
-                "xOffset": { "expr": "-labelInset - labelPadding" },
-                "yOffset": {
-                  "expr": "-labelInset - labelPadding - labelLineHeight / 2"
-                }
-              },
-              "encoding": {
-                "text": { "field": "resolutionLabel" }
+                "xOffset": { "field": "_xDisplacement", "scale": null },
+                "yOffset": { "field": "_yDisplacement", "scale": null }
               }
             }
           ]
         }
       ]
     },
+
     {
-      "name": "h3k4me1Signal",
-      "title": { "text": "H3K4me1", "style": "overlay-title" },
-      "height": 40,
-      "view": { "fill": "#f8f8f8" },
-      "axes": { "y": { "style": "igv-axis", "title": null } },
-      "data": {
-        "lazy": {
-          "type": "bigwig",
-          "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneGm12878H3k04me1StdSigV2.bigWig"
-        }
-      },
-      "mark": { "type": "rect", "color": "#7b589d" },
-      "encoding": {
-        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
-        "x2": { "chrom": "chrom", "pos": "end" },
-        "y": { "field": "score", "type": "quantitative" }
-      }
-    },
-    {
-      "name": "h3k4me3Signal",
-      "title": { "text": "H3K4me3", "style": "overlay-title" },
-      "height": 40,
-      "view": { "fill": "#f8f8f8" },
-      "axes": { "y": { "style": "igv-axis", "title": null } },
-      "data": {
-        "lazy": {
-          "type": "bigwig",
-          "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneGm12878H3k4me3StdSig.bigWig"
-        }
-      },
-      "mark": { "type": "rect", "color": "#36788c" },
-      "encoding": {
-        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
-        "x2": { "chrom": "chrom", "pos": "end" },
-        "y": { "field": "score", "type": "quantitative" }
-      }
-    },
-    {
-      "name": "geneTrack",
-      "height": { "step": 20 },
-      "viewportHeight": 40,
-      "params": [{ "name": "geneFontSize", "value": 10 }],
-      "data": {
-        "values": [
-          { "gene": "SLC19A2", "start": 169433146, "end": 169455182 },
-          { "gene": "F5", "start": 169481188, "end": 169555719 },
-          { "gene": "SELP", "start": 169558086, "end": 169599362 },
-          { "gene": "SELL", "start": 169659807, "end": 169680761 },
-          { "gene": "SELE", "start": 169691780, "end": 169703220 },
-          { "gene": "FIRRM", "start": 169764180, "end": 169823221 }
-        ]
-      },
-      "transform": [
+      "name": "lowerTracks",
+      "spacing": 8,
+      "resolve": { "axis": { "x": "shared" } },
+      "annotate": [
         {
-          "type": "measureText",
-          "field": "gene",
-          "fontSize": { "expr": "geneFontSize" },
-          "as": "labelWidth"
-        },
-        {
-          "type": "formula",
-          "expr": "floor((datum.start + datum.end) / 2)",
-          "as": "center"
-        },
-        { "type": "collect" },
-        {
-          "type": "formula",
-          "expr": "width * scale('x', datum.center)",
-          "as": "centerPx"
-        },
-        {
-          "type": "formula",
-          "expr": "clamp(datum.centerPx - datum.labelWidth / 2, 2, max(2, width - datum.labelWidth - 2))",
-          "as": "labelLeft"
-        },
-        {
-          "type": "formula",
-          "expr": "min(max(0, width * scale('x', datum.start)), datum.labelLeft - 3)",
-          "as": "occupiedStart"
-        },
-        {
-          "type": "formula",
-          "expr": "max(min(width, width * scale('x', datum.end)), datum.labelLeft + datum.labelWidth + 3)",
-          "as": "occupiedEnd"
-        },
-        { "type": "collect", "sort": { "field": "occupiedStart" } },
-        {
-          "type": "pileup",
-          "start": "occupiedStart",
-          "end": "occupiedEnd",
-          "as": "lane",
-          "spacing": 0
-        }
-      ],
-      "scales": { "y": { "reverse": true } },
-      "encoding": {
-        "y": { "field": "lane", "type": "ordinal", "band": 0.25, "axis": null }
-      },
-      "layer": [
-        {
-          "name": "geneIntervals",
-          "mark": { "type": "rule", "size": 2, "clip": true },
-          "encoding": {
-            "x": { "field": "start", "type": "locus" },
-            "x2": { "field": "end" }
-          }
-        },
-        {
-          "name": "geneLabels",
+          "name": "contactAnchorRules",
+          "transform": [
+            { "type": "flatten", "fields": ["_anchors"], "as": ["_anchor"] }
+          ],
           "mark": {
-            "type": "text",
-            "align": "center",
-            "baseline": "bottom",
-            "size": { "expr": "geneFontSize" },
-            "dy": -3,
-            "clip": true
+            "type": "rule",
+            "color": "#334155",
+            "strokeDash": [4, 3],
+            "tooltip": null
           },
           "encoding": {
-            "x": { "field": "center", "type": "locus", "band": 0 },
-            "xOffset": {
-              "expr": "datum.labelLeft + datum.labelWidth / 2 - datum.centerPx",
-              "scale": null
-            },
-            "text": { "field": "gene" }
+            "x": { "field": "_anchor", "type": "locus", "band": 0 },
+            "y": { "value": 0 },
+            "y2": { "value": 1 },
+            "size": {
+              "condition": [
+                {
+                  "param": "contactSelection",
+                  "empty": false,
+                  "value": 1.5
+                },
+                { "param": "contactHover", "empty": false, "value": 1 }
+              ],
+              "value": 0
+            }
           }
+        }
+      ],
+      "vconcat": [
+        {
+          "name": "h3k4me1Signal",
+          "title": { "text": "H3K4me1", "style": "overlay-title" },
+          "height": 40,
+          "view": { "fill": "#f8f8f8" },
+          "axes": { "y": { "style": "igv-axis", "title": null } },
+          "data": {
+            "lazy": {
+              "type": "bigwig",
+              "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneGm12878H3k04me1StdSigV2.bigWig"
+            }
+          },
+          "mark": { "type": "rect", "color": "#7b589d" },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "end" },
+            "y": { "field": "score", "type": "quantitative" }
+          }
+        },
+
+        {
+          "name": "h3k4me3Signal",
+          "title": { "text": "H3K4me3", "style": "overlay-title" },
+          "height": 40,
+          "view": { "fill": "#f8f8f8" },
+          "axes": { "y": { "style": "igv-axis", "title": null } },
+          "data": {
+            "lazy": {
+              "type": "bigwig",
+              "url": "https://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneGm12878H3k4me3StdSig.bigWig"
+            }
+          },
+          "mark": { "type": "rect", "color": "#36788c" },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "end" },
+            "y": { "field": "score", "type": "quantitative" }
+          }
+        },
+
+        {
+          "name": "geneTrack",
+          "height": { "step": 20 },
+          "viewportHeight": 40,
+          "params": [{ "name": "geneFontSize", "value": 10 }],
+          "data": {
+            "values": [
+              { "gene": "SLC19A2", "start": 169433146, "end": 169455182 },
+              { "gene": "F5", "start": 169481188, "end": 169555719 },
+              { "gene": "SELP", "start": 169558086, "end": 169599362 },
+              { "gene": "SELL", "start": 169659807, "end": 169680761 },
+              { "gene": "SELE", "start": 169691780, "end": 169703220 },
+              { "gene": "FIRRM", "start": 169764180, "end": 169823221 }
+            ]
+          },
+          "transform": [
+            {
+              "type": "measureText",
+              "field": "gene",
+              "fontSize": { "expr": "geneFontSize" },
+              "as": "_labelWidth"
+            },
+            {
+              "type": "formula",
+              "expr": "floor((datum.start + datum.end) / 2)",
+              "as": "_center"
+            },
+            { "type": "collect" },
+            {
+              "type": "formula",
+              "expr": "width * scale('x', datum._center)",
+              "as": "_centerPx"
+            },
+            {
+              "type": "formula",
+              "expr": "clamp(datum._centerPx - datum._labelWidth / 2, 2, max(2, width - datum._labelWidth - 2))",
+              "as": "_labelLeft"
+            },
+            {
+              "type": "formula",
+              "expr": "min(max(0, width * scale('x', datum.start)), datum._labelLeft - 3)",
+              "as": "_occupiedStart"
+            },
+            {
+              "type": "formula",
+              "expr": "max(min(width, width * scale('x', datum.end)), datum._labelLeft + datum._labelWidth + 3)",
+              "as": "_occupiedEnd"
+            },
+            { "type": "collect", "sort": { "field": "_occupiedStart" } },
+            {
+              "type": "pileup",
+              "start": "_occupiedStart",
+              "end": "_occupiedEnd",
+              "as": "_lane",
+              "spacing": 0
+            }
+          ],
+          "scales": { "y": { "reverse": true } },
+          "encoding": {
+            "y": {
+              "field": "_lane",
+              "type": "ordinal",
+              "band": 0.25,
+              "axis": null
+            },
+            "tooltip": [
+              { "field": "gene", "title": "Gene" },
+              {
+                "expr": "'chr1:' + format(datum.start + 1, ',d') + '–' + format(datum.end, ',d')",
+                "title": "Interval"
+              }
+            ]
+          },
+          "layer": [
+            {
+              "name": "geneIntervals",
+              "mark": {
+                "type": "rule",
+                "style": "annotation-tooltip",
+                "size": 2,
+                "clip": true
+              },
+              "encoding": {
+                "x": { "field": "start", "type": "locus" },
+                "x2": { "field": "end" }
+              }
+            },
+            {
+              "name": "geneLabels",
+              "mark": {
+                "type": "text",
+                "style": "annotation-tooltip",
+                "align": "center",
+                "baseline": "bottom",
+                "size": { "expr": "geneFontSize" },
+                "dy": -3,
+                "clip": true
+              },
+              "encoding": {
+                "x": { "field": "_center", "type": "locus", "band": 0 },
+                "xOffset": {
+                  "expr": "datum._labelLeft + datum._labelWidth / 2 - datum._centerPx",
+                  "scale": null
+                },
+                "text": { "field": "gene" }
+              }
+            }
+          ]
         }
       ]
     }

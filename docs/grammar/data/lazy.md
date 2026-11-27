@@ -185,12 +185,12 @@ EXAMPLE examples/docs/grammar/data/lazy/hic-triangle-track.json height=240 spech
 !!! disclaimer ""
 
     This example shows part of chromosome 7 in the hg19 GM12878 DpnII contact map.
-    GenomeSpy rebuilt the file with intrachromosomal contacts and recalculated
-    normalization. Credit Rao et al. (2014), the Aiden lab at Baylor College of
-    Medicine, and the ENCODE Consortium.
-    [GEO GSE63525](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525) ·
-    [ENCODE ENCSR968KAY](https://www.encodeproject.org/experiments/ENCSR968KAY/) ·
-    [File accessions and provenance](https://data.genomespy.app/datasets/geo-gm12878-dpnii-hic/v1/provenance.json)
+    The file was rebuilt for the GenomeSpy examples with only intrachromosomal
+    contacts and recalculated normalization, following the [dataset recipe](https://github.com/genome-spy/genomespy-dataset-recipes/tree/main/recipes/geo-gm12878-dpnii-hic).
+    The data come from Rao et al. (2014), the Aiden lab at Baylor College of
+    Medicine, and the ENCODE Consortium. Source records are in
+    [GEO GSE63525](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE63525)
+    and [ENCODE ENCSR968KAY](https://www.encodeproject.org/experiments/ENCSR968KAY/).
 
 ## HiGlass
 
