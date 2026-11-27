@@ -16,5 +16,8 @@ tiles, points, text, rules, arrows, and links from their matrix coordinates.
 Triangle tracks can face upward or downward to compare two maps along a shared
 genomic axis.
 
+`displace2d` uses the same matrix coordinates to position labels in triangle
+tracks.
+
 Packed-color images can opt in to tooltips. SVG export embeds raster layers as
 images and keeps surrounding vector layers editable.

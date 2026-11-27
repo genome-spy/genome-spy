@@ -28,6 +28,11 @@ maps these values through the view's positional scales, including reversed,
 nonlinear, and zoomed scales. Discrete values are placed at the center of their
 scale bands. Collision dimensions and output offsets are in logical pixels.
 
+When the transform's view uses a [triangle projection](../projection.md), set
+`x` and `y` to the matrix column and row fields used to anchor the mark. For
+locus coordinates, use numeric linearized genome positions. The transform
+projects the anchors before computing pixel offsets.
+
 The rectangle is centered on its anchor, so the displaced mark should use
 centered alignment. Apply the output fields with unscaled offset channels:
 
@@ -58,10 +63,10 @@ geometry, or route leader lines.
 ## Viewport participation
 
 Rows with offscreen anchors receive zero offsets and do not participate in
-placement. To remove them from downstream processing as well, filter them
-before `displace2d` using `inrange` with the current scale domains. Configure
-`key` so the remaining labels retain placement when filter membership changes.
-`inrange` also supports reversed domains.
+placement. In Cartesian views, use `inrange` with the current scale domains to
+filter those rows before `displace2d`. Configure `key` so the remaining labels
+retain placement when filter membership changes. `inrange` also supports
+reversed domains.
 
 ## Smooth updates
 

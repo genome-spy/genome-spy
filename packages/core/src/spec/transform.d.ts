@@ -1295,7 +1295,8 @@ export interface Displace1DParams extends TransformParamsBase {
 
 /**
  * Progressively displaces axis-aligned rectangles to reduce overlap while
- * keeping them close to positions mapped through the view's x and y scales.
+ * keeping them close to positions mapped through the view's positional scales
+ * and projection.
  * Every input row receives signed pixel offsets. Earlier rows have higher
  * placement priority.
  */
@@ -1309,10 +1310,10 @@ export interface Displace2DParams extends TransformParamsBase {
      */
     key?: Field;
 
-    /** Field containing the anchor value mapped through the view's x scale. */
+    /** Field containing the x anchor, or the column in a triangle projection. */
     x: Field;
 
-    /** Field containing the anchor value mapped through the view's y scale. */
+    /** Field containing the y anchor, or the row in a triangle projection. */
     y: Field;
 
     /**

@@ -113,6 +113,59 @@ test("a unit triangle view infers its index domain from the displayed midpoint",
     }
 });
 
+test.each(/** @type {const} */ (["up", "down"]))(
+    "displace2d places labels at projected matrix anchors facing %s",
+    async (direction) => {
+        const { view } = await createHeadlessEngine({
+            projection: { type: "triangle", direction },
+            width: 100,
+            height: 100,
+            scales: { x: { domain: [0, 9] } },
+            data: { values: [{ column: 0, row: 1 }] },
+            encoding: {
+                x: { field: "column", type: "index" },
+                y: { field: "row", type: "index" },
+            },
+            layer: [
+                {
+                    transform: [
+                        {
+                            type: "displace2d",
+                            x: "column",
+                            y: "row",
+                            width: 10,
+                            height: 14,
+                            as: ["dx", "dy"],
+                        },
+                    ],
+                    mark: { type: "text", text: "Contact" },
+                },
+            ],
+        });
+        try {
+            renderToLayout(view, Rectangle.create(0, 0, 100, 100));
+            const unit = view
+                .getDescendants()
+                .find((child) => child instanceof UnitView);
+            unit.handleBroadcast({ type: "layoutComputed" });
+            await view.paramRuntime.whenPropagated();
+            const [before] = unit.getCollector().getData();
+            // The projected x is the first band edge, and the y anchor is five
+            // pixels from the baseline. The collision rectangle extends past both.
+            expect(before.dx).toBeCloseTo(5);
+            expect(before.dy).toBeCloseTo(direction === "up" ? -2 : 2);
+
+            await view.getScaleResolution("x").zoomTo([0, 4], false);
+            await view.paramRuntime.whenPropagated();
+            const [after] = unit.getCollector().getData();
+            expect(after.dx).toBeCloseTo(5);
+            expect(after.dy).toBeCloseTo(0);
+        } finally {
+            view.disposeSubtree();
+        }
+    }
+);
+
 test.each(/** @type {const} */ (["rect", "tick"]))(
     "a %s in a triangle view must explicitly opt out of projection",
     async (type) => {
