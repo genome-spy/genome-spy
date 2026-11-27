@@ -61,9 +61,6 @@ point on the triangle track.
 }
 ```
 
-For a tiled matrix, see the
-[HiGlass unit view example](data/lazy.md#triangle-track).
-
 ### Layered views
 
 Declare `projection` once alongside `layer`. Child marks keep their matrix
@@ -90,6 +87,9 @@ coordinates and can inherit shared bindings from the layer.
 
 A child view can set `"projection": null` to keep an overlay in the rectangular
 frame. Cartesian y scale and axis settings apply when the projection is off.
+
+A Hi-C raster shares its projection with contact markers, labels, and guides in
+the [SELL Promoter–Enhancer Contact example](../examples/genomic-data/sell-promoter-enhancer.md).
 
 ### Marks and interactions
 

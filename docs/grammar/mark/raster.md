@@ -72,6 +72,21 @@ categorical cell values, with one character per cell.
 
 EXAMPLE examples/docs/grammar/mark/raster/sequence-strips.json height=135
 
+### Rectangular contact map
+
+As you pan and zoom, the map loads tiles at the appropriate resolution through
+the [HiGlass data source](../data/lazy.md#higlass). The `column` and `row`
+dimensions map to `x` and `y` on two locus scales. The logarithmic color scale
+adapts to cells in the current viewport.
+
+EXAMPLE examples/docs/grammar/data/lazy/higlass-contact-map.json height=400 spechidden
+
+!!! disclaimer ""
+
+    This example loads raster tiles from [higlass.io](https://higlass.io) for the
+    hg19 GM12878 MboI contact map (all replicates) from
+    [Rao et al. (2014)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5635824/).
+
 ### Triangle tracks
 
 A raster with a [triangle projection](../projection.md#triangle-projection)
@@ -83,6 +98,16 @@ Bind the column dimension to `x` and the row dimension to `y`, then set
 `"projection": "triangle"` on the raster's unit view or its enclosing layer.
 Annotations can [share the projection](../projection.md#layered-views)
 using their own matrix coordinates.
+
+The [HiGlass data source](../data/lazy.md#triangle-track) loads tiles for the
+visible part of the track.
+
+EXAMPLE examples/docs/grammar/data/lazy/higlass-triangle-track.json height=210 spechidden
+
+!!! disclaimer ""
+
+    This track uses the same GM12878 MboI raster tiles from
+    [higlass.io](https://higlass.io) as the rectangular map above.
 
 #### Tile placement
 
@@ -98,6 +123,5 @@ becomes a diamond, as shown by the dark outline. Tiles that cross the matrix
 diagonal are clipped at the baseline. The top of the track also clips tiles,
 so zooming in shows a shorter range of contact distances at the same height.
 
-The [HiGlass triangle track example](../data/lazy.md#triangle-track) shows the
-projection with tiles loaded on demand. Existing specs can use the projection
-on the raster mark, where an omitted `y` binding defaults to `dimensions.row`.
+Existing specs can use the projection on the raster mark, where an omitted `y`
+binding defaults to `dimensions.row`.

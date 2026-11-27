@@ -7,7 +7,17 @@
 
   "params": [
     { "name": "contactHover", "persist": false },
-    { "name": "contactSelection", "persist": false }
+    { "name": "contactSelection", "persist": false },
+    {
+      "name": "palette",
+      "value": "juiceboxred",
+      "bind": {
+        "input": "select",
+        "name": "Color scheme",
+        "options": ["higlassfall", "juiceboxred"],
+        "labels": ["HiGlass Fall", "Juicebox"]
+      }
+    }
   ],
 
   "config": {
@@ -81,7 +91,7 @@
                   "title": "KR contacts",
                   "scale": {
                     "type": "log",
-                    "scheme": "juiceboxred",
+                    "scheme": { "expr": "palette" },
                     "clamp": true
                   },
                   "legend": { "style": null, "orient": "right" }

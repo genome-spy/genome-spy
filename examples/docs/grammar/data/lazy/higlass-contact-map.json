@@ -39,7 +39,8 @@
         "domain": { "source": "viewport" },
         "scheme": "higlassfall",
         "clamp": true
-      }
+      },
+      "legend": { "style": null, "orient": "right" }
     }
   }
 }

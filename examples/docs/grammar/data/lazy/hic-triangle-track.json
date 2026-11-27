@@ -2,7 +2,7 @@
   "description": [
     "Contact map from a .hic file",
     "Pan or zoom on chromosome 7 to load contacts from the file at different bin sizes.",
-    "Use the controls to switch normalization and color scheme.",
+    "The normalization selector switches between raw and normalized contact counts.",
     "Data source: GM12878 DpnII contact map from Rao et al. (2014), rebuilt with intrachromosomal contacts only."
   ],
   "assembly": "hg19",
@@ -27,16 +27,6 @@
         "options": ["NONE", "VC", "VC_SQRT", "KR"],
         "labels": ["Raw counts", "VC", "VC_SQRT", "KR"]
       }
-    },
-    {
-      "name": "palette",
-      "value": "juiceboxred",
-      "bind": {
-        "input": "select",
-        "name": "Color scheme",
-        "options": ["higlassfall", "juiceboxred"],
-        "labels": ["HiGlass Fall", "Juicebox"]
-      }
     }
   ],
 
@@ -58,7 +48,7 @@
       "title": "Contacts",
       "scale": {
         "type": "log",
-        "scheme": { "expr": "palette" },
+        "scheme": "juiceboxred",
         "clamp": true
       }
     }

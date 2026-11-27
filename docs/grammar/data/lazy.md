@@ -153,23 +153,21 @@ must support byte-range requests. For a cross-origin file, it must also allow
 the page's origin. Exposing the `Content-Range` header lets GenomeSpy validate
 the returned byte range.
 
-Use a locus assembly that matches the file. Pan and zoom select among the file's
-stored base-pair resolutions. If a chromosome pair lacks the selected
-resolution, the loading error lists the bin sizes stored for that pair. Start
-with a regional domain if the file's coarsest level is too fine to draw a
-genome-wide map.
+Use a locus assembly that matches the file. As you zoom, GenomeSpy chooses a
+bin size for the view from the resolutions stored in the `.hic` file.
+
+A genome-wide view can require too many raster tiles even at the largest bin
+size in the file. If this happens, set the initial locus scale `domain` to a
+smaller region, as in the example below.
 
 Raw counts are the default. Bind `normalization` to a parameter to switch
 methods interactively, as in the example below. The requested method must be
 available for the visible chromosomes and resolution.
 
-Each record is a [raster tile](../mark/raster.md#tile-format). Bind the
-`column` and `row` dimensions to `x` and `y`, and encode the contact values
-with the `"value"` color field. Use a
-[triangle projection](../projection.md#triangle-projection) for a single genomic
-axis. A rectangular view uses two locus scales with their own domains.
-Each tile's `binSize` gives the matrix resolution in base pairs. At a
-chromosome's end, the final cell can have a shorter `step`.
+Each record is a [raster tile](../mark/raster.md#tile-format). Bind the `column`
+and `row` dimensions to `x` and `y` with `type: "locus"`, and encode color using
+the `value` field. Each tile's `binSize` gives the matrix resolution in base
+pairs. At a chromosome's end, the final cell can have a shorter `step`.
 
 With the [minimal entry point](../../api/embedding.md#minimal), import
 `@genome-spy/core/data/sources/lazy/hicSource.js` to register this source.
@@ -196,49 +194,40 @@ EXAMPLE examples/docs/grammar/data/lazy/hic-triangle-track.json height=240 spech
 
 The `"higlass"` source loads a Hi-C contact matrix from a HiGlass tile server.
 It selects tiles and bin sizes as you pan and zoom. Use a square-bin matrix
-tileset and the matching genome assembly, including chromosome names, order,
-and lengths.
+tileset and the matching genome assembly, including chromosome names, order, and
+lengths.
 
 With the [minimal entry point](../../api/embedding.md#minimal), import
 `@genome-spy/core/data/sources/lazy/hiGlassSource.js` to enable this source.
 
-Each data record is a [raster tile](../mark/raster.md#tile-format) with
-`column` and `row` dimensions and contact values in `fields.value`. The
-`binSize` field gives the matrix resolution in base pairs and equals the
-dimensions' `step`.
+Each data record is a [raster tile](../mark/raster.md#tile-format) with `column`
+and `row` dimensions and contact values in `fields.value`. The `binSize` field
+gives the matrix resolution in base pairs and equals the dimensions' `step`.
 
 ### Parameters {#higlass-parameters}
 
 SCHEMA HiGlassData
 
-### Examples
+The raster mark guide shows a
+[rectangular contact map](../mark/raster.md#rectangular-contact-map).
 
-#### Rectangular contact map
+### Example {#triangle-track}
 
-Bind `column` to `x` and `row` to `y` using two locus scales. The example's
-logarithmic color scale adapts to cells in the current viewport.
+Set the [view projection](../projection.md#triangle-projection) to `"triangle"`
+and bind both raster dimensions. HiGlass selects tiles for the projected
+viewport, and the raster draws them against a single horizontal locus axis.
+Track height limits the visible contact distance. Set `projection: null` to
+display a rectangular matrix with the same encodings. The logarithmic color
+domain follows the loaded tiles and stays stable while you pan within the same
+tile set. Cells in clipped parts of a tile can affect the visible contrast.
 
-EXAMPLE examples/docs/grammar/data/lazy/higlass-contact-map.json height=400 spechidden
+EXAMPLE examples/docs/grammar/data/lazy/higlass-triangle-track.json height=210 spechidden
 
 !!! disclaimer ""
 
-    Both HiGlass examples use the GM12878 MboI contact map (all replicates) on
-    hg19 from [Rao et al. (2014)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5635824/),
-    served by [HiGlass](https://higlass.io).
-
-#### Triangle track
-
-Set the [view projection](../projection.md#triangle-projection) to `"triangle"`
-and bind both raster dimensions.
-HiGlass selects tiles for the projected viewport, and the raster draws them
-against a single horizontal locus axis. Track height limits the visible
-contact distance. Set `projection: null` to display a rectangular matrix
-with the same encodings.
-The logarithmic color domain follows the loaded tiles and stays stable
-while you pan within the same tile set. Cells in clipped parts of a tile can
-affect the visible contrast.
-
-EXAMPLE examples/docs/grammar/data/lazy/higlass-triangle-track.json height=210 spechidden
+    This example loads raster tiles from [higlass.io](https://higlass.io) for the
+    hg19 GM12878 MboI contact map (all replicates) from
+    [Rao et al. (2014)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5635824/).
 
 ## BigBed
 
