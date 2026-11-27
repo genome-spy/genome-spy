@@ -184,7 +184,7 @@ EXAMPLE examples/docs/grammar/data/lazy/hic-triangle-track.json height=240 spech
 
 !!! disclaimer ""
 
-    This example shows chromosome 8 from the GM12878 DpnII contact map on hg19.
+    This example shows part of chromosome 7 in the hg19 GM12878 DpnII contact map.
     GenomeSpy rebuilt the file with intrachromosomal contacts and recalculated
     normalization. Credit Rao et al. (2014), the Aiden lab at Baylor College of
     Medicine, and the ENCODE Consortium.
