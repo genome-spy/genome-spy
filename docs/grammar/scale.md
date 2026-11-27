@@ -84,6 +84,10 @@ palette. It maps low values to white, then transitions through orange and red to
 black.
 [HiGlass heatmap palette](https://docs.higlass.io/track_types.html#heatmap)
 
+Set `"scheme": "juiceboxred"` for the white-to-red palette used by Juicebox's
+observed contact maps.
+[Juicebox observed color scale](https://github.com/aidenlab/Juicebox/blob/e2beb10f9cca36a83bb723fe5995d57e479db180/src/juicebox/mapcolorui/ColorScaleHandler.java#L107-L120)
+
 ## GenomeSpy-specific scales
 
 GenomeSpy provides two additional scales that are designed for molecular

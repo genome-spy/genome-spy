@@ -84,6 +84,7 @@ vegaScheme(
     "higlassfall",
     interpolateColors(["#ffffff", "#f5a623", "#d0021b", "#000000"])
 );
+vegaScheme("juiceboxred", interpolateColors(["#ffffff", "#ff0000"]));
 
 const Locus = "locus";
 const Index = "index";

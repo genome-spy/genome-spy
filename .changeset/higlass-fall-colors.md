@@ -4,5 +4,6 @@
 
 <!-- category: feature -->
 
-Add the `higlassfall` color scheme for contact maps and other heatmaps. It maps
-low to high values through white, orange, red, and black.
+Add the `higlassfall` and `juiceboxred` color schemes for contact maps and other
+heatmaps. HiGlass Fall runs from white through orange and red to black. Juicebox
+Red runs from white to red.
