@@ -653,7 +653,7 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         rasterDataCache.set(mark, cached);
     }
 
-    const { rowEdges, stripEnd } = cached.packed;
+    const { rowEdges, indexEndX, indexEndY } = cached.packed;
     // Grid endpoints are genomic boundaries. Index band 0 is on the lower
     // pixel side, which is the trailing side on a reversed range.
     const xScale = mark.encoders.x.scale;
@@ -691,13 +691,13 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         x1:
             bandAxis === "x"
                 ? channels.x.data
-                : (stripEnd ??
+                : (indexEndX ??
                   createPositionChannel(mark, "x2", data, coords, xBand).data),
         y1: rowEdges
             ? rowEdges.end
             : bandAxis === "y"
               ? channels.y.data
-              : (stripEnd ??
+              : (indexEndY ??
                 createPositionChannel(mark, "y2", data, coords, yBand).data),
     });
     if (
@@ -772,28 +772,30 @@ function packRasterTiles(mark, data, intern, cellInputs) {
             field.fill(values[index], start, offsets[index + 1] ?? length);
         }
     }
-    const gridAxis = bandAxis === "x" ? "y" : "x";
+    // Core keeps the last covered index for domain inference. The tile
+    // snapshot uses the exclusive edge for rendering and brush membership.
+    /** @param {"x" | "y"} axis @param {"horizontal" | "vertical"} dimension */
+    const packIndexEnd = (axis, dimension) => {
+        if (
+            mark.isTriangle ||
+            bandAxis === axis ||
+            mark.encoders[axis].scale.type !== "index"
+        )
+            return;
+        return packHighPrecisionU32Array(
+            tiles.map((tile) => {
+                const { origin, step, count } = tile[dimension];
+                return readIndexValue(mark, axis + "2", origin + step * count);
+            })
+        );
+    };
     const packRowEdges =
         mark.encoders.x.scale.type === "linear"
             ? (/** @type {number[]} */ values) => Float32Array.from(values)
             : packHighPrecisionU32Array;
     return {
-        // Core keeps the last covered index for domain inference. The tile
-        // snapshot uses a grid edge for both rendering and brush membership.
-        stripEnd:
-            bandAxis && mark.encoders[gridAxis].scale.type === "index"
-                ? packHighPrecisionU32Array(
-                      tiles.map(({ horizontal, vertical }) => {
-                          const { origin, step, count } =
-                              gridAxis === "x" ? horizontal : vertical;
-                          return readIndexValue(
-                              mark,
-                              gridAxis + "2",
-                              origin + step * count
-                          );
-                      })
-                  )
-                : undefined,
+        indexEndX: packIndexEnd("x", "horizontal"),
+        indexEndY: packIndexEnd("y", "vertical"),
         rowEdges: mark.isTriangle && {
             start: packRowEdges(tiles.map(({ vertical }) => vertical.origin)),
             end: packRowEdges(

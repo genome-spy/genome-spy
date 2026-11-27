@@ -21,10 +21,7 @@ export default class RasterMark extends Mark {
         return ["x", "y", "x2", "y2", "color", "opacity", "tooltip"];
     }
 
-    triangleDirection = getResolvedTriangleDirection(
-        this.unitView,
-        this.properties.projection
-    );
+    triangleDirection = getResolvedTriangleDirection(this.unitView);
 
     isTriangle = this.triangleDirection !== undefined;
 
@@ -94,8 +91,8 @@ export default class RasterMark extends Mark {
             }
             const { dimension, ...options } = binding;
             const path = "dimensions[" + JSON.stringify(dimension) + "]";
-            const indexStrip = bandAxis && binding.type === "index";
-            const domainInert = binding.type !== "quantitative" && !indexStrip;
+            const indexGrid = !triangle && binding.type === "index";
+            const domainInert = binding.type !== "quantitative" && !indexGrid;
             encoding[axis] = inheritSpecOrigin(binding, {
                 ...options,
                 title: options.title ?? null,
@@ -109,8 +106,8 @@ export default class RasterMark extends Mark {
                 // draws the exclusive right edge of the last covered index.
                 expr:
                     `datum.${path}.origin + datum.${path}.step * datum.${path}.count` +
-                    (indexStrip ? " - 1" : ""),
-                band: indexStrip ? 1 : 0,
+                    (indexGrid ? " - 1" : ""),
+                band: indexGrid ? 1 : 0,
                 domainInert,
             };
         }
@@ -118,11 +115,7 @@ export default class RasterMark extends Mark {
             const { x, y, y2 } = encoding;
             const validRow =
                 y && "dimension" in y && "type" in x && y.type === x.type;
-            if (
-                y2 ||
-                (!validRow &&
-                    (y || getResolvedTriangleDirection(this.unitView)))
-            ) {
+            if (y2 || !validRow) {
                 throw new ViewError(
                     "A triangle raster's y input must bind a grid dimension of the same type as x.",
                     this.unitView
@@ -142,12 +135,7 @@ export default class RasterMark extends Mark {
             const direct = this.#usesDirectColor();
             const { x, y } = this.unitView.getEncoding();
             const column = x && "dimension" in x ? x.dimension : undefined;
-            const row =
-                y && "dimension" in y
-                    ? y.dimension
-                    : this.isTriangle
-                      ? "row"
-                      : undefined;
+            const row = y && "dimension" in y ? y.dimension : undefined;
             const scaleType = this.isTriangle
                 ? this.unitView.getScaleResolution("x")?.getResolvedScaleType()
                 : undefined;
@@ -316,7 +304,7 @@ export default class RasterMark extends Mark {
                 !supportsGridCoordinates(this.encoders[axis].scale)
             ) {
                 throw new ViewError(
-                    "Raster axes need linear or unpadded index/locus scales without gaps.",
+                    "Raster grid scales require a two-point domain and unclamped, unrounded linear or unpadded index/locus scales without gaps.",
                     this.unitView
                 );
             }

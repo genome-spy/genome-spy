@@ -23,6 +23,9 @@ export function supportsGridCoordinates(scale) {
     return (
         scale &&
         ["linear", INDEX, LOCUS].includes(scale.type) &&
+        scale.domain().length === 2 &&
+        !scale.props.clamp &&
+        !scale.props.round &&
         !hasGroupingGaps(scale.props) &&
         !("paddingInner" in scale && scale.paddingInner()) &&
         !("paddingOuter" in scale && scale.paddingOuter())

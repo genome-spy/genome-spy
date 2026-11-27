@@ -4,6 +4,43 @@ import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
 import RasterMark from "./raster.js";
 
+test("rectangular rasters reject clamped grid scales", async () => {
+    const dimension = { origin: 0, step: 1, count: 4 };
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    {
+                        dimensions: {
+                            column: dimension,
+                            row: { ...dimension, count: 1 },
+                        },
+                        fields: { value: [10, 20, 30, 40] },
+                    },
+                ],
+            },
+            mark: "raster",
+            encoding: {
+                x: {
+                    dimension: "column",
+                    type: "quantitative",
+                    scale: { domain: [1, 3], clamp: true },
+                },
+                y: { dimension: "row", type: "quantitative" },
+                color: { field: "value", type: "quantitative" },
+            },
+        },
+        UnitView
+    );
+    try {
+        expect(() =>
+            /** @type {RasterMark} */ (view.mark).validateRenderingScales()
+        ).toThrow("unclamped");
+    } finally {
+        view.disposeSubtree();
+    }
+});
+
 test("triangle rasters reject positional cell intervals", async () => {
     const dimension = { origin: 0, step: 1, count: 2 };
     const view = await createAndInitialize(

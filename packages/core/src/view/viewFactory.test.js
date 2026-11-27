@@ -186,17 +186,18 @@ test("prepares the deferred HiGlass source declared by an imported view", async 
             assembly: "hg19",
             templates: {
                 contactMap: {
+                    projection: "triangle",
                     data: {
                         lazy: {
                             type: "higlass",
                             url: "https://example.test/",
                             tileset: "matrix",
-                            projection: "triangle",
                         },
                     },
-                    mark: { type: "raster", projection: "triangle" },
+                    mark: "raster",
                     encoding: {
                         x: { dimension: "column", type: "locus" },
+                        y: { dimension: "row", type: "locus" },
                         color: { field: "value", type: "quantitative" },
                     },
                 },

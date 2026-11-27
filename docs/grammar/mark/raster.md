@@ -47,7 +47,8 @@ single-character categories. For example, `"ACTG-"` represents
 
 Bind `x` and `y` to named grid dimensions using `dimension`. The mark derives
 the cell edges from the tile. Grid dimensions support linear, index, and locus
-scales. Use unpadded index and locus scales without grouping gaps.
+scales with two domain endpoints. Use unclamped, unrounded scales and leave
+padding and grouping gaps off index and locus scales.
 
 The `color` channel's `field` names a cell field under `fields`. Quantitative
 fields use a numeric color scale. Categorical fields use an ordinal color scale
@@ -130,5 +131,4 @@ becomes a diamond, as shown by the dark outline. Tiles that cross the matrix
 diagonal are clipped at the baseline. The top of the track also clips tiles,
 so zooming in shows a shorter range of contact distances at the same height.
 
-Existing specs can use the projection on the raster mark, where an omitted `y`
-binding defaults to `dimensions.row`.
+Omit the color scale's `domain` to infer it from the loaded tiles.

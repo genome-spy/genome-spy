@@ -66,7 +66,7 @@ export default class HiGlassTileSource extends DataSource {
         this.baseUrl = new URL(resolveUrl(view.getBaseUrl(), params.url));
         if (!this.baseUrl.pathname.endsWith("/")) this.baseUrl.pathname += "/";
         this.scales = [view.getScaleResolution("x")];
-        if (!getResolvedTriangleDirection(view, params.projection))
+        if (!getResolvedTriangleDirection(view))
             this.scales.push(view.getScaleResolution("y"));
         if (this.scales.some((scale) => scale?.type !== "locus")) {
             throw new Error("HiGlass needs a locus scale on each matrix axis.");

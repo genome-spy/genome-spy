@@ -1108,9 +1108,11 @@ describe("Scale resolution domain handling", () => {
         const view = await initView({
             datasets: { tiles: [tile([0, 2, 4, 8])] },
             data: { name: "tiles" },
-            mark: { type: "raster", projection: "triangle" },
+            projection: "triangle",
+            mark: "raster",
             encoding: {
                 x: { dimension: "column", type: "locus" },
+                y: { dimension: "row", type: "locus" },
                 color: {
                     field: "value",
                     type: "quantitative",
@@ -1133,12 +1135,14 @@ describe("Scale resolution domain handling", () => {
         await expect(
             initView(
                 {
+                    projection: "triangle",
                     scales: { color: { domain: { source: "viewport" } } },
                     layer: [
                         {
-                            mark: { type: "raster", projection: "triangle" },
+                            mark: "raster",
                             encoding: {
                                 x: { dimension: "column", type: "locus" },
+                                y: { dimension: "row", type: "locus" },
                                 color: { field: "value", type: "quantitative" },
                             },
                         },

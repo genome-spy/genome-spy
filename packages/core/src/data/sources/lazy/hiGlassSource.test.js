@@ -70,6 +70,7 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
         const context = createBroadcastingTestViewContext();
         const view = Object.assign(Object.create(UnitView.prototype), {
             context,
+            spec: { projection },
             getBaseUrl: () => "",
             getScaleResolution: (/** @type {string} */ channel) =>
                 projection && channel === "y" ? undefined : scale,
@@ -86,7 +87,6 @@ test.each([undefined, /** @type {const} */ ("triangle")])(
                 type: "higlass",
                 url: "https://tiles.example/",
                 tileset: "test",
-                projection,
             },
             view
         );

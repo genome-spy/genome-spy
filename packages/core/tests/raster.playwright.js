@@ -20,6 +20,10 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterGrid(playwright, baseURL, renderer));
+    test(`${renderer} raster infers both index domains and draws to the last cell edge`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterGrid(playwright, baseURL, renderer, true));
     test(`${renderer} horizontal and vertical raster strips use index edges, band placement, and cell opacity`, ({
         playwright,
         baseURL,
@@ -1211,15 +1215,22 @@ async function checkRasterColor(playwright, baseURL, renderer) {
     });
 }
 
-/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
-async function checkRasterGrid(playwright, baseURL, renderer) {
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer @param {boolean} [indexGrid] */
+async function checkRasterGrid(
+    playwright,
+    baseURL,
+    renderer,
+    indexGrid = false
+) {
     await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const options = { ...setup, indexGrid };
         const result = await page.evaluate(async (args) => {
-            const { src, renderer, register } = args;
+            const { src, renderer, register, indexGrid } = args;
             const { embed } = await import(src + "minimal.js");
             await import(src + register);
             await import(src + "rendering/registerSvg.js");
-            const start = 2_000_000_001;
+            const start = indexGrid ? 10 : 2_000_000_001;
+            const xType = indexGrid ? "index" : "locus";
             const errors = [];
             const api = await embed(
                 globalThis.document.querySelector("#plot"),
@@ -1234,14 +1245,19 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                         { name: "upperColor", value: "red" },
                     ],
                     resolve: { scale: { x: "shared", y: "shared" } },
-                    scales: {
-                        x: { type: "locus", domain: [start, start + 1] },
-                        y: {
-                            type: "linear",
-                            domain: [0, 2],
-                            reverse: true,
-                        },
-                    },
+                    scales: indexGrid
+                        ? { y: { reverse: true } }
+                        : {
+                              x: {
+                                  type: "locus",
+                                  domain: [start, start + 1],
+                              },
+                              y: {
+                                  type: "linear",
+                                  domain: [0, 2],
+                                  reverse: true,
+                              },
+                          },
                     layer: [
                         {
                             data: {
@@ -1267,12 +1283,12 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                             encoding: {
                                 x: {
                                     dimension: "column",
-                                    type: "locus",
+                                    type: xType,
                                     axis: null,
                                 },
                                 y: {
                                     dimension: "row",
-                                    type: "quantitative",
+                                    type: indexGrid ? "index" : "quantitative",
                                     axis: null,
                                 },
                                 color: {
@@ -1295,7 +1311,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
                             encoding: {
                                 x: {
                                     field: "pos",
-                                    type: "locus",
+                                    type: xType,
                                     band: 0,
                                     axis: null,
                                 },
@@ -1375,7 +1391,7 @@ async function checkRasterGrid(playwright, baseURL, renderer) {
             } finally {
                 api.finalize();
             }
-        }, setup);
+        }, options);
         expect(result.errors).toEqual([]);
         expect(result.before).toEqual([
             [0, 0, 0],

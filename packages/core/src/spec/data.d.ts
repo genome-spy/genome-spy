@@ -371,14 +371,6 @@ export interface HiGlassData extends Pick<DebouncedData, "debounce"> {
     tileset: string;
 
     /**
-     * Request tiles for a triangle track using the view's x locus axis and
-     * height. A view with `projection: "triangle"` configures the source and
-     * raster together. Supply this option with a mark-level projection in
-     * existing specs.
-     */
-    projection?: "triangle";
-
-    /**
      * Maximum memory for decoded tiles cached by this source, in MiB.
      * Set to zero to disable retaining tiles for later requests.
      *

@@ -49,13 +49,10 @@ export function getTriangleDirection(spec) {
 
 /**
  * @param {View} [view]
- * @param {"triangle"} [legacyProjection]
  * @returns {"up" | "down" | undefined}
  */
-export function getResolvedTriangleDirection(view, legacyProjection) {
-    const owner = getProjectionOwner(view);
-    if (owner) return getTriangleDirection(owner.spec) ?? undefined;
-    if (legacyProjection === "triangle") return "up";
+export function getResolvedTriangleDirection(view) {
+    return getTriangleDirection(getProjectionOwner(view)?.spec) ?? undefined;
 }
 
 /**
@@ -289,12 +286,7 @@ export function validateTriangleProjection(view) {
  * @param {View} view
  */
 export function validateTriangleScale(scale, view) {
-    if (
-        !supportsGridCoordinates(scale) ||
-        scale.domain().length !== 2 ||
-        scale.props.clamp ||
-        scale.props.round
-    ) {
+    if (!supportsGridCoordinates(scale)) {
         throw new ViewError(
             "Triangle projection requires an unrounded, unclamped linear scale or an unpadded index or locus scale without gaps.",
             view

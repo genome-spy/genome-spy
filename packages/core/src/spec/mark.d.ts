@@ -943,15 +943,6 @@ export interface LinkProps
  */
 export interface RasterProps extends MarkPropsBase {
     type: "raster";
-
-    /**
-     * Project a contact matrix onto a triangle track. Set the projection on
-     * the view to share it with annotations. On index and locus scales, tile
-     * endpoints on both dimensions are nonnegative whole positions.
-     * Omit the color domain to infer it from loaded cells. Viewport-derived
-     * color domains are unsupported for this projection.
-     */
-    projection?: "triangle";
 }
 
 export type MarkProps =
