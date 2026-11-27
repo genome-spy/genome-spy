@@ -40,6 +40,10 @@ for (const renderer of /** @type {RasterRenderer[]} */ (
         playwright,
         baseURL,
     }) => checkRasterColor(playwright, baseURL, renderer));
+    test(`${renderer} raster opacity fields compose with cell conditions and picking`, ({
+        playwright,
+        baseURL,
+    }) => checkRasterOpacity(playwright, baseURL, renderer));
     test(`${renderer} positional brush swaps cells between overlapping rasters`, ({
         playwright,
         baseURL,
@@ -1212,6 +1216,195 @@ async function checkRasterColor(playwright, baseURL, renderer) {
             domain: [0, 2],
             picked: ["hit", "empty"],
         });
+    });
+}
+
+/** @param {Playwright} playwright @param {string} baseURL @param {RasterRenderer} renderer */
+async function checkRasterOpacity(playwright, baseURL, renderer) {
+    const cases = [
+        {
+            signal: [2, 4, 10, null],
+            scale: { range: [0.2, 1], zero: false },
+            first: 51,
+        },
+        { signal: [0, 0.4, 1, null], scale: null, first: 0 },
+        {
+            signal: [1, 2, 4, null],
+            scale: { domain: [0, 2, 4], range: [{ expr: "lowAlpha" }, 0.4, 1] },
+            first: 51,
+            updateRange: true,
+        },
+        {
+            signal: [1, 2, 4, null],
+            scale: { domain: [4, 2, 0], range: [1, 0.4, 0] },
+            first: 51,
+        },
+        {
+            signal: [2, 8, 512, 0],
+            scale: {
+                type: "log",
+                domain: [2, 512],
+                range: [0.2, 1],
+                clamp: false,
+            },
+            first: 51,
+        },
+        {
+            signal: [4, 16, 100, null],
+            scale: { type: "sqrt", domain: [4, 100], range: [0.2, 1] },
+            first: 51,
+        },
+        {
+            signal: [0.2, 0.4, 1, null],
+            scale: { round: true },
+            first: 0,
+            second: 0,
+        },
+    ];
+    await withRasterPage(playwright, baseURL, renderer, async (page, setup) => {
+        const results = await page.evaluate(
+            async ({ src, renderer, register, cases }) => {
+                const { embed } = await import(src + "minimal.js");
+                await import(src + register);
+                await import(src + "rendering/registerSvg.js");
+                const results = [];
+                for (const { signal, scale, updateRange } of cases) {
+                    const api = await embed(
+                        globalThis.document.querySelector("#plot"),
+                        {
+                            width: 120,
+                            height: 30,
+                            padding: 0,
+                            view: { stroke: null },
+                            mark: { type: "raster", color: "blue" },
+                            data: {
+                                values: [
+                                    {
+                                        dimensions: {
+                                            column: {
+                                                origin: 0,
+                                                step: 1,
+                                                count: 4,
+                                            },
+                                            row: {
+                                                origin: 0,
+                                                step: 1,
+                                                count: 1,
+                                            },
+                                        },
+                                        fields: { signal },
+                                    },
+                                ],
+                            },
+                            params: [
+                                ...(updateRange
+                                    ? [{ name: "lowAlpha", value: 0 }]
+                                    : []),
+                                {
+                                    name: "brush",
+                                    select: {
+                                        type: "interval",
+                                        encodings: ["x"],
+                                        mark: { opacity: 0 },
+                                    },
+                                },
+                            ],
+                            encoding: {
+                                x: {
+                                    dimension: "column",
+                                    type: "quantitative",
+                                    axis: null,
+                                },
+                                y: {
+                                    dimension: "row",
+                                    type: "quantitative",
+                                    axis: null,
+                                },
+                                opacity: {
+                                    field: "signal",
+                                    type: "quantitative",
+                                    scale,
+                                    legend: null,
+                                    condition: {
+                                        param: "brush",
+                                        empty: false,
+                                        value: 0.8,
+                                    },
+                                },
+                            },
+                        },
+                        { renderer }
+                    );
+                    try {
+                        const raster = api.debug
+                            .getViewRoot()
+                            .getDescendants()
+                            .find((view) => view.mark?.getType() === "raster");
+                        const points = [15, 45, 75, 105].map((x) => [x, 15]);
+                        const before = await globalThis.readRasterPixels(
+                            api,
+                            points,
+                            null
+                        );
+                        raster.paramRuntime.setValue("brush", {
+                            type: "interval",
+                            intervals: { x: [1.1, 1.2] },
+                        });
+                        if (updateRange)
+                            raster.paramRuntime.setValue("lowAlpha", 0.4);
+                        const after = await globalThis.readRasterPixels(
+                            api,
+                            points,
+                            null
+                        );
+                        const svg = await globalThis.readSvgRasterPixels(
+                            api,
+                            points
+                        );
+                        const marks = api.views.root().marks;
+                        const picked = [];
+                        for (const [x, y] of points)
+                            picked.push((await marks.pick({ x, y })).status);
+                        results.push({
+                            before,
+                            after,
+                            svg: svg.pixels,
+                            picked,
+                        });
+                    } finally {
+                        api.finalize();
+                    }
+                }
+                return results;
+            },
+            { ...setup, cases }
+        );
+        const transparent = [0, 0, 0, 0];
+        const opaque = [0, 0, 255, 255];
+        /** @param {number} alpha */
+        const blue = (alpha) => (alpha ? [0, 0, 255, alpha] : transparent);
+        expect(results).toEqual(
+            cases.map(({ first, second = 102, updateRange }) => {
+                const afterFirst = updateRange ? 102 : first;
+                const after = [
+                    blue(afterFirst),
+                    blue(204),
+                    opaque,
+                    transparent,
+                ];
+                return {
+                    before: [blue(first), blue(second), opaque, transparent],
+                    after,
+                    svg: after,
+                    picked: [
+                        afterFirst ? "hit" : "empty",
+                        "hit",
+                        "hit",
+                        "empty",
+                    ],
+                };
+            })
+        );
     });
 }
 

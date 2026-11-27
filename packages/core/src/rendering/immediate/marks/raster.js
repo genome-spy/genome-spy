@@ -75,7 +75,7 @@ export function createRasterCellResolver(layout, pixelCenter) {
  * @returns {number | undefined}
  */
 function resolveRasterCell(occurrences, mark, datum, point, facetId) {
-    const { column, row } = mark.getColorCellBinding();
+    const { column, row } = mark.getCellBinding();
     const columns = readRasterDimension(datum, column).count;
     const rows = readRasterDimension(datum, row).count;
     /** @type {SampleFacetCoordsResolver | undefined} */
@@ -207,7 +207,7 @@ export function visitRasterTiles(mark, options, draw) {
         : prepareRangeProjection(coords, mark.encoders, "y", data[start]);
     const x = /** @type {[number, number]} */ ([0, 0]);
     const y = /** @type {[number, number]} */ ([0, 0]);
-    const { row } = mark.getColorCellBinding();
+    const { row } = mark.getCellBinding();
     const xScale = mark.encoders.x.scale;
     let count = 0;
     for (let i = start; i < end; i++) {

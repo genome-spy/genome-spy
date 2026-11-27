@@ -94,3 +94,34 @@ notifications, consolidated SVG rasterization checks, and simplified the tooltip
 result. Those changes removed 59 non-comment production lines, leaving a net
 increase of 11 against the pre-refactor revision. The WebGPU adapter still sets
 cell interval and packed index behavior explicitly when it configures a raster.
+
+## Field-driven opacity
+
+Allow a quantitative cell field on `opacity` paired with a color value. A single
+binding reads either paint field and supplies its scale domain. Preserve the
+existing one-field tile upload and value conditions, using the scaled opacity as
+the fallback. Keep the one-field rule while WebGL is supported. Reuse the Canvas
+pixel cache and WebGPU cell inputs so image export and picking use the same
+paint as the display.
+
+Verify inferred domains, scaled and direct opacity, conditional overrides,
+transparent picking, and SVG export. Preserve existing color and RGBA rasters.
+
+The Core and WebGPU renderer unit suites passed, along with all 36 raster
+browser tests. The opacity tests cover scalar and scaled alpha, selection
+overrides, missing-cell picking, and hybrid SVG export. The initial change added
+128 net production JavaScript lines against the boundary refactor commit.
+
+Extend opacity to the continuous scale transforms shared by the renderers. For
+piecewise linear scales, the WebGL emitter reads the numeric range endpoints of
+each segment. The nonlinear WebGPU emitters still use two stops. Verify
+ascending and descending stops, live range updates, nonlinear opacity, and
+transparent cells with the raster browser tests.
+
+All 36 raster browser tests and 4,841 Core and WebGPU renderer unit tests passed
+after extending the scale support.
+
+The trimming pass reuses the raster paint plan for solid color fallbacks and the
+WebGPU numeric encoder for constant opacity. It removes 29 production lines,
+leaving 132 net lines for field-driven opacity and scale support. All 36 raster
+browser tests and 470 focused unit tests passed.

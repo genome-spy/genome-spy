@@ -4,6 +4,23 @@ import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
 import RasterMark from "./raster.js";
 
+test("raster opacity fields require a color value", async () => {
+    await expect(
+        createAndInitialize(
+            {
+                mark: "raster",
+                encoding: {
+                    x: { dimension: "column", type: "quantitative" },
+                    y: { dimension: "row", type: "quantitative" },
+                    color: { field: "pixel", scale: null },
+                    opacity: { field: "signal", type: "quantitative" },
+                },
+            },
+            UnitView
+        )
+    ).rejects.toThrow("opacity field requires a color value");
+});
+
 test("rectangular rasters reject clamped grid scales", async () => {
     const dimension = { origin: 0, step: 1, count: 4 };
     const view = await createAndInitialize(

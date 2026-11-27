@@ -736,10 +736,11 @@ fn hpLess(a: vec2<u32>, b: vec2<u32>) -> bool {
             channelFns.push(emitPassthroughFunction(channelIR, mappingName));
         }
         if (channelIR.transparentOnNonFinite) {
+            const type = channelIR.outputComponents === 1 ? "f32" : "vec4<f32>";
             channelFns.push(/* wgsl */ `
-fn ${SCALED_FUNCTION_PREFIX}${baseFunctionName}(i: u32) -> vec4<f32> {
+fn ${SCALED_FUNCTION_PREFIX}${baseFunctionName}(i: u32) -> ${type} {
     if ((bitcast<u32>(${channelIR.rawValueExpr}) & 0x7f800000u) == 0x7f800000u) {
-        return vec4<f32>(0.0);
+        return ${type}(0.0);
     }
     return ${SCALED_FUNCTION_PREFIX}${mappingName}(i);
 }`);

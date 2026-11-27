@@ -599,8 +599,9 @@ const rasterDataCache = new WeakMap();
  * @returns {RasterConfig}
  */
 function createRasterConfig(mark, data, coords, placementIndex) {
-    const { bandAxis, type } = mark.getColorCellBinding();
-    const color = mark.validateRenderingScales()?.getScale();
+    const { channel, bandAxis, type } = mark.getCellBinding();
+    const cellScale = mark.validateRenderingScales()?.getScale();
+    const color = channel === "color" ? cellScale : undefined;
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
@@ -625,7 +626,22 @@ function createRasterConfig(mark, data, coords, placementIndex) {
     );
     const opacity =
         mark.encoders.opacity &&
-        createNumericChannel(mark, "opacity", data, true);
+        createConditionalChannel(
+            mark,
+            "opacity",
+            (encoder) =>
+                encoder.constant
+                    ? createNumericBranch(mark, "opacity", data, encoder)
+                    : {
+                          input: "opacity",
+                          scale: createNonPositionalScale(
+                              mark,
+                              "opacity",
+                              encoder.scale
+                          ),
+                      },
+            true
+        );
 
     let cached = rasterDataCache.get(mark);
     if (cached?.data !== data || cached.palette !== palette) {
@@ -748,17 +764,17 @@ function createRasterConfig(mark, data, coords, placementIndex) {
  * @param {Record<string, Uint32Array>} cellInputs
  */
 function packRasterTiles(mark, data, intern, cellInputs) {
-    const { direct, readTile, bandAxis } = mark.getColorCellBinding();
+    const { channel, direct, readTile, bandAxis } = mark.getCellBinding();
     const tiles = data.map(readTile);
     const columns = new Uint32Array(tiles.length);
     const rows = new Uint32Array(tiles.length);
     const offsets = new Uint32Array(tiles.length);
     const length = tiles.reduce((count, tile) => count + tile.values.length, 0);
-    const color =
+    const cellValues =
         direct || intern ? new Uint32Array(length) : new Float32Array(length);
     const encodeCell = intern ?? readNumericRasterCell;
     /** @type {RasterData["cells"]} */
-    const cells = { color };
+    const cells = { [channel]: cellValues };
     let offset = 0;
     for (const [index, { horizontal, vertical, values }] of tiles.entries()) {
         columns[index] = horizontal.count;
@@ -768,10 +784,10 @@ function packRasterTiles(mark, data, intern, cellInputs) {
             values instanceof Uint32Array ||
             (!intern && values instanceof Float32Array)
         ) {
-            color.set(values, offset);
+            cellValues.set(values, offset);
         } else {
             for (let cell = 0; cell < values.length; cell++) {
-                color[offset + cell] = encodeCell(values[cell]);
+                cellValues[offset + cell] = encodeCell(values[cell]);
             }
         }
         offset += values.length;
@@ -1565,18 +1581,11 @@ function retainBandScaleProperties(target, scale, channel, peer) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
- * @param {boolean} [cellPositions]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createNumericChannel(mark, channel, data, cellPositions = false) {
-    return createConditionalChannel(
-        mark,
-        channel,
-        (encoder) =>
-            isStaticConstantEncoder(encoder)
-                ? { value: Number(encoder(data[0])) }
-                : createNumericBranch(mark, channel, data, encoder),
-        cellPositions
+function createNumericChannel(mark, channel, data) {
+    return createConditionalChannel(mark, channel, (encoder) =>
+        createNumericBranch(mark, channel, data, encoder)
     );
 }
 
@@ -1600,7 +1609,9 @@ function isStaticConstantEncoder(encoder) {
  */
 function createNumericBranch(mark, channel, data, encoder) {
     if (encoder.constant) {
-        return liveValue(() => Number(encoder(data[0])));
+        return isStaticConstantEncoder(encoder)
+            ? { value: Number(encoder(data[0])) }
+            : liveValue(() => Number(encoder(data[0])));
     }
 
     const accessor = encoder.branches[0].accessor;
@@ -2059,7 +2070,11 @@ function createNumericScale(mark, channel, scale, range, domain) {
         range: readRange(),
         clamp: getScaleProperty(configurableScale, "clamp", false),
     });
-    const round = getScaleProperty(configurableScale, "round", false);
+    const round = getScaleProperty(
+        configurableScale,
+        "round",
+        scale.props?.round ?? false
+    );
     if (round) {
         options.round = true;
     }

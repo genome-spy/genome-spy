@@ -12,7 +12,7 @@ import { packCssColor } from "../color.js";
 /** @typedef {import("../../marks/raster.js").default} RasterMark */
 /** @typedef {import("../../data/flowNode.js").Datum} Datum */
 /** @typedef {ReturnType<import("../../data/rasterTile.js").readRasterTile>} Tile */
-/** @typedef {(datum: Datum, tile: Tile, paint: (start: number, end: number, alpha: number, color?: number) => void) => void} PaintSpans */
+/** @typedef {(datum: Datum, tile: Tile, paint: (start: number, end: number, alpha?: number, color?: number) => void) => void} PaintSpans */
 /** @typedef {NonNullable<ReturnType<RasterMark["getCellPaintPlan"]>>} PaintPlan */
 
 /** @param {RasterMark} mark */
@@ -35,7 +35,7 @@ function createPaintSpans(
     mark,
     { color, opacity, memberships, params, bandAxis, readBand }
 ) {
-    const { type, direct } = mark.getColorCellBinding();
+    const { type, direct } = mark.getCellBinding();
     const numericColor = type === "quantitative" && !direct;
     /** @type {unknown[]} */
     let previous = [];
@@ -128,11 +128,13 @@ function createPaintSpans(
                               )
                             : values[index];
                     }
-                    const value = opacityTests.length
-                        ? alphas[matchingBranch(opacityTests)]
-                        : 1;
-                    if (!(value > 0)) continue;
+                    const value = alphas[matchingBranch(opacityTests)];
+                    if (value !== undefined && !(value > 0)) continue;
                     const fill = colors[matchingBranch(colorTests)];
+                    if (columns.length === 2) {
+                        paint(index, rows[i] * x.count, value, fill);
+                        continue;
+                    }
                     for (let next = row; next < rows[i]; next++) {
                         const offset = next * x.count;
                         paint(

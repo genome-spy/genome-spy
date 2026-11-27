@@ -59,11 +59,16 @@ per cell in `0xAABBGGRR` order. Use straight alpha and write the packed integers
 in decimal in JSON. In JavaScript, numeric cell fields can use `Float32Array`,
 and packed images can use `Uint32Array`.
 
-The `opacity` channel accepts values. Both `color` and `opacity` support
+One cell field can drive either `color` or `opacity`. A raster with a fixed
+color can encode signal intensity as `opacity` using a quantitative field. A
+linear scale can have multiple matching domain and range stops. Log, power,
+square-root, and symlog scales use two stops. With `opacity.scale` set to
+`null`, values in `[0, 1]` are used directly. Both channels support
 [cell-level selection conditions](../conditional-encoding.md#raster-cells).
-Scaled rasters show cell values and tile attributes on hover. Packed RGBA8
-images skip picking by default. Set `mark.tooltip` to `{ "handler": "default" }`
-to enable image tooltips, or set it to `null` to disable picking.
+
+Hovering over a cell shows its values and tile attributes. Packed RGBA8 images
+skip picking by default. `mark.tooltip: { "handler": "default" }` enables image
+tooltips, and `mark.tooltip: null` disables picking.
 
 ## Properties
 

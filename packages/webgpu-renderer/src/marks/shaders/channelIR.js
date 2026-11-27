@@ -108,7 +108,8 @@ function buildChannelIR(analysis, seriesIndexExpression) {
         transparentOnNonFinite:
             sourceKind === "fragment" &&
             scalarType === "f32" &&
-            outputComponents === 4,
+            outputScalarType === "f32" &&
+            (outputComponents === 1 || outputComponents === 4),
         rawValueExpr,
         scalarType,
         outputComponents,

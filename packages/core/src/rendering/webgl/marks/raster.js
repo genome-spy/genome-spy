@@ -17,7 +17,12 @@ import {
     visitRasterTiles,
 } from "../../immediate/marks/raster.js";
 import { RASTER_COORDINATE_OFFSET } from "../../renderingConstants.js";
-import { readScaleDomainUniform } from "../gl/glslScaleGenerator.js";
+import {
+    DOMAIN_PREFIX,
+    getRangeForGlsl,
+    RANGE_PREFIX,
+    readScaleDomainUniform,
+} from "../gl/glslScaleGenerator.js";
 import { createProgram } from "../gl/webGLHelper.js";
 import VERTEX_SHADER from "./raster.vertex.glsl";
 import { rasterFragmentShader, rasterValueType } from "./rasterShader.js";
@@ -40,7 +45,7 @@ export default class WebGLRasterMark {
     #programInfo;
 
     /** @type {ReturnType<import("../../../marks/raster.js").default["validateRenderingScales"]>} */
-    #color;
+    #cellScale;
 
     /** @type {import("../../../view/layout/rectangle.js").default} */
     #coords;
@@ -81,14 +86,14 @@ export default class WebGLRasterMark {
     }
 
     initializeGraphics() {
-        this.#color = this.mark.validateRenderingScales();
+        this.#cellScale = this.mark.validateRenderingScales();
         this.mark.initializeRenderingRevisions([]);
         const gl = this.gl;
-        const scale = this.#color?.getScale();
+        const scale = this.#cellScale?.getScale();
         this.#paint = createRasterPaintShader(
             this.mark,
             this.glHelper,
-            rasterValueType(this.mark, scale),
+            rasterValueType(this.mark),
             () => this.#getPaletteIndexer()
         );
         this.#programStatus = createProgram(
@@ -119,10 +124,10 @@ export default class WebGLRasterMark {
     }
 
     #getPaletteIndexer() {
-        const { type } = this.mark.getColorCellBinding();
+        const { type } = this.mark.getCellBinding();
         if (type === "quantitative") return;
         return /** @type {{domainIndexer: import("./rasterPaintShader.js").PaletteIndexer}} */ (
-            this.#color?.getScale().props
+            this.#cellScale?.getScale().props
         )?.domainIndexer;
     }
 
@@ -132,7 +137,7 @@ export default class WebGLRasterMark {
         // Rebuild textures even when the payload identity is the same.
         this.deleteGraphicsData();
         const gl = this.gl;
-        const { readTile } = this.mark.getColorCellBinding();
+        const { readTile } = this.mark.getCellBinding();
         const indexer = this.#getPaletteIndexer();
         const size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
         try {
@@ -202,6 +207,7 @@ export default class WebGLRasterMark {
     /** @param {MarkRenderingOptions} options */
     prepareRender(options) {
         const gl = this.gl;
+        const { channel } = this.mark.getCellBinding();
         return [
             () => {
                 gl.useProgram(this.#programInfo.program);
@@ -219,15 +225,27 @@ export default class WebGLRasterMark {
                     viewOpacity * this.mark.getUniformOpacity()
                 );
                 const paintUniforms = this.#paint?.prepare();
-                if (this.#color) {
-                    const mapping = this.#color.getMappingRef().get();
+                if (this.#cellScale) {
+                    const mapping = this.#cellScale.getMappingRef().get();
+                    const { scale } = mapping;
                     setUniforms(this.#programInfo, {
-                        uDomain_color: readScaleDomainUniform(mapping),
-                        uRangeTexture_color: this.glHelper.rangeTextures.get(
-                            mapping.scale
-                        ),
-                        uDomainTexture_color:
-                            this.resources.getCategoricalTexture(this.#color),
+                        [DOMAIN_PREFIX + channel]:
+                            readScaleDomainUniform(mapping),
+                        ...(channel === "opacity"
+                            ? {
+                                  [RANGE_PREFIX + channel]: getRangeForGlsl(
+                                      scale,
+                                      channel
+                                  ),
+                              }
+                            : {
+                                  uRangeTexture_color:
+                                      this.glHelper.rangeTextures.get(scale),
+                                  uDomainTexture_color:
+                                      this.resources.getCategoricalTexture(
+                                          this.#cellScale
+                                      ),
+                              }),
                     });
                 }
                 if (paintUniforms)

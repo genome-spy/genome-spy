@@ -326,7 +326,13 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             ? getDiscretizingDomainForGlsl(scale).length
             : scale.domain().length
         : undefined;
+    const range = getRangeForGlsl(scale, channel);
     const piecewise = isContinuous(scale.type) && domainLength > 2;
+    const numericPiecewise =
+        piecewise && !isColorChannel(channel) && range?.length === domainLength;
+    const continuousRange = numericPiecewise
+        ? "segmentRange"
+        : rangeUniformName;
     const needsSlot = isDiscretizing(scale.type) || piecewise;
     const usesDomain =
         isContinuous(scale.type) ||
@@ -370,7 +376,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             functionCall = makeScaleCall(
                 "scaleLinear",
                 "domain",
-                rangeUniformName
+                continuousRange
             );
             break;
 
@@ -378,7 +384,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             functionCall = makeScaleCall(
                 "scaleLog",
                 "domain",
-                rangeUniformName,
+                continuousRange,
                 scale.base()
             );
             break;
@@ -387,7 +393,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             functionCall = makeScaleCall(
                 "scaleSymlog",
                 "domain",
-                rangeUniformName,
+                continuousRange,
                 scale.constant()
             );
             break;
@@ -397,7 +403,7 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             functionCall = makeScaleCall(
                 "scalePow",
                 "domain",
-                rangeUniformName,
+                continuousRange,
                 scale.exponent()
             );
             break;
@@ -467,12 +473,12 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             );
     }
 
-    const range = getRangeForGlsl(scale, channel);
-
     /** @type {string} */
     let rangeUniform;
 
-    if (range && channel == primary && scale.type !== "ordinal") {
+    if (numericPiecewise && channel == primary) {
+        rangeUniform = `    uniform highp float ${rangeUniformName}[${domainLength}];`;
+    } else if (range && channel == primary && scale.type !== "ordinal") {
         const rangeProp = scale.props.range ?? [];
         // A retained band, point, or index position can get a new declared range.
         const liveBandRange = isPrimaryPositionalChannel(channel)
@@ -552,11 +558,14 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
     scaleBody.push(`int slot = 0;`);
     if (needsSlot) {
         const name = domainUniformName;
+        const pastStop = numericPiecewise
+            ? `(${name}[0] <= ${name}[${name}.length() - 1] ? value >= ${name}[slot + 1] : value < ${name}[slot + 1])`
+            : `value >= ${name}[slot + 1]`;
         // Use a simple linear search.
         // This cannot be put into a function because GLSL requires fixed array lengths for parameters.
         scaleBody.push(
             piecewise
-                ? `while (slot < ${name}.length() - 2 && value >= ${name}[slot + 1]) { slot++; }`
+                ? `while (slot < ${name}.length() - 2 && ${pastStop}) { slot++; }`
                 : `while (slot < ${name}.length() && value >= ${name}[slot]) { slot++; }`
         );
     }
@@ -578,10 +587,14 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
             }
         }
 
+        if (numericPiecewise) {
+            scaleBody.push(
+                `vec2 segmentRange = vec2(${rangeUniformName}[slot], ${rangeUniformName}[slot + 1]);`
+            );
+        }
         scaleBody.push(`float transformed = ${functionCall};`);
 
-        if (piecewise) {
-            // TODO: Handle range correctly. Now this assumes unit range.
+        if (piecewise && !numericPiecewise) {
             scaleBody.push(
                 `transformed = (float(slot) + transformed) / (float(${name}.length() - 1));`
             );
@@ -594,8 +607,15 @@ vec4 ${SCALE_FUNCTION_PREFIX}${channel}(uint value) {
     // 3. clamp
     if ("clamp" in scale && scale.clamp()) {
         scaleBody.push(
-            `transformed = clampToRange(transformed, ${vectorizeRange(range)});`
+            `transformed = clampToRange(transformed, ${numericPiecewise ? "segmentRange" : vectorizeRange(range)});`
         );
+    }
+    if (
+        channel === "opacity" &&
+        isContinuous(scale.type) &&
+        scale.props?.round
+    ) {
+        scaleBody.push("transformed = floor(transformed + 0.5);");
     }
 
     // 4. interpolate or map to a discrete value

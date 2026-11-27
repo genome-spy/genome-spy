@@ -66,7 +66,7 @@ describe("Tooltip context rows", () => {
                 x: { dimension: "column", type: "index", title: "pos" },
             },
         });
-        mark.getColorCellBinding = () => ({ column: "column" });
+        mark.getCellBinding = () => ({ column: "column" });
         mark.getCellTooltipData = RasterMark.prototype.getCellTooltipData;
         const tile = {
             dimensions: { column: { origin: 10, step: 2, count: 3 } },
@@ -87,7 +87,7 @@ describe("Tooltip context rows", () => {
 
     test("Reports the hovered row of a vertical raster strip", () => {
         const mark = makeMark({ encoders: { y: makeLocusEncoder("row") } });
-        mark.getColorCellBinding = () => ({ row: "row" });
+        mark.getCellBinding = () => ({ row: "row" });
         mark.getCellTooltipData = RasterMark.prototype.getCellTooltipData;
         const tile = {
             sample: "S1",

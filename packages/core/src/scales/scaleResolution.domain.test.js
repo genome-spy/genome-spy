@@ -1177,7 +1177,7 @@ describe("Scale resolution domain handling", () => {
                 LayerView
             )
         ).rejects.toThrow(
-            "Triangle rasters cannot use a viewport-derived color domain"
+            "Triangle rasters cannot use a viewport-derived paint domain"
         );
     });
 

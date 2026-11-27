@@ -151,11 +151,11 @@ For endpoint brushes, hover, and several conditional channels, see the
 ## Raster Cells
 
 Color and opacity conditions with value branches are evaluated for each
-[raster](mark/raster.md) cell. For color, the encoded field and its scale supply
-the fallback color. A positional interval tests overlap with the cell's
-data-space bounds, and a gradient interval tests its raw color value. Layer
-two aligned rasters with opposite opacity conditions to reveal a comparison
-dataset inside a brush.
+[raster](mark/raster.md) cell. An encoded field and its scale supply the
+fallback for the channel that reads the field. A positional interval tests
+overlap with the cell's data-space bounds, and a gradient interval tests its raw
+color value. Layer two aligned rasters with opposite opacity conditions to
+reveal a comparison dataset inside a brush.
 
 ## Multiple Conditions
 

@@ -316,7 +316,9 @@ fn rasterCellColor(in: VSOut, cell: vec2<u32>) -> vec4<f32> {
     let i = in.grid.z + cell.x + cell.y * in.grid.x;
     if (!isInstanceVisible(i)) { return vec4<f32>(0.0); }
     let color = getScaled_fill(i);
-    return premultiplyAlpha(vec4<f32>(color.rgb, color.a * clamp(getScaled_opacity(i), 0.0, 1.0)));
+    let opacity = getScaled_opacity(i);
+    if ((bitcast<u32>(opacity) & 0x7fffffffu) > 0x7f800000u) { return vec4<f32>(0.0); }
+    return premultiplyAlpha(vec4<f32>(color.rgb, color.a * clamp(opacity, 0.0, 1.0)));
 }
 
 fn rasterCenterColor(in: VSOut, center: vec2<f32>) -> vec4<f32> {

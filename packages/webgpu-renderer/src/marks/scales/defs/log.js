@@ -12,6 +12,9 @@ fn logTransform(value: f32, base: f32) -> f32 {
 }
 
 fn scaleLog(value: f32, domain: vec2<f32>, range: vec2<f32>, base: f32) -> f32 {
+    if (value == 0.0 || sign(value) != sign(domain.x)) {
+        return bitcast<f32>(bitcast<u32>(value) | 0x7fc00000u);
+    }
     // y = m log(x) + b
     // TODO: Perf optimization: precalculate log domain in js.
     return scaleLinear(

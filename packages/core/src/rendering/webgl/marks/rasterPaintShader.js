@@ -190,19 +190,21 @@ ${statements.join("\n")}
 }`;
     }
 
+    const opacityField = mark.getCellBinding().channel === "opacity";
     const colorShader = emitPaint(
         "rasterColor",
         "vec4",
         color,
         (value) =>
             value == null ? [0, 0, 0, 0] : cssColorToRgba(String(value)),
-        "cellColor(value)"
+        opacityField ? undefined : "cellColor(value)"
     );
     const opacityShader = emitPaint(
         "rasterOpacity",
         "float",
         opacity,
-        (value) => clamp(Number(value))
+        (value) => clamp(Number(value)),
+        opacityField ? "cellOpacity(value)" : undefined
     );
     /** @type {Uniforms} */
     const uniforms = {};

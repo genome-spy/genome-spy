@@ -26,6 +26,7 @@ const tileCaches = new WeakMap();
 export function prepareCanvasRasterTiles(mark, resolution) {
     const paintSpans = getCanvasRasterPaintSpans(mark);
     const pickable = mark.isPickingParticipant();
+    const { channel, readTile, type } = mark.getCellBinding();
     const signature = [
         resolution?.getMappingRef().get(),
         mark.unitView.getCollector().dataRevision,
@@ -34,10 +35,20 @@ export function prepareCanvasRasterTiles(mark, resolution) {
     ];
     let cache = tileCaches.get(mark);
     if (!cache || !shallowArrayEquals(signature, cache.signature)) {
-        const { readTile, type } = mark.getColorCellBinding();
+        const scale = resolution?.getScale();
         const colorize =
-            resolution &&
-            makeCellColorMapper(resolution.getScale(), type !== "quantitative");
+            scale && channel === "color"
+                ? makeCellColorMapper(scale, type !== "quantitative")
+                : undefined;
+        const opacityForValue =
+            channel === "opacity"
+                ? (/** @type {string | number | null} */ value) => {
+                      const raw = readNumericRasterCell(value);
+                      return Number.isFinite(raw)
+                          ? clamp(scale ? scale(raw) : raw)
+                          : 0;
+                  }
+                : undefined;
         /** @type {WeakMap<object, ReturnType<typeof paintTile>>} */
         const tiles = new WeakMap();
         cache = {
@@ -50,6 +61,7 @@ export function prepareCanvasRasterTiles(mark, resolution) {
                             datum,
                             readTile(datum),
                             colorize,
+                            opacityForValue,
                             paintSpans,
                             pickable
                         );
@@ -201,10 +213,18 @@ function makeCellColorMapper(scale, categorical) {
  * @param {object} datum
  * @param {ReturnType<import("../../../data/rasterTile.js").readRasterTile>} tile
  * @param {((value: string | number | null) => number) | undefined} colorize
+ * @param {((value: string | number | null) => number) | undefined} opacityForValue
  * @param {ReturnType<typeof getCanvasRasterPaintSpans>} paintSpans
  * @param {boolean} pickable
  */
-function paintTile(datum, tile, colorize, paintSpans, pickable) {
+function paintTile(
+    datum,
+    tile,
+    colorize,
+    opacityForValue,
+    paintSpans,
+    pickable
+) {
     const { horizontal, vertical, values } = tile;
     const width = horizontal.count;
     const height = vertical.count;
@@ -212,27 +232,31 @@ function paintTile(datum, tile, colorize, paintSpans, pickable) {
     // Cache the painted alpha bytes so picking uses the same rounded opacity
     // as drawing and can read it before the bitmap exists.
     const alpha = pickable ? new Uint8Array(values.length) : undefined;
-    const direct = values instanceof Uint32Array;
     const bytes = new DataView(
         pixels.data.buffer,
         pixels.data.byteOffset,
         pixels.data.byteLength
     );
-    /** @param {number} start @param {number} end @param {number} opacity @param {number} [color] */
+    /** @param {number} start @param {number} end @param {number} [opacity] @param {number} [color] */
     function paint(start, end, opacity, color) {
         for (let i = start; i < end; i++) {
-            let packed = color ?? (direct ? values[i] : colorize(values[i]));
-            if (opacity !== 1) {
+            let packed =
+                color ??
+                (colorize
+                    ? colorize(values[i])
+                    : /** @type {number} */ (values[i]));
+            const cellOpacity = opacity ?? opacityForValue?.(values[i]) ?? 1;
+            if (cellOpacity !== 1) {
                 packed =
                     (packed & 0xffffff) |
-                    (Math.round((packed >>> 24) * opacity) << 24);
+                    (Math.round((packed >>> 24) * cellOpacity) << 24);
             }
             bytes.setUint32(i * 4, packed, true);
             if (alpha) alpha[i] = packed >>> 24;
         }
     }
     if (paintSpans) paintSpans(datum, tile, paint);
-    else paint(0, values.length, 1);
+    else paint(0, values.length);
 
     return {
         width,

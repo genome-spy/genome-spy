@@ -2,7 +2,7 @@ import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { isValueDef } from "../encoder/encoder.js";
+import { isFieldDef, isValueDef } from "../encoder/encoder.js";
 import { supportsGridCoordinates } from "../scales/scaleRules.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
 import { selectionPredicateLeaves } from "../selection/selectionPredicateTree.js";
@@ -46,15 +46,28 @@ export default class RasterMark extends Mark {
     /** @param {import("../spec/channel.js").Encoding} encoding */
     fixEncoding(encoding) {
         this.#fixGridPosition(encoding);
-        if (
-            !encoding.color ||
-            !("field" in encoding.color) ||
-            !["quantitative", "nominal", "ordinal"].includes(
-                encoding.color.type
-            )
+        const { color, opacity } = encoding;
+        if (isFieldDef(opacity)) {
+            // TODO: Allow fields on both channels once WebGL support is removed.
+            if (!isValueDef(color)) {
+                throw new ViewError(
+                    "A raster with an opacity field requires a color value.",
+                    this.unitView
+                );
+            }
+            if (opacity.type !== "quantitative") {
+                throw new ViewError(
+                    "Raster opacity fields must be quantitative.",
+                    this.unitView
+                );
+            }
+        } else if (
+            !isFieldDef(color) ||
+            !["quantitative", "nominal", "ordinal"].includes(color.type)
         ) {
-            throw new Error(
-                "Raster requires a quantitative or categorical color field."
+            throw new ViewError(
+                "Raster requires a quantitative or categorical color field, or an opacity field with a color value.",
+                this.unitView
             );
         }
         return encoding;
@@ -127,13 +140,21 @@ export default class RasterMark extends Mark {
         }
     }
 
-    getColorCellBinding() {
-        return getCachedOrCall(this, "colorCellBinding", () => {
+    /** @returns {"color" | "opacity"} */
+    #fieldChannel() {
+        return isFieldDef(this.unitView.getEncoding().opacity)
+            ? "opacity"
+            : "color";
+    }
+
+    getCellBinding() {
+        return getCachedOrCall(this, "cellBinding", () => {
+            const channel = this.#fieldChannel();
             const { field, type } =
                 /** @type {import("../spec/channel.js").ScaleFieldDef<import("../spec/channel.js").Type>} */ (
-                    this.encoding.color
+                    this.encoding[channel]
                 );
-            const direct = this.#usesDirectColor();
+            const direct = channel === "color" && this.#usesDirectColor();
             const { x, y } = this.unitView.getEncoding();
             const column = x && "dimension" in x ? x.dimension : undefined;
             const row = y && "dimension" in y ? y.dimension : undefined;
@@ -143,6 +164,7 @@ export default class RasterMark extends Mark {
             const locus = scaleType === "locus" || scaleType === "index";
             const options = { direct, locus };
             return {
+                channel,
                 type,
                 direct,
                 column,
@@ -177,7 +199,7 @@ export default class RasterMark extends Mark {
                         : { field: axis };
             }
         }
-        if ("field" in encoding.color) {
+        if (isFieldDef(encoding.color)) {
             encoding.color = { ...encoding.color, field: "color" };
             delete encoding.color.condition;
         }
@@ -191,7 +213,7 @@ export default class RasterMark extends Mark {
      */
     getCellTooltipData(tile, index) {
         const { column: columnDimension, row: rowDimension } =
-            this.getColorCellBinding();
+            this.getCellBinding();
         const { fields, dimensions, ...attributes } =
             /** @type {import("../data/rasterTile.js").RasterTile & Record<string, any>} */ (
                 tile
@@ -249,15 +271,19 @@ export default class RasterMark extends Mark {
                         params: getSelectionPredicateParams(predicate),
                     };
                 });
+            const { channel, bandAxis } = this.getCellBinding();
+            const opacityField = channel === "opacity";
+            const colorBranches = this.encoders.color.branches;
             const color = planBranches(
-                this.encoders.color.branches.slice(0, -1),
+                opacityField ? colorBranches : colorBranches.slice(0, -1),
                 "Raster color conditions require value encodings."
             );
-            const opacityBranches = planBranches(
-                this.encoders.opacity?.branches ?? [],
+            const opacityBranches = this.encoders.opacity?.branches ?? [];
+            const opacity = planBranches(
+                opacityField ? opacityBranches.slice(0, -1) : opacityBranches,
                 "Raster opacity requires value encodings."
             );
-            const opacity = opacityBranches.length > 1 ? opacityBranches : [];
+            if (opacityBranches.length === 1) opacity.length = 0;
             if (!color.length && !opacity.length) return null;
 
             const conditions = [...color, ...opacity];
@@ -268,7 +294,6 @@ export default class RasterMark extends Mark {
                 .flatMap(selectionPredicateLeaves)
                 .filter((leaf) => "type" in leaf)
                 .toArray();
-            const { bandAxis } = this.getColorCellBinding();
             for (const { type, projections } of memberships) {
                 if (type === "single" || type === "multi") {
                     throw new ViewError(
@@ -316,17 +341,34 @@ export default class RasterMark extends Mark {
     }
 
     validateRenderingScales() {
-        const { bandAxis, type, direct } = this.getColorCellBinding();
+        const { channel, bandAxis, type, direct } = this.getCellBinding();
         this.#validateGridScales(bandAxis);
         this.getCellPaintPlan();
         if (direct) return undefined;
 
-        const resolution = this.unitView.getScaleResolution("color");
-        const colorScale = resolution.getScale();
-        if (
+        const resolution = this.unitView.getScaleResolution(channel);
+        const scale = resolution?.getScale();
+        if (!scale || scale.type === "null") return;
+
+        if (channel === "opacity") {
+            const stops = scale.domain().length;
+            if (
+                !["linear", "log", "pow", "sqrt", "symlog"].includes(
+                    scale.type
+                ) ||
+                stops < 2 ||
+                scale.range().length !== stops ||
+                (scale.type !== "linear" && stops !== 2)
+            ) {
+                throw new ViewError(
+                    "Raster opacity requires a linear scale with matching domain and range stops, a two-stop log, pow, sqrt, or symlog scale, or scale: null.",
+                    this.unitView
+                );
+            }
+        } else if (
             type !== "quantitative" &&
-            (colorScale.type !== "ordinal" ||
-                !colorScale.domain().length ||
+            (scale.type !== "ordinal" ||
+                !scale.domain().length ||
                 !resolution.isDomainDefinedExplicitly())
         ) {
             throw new ViewError(
@@ -363,26 +405,26 @@ export default class RasterMark extends Mark {
     }
 
     /** @type {import("./mark.js").MarkDomainBinding} */
-    #colorDomainBinding = {
+    #cellDomainBinding = {
         getKey: () =>
-            this.getColorCellBinding().domainKey +
-            (this.#usesLogColorScale() ? ":log" : ""),
+            this.getCellBinding().domainKey +
+            (this.#usesLogCellScale() ? ":log" : ""),
         read: (collector, constraints) =>
-            this.#getColorDomain(collector, constraints),
+            this.#getCellDomain(collector, constraints),
         // Exact triangle visibility requires the arranged height.
         viewportError: this.isTriangle
-            ? "Triangle rasters cannot use a viewport-derived color domain. Omit the domain to scale colors from loaded data."
+            ? "Triangle rasters cannot use a viewport-derived paint domain. Omit the domain to scale from loaded data."
             : undefined,
     };
 
     /** @param {import("../spec/channel.js").ChannelWithScale} channel */
     getDomainBinding = (channel) =>
-        channel === "color" ? this.#colorDomainBinding : undefined;
+        channel === this.#fieldChannel() ? this.#cellDomainBinding : undefined;
 
-    #usesLogColorScale() {
+    #usesLogCellScale() {
         return (
             this.unitView
-                .getScaleResolution("color")
+                .getScaleResolution(this.#fieldChannel())
                 ?.getResolvedScaleType() === "log"
         );
     }
@@ -391,12 +433,12 @@ export default class RasterMark extends Mark {
      * @param {import("../data/collector.js").default} collector
      * @param {import("../data/viewportDomain.js").ViewportConstraint[]} [constraints]
      */
-    #getColorDomain(collector, constraints = []) {
-        const { type, direct, readTile } = this.getColorCellBinding();
+    #getCellDomain(collector, constraints = []) {
+        const { type, direct, readTile } = this.getCellBinding();
         const domain = createDomain(type);
         if (direct || type !== "quantitative" || !collector.completed)
             return domain;
-        const logarithmic = this.#usesLogColorScale();
+        const logarithmic = this.#usesLogCellScale();
         const xConstraint = constraints.find(({ channel }) => channel === "x");
         const yConstraint = constraints.find(({ channel }) => channel === "y");
         for (const datum of collector.getData()) {
