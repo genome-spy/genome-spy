@@ -49,7 +49,7 @@ import { renderingModules } from "./renderingModuleRegistry.js";
  * @property {(mark: import("../marks/mark.js").default) => import("../types/viewContext.js").MarkRenderingDebugState} [getMarkRenderingDebugState]
  * @property {(options: {viewRoot: import("../view/view.js").default, getBackground: () => string | undefined, broadcast: (type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void, onLayoutComputed: (layout: import("../view/layout/layoutResult.js").default) => void}) => RenderingCoordinator} createRenderCoordinator
  * @property {(x: number, y: number) => number | null | Promise<number | null>} [readPickingId]
- * @property {(occurrences: import("../view/layout/layoutResult.js").MarkOccurrence[], mark: import("../marks/raster.js").default, datum: object, x: number, y: number, facetId?: import("../spec/channel.js").Scalar[]) => number | undefined} [resolveRasterCell]
+ * @property {(layout: import("../view/layout/layoutResult.js").default) => import("../genomeSpy/interactionController.js").ResolveCellIndex} [createCellIndexResolver]
  * @property {(options: RasterExportOptions & {devicePixelRatio?: number}) => string} exportCanvas
  * @property {(options: RasterExportOptions) => Promise<Blob>} [exportRaster]
  * @property {(options: SvgRunRasterizationOptions) => void | Promise<void>} [rasterizeSvgRuns]

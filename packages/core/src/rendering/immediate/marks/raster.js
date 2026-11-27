@@ -1,4 +1,5 @@
 import { readRasterDimension } from "../../../data/rasterTile.js";
+import RasterMark from "../../../marks/raster.js";
 import { intersectsBounds } from "../bounds.js";
 import { prepareRangeProjection } from "../markEncoding.js";
 import { getMarkData, SampleFacetCoordsResolver } from "../markData.js";
@@ -40,6 +41,30 @@ export function createRasterCellLookup(
 const UNBOUNDED = { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity };
 
 /**
+ * @param {import("../../../view/layout/layoutResult.js").default} layout
+ * @param {(mark: RasterMark, x: number, y: number) => {x: number, y: number}} pixelCenter
+ * @returns {import("../../../genomeSpy/interactionController.js").ResolveCellIndex}
+ */
+export function createRasterCellResolver(layout, pixelCenter) {
+    const byMark = layout.getMarkOccurrences(
+        (mark) => mark instanceof RasterMark && mark.isPickingParticipant()
+    );
+    return (mark, datum, x, y, facetId) => {
+        if (!(mark instanceof RasterMark)) return;
+        const occurrences = byMark?.get(mark);
+        return occurrences
+            ? (resolveRasterCell(
+                  occurrences,
+                  mark,
+                  datum,
+                  pixelCenter(mark, x, y),
+                  facetId
+              ) ?? null)
+            : null;
+    };
+}
+
+/**
  * Resolves the cell against the drawing occurrence, including sample placement.
  * The picking pass has already checked clips and visibility.
  * @param {import("../../../view/layout/layoutResult.js").MarkOccurrence[]} occurrences
@@ -49,7 +74,7 @@ const UNBOUNDED = { x1: -Infinity, y1: -Infinity, x2: Infinity, y2: Infinity };
  * @param {import("../../../spec/channel.js").Scalar[]} [facetId]
  * @returns {number | undefined}
  */
-export function resolveRasterCell(occurrences, mark, datum, point, facetId) {
+function resolveRasterCell(occurrences, mark, datum, point, facetId) {
     const { column, row } = mark.getColorCellBinding();
     const columns = readRasterDimension(datum, column).count;
     const rows = readRasterDimension(datum, row).count;

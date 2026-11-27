@@ -4,7 +4,7 @@ import { exportRaster, rasterizeSvgRuns } from "./webGpuRasterExport.js";
 import { createOutlineFontPreparer } from "./webGpuFontCatalog.js";
 import { createNativeTextMetricsProvider } from "../nativeTextMetrics.js";
 import OutlineTextMetricsProvider from "./outlineTextMetrics.js";
-import { resolveRasterCell } from "../immediate/marks/raster.js";
+import { createRasterCellResolver } from "../immediate/marks/raster.js";
 import {
     pickingPixelCenter,
     RASTER_COORDINATE_OFFSET,
@@ -62,16 +62,17 @@ export async function createWebGpuRenderingBackend(options) {
                 ...coordinatorOptions,
                 surface,
             }),
-        resolveRasterCell: (occurrences, mark, datum, x, y, facetId) => {
-            const point = pickingPixelCenter(
-                x,
-                y,
-                surface.getDevicePixelRatio()
-            );
-            point.x -= RASTER_COORDINATE_OFFSET;
-            point.y -= RASTER_COORDINATE_OFFSET;
-            return resolveRasterCell(occurrences, mark, datum, point, facetId);
-        },
+        createCellIndexResolver: (layout) =>
+            createRasterCellResolver(layout, (_mark, x, y) => {
+                const point = pickingPixelCenter(
+                    x,
+                    y,
+                    surface.getDevicePixelRatio()
+                );
+                point.x -= RASTER_COORDINATE_OFFSET;
+                point.y -= RASTER_COORDINATE_OFFSET;
+                return point;
+            }),
         readPickingId: (x, y) => surface.pick(x, y),
         exportCanvas: () => {
             throw new Error(

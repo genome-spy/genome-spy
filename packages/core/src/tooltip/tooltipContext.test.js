@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import Genome from "../genome/genome.js";
-import createTooltipContext, { createRasterTooltip } from "./tooltipContext.js";
+import RasterMark from "../marks/raster.js";
+import createTooltipContext, { createPickedTooltip } from "./tooltipContext.js";
 
 const genome = new Genome({
     name: "test",
@@ -66,12 +67,17 @@ describe("Tooltip context rows", () => {
             },
         });
         mark.getColorCellBinding = () => ({ column: "column" });
+        mark.getCellTooltipData = RasterMark.prototype.getCellTooltipData;
         const tile = {
             dimensions: { column: { origin: 10, step: 2, count: 3 } },
             fields: { base: "AGT" },
         };
 
-        const { context } = createRasterTooltip(tile, mark, 1);
+        const { context } = createPickedTooltip({
+            datum: tile,
+            mark,
+            cellIndex: 1,
+        });
 
         expect(context.flattenDatumRows()).toEqual([
             { key: "pos", value: 12 },
@@ -82,13 +88,18 @@ describe("Tooltip context rows", () => {
     test("Reports the hovered row of a vertical raster strip", () => {
         const mark = makeMark({ encoders: { y: makeLocusEncoder("row") } });
         mark.getColorCellBinding = () => ({ row: "row" });
+        mark.getCellTooltipData = RasterMark.prototype.getCellTooltipData;
         const tile = {
             sample: "S1",
             dimensions: { row: { origin: 10, step: 2, count: 3 } },
             fields: { base: "AGT" },
         };
 
-        const { datum, context } = createRasterTooltip(tile, mark, 1);
+        const { datum, context } = createPickedTooltip({
+            datum: tile,
+            mark,
+            cellIndex: 1,
+        });
 
         expect(datum).toEqual({ sample: "S1", base: "G" });
         expect(context.rasterCell).toEqual({ column: 0, row: 1 });

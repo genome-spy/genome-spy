@@ -68,14 +68,10 @@ describe("View disposal", () => {
         const originalSubscribe = Collector.prototype.subscribeDomainChanges;
         const subscribeSpy = vi
             .spyOn(Collector.prototype, "subscribeDomainChanges")
-            .mockImplementation(function (domainKey, listener) {
+            .mockImplementation(function (listener) {
                 // Non-obvious: track active listeners through disposer callbacks.
                 activeListeners.add(listener);
-                const unregister = originalSubscribe.call(
-                    this,
-                    domainKey,
-                    listener
-                );
+                const unregister = originalSubscribe.call(this, listener);
                 return () => {
                     activeListeners.delete(listener);
                     unregister();

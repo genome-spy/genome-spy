@@ -321,11 +321,11 @@ function addOccurrenceConfig(config, placementIndex, mark, coords) {
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
- * @param {object[]} data
  * @param {(encoder: import("../../types/encoder.js").Encoder, branch: import("../../types/encoder.js").EncodingBranch) => any} build
+ * @param {boolean} [cellPositions]
  * @returns {any}
  */
-function createConditionalChannel(mark, channel, data, build) {
+function createConditionalChannel(mark, channel, build, cellPositions = false) {
     const encoder = requireEncoder(mark, channel);
     const branches = encoder.branches;
     const fallback = branches.at(-1);
@@ -354,7 +354,11 @@ function createConditionalChannel(mark, channel, data, build) {
 
     const conditions = branches.slice(0, -1).map((branch) => {
         const branchConfig = buildBranch(branch);
-        const when = createSelectionCondition(mark, branch.predicate.selection);
+        const when = createSelectionCondition(
+            mark,
+            branch.predicate.selection,
+            cellPositions
+        );
         return { when, channel: branchConfig };
     });
 
@@ -404,25 +408,28 @@ function createBranchEncoder(mark, encoder, branch) {
  *
  * @param {import("../../marks/mark.js").default} mark
  * @param {import("../../selection/selectionPredicateTree.js").ResolvedSelectionPredicate} predicate
+ * @param {boolean} [cellPositions] Match interval selections against cell edges.
  * @returns {import("@genome-spy/webgpu-renderer").SelectionPredicate}
  */
-function createSelectionCondition(mark, predicate) {
+function createSelectionCondition(mark, predicate, cellPositions = false) {
     if ("all" in predicate) {
         return {
             all: predicate.all.map((child) =>
-                createSelectionCondition(mark, child)
+                createSelectionCondition(mark, child, cellPositions)
             ),
         };
     }
     if ("any" in predicate) {
         return {
             any: predicate.any.map((child) =>
-                createSelectionCondition(mark, child)
+                createSelectionCondition(mark, child, cellPositions)
             ),
         };
     }
     if ("not" in predicate) {
-        return { not: createSelectionCondition(mark, predicate.not) };
+        return {
+            not: createSelectionCondition(mark, predicate.not, cellPositions),
+        };
     }
     if ("selectionActive" in predicate) {
         const { param, type, components } = predicate.selectionActive;
@@ -479,7 +486,7 @@ function createSelectionCondition(mark, predicate) {
                     predicate.projections.map(
                         ({ component, input, secondaryInput, hitTest }) => {
                             if (
-                                mark instanceof RasterMark &&
+                                cellPositions &&
                                 (input === "x" || input === "y")
                             ) {
                                 return { component, position: input };
@@ -597,23 +604,28 @@ function createRasterConfig(mark, data, coords, placementIndex) {
     const palette = type !== "quantitative" ? color : undefined;
     const categories = palette && getCategoricalMapping(mark, "color", palette);
 
-    const fill = createConditionalChannel(mark, "color", data, (encoder) =>
-        isValueDef(encoder.channelDef)
-            ? createColorBranch(mark, "color", data, encoder)
-            : {
-                  input: "color",
-                  scale: color
-                      ? createColorScale(
-                            mark,
-                            "color",
-                            color,
-                            categories?.readDomain
-                        )
-                      : rgba8Unorm,
-              }
+    const fill = createConditionalChannel(
+        mark,
+        "color",
+        (encoder) =>
+            isValueDef(encoder.channelDef)
+                ? createColorBranch(mark, "color", data, encoder)
+                : {
+                      input: "color",
+                      scale: color
+                          ? createColorScale(
+                                mark,
+                                "color",
+                                color,
+                                categories?.readDomain
+                            )
+                          : rgba8Unorm,
+                  },
+        true
     );
     const opacity =
-        mark.encoders.opacity && createNumericChannel(mark, "opacity", data);
+        mark.encoders.opacity &&
+        createNumericChannel(mark, "opacity", data, true);
 
     let cached = rasterDataCache.get(mark);
     if (cached?.data !== data || cached.palette !== palette) {
@@ -661,11 +673,12 @@ function createRasterConfig(mark, data, coords, placementIndex) {
     const xBand = bandAxis === "x" ? undefined : xScale.props.reverse ? 1 : 0;
     const yBand =
         bandAxis === "y" || rowEdges ? undefined : yScale.props.reverse ? 0 : 1;
+    /** @param {"x" | "y" | "x2" | "y2"} channel @param {number} [band] */
+    const positionChannel = (channel, band) =>
+        createPositionChannel(mark, channel, data, coords, band, true);
     const channels = {
-        x: createPositionChannel(mark, "x", data, coords, xBand),
-        ...(rowEdges
-            ? {}
-            : { y: createPositionChannel(mark, "y", data, coords, yBand) }),
+        x: positionChannel("x", xBand),
+        ...(rowEdges ? {} : { y: positionChannel("y", yBand) }),
     };
     const position = Object.fromEntries(
         Object.entries(channels).map(([name, channel]) => {
@@ -691,14 +704,12 @@ function createRasterConfig(mark, data, coords, placementIndex) {
         x1:
             bandAxis === "x"
                 ? channels.x.data
-                : (indexEndX ??
-                  createPositionChannel(mark, "x2", data, coords, xBand).data),
+                : (indexEndX ?? positionChannel("x2", xBand).data),
         y1: rowEdges
             ? rowEdges.end
             : bandAxis === "y"
               ? channels.y.data
-              : (indexEndY ??
-                createPositionChannel(mark, "y2", data, coords, yBand).data),
+              : (indexEndY ?? positionChannel("y2", yBand).data),
     });
     if (
         !cached.snapshot ||
@@ -1290,11 +1301,27 @@ function createArrowConfig(mark, data, coords) {
  * @param {object[]} data
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {number} [bandOverride]
+ * @param {boolean} [packedIndex]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createPositionChannel(mark, channel, data, coords, bandOverride) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
-        createPositionBranch(mark, channel, data, coords, encoder, bandOverride)
+function createPositionChannel(
+    mark,
+    channel,
+    data,
+    coords,
+    bandOverride,
+    packedIndex = false
+) {
+    return createConditionalChannel(mark, channel, (encoder) =>
+        createPositionBranch(
+            mark,
+            channel,
+            data,
+            coords,
+            encoder,
+            bandOverride,
+            packedIndex
+        )
     );
 }
 
@@ -1305,6 +1332,7 @@ function createPositionChannel(mark, channel, data, coords, bandOverride) {
  * @param {import("../../view/layout/rectangle.js").default} coords
  * @param {import("../../types/encoder.js").Encoder} encoder
  * @param {number} [bandOverride]
+ * @param {boolean} [packedIndex]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createPositionBranch(
@@ -1313,7 +1341,8 @@ function createPositionBranch(
     data,
     coords,
     encoder,
-    bandOverride
+    bandOverride,
+    packedIndex
 ) {
     const accessor = encoder.branches[0].accessor;
     // Value definitions are viewport-relative even when another conditional
@@ -1375,8 +1404,7 @@ function createPositionBranch(
                 ? 1 - band
                 : band;
         const large =
-            mark instanceof RasterMark ||
-            isLargeIndexDomain(scale.domain().map(Number));
+            packedIndex || isLargeIndexDomain(scale.domain().map(Number));
         const input = encoder.constant
             ? createIndexValue(mark, channel, () => accessor(data[0]), large)
             : {
@@ -1537,13 +1565,18 @@ function retainBandScaleProperties(target, scale, channel, peer) {
  * @param {import("../../marks/mark.js").default} mark
  * @param {string} channel
  * @param {object[]} data
+ * @param {boolean} [cellPositions]
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
-function createNumericChannel(mark, channel, data) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
-        isStaticConstantEncoder(encoder)
-            ? { value: Number(encoder(data[0])) }
-            : createNumericBranch(mark, channel, data, encoder)
+function createNumericChannel(mark, channel, data, cellPositions = false) {
+    return createConditionalChannel(
+        mark,
+        channel,
+        (encoder) =>
+            isStaticConstantEncoder(encoder)
+                ? { value: Number(encoder(data[0])) }
+                : createNumericBranch(mark, channel, data, encoder),
+        cellPositions
     );
 }
 
@@ -1622,7 +1655,7 @@ function createNumericBranch(mark, channel, data, encoder) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createEnumChannel(mark, channel, data, values) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
+    return createConditionalChannel(mark, channel, (encoder) =>
         createEnumBranch(mark, channel, data, values, encoder)
     );
 }
@@ -1718,7 +1751,7 @@ function createEnumBranch(mark, channel, data, values, encoder) {
  * @returns {import("@genome-spy/webgpu-renderer").ChannelConfigInput}
  */
 function createColorChannel(mark, channel, data) {
-    return createConditionalChannel(mark, channel, data, (encoder) =>
+    return createConditionalChannel(mark, channel, (encoder) =>
         createColorBranch(mark, channel, data, encoder)
     );
 }

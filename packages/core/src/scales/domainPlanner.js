@@ -1,4 +1,3 @@
-import RasterMark from "../marks/raster.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import {
     toInternalIndexLikeDataDomain,
@@ -519,18 +518,12 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
         }
 
         const collector = member.view.getCollector();
-        const mark = member.view.mark;
-        const raster =
-            collector &&
-            mark instanceof RasterMark &&
-            member.channel === "color"
-                ? mark
-                : undefined;
+        const binding =
+            collector && member.view.mark.getDomainBinding?.(member.channel);
+        const boundKey = binding && binding.getKey();
 
         for (const accessor of accessors) {
-            const domainKey =
-                raster?.getColorCellBinding().domainKey ??
-                getAccessorDomainKey(accessor, type);
+            const domainKey = boundKey ?? getAccessorDomainKey(accessor, type);
 
             const collectorKey = collector ?? null;
             let domainsForCollector = domainsByCollector.get(collectorKey);
@@ -545,8 +538,10 @@ export function resolveDataDomain(members, getType, getAccessorsForMember) {
 
             let domain;
             if (collector) {
-                domain = raster
-                    ? raster.getColorDomain(collector)
+                domain = binding
+                    ? collector.getCachedDomain(domainKey, () =>
+                          binding.read(collector)
+                      )
                     : collector.getDomain(domainKey, type, accessor);
             } else if (accessor.constant) {
                 domain = createDomain(type);

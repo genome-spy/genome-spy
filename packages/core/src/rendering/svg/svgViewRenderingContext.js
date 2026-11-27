@@ -231,6 +231,14 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
     }
 
     /**
+     * @param {import("../../marks/mark.js").default} mark
+     * @returns {mark is RasterMark}
+     */
+    requiresRasterization(mark) {
+        return mark instanceof RasterMark;
+    }
+
+    /**
      * Returns marks in their first-seen traversal order.
      *
      * @returns {Map<import("../../marks/mark.js").default, number>}
@@ -396,7 +404,7 @@ export default class SvgViewRenderingContext extends ViewRenderingContext {
             return;
         }
 
-        if (mark instanceof RasterMark) {
+        if (this.requiresRasterization(mark)) {
             this.#visitRasterMark(mark, options, visibleBounds);
             return;
         }

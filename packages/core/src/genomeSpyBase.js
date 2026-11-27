@@ -18,7 +18,6 @@ import {
     refreshVisibility,
 } from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
-import RasterMark from "./marks/raster.js";
 
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
@@ -76,8 +75,9 @@ export default class GenomeSpy {
     /** @type {import("./rendering/renderingBackend.js").RenderingCoordinator} */
     #renderCoordinator;
 
-    /** @type {ReturnType<import("./view/layout/layoutResult.js").default["getMarkOccurrences"]>} */
-    #rasterOccurrences;
+    /** @type {import("./genomeSpy/interactionController.js").ResolveCellIndex | undefined} */
+    #resolveCellIndex;
+
     /** @type {LoadingIndicatorManager} */
     #loadingIndicatorManager;
     /** @type {LoadingStatusRegistry} */
@@ -404,7 +404,7 @@ export default class GenomeSpy {
     }
 
     #disposeInitializedResources() {
-        this.#rasterOccurrences = undefined;
+        this.#resolveCellIndex = undefined;
         if (this.viewRoot && this.#disposedViewRoot !== this.viewRoot) {
             this.viewRoot.disposeSubtree();
             this.#disposedViewRoot = this.viewRoot;
@@ -583,11 +583,10 @@ export default class GenomeSpy {
                 getBackground: this.#getCanvasBackground,
                 broadcast: this.broadcast.bind(this),
                 onLayoutComputed: (layout) => {
-                    this.#rasterOccurrences = layout.getMarkOccurrences(
-                        (mark) =>
-                            mark instanceof RasterMark &&
-                            mark.isPickingParticipant()
-                    );
+                    this.#resolveCellIndex =
+                        this.#renderingBackend.createCellIndexResolver?.(
+                            layout
+                        );
                     this.#loadingIndicatorManager.updateLayout();
                 },
             });
@@ -634,20 +633,7 @@ export default class GenomeSpy {
                 ? this.renderPickingFramebuffer.bind(this)
                 : undefined,
             readPickingId: this.#renderingBackend.readPickingId,
-            resolveCellIndex: (mark, datum, x, y, facetId) => {
-                if (!(mark instanceof RasterMark)) return;
-                const occurrences = this.#rasterOccurrences?.get(mark);
-                return occurrences
-                    ? (this.#renderingBackend.resolveRasterCell?.(
-                          occurrences,
-                          mark,
-                          datum,
-                          x,
-                          y,
-                          facetId
-                      ) ?? null)
-                    : null;
-            },
+            resolveCellIndex: (...args) => this.#resolveCellIndex?.(...args),
             reportError: this.#reportRuntimeError.bind(this),
             canPick: () => Boolean(this.viewRoot?.hasRendered()),
         });

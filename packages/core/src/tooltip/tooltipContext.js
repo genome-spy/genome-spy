@@ -9,8 +9,6 @@ import { asArray } from "../utils/arrayUtils.js";
 import { getEncoderDataAccessor } from "../encoder/encoder.js";
 import { getConfiguredTooltipRows } from "./configuredTooltipRows.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
-import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import RasterMark from "../marks/raster.js";
 
 /** @type {Record<"x" | "y", "x2" | "y2">} */
 const SECONDARY_AXIS = {
@@ -113,58 +111,36 @@ export function createPickedTooltip(
     { datum, mark, facetId, cellIndex },
     params
 ) {
-    return cellIndex !== undefined && mark instanceof RasterMark
-        ? createRasterTooltip(datum, mark, cellIndex, params, facetId)
-        : {
-              datum,
-              context: createTooltipContext(datum, mark, params, facetId),
-          };
+    const cell =
+        cellIndex === undefined
+            ? undefined
+            : mark.getCellTooltipData(datum, cellIndex);
+    return {
+        datum: cell?.datum ?? datum,
+        context: cell
+            ? createCellTooltipContext(cell, mark, params, facetId)
+            : createTooltipContext(datum, mark, params, facetId),
+    };
 }
 
 /**
- * @param {object} tile
- * @param {import("../marks/raster.js").default} mark
- * @param {number} index
+ * @param {import("../marks/mark.js").CellTooltipData} cell
+ * @param {import("../marks/mark.js").default} mark
  * @param {TooltipHandlerParams} [params]
  * @param {import("../spec/channel.js").Scalar[]} [facetId]
- * @returns {{datum: Record<string, any>, context: TooltipContext}}
+ * @returns {TooltipContext}
  */
-export function createRasterTooltip(tile, mark, index, params, facetId) {
-    const { column: columnDimension, row: rowDimension } =
-        mark.getColorCellBinding();
-    const { fields, dimensions, ...attributes } =
-        /** @type {import("../data/rasterTile.js").RasterTile & Record<string, any>} */ (
-            tile
-        );
-    delete attributes[UNIQUE_ID_KEY];
-    const horizontal =
-        columnDimension === undefined ? undefined : dimensions[columnDimension];
-    const vertical =
-        rowDimension === undefined ? undefined : dimensions[rowDimension];
-    const datum = {
-        ...attributes,
-        ...Object.fromEntries(
-            Object.entries(fields).map(([name, values]) => [
-                name,
-                values[index],
-            ])
-        ),
-    };
-    const columns = horizontal?.count ?? 1;
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    const scaleAxis = (/** @type {"x" | "y"} */ axis) =>
-        mark.isTriangle ? "x" : axis;
+function createCellTooltipContext(
+    { datum, cell, axes, scaleAxis },
+    mark,
+    params,
+    facetId
+) {
     /** @type {TooltipRow[]} */
     const indexRows = [];
     /** @type {TooltipRow[]} */
     const genomicRows = [];
-    for (const [axis, dimension, cell] of /** @type {const} */ ([
-        ["x", horizontal, column],
-        ["y", vertical, row],
-    ])) {
-        if (!dimension) continue;
-        const start = dimension.origin + cell * dimension.step;
+    for (const { axis, start, end } of axes) {
         const label = axis === "x" ? "Column" : "Row";
         const coordinateAxis = scaleAxis(axis);
 
@@ -178,7 +154,6 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
         if (!getGenome(mark, coordinateAxis)) continue;
         const mode = getConfiguredMode(params, axis);
         if (mode === "disabled") continue;
-        const end = start + dimension.step;
         const format = (/** @type {number} */ position) =>
             formatGenomicLocus(mark, coordinateAxis, position);
         if (mode === "endpoints") {
@@ -201,18 +176,15 @@ export function createRasterTooltip(tile, mark, index, params, facetId) {
     }
 
     return {
-        datum,
-        context: {
-            facetId: facetId?.slice(),
-            rasterCell: { column, row },
-            tooltipRows: getConfiguredTooltipRows(datum, mark),
-            genomicRows,
-            flattenDatumRows: () => [...indexRows, ...flattenDatumRows(datum)],
-            formatGenomicLocus: (axis, position) =>
-                formatGenomicLocus(mark, scaleAxis(axis), position),
-            formatGenomicInterval: (axis, interval) =>
-                formatGenomicInterval(mark, scaleAxis(axis), interval),
-        },
+        facetId: facetId?.slice(),
+        rasterCell: cell,
+        tooltipRows: getConfiguredTooltipRows(datum, mark),
+        genomicRows,
+        flattenDatumRows: () => [...indexRows, ...flattenDatumRows(datum)],
+        formatGenomicLocus: (axis, position) =>
+            formatGenomicLocus(mark, scaleAxis(axis), position),
+        formatGenomicInterval: (axis, interval) =>
+            formatGenomicInterval(mark, scaleAxis(axis), interval),
     };
 }
 

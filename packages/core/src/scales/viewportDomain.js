@@ -1,4 +1,3 @@
-import RasterMark from "../marks/raster.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import {
     getEncoderAccessors,
@@ -89,22 +88,11 @@ export function validateSharedViewportDomain(members, viewLevelDomain) {
         throw new Error("Cannot mix viewport domain modes on a shared scale.");
     }
 
-    // Exact triangle visibility depends on the arranged track height. Using
-    // loaded cells for the color domain keeps scale inference independent of layout.
-    if (
-        modes.size &&
-        members
-            .values()
-            .some(
-                ({ view, channel }) =>
-                    channel === "color" &&
-                    view.mark instanceof RasterMark &&
-                    view.mark.isTriangle
-            )
-    ) {
-        throw new Error(
-            "Triangle rasters cannot use a viewport-derived color domain. Omit the domain to scale colors from loaded data."
-        );
+    if (modes.size) {
+        for (const { view, channel } of members) {
+            const error = view.mark.getDomainBinding?.(channel)?.viewportError;
+            if (error) throw new Error(error);
+        }
     }
 
     return modes.values().next().value;
@@ -139,13 +127,10 @@ export function resolveVisibleDataDomain(
 
         const constraints = getViewportConstraints(member);
         const collector = member.view.getCollector();
-        const mark = member.view.mark;
-        if (
-            collector &&
-            mark instanceof RasterMark &&
-            member.channel === "color"
-        ) {
-            domain.extendAll(mark.getColorDomain(collector, constraints));
+        const binding =
+            collector && member.view.mark.getDomainBinding?.(member.channel);
+        if (binding) {
+            domain.extendAll(binding.read(collector, constraints));
             hasContributors = true;
             continue;
         }

@@ -18,7 +18,6 @@ import {
     getIntervalSelection,
     normalizeIntervalForSelection,
 } from "./selectionDomainUtils.js";
-import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { getPrimaryChannel } from "../encoder/encoder.js";
 import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
 import { isDataReady } from "../data/dataReadiness.js";
@@ -437,42 +436,33 @@ export default function createDomainInputs({
             runtime.flushNow({ afterTransaction: true });
         };
 
-        // The same bound accessors drive domain extraction and invalidation.
         // A domain-sensitive flow must not invalidate its own inferred domain.
-        /** @type {Map<import("../data/collector.js").default, {keys: Set<string>, sensitive: Set<import("../spec/channel.js").ChannelWithScale>}>} */
-        const subscriptions = new Map();
+        /** @type {Set<import("../data/collector.js").default>} */
+        const subscribed = new Set();
         for (const member of dataMembers) {
             const collector = member.view.getCollector();
-            if (!collector) continue;
+            if (!collector || subscribed.has(collector)) continue;
 
-            let subscription = subscriptions.get(collector);
-            if (!subscription) {
-                subscription = {
-                    keys: new Set(),
-                    sensitive: collectDomainSensitiveScaleChannels(collector),
-                };
-                subscriptions.set(collector, subscription);
-            }
+            const bound = accessors.get(member);
+            if (!bound.length) continue;
 
-            for (const accessor of accessors.get(member)) {
+            if (!explicit) {
+                const sensitive =
+                    collectDomainSensitiveScaleChannels(collector);
                 if (
-                    !explicit &&
-                    subscription.sensitive.has(
-                        /** @type {import("../spec/channel.js").ChannelWithScale} */ (
-                            getPrimaryChannel(accessor.scaleChannel)
+                    bound.every((accessor) =>
+                        sensitive.has(
+                            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                                getPrimaryChannel(accessor.scaleChannel)
+                            )
                         )
                     )
                 )
                     continue;
-                subscription.keys.add(getAccessorDomainKey(accessor, type));
             }
-        }
 
-        for (const [collector, { keys }] of subscriptions) {
-            for (const key of keys)
-                disposers.push(
-                    collector.subscribeDomainChanges(key, dataChanged)
-                );
+            subscribed.add(collector);
+            disposers.push(collector.subscribeDomainChanges(dataChanged));
         }
 
         return {

@@ -1,4 +1,3 @@
-import RasterMark from "../../marks/raster.js";
 import { createLayoutResult } from "../../view/layout/layoutResult.js";
 import Rectangle from "../../view/layout/rectangle.js";
 import { RasterizationUnavailableError } from "../rasterization.js";
@@ -93,7 +92,7 @@ export async function analyzeSvgExport({
                 viewPath: mark.unitView.getPathString(),
                 markType: mark.getType(),
                 instanceCount,
-                ...(mark instanceof RasterMark && {
+                ...(renderingContext.requiresRasterization(mark) && {
                     requiresRasterization: /** @type {const} */ (true),
                 }),
             })
@@ -173,7 +172,10 @@ export async function createRasterizedSvg({
     const runs = renderingContext.getRasterRuns();
     const requiresRasterization = (
         /** @type {import("./svgViewRenderingContext.js").SvgRasterRun} */ run
-    ) => run.marks.values().some((mark) => mark instanceof RasterMark);
+    ) =>
+        run.marks
+            .values()
+            .some((mark) => renderingContext.requiresRasterization(mark));
     if (runs.length) {
         try {
             if (!rasterizeSvgRuns) {

@@ -1,6 +1,7 @@
 import { inheritSpecOrigin } from "../utils/specOrigin.js";
 import createDomain from "../utils/domainArray.js";
 import { getVisibleCellRange, readRasterTile } from "../data/rasterTile.js";
+import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { supportsGridCoordinates } from "../scales/scaleRules.js";
 import { getSelectionPredicateParams } from "../selection/selection.js";
@@ -153,7 +154,9 @@ export default class RasterMark extends Mark {
                           ? /** @type {const} */ ("y")
                           : undefined,
                 // Keep tile domains distinct from scalar fields on the same collector.
-                domainKey: "raster:" + JSON.stringify([column, row, field]),
+                domainKey:
+                    "raster:" +
+                    JSON.stringify([column, row, field, type, direct, locus]),
                 readTile: (/** @type {object} */ datum) =>
                     readRasterTile(datum, column, row, field, options),
             };
@@ -179,6 +182,54 @@ export default class RasterMark extends Mark {
             delete encoding.color.condition;
         }
         return encoding;
+    }
+
+    /**
+     * @param {object} tile
+     * @param {number} index
+     * @returns {import("./mark.js").CellTooltipData}
+     */
+    getCellTooltipData(tile, index) {
+        const { column: columnDimension, row: rowDimension } =
+            this.getColorCellBinding();
+        const { fields, dimensions, ...attributes } =
+            /** @type {import("../data/rasterTile.js").RasterTile & Record<string, any>} */ (
+                tile
+            );
+        delete attributes[UNIQUE_ID_KEY];
+        const horizontal =
+            columnDimension === undefined
+                ? undefined
+                : dimensions[columnDimension];
+        const vertical =
+            rowDimension === undefined ? undefined : dimensions[rowDimension];
+        const columns = horizontal?.count ?? 1;
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        const axes = [];
+        for (const [axis, dimension, cell] of /** @type {const} */ ([
+            ["x", horizontal, column],
+            ["y", vertical, row],
+        ])) {
+            if (!dimension) continue;
+            const start = dimension.origin + cell * dimension.step;
+            axes.push({ axis, start, end: start + dimension.step });
+        }
+
+        return {
+            datum: {
+                ...attributes,
+                ...Object.fromEntries(
+                    Object.entries(fields).map(([name, values]) => [
+                        name,
+                        values[index],
+                    ])
+                ),
+            },
+            cell: { column, row },
+            axes,
+            scaleAxis: (axis) => (this.isTriangle ? "x" : axis),
+        };
     }
 
     getCellPaintPlan() {
@@ -311,17 +362,41 @@ export default class RasterMark extends Mark {
         }
     }
 
+    /** @type {import("./mark.js").MarkDomainBinding} */
+    #colorDomainBinding = {
+        getKey: () =>
+            this.getColorCellBinding().domainKey +
+            (this.#usesLogColorScale() ? ":log" : ""),
+        read: (collector, constraints) =>
+            this.#getColorDomain(collector, constraints),
+        // Exact triangle visibility requires the arranged height.
+        viewportError: this.isTriangle
+            ? "Triangle rasters cannot use a viewport-derived color domain. Omit the domain to scale colors from loaded data."
+            : undefined,
+    };
+
+    /** @param {import("../spec/channel.js").ChannelWithScale} channel */
+    getDomainBinding = (channel) =>
+        channel === "color" ? this.#colorDomainBinding : undefined;
+
+    #usesLogColorScale() {
+        return (
+            this.unitView
+                .getScaleResolution("color")
+                ?.getResolvedScaleType() === "log"
+        );
+    }
+
     /**
      * @param {import("../data/collector.js").default} collector
      * @param {import("../data/viewportDomain.js").ViewportConstraint[]} [constraints]
      */
-    getColorDomain(collector, constraints = []) {
+    #getColorDomain(collector, constraints = []) {
         const { type, direct, readTile } = this.getColorCellBinding();
         const domain = createDomain(type);
         if (direct || type !== "quantitative" || !collector.completed)
             return domain;
-        const colorResolution = this.unitView.getScaleResolution("color");
-        const logarithmic = colorResolution?.getResolvedScaleType() === "log";
+        const logarithmic = this.#usesLogColorScale();
         const xConstraint = constraints.find(({ channel }) => channel === "x");
         const yConstraint = constraints.find(({ channel }) => channel === "y");
         for (const datum of collector.getData()) {

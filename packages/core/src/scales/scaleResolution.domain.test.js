@@ -1099,33 +1099,59 @@ describe("Scale resolution domain handling", () => {
         }
     });
 
-    test("triangle colors adapt to replacement tiles", async () => {
+    test("shared triangle tiles have distinct cached linear and log domains", async () => {
         const dimension = { origin: 0, step: 1, count: 2 };
         const tile = (value) => ({
             dimensions: { column: dimension, row: dimension },
             fields: { value },
         });
-        const view = await initView({
-            datasets: { tiles: [tile([0, 2, 4, 8])] },
-            data: { name: "tiles" },
-            projection: "triangle",
-            mark: "raster",
-            encoding: {
-                x: { dimension: "column", type: "locus" },
-                y: { dimension: "row", type: "locus" },
-                color: {
-                    field: "value",
-                    type: "quantitative",
-                    scale: { type: "log" },
+        const view = await initView(
+            {
+                datasets: { tiles: [tile([0, 2, 4, 8])] },
+                data: { name: "tiles" },
+                projection: "triangle",
+                resolve: { scale: { color: "independent" } },
+                encoding: {
+                    x: { dimension: "column", type: "locus" },
+                    y: { dimension: "row", type: "locus" },
                 },
+                layer: ["log", "linear"].map((type) => ({
+                    mark: { type: "raster", tooltip: null },
+                    encoding: {
+                        color: {
+                            field: "value",
+                            type: "quantitative",
+                            scale: { type, zero: false },
+                        },
+                    },
+                })),
             },
-        });
+            LayerView
+        );
         try {
-            expect(getScaleDomain(view, "color")).toEqual([2, 8]);
+            const [log, linear] = view.children;
+            const collector = log.getCollector();
+            // Exercise cache identity with both marks reading the same collector.
+            linear.flowHandle.collector = collector;
+            expect(getScaleDomain(log, "color")).toEqual([2, 8]);
+            expect(getScaleDomain(linear, "color")).toEqual([0, 8]);
+
+            const logResolution = getRequiredScaleResolution(log, "color");
+            const linearResolution = getRequiredScaleResolution(
+                linear,
+                "color"
+            );
+            expect(r(linearResolution.getDataDomain())).toEqual([0, 8]);
+            const readTiles = vi.spyOn(collector, "getData");
+            expect(r(logResolution.getDataDomain())).toEqual([2, 8]);
+            expect(r(linearResolution.getDataDomain())).toEqual([0, 8]);
+            expect(readTiles).not.toHaveBeenCalled();
+
             createTopLevelDatasetApi({ viewRoot: view }).set("tiles", [
                 tile([0, 3, 6, 12]),
             ]);
-            expect(getScaleDomain(view, "color")).toEqual([3, 12]);
+            expect(getScaleDomain(log, "color")).toEqual([3, 12]);
+            expect(getScaleDomain(linear, "color")).toEqual([0, 12]);
         } finally {
             view.disposeSubtree();
         }
