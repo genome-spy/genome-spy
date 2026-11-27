@@ -48,89 +48,19 @@
     }
   },
 
-  "layer": [
-    {
-      "name": "contacts",
-      "mark": "raster",
-      "encoding": {
-        "x": { "dimension": "column", "type": "locus" },
-        "y": { "dimension": "row", "type": "locus" },
-        "color": {
-          "field": "value",
-          "type": "quantitative",
-          "title": "Contacts",
-          "scale": {
-            "type": "log",
-            "scheme": { "expr": "palette" },
-            "clamp": true
-          }
-        }
+  "mark": "raster",
+  "encoding": {
+    "x": { "dimension": "column", "type": "locus" },
+    "y": { "dimension": "row", "type": "locus" },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Contacts",
+      "scale": {
+        "type": "log",
+        "scheme": { "expr": "palette" },
+        "clamp": true
       }
-    },
-
-    {
-      "projection": null,
-      "params": [
-        { "name": "labelFontSize", "value": 11 },
-        { "name": "labelLineHeight", "expr": "1.2 * labelFontSize" },
-        { "name": "labelPadding", "value": 3 },
-        { "name": "labelInset", "value": 4 }
-      ],
-      "transform": [
-        { "type": "aggregate", "groupby": ["binSize"] },
-        {
-          "type": "formula",
-          "as": "resolutionLabel",
-          "expr": "'Current resolution: ' + format(datum.binSize, ',') + ' bp'"
-        },
-        {
-          "type": "measureText",
-          "field": "resolutionLabel",
-          "fontSize": { "expr": "labelFontSize" },
-          "as": "labelWidth"
-        }
-      ],
-      "encoding": {
-        "x": { "value": 1 },
-        "y": { "value": 0 }
-      },
-      "layer": [
-        {
-          "mark": {
-            "type": "rect",
-            "fill": "white",
-            "fillOpacity": 0.7,
-            "x2": 1,
-            "y2": 0,
-            "x2Offset": { "expr": "-labelInset" },
-            "yOffset": {
-              "expr": "-labelInset - 2 * labelPadding - labelLineHeight"
-            },
-            "y2Offset": { "expr": "-labelInset" }
-          },
-          "encoding": {
-            "xOffset": {
-              "expr": "-labelInset - 2 * labelPadding - datum.labelWidth",
-              "scale": null
-            }
-          }
-        },
-        {
-          "mark": {
-            "type": "text",
-            "align": "right",
-            "baseline": "middle",
-            "size": { "expr": "labelFontSize" },
-            "xOffset": { "expr": "-labelInset - labelPadding" },
-            "yOffset": {
-              "expr": "-labelInset - labelPadding - labelLineHeight / 2"
-            }
-          },
-          "encoding": {
-            "text": { "field": "resolutionLabel" }
-          }
-        }
-      ]
     }
-  ]
+  }
 }
