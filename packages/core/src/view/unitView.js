@@ -76,6 +76,9 @@ export default class UnitView extends View {
     /** @type {Map<import("../spec/parameter.js").CategorySelectionChannel, (datum: import("../data/flowNode.js").Datum) => any>} */
     #categorySelectionAccessors = new Map();
 
+    /** @type {Map<string, (event: import("../utils/interaction.js").default) => boolean>} */
+    #pointSelectionInputs = new Map();
+
     /** Validate each explicitly authored interaction source after scale initialization. */
     validatePointSelectionSources() {
         for (const param of this.paramRuntime.paramConfigs.values()) {
@@ -181,20 +184,19 @@ export default class UnitView extends View {
                     this.paramRuntime.setValue(name, selection);
                 };
 
-                const getHoveredDatum = (
-                    /** @type {import("../utils/interaction.js").default} */ event
-                ) => {
-                    const h =
-                        event.markHit === undefined
-                            ? this.context.getCurrentHover()
-                            : event.markHit;
-                    return h?.mark?.unitView === this ? h.datum : null;
-                };
-
                 const eventPredicate = createEventPredicate(
                     eventConfig,
                     getEventFilterLocation(this.paramRuntime, source, "on")
                 );
+                const inputEvent = hoverSelection
+                    ? "mousemove"
+                    : eventConfig.type;
+                /** @param {import("../utils/interaction.js").default} event */
+                const acceptsInput = (event) =>
+                    event.type === inputEvent &&
+                    eventPredicate(event.proxiedMouseEvent);
+                this.#pointSelectionInputs.set(name, acceptsInput);
+
                 const clearPredicate = createEventPredicate(
                     clearEventConfig,
                     getEventFilterLocation(this.paramRuntime, source, "clear")
@@ -207,10 +209,29 @@ export default class UnitView extends View {
                 const listener = (
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) => {
-                    if (!eventPredicate(event.proxiedMouseEvent)) {
+                    if (!acceptsInput(event)) {
                         return;
                     }
-                    const datum = getHoveredDatum(event);
+                    const hit =
+                        event.markHit === undefined
+                            ? this.context.getCurrentHover()
+                            : event.markHit;
+                    const pickedView = hit?.mark?.unitView;
+                    const datum = pickedView === this ? hit.datum : null;
+
+                    // Let the picked layer update the shared parameter when
+                    // it accepts this gesture. Siblings would otherwise clear it.
+                    if (
+                        !hoverSelection &&
+                        pickedView &&
+                        pickedView !== this &&
+                        pickedView.paramRuntime.findRuntimeForParam(name) ===
+                            this.paramRuntime.findRuntimeForParam(name) &&
+                        pickedView.#pointSelectionInputs.get(name)?.(event)
+                    ) {
+                        return;
+                    }
+
                     // Other layers may receive this move after the picked mark.
                     if (
                         hoverSelection &&
@@ -271,10 +292,7 @@ export default class UnitView extends View {
                     }
                 };
 
-                this.addInteractionListener(
-                    hoverSelection ? "mousemove" : eventConfig.type,
-                    listener
-                );
+                this.addInteractionListener(inputEvent, listener);
                 if (
                     eventConfig.type === "wheel" ||
                     clearEventConfig?.type === "wheel"

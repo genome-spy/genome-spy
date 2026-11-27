@@ -17,6 +17,7 @@ class FakeMouseEvent {
     constructor(type) {
         this.type = type;
         this.shiftKey = false;
+        this.altKey = false;
     }
 }
 
@@ -156,6 +157,78 @@ describe("UnitView point selections", () => {
         selection.clear();
         click(second, true);
         expect(selectedNames()).toEqual(["second"]);
+    });
+
+    test("a picked layer owns clicks for a shared point selection", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "picked", value: null }],
+                vconcat: [
+                    {
+                        layer: ["first", "second"].map((name) => ({
+                            ...makeUnitSpec(name),
+                            params: [
+                                {
+                                    name: "picked",
+                                    push: "outer",
+                                    select: {
+                                        type: "point",
+                                        on:
+                                            name === "second"
+                                                ? "click[!event.altKey]"
+                                                : "click",
+                                        toggle: false,
+                                    },
+                                },
+                            ],
+                        })),
+                    },
+                ],
+            },
+            ConcatView
+        );
+        try {
+            renderToLayout(view, Rectangle.create(0, 0, 300, 240));
+            const [first, second] =
+                /** @type {import("./unitView.js").default[]} */ (
+                    view
+                        .getDescendants()
+                        .filter(
+                            ({ name }) => name === "first" || name === "second"
+                        )
+                );
+            const dispatcher = new InteractionDispatcher({ viewRoot: view });
+            const selected = () =>
+                first.paramRuntime.findValue("picked").datum?.name;
+            const click = (
+                /** @type {import("./unitView.js").default} */ unit,
+                altKey = false
+            ) => {
+                const [datum] = unit?.getCollector().getData() ?? [];
+                const event = new FakeMouseEvent("click");
+                event.altKey = altKey;
+                dispatcher.dispatch(
+                    center(first),
+                    /** @type {MouseEvent} */ (event),
+                    unit
+                        ? { mark: unit.mark, datum, uniqueId: datum.__uniqueId }
+                        : null
+                );
+            };
+
+            click(second);
+            expect(selected()).toBe("second");
+            click(first);
+            expect(selected()).toBe("first");
+            click(null);
+            expect(selected()).toBeUndefined();
+            click(first);
+            // The second layer ignores Alt-click. The first still clears.
+            click(second, true);
+            expect(selected()).toBeUndefined();
+        } finally {
+            view.disposeSubtree();
+        }
     });
 
     test.each([false, true])(
