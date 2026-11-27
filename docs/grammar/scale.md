@@ -77,16 +77,15 @@ Currently, the following scales are **not** supported: `"time"`, `"utc"`,
     implementations for the actual scale transformations, ensuring high
     rendering performance.
 
-## Color schemes
+### Color schemes
 
-Set `"scheme": "higlassfall"` on a color scale to use the HiGlass heatmap
-palette. It maps low values to white, then transitions through orange and red to
-black.
-[HiGlass heatmap palette](https://docs.higlass.io/track_types.html#heatmap)
+GenomeSpy provides two color schemes for Hi-C contact maps alongside the
+[Vega schemes](https://vega.github.io/vega/docs/schemes/).
 
-Set `"scheme": "juiceboxred"` for the white-to-red palette used by Juicebox's
-observed contact maps.
-[Juicebox observed color scale](https://github.com/aidenlab/Juicebox/blob/e2beb10f9cca36a83bb723fe5995d57e479db180/src/juicebox/mapcolorui/ColorScaleHandler.java#L107-L120)
+- `higlassfall` goes from white through orange and red to black.
+  [HiGlass heatmap palette](https://docs.higlass.io/track_types.html#heatmap)
+- `juiceboxred` goes from white to red.
+  [Juicebox observed color scale](https://github.com/aidenlab/Juicebox/blob/e2beb10f9cca36a83bb723fe5995d57e479db180/src/juicebox/mapcolorui/ColorScaleHandler.java#L107-L120)
 
 ## GenomeSpy-specific scales
 
